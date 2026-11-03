@@ -61,8 +61,9 @@ Las épicas se registran como issues con prefijo `[EPIC]`. Cada PR debe enlazar 
 - [Decisiones vigentes](docs/DECISIONS.md)
 - [Arquitectura y límites de módulos](docs/ARCHITECTURE.md)
 - [Contrato de API](docs/API_CONTRACT.md)
-- [Épicas](docs/EPICS.md)
+- [Épicas](docs/epics/README.md)
 - [Plantilla ADR](docs/adr/0000-template.md)
+- [Propuesta de modelo C4 (Structurizr DSL, pendiente de aprobación)](docs/c4/structurizr-proposal.dsl)
 
 ## Alcance excluido del MVP
 
