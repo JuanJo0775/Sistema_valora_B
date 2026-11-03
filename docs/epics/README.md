@@ -17,3 +17,17 @@ Las épicas están registradas como issues GitHub con prefijo `[EPIC]`. Este arc
 - Neutralidad de comparación.
 - Revisión de código por otro integrante.
 - Evidencia real de ejecución, sin declarar pruebas no corridas.
+
+
+## Issues creados
+
+| ID | Issue |
+|---|---|
+| EPIC-B01 | [EPIC-B01](https://github.com/JuanJo0775/Sistema_valora_B/issues/1) |
+| EPIC-B02 | [EPIC-B02](https://github.com/JuanJo0775/Sistema_valora_B/issues/2) |
+| EPIC-B03 | [EPIC-B03](https://github.com/JuanJo0775/Sistema_valora_B/issues/3) |
+| EPIC-B04 | [EPIC-B04](https://github.com/JuanJo0775/Sistema_valora_B/issues/4) |
+| EPIC-B05 | [EPIC-B05](https://github.com/JuanJo0775/Sistema_valora_B/issues/5) |
+| EPIC-B06 | [EPIC-B06](https://github.com/JuanJo0775/Sistema_valora_B/issues/6) |
+| EPIC-B07 | [EPIC-B07](https://github.com/JuanJo0775/Sistema_valora_B/issues/7) |
+| EPIC-B08 | [EPIC-B08](https://github.com/JuanJo0775/Sistema_valora_B/issues/8) |
