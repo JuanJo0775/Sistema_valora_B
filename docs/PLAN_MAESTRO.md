@@ -114,7 +114,7 @@ Los issues están creados en el repositorio backend. El detalle, criterios y est
 
 ## 5. Épicas del frontend
 
-Los issues están creados en el repositorio frontend.
+Los issues están creados en el repositorio frontend; los títulos siguientes se han contrastado con GitHub.
 
 | ID | Épica | Issue | Incremento |
 |---|---|---|---|
