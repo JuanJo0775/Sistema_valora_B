@@ -2,7 +2,7 @@
 
 **Proyecto:** Seminario Nuclear 4 — Proyecto Nuclear VI, periodo II-2026  
 **Producto:** Plataforma colaborativa de comparación de precios entre tiendas de barrio, minimercados y supermercados, con foco inicial en Armenia y el Quindío.  
-**Fecha de organización:** 3 de noviembre de 2026  
+**Documento de referencia:** alcance, coordinación y decisiones estructurales de Valora  
 **Estado:** Repositorios privados inicializados, documentación base publicada y backlog de épicas creado. No equivale a implementación ni a cumplimiento total de H1-01.
 
 ---
@@ -46,28 +46,36 @@ Sistema_valora_F/
     └── EPICS_LINKS.md
 ```
 
-Los nombres de carpetas de código son estructuras previstas, no módulos implementados. No se seleccionó un framework concreto.
+Los nombres de carpetas de código son estructuras previstas, no módulos implementados. Los frameworks concretos siguen sujetos a validación: ADR-017 (frontend) y ADR-018 (backend) están documentados como propuestas, no como decisiones aceptadas.
 
 ---
 
-## 2. Decisiones aprobadas que guían el trabajo
+## 2. Línea base arquitectónica y decisiones aceptadas
 
-Estas decisiones proceden del estado vigente de Notion y de las aprobaciones documentadas. Deben mantenerse consistentes en ambos repositorios.
+Esta sección conserva únicamente la línea base que condiciona el trabajo de ambos repositorios. El registro completo y vigente de decisiones —incluidos estado, fecha de decisión, contexto, alternativas, consecuencias y trazabilidad— se mantiene en la **[base de datos ADRs de Notion](https://app.notion.com/p/400b339af98d48f78c8616dd39951756)**.
 
-| Tema | Decisión aprobada | Aplicación |
-|---|---|---|
-| Estilo arquitectónico | Monolito modular | Un backend desplegable con módulos y límites de dominio explícitos. No microservicios en el MVP. |
-| Lenguaje principal | TypeScript | Lenguaje principal del proyecto. |
-| API | REST sobre HTTPS, JSON y OpenAPI 3.x, versión `/v1` | Contrato de integración independiente del framework. |
-| Cliente | Web responsiva con PWA | Una sola experiencia web; sin app nativa en el MVP. |
-| Offline | Cola local persistente para registro de precios | Solo el registro funciona sin conexión; consultar precios requiere conexión. |
-| Autenticación | Sesión administrada por servidor, cookie HttpOnly/Secure/SameSite, CSRF y Argon2id | No reemplazar por JWT bearer sin nueva decisión aceptada. |
-| Autorización | RBAC validado en servidor | Los permisos no se confían al frontend. |
-| Datos iniciales | Carga manual y siembra acotada | SIPSA es referencia mayorista cuando hay comparabilidad; no precio de tienda. Sin integración automática completa ni scraping en el MVP. |
-| Despliegue | Sin Docker en el MVP | Mecanismo reproducible y proveedor siguen pendientes en ADR-012; confirmar RDA3 con el docente. |
-| Alertas | RF-019 opcional/futuro | Fuera del MVP; sin infraestructura de alertas comprometida. |
+### Decisiones aceptadas que forman la línea base
 
-### Parámetros de calidad que deben conservar su estado
+| ADR | Decisión | Fecha registrada en el ADR | Aplicación en el proyecto |
+|---|---|---:|---|
+| [ADR-001](https://app.notion.com/p/40239c4a833b81b38475fb73c96d3c80) | Monolito modular | 23/10/2026 | Un backend desplegable con módulos y límites de dominio explícitos. No microservicios en el MVP. |
+| [ADR-002](https://app.notion.com/p/40239c4a833b8197a703d87ea6ee2506) | REST sobre HTTPS, JSON y OpenAPI 3.x, versión `/v1` | 23/10/2026 | Contrato independiente del framework; dos superficies lógicas con autorización diferenciada. |
+| [ADR-003](https://app.notion.com/p/40239c4a833b818ab129d6c98834db24) | PostgreSQL + PostGIS | 03/11/2026 | Persistencia relacional y soporte geoespacial. La versión exacta y configuración operativa se fijan en implementación. |
+| [ADR-010](https://app.notion.com/p/40239c4a833b81d79bb4e1099a4022cc) | PWA con cola de envío sin conexión | 30/10/2026 | Cola local persistente para registrar precios; la consulta de precios requiere conexión. |
+| [ADR-011](https://app.notion.com/p/40239c4a833b81cd9caac5adf5849150) | Referencia pública y siembra manual | 30/10/2026 | SIPSA se usa como referencia mayorista cuando existe comparabilidad; no representa precio de tienda. Sin integración automática completa ni scraping en el MVP. |
+| [ADR-014](https://app.notion.com/p/40239c4a833b81b1b88ad6b6ff46366d) | Sesiones administradas por servidor y autorización RBAC | 03/11/2026 | Cookie HttpOnly/Secure/SameSite, protección CSRF, contraseñas con Argon2id y permisos validados en servidor. No sustituir por JWT bearer sin nueva decisión. |
+
+Las fechas anteriores reproducen el campo **Fecha de decisión** de cada ADR. En ADR-001 y ADR-002 corresponden a la fecha de registro disponible en Notion; no se dispone de una evidencia independiente más precisa del momento de aprobación.
+
+### Otras restricciones de alcance vigentes
+
+- **Lenguaje principal:** TypeScript.
+- **Despliegue:** sin Docker en el MVP. El mecanismo reproducible y el proveedor se resuelven en ADR-012; confirmar el alcance de RDA3 con el docente.
+- **Alertas:** RF-019 es opcional/futuro y queda fuera del MVP; no comprometer infraestructura de alertas.
+- **Frameworks:** Next.js (ADR-017) y la comparación Express independiente/NestJS sobre Express (ADR-018) son propuestas; no tratarlos como stack aceptado hasta que el registro ADR cambie a Aceptado.
+- **Autenticación:** la estrategia general está aceptada, pero la expiración, rotación y revocación de sesiones deben concretarse como trabajo de diseño/implementación, sin reinterpretar la decisión ya aceptada.
+
+### Parámetros y criterios de calidad
 
 - EC-02: el precio anterior deja de mostrarse como vigente en máximo 5 minutos; criterio aprobado.
 - EC-03: detección mínima de anomalías del 80 % sobre conjunto etiquetado; aprobado.
@@ -78,22 +86,38 @@ Estas decisiones proceden del estado vigente de Notion y de las aprobaciones doc
 
 ---
 
-## 3. Decisiones que siguen abiertas
+## 3. Gobierno de decisiones y mantenimiento de este plan
 
-No cerrar estas decisiones solo por haber creado los repositorios.
+### Fuente única de verdad
 
-| Tema | Estado | Acción antes de implementarlo |
-|---|---|---|
-| Framework backend | Pendiente | Comparar opciones compatibles con TypeScript, experiencia del equipo, modularidad y OpenAPI. |
-| Framework UI | Pendiente | Elegir opción web/PWA según conocimiento del equipo, accesibilidad y soporte offline. |
-| Base de datos | ADR-003 propuesto | Evaluar persistencia relacional/geoespacial y capacidad real del equipo. PostgreSQL + PostGIS es candidato, no aprobación. |
-| CQRS ligero/outbox | ADR-004 propuesto | Decidir si la proyección de lectura aporta valor suficiente para EC-04/EC-02 y mantener complejidad mínima. |
-| TTL y score | ADR-005 propuesto | Justificar valores con entrevistas y datos representativos. |
-| Despliegue | ADR-012 en discusión | Confirmar con docente el alcance de RDA3; elegir proveedor/mecanismo reproducible sin asumir Docker/Kubernetes. |
-| Expiración/rotación/revocación de sesión | ADR-014 aceptado, ciclo de vida incompleto | Definir expiración por inactividad y absoluta, rotación de identificador y revocación en logout/bloqueo. |
-| Contrato OpenAPI | Decisión aceptada, artefacto por elaborar | Inventariar endpoints y modelos, crear YAML y validar respuestas/pruebas de contrato. |
+La [base de datos ADRs de Notion](https://app.notion.com/p/400b339af98d48f78c8616dd39951756) es la única fuente de verdad para:
 
-**Regla:** una tecnología que aparece en un issue o documento como alternativa no se convierte en decisión. Las decisiones estructurales requieren ADR y aceptación del equipo.
+- Estado actual de cada ADR (Propuesto, En discusión, Aceptado, Rechazado o Reemplazado).
+- Fecha de decisión/aceptación.
+- Contexto, alternativas consideradas, decisión adoptada, consecuencias y vínculos con RF, RNF y EC.
+
+**No se deben copiar al plan maestro listados de ADR pendientes ni recuentos por estado.** Esos datos cambian durante el proyecto y duplicarlos genera desactualización. Para conocer el estado actual, abrir directamente la base de datos ADRs. Esta guía conserva solo la línea base aceptada que afecta a la coordinación de los repositorios y enlaza cada decisión a su ficha original.
+
+### Cuándo actualizar este archivo
+
+Actualizar este plan únicamente cuando ocurra uno de estos cambios con impacto transversal:
+
+1. Se acepta, reemplaza o revoca una decisión que modifica la línea base técnica o el alcance del MVP.
+2. Cambia la distribución de responsabilidades entre frontend y backend, o la dependencia entre épicas.
+3. Cambia el alcance de una entrega formal o una restricción académica confirmada.
+4. Cambia una regla de trabajo común que afecte a ambos repositorios.
+
+No actualizarlo por cambios rutinarios de estado de un ADR, comentarios, fechas tentativas, avance diario de issues ni decisiones que no alteren la línea base. Esos movimientos permanecen en su fuente correspondiente.
+
+### Procedimiento mínimo de sincronización
+
+- Primero actualizar y aceptar la decisión en Notion, con su fecha y trazabilidad.
+- Después, solo si afecta la línea base de este plan, modificar la fila o regla correspondiente y enlazar el ADR.
+- No reescribir el plan completo ni replicar el contenido del ADR.
+- Si una decisión cambia, conservar el historial mediante un commit descriptivo en Git.
+- Los estados de issues y el avance de implementación se consultan directamente en GitHub; este documento no sustituye esos tableros.
+
+**Regla de interpretación:** una alternativa mencionada en una épica, issue o documento técnico no se convierte en decisión aprobada. Solo el estado Aceptado de su ADR autoriza tratarla como línea base.
 
 ---
 
@@ -192,9 +216,9 @@ La actividad H1-01 pide: equipo conformado, repositorio Git con historial por in
 
 1. Invitar a los demás integrantes como colaboradores en ambos repositorios.
 2. Confirmar herramienta C4 y crear el tablero con las 16 épicas.
-3. Realizar una sesión corta para cerrar framework backend, framework UI y base de datos con ADRs, sin alterar decisiones ya aprobadas.
+3. Resolver las propuestas de framework frontend/backend mediante sus ADR; la persistencia PostgreSQL + PostGIS ya está aceptada en ADR-003.
 4. Desglosar cada épica en historias pequeñas y pruebas de aceptación.
-5. Elaborar el contrato OpenAPI preliminar antes de implementar endpoints.
+5. Elaborar el contrato OpenAPI preliminar antes de implementar endpoints, manteniéndolo alineado con ADR-002.
 6. Comenzar por el flujo vertical mínimo: catálogo → establecimiento → reporte → comparación.
 7. Ejecutar TDD sobre normalización por unidad, dinero, idempotencia, vigencia y orden neutral.
 
@@ -209,3 +233,4 @@ La actividad H1-01 pide: equipo conformado, repositorio Git con historial por in
 - Se actualizaron los índices de épicas con sus enlaces.
 - No se subió código de aplicación, secretos, datos personales ni credenciales.
 - No se cambió el calendario ni se marcó H1-01 como entregado.
+- La base de datos ADRs de Notion se establece como fuente única de verdad para estados y fechas; este plan conserva solo la línea base transversal y evita duplicar estados cambiantes.
