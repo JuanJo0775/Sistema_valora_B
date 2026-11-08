@@ -46,7 +46,7 @@ Sistema_valora_F/
     └── EPICS_LINKS.md
 ```
 
-Los nombres de carpetas de código son estructuras previstas, no módulos implementados. Los frameworks concretos siguen sujetos a validación: ADR-017 (frontend) y ADR-018 (backend) están documentados como propuestas, no como decisiones aceptadas.
+Los nombres de carpetas de código son estructuras previstas, no módulos implementados. Frameworks aceptados el 8 de noviembre de 2026: React + Vite con vite-plugin-pwa en el frontend (ADR-017) y NestJS sobre Express en el backend (ADR-018). Su validación práctica se hace con el esqueleto de extremo a extremo (H2-01).
 
 ---
 
@@ -72,7 +72,7 @@ Las fechas anteriores reproducen el campo **Fecha de decisión** de cada ADR. En
 - **Lenguaje principal:** TypeScript.
 - **Despliegue:** sin Docker en el MVP. El mecanismo reproducible y el proveedor se resuelven en ADR-012; confirmar el alcance de RDA3 con el docente.
 - **Alertas:** RF-019 es opcional/futuro y queda fuera del MVP; no comprometer infraestructura de alertas.
-- **Frameworks:** Next.js (ADR-017) y la comparación Express independiente/NestJS sobre Express (ADR-018) son propuestas; no tratarlos como stack aceptado hasta que el registro ADR cambie a Aceptado.
+- **Frameworks:** aceptados el 8 de noviembre de 2026. Frontend: React + TypeScript + Vite con vite-plugin-pwa (ADR-017), que reemplaza la propuesta de Next.js + Serwist. Backend: NestJS sobre Express (ADR-018).
 - **Autenticación:** la estrategia general está aceptada, pero la expiración, rotación y revocación de sesiones deben concretarse como trabajo de diseño/implementación, sin reinterpretar la decisión ya aceptada.
 
 ### Parámetros y criterios de calidad

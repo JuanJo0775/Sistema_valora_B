@@ -5,13 +5,13 @@ flowchart TB
   MOD(["Moderador"]):::persona
   subgraph DEV["Dispositivo del usuario"]
     direction LR
-    WEB["<b>Aplicación web PWA</b><br/><small>TypeScript · Next.js (propuesto, ADR-017)<br/>Áreas: / · /comercios · /moderacion</small>"]:::nucleo
+    WEB["<b>Aplicación web PWA</b><br/><small>React + TypeScript · Vite<br/>vite-plugin-pwa (ADR-017)<br/>Áreas: / · /comercios · /moderacion</small>"]:::nucleo
     IDB[("<b>Cola local</b><br/><small>IndexedDB · reportes<br/>pendientes de envío</small>")]:::datos
   end
   subgraph SRV["Servidor de Valora · un solo despliegue (ADR-001)"]
     direction LR
     PX["<b>Proxy HTTPS</b><br/><small>Caddy · certificados</small>"]:::soporte
-    APP["<b>API · monolito modular</b><br/><small>Node.js + TypeScript<br/>Express o NestJS (ADR-018)<br/>REST /v1 + OpenAPI 3</small>"]:::nucleo
+    APP["<b>API · monolito modular</b><br/><small>Node.js + TypeScript<br/>NestJS sobre Express (ADR-018)<br/>REST /v1 + OpenAPI 3</small>"]:::nucleo
     JOB["<b>Trabajos diferidos</b><br/><small>Mismo proceso · lee el outbox<br/>score, anómalos, importaciones</small>"]:::nucleo
   end
   DB[("<b>Base de datos</b><br/><small>PostgreSQL + PostGIS (ADR-003)<br/>un esquema por módulo</small>")]:::datos

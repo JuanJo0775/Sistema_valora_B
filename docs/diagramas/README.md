@@ -69,7 +69,7 @@ Abre la caja de Valora y muestra las piezas que se despliegan o ejecutan por sep
 - En el dispositivo viven la aplicación web y su cola local; si no hay señal, el reporte espera ahí.
 - En el servidor hay un solo despliegue: el proxy HTTPS, la API modular y los trabajos diferidos en el mismo proceso.
 - Una sola base de datos PostgreSQL + PostGIS, con un esquema por módulo.
-- Los frameworks marcados como propuestos todavía no están aceptados (ADR-017 y ADR-018).
+- Frameworks aceptados el 8 de noviembre de 2026: React + Vite con vite-plugin-pwa en el frontend (ADR-017) y NestJS sobre Express en el backend (ADR-018).
 
 **Relación:** ADR-001 · ADR-002 · ADR-003 · ADR-010 · ADR-014
 
