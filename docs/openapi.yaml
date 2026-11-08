@@ -1,0 +1,649 @@
+openapi: 3.1.0
+info:
+  title: Valora API
+  version: 0.1.0-preliminar
+  summary: Contrato preliminar del núcleo de Valora (corte 1). Sujeto a revisión del equipo.
+  description: |
+    API REST de la plataforma colaborativa de comparación de precios Valora (ADR-002).
+    Dos superficies: consumidor/reportante y moderación. La superficie de comercios
+    (corte 3) se lista al final con el prefijo /v1/commerce y la marca x-corte: 3.
+    Las respuestas públicas nunca incluyen correo, ubicación ni identificador del reportante (ADR-013).
+servers:
+  - url: https://api.valora.example/v1
+    description: Servidor de ejemplo; el proveedor se define en ADR-012.
+tags:
+  - name: Catálogo
+  - name: Establecimientos
+  - name: Comparación
+  - name: Reportes
+  - name: Autenticación
+  - name: Moderación
+  - name: Comercios
+security: []
+paths:
+  /products:
+    get:
+      tags: [Catálogo]
+      operationId: searchProducts
+      summary: Buscar productos por texto o código de barras (RF-003)
+      parameters:
+        - name: q
+          in: query
+          description: Texto libre, sin distinguir tildes.
+          schema: { type: string, minLength: 2 }
+        - name: barcode
+          in: query
+          schema: { type: string, pattern: '^[0-9]{8,14}$' }
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Productos encontrados
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Product' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /products/{productId}:
+    get:
+      tags: [Catálogo]
+      operationId: getProduct
+      summary: Consultar un producto y sus presentaciones (RF-003, RF-004)
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Producto con presentaciones
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /products/{productId}/comparison:
+    get:
+      tags: [Comparación]
+      operationId: compareProduct
+      summary: Comparar precios de un producto entre establecimientos (RF-008, RF-009, RF-010)
+      description: |
+        Lee el modelo precalculado price_current (ADR-004). La vigencia se calcula al leer.
+        El orden depende solo de los criterios declarados; las promociones vienen aparte (ADR-009, EC-06).
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - name: lng
+          in: query
+          required: true
+          schema: { type: number, minimum: -180, maximum: 180 }
+        - name: radiusKm
+          in: query
+          schema: { type: number, minimum: 0.2, maximum: 10, default: 2 }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [unit_price, distance, recent], default: unit_price }
+        - name: onlyCurrent
+          in: query
+          description: Si es verdadero, excluye precios por vencer.
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Resultados y promociones separadas
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comparison' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /products/{productId}/history:
+    get:
+      tags: [Comparación]
+      operationId: getPriceHistory
+      summary: Historial de precios de los últimos 30 días (RF-008)
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+        - name: establishmentId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Serie diaria
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  points:
+                    type: array
+                    items:
+                      type: object
+                      required: [date, minPriceCop]
+                      properties:
+                        date: { type: string, format: date }
+                        minPriceCop: { type: integer, minimum: 1 }
+                        avgPriceCop: { type: integer, minimum: 1 }
+  /establishments/nearby:
+    get:
+      tags: [Establecimientos]
+      operationId: listNearbyEstablishments
+      summary: Establecimientos cercanos (RF-005)
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number }
+        - name: lng
+          in: query
+          required: true
+          schema: { type: number }
+        - name: radiusKm
+          in: query
+          schema: { type: number, default: 2 }
+      responses:
+        '200':
+          description: Establecimientos ordenados por distancia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Establishment' }
+  /reports:
+    post:
+      tags: [Reportes]
+      operationId: createReport
+      summary: Registrar el precio observado en un establecimiento (RF-006, RF-007)
+      description: |
+        Idempotente por la cabecera Idempotency-Key: un reintento con la misma clave devuelve
+        la misma respuesta y no crea duplicados (EC-01, EC-07). La confianza se calcula después (ADR-004).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportCreate' }
+      responses:
+        '201':
+          description: Reporte recibido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportReceipt' }
+        '200':
+          description: Reintento con la misma clave; se devuelve el resultado original
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportReceipt' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Ya existe un reporte de esta cuenta para el mismo producto y establecimiento en la última hora
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Antigüedad mayor a 24 horas o precio fuera de rango
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /reports/{reportId}/flag:
+    post:
+      tags: [Reportes]
+      operationId: flagReport
+      summary: Marcar un precio como dudoso (RF-013)
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, enum: [precio_falso, producto_equivocado, establecimiento_equivocado, otro] }
+                comment: { type: string, maxLength: 280 }
+      responses:
+        '202': { description: Señal recibida para moderación }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /me/reports:
+    get:
+      tags: [Reportes]
+      operationId: listMyReports
+      summary: Consultar mis aportes (RF-006)
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Aportes de la cuenta autenticada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ReportReceipt' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /product-requests:
+    post:
+      tags: [Catálogo]
+      operationId: requestProduct
+      summary: Solicitar el alta de un producto que no existe en el catálogo (RF-003)
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 120 }
+                barcode: { type: string }
+                quantity: { type: number, exclusiveMinimum: 0 }
+                unit: { $ref: '#/components/schemas/BaseUnit' }
+      responses:
+        '202': { description: Solicitud registrada para revisión }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/register:
+    post:
+      tags: [Autenticación]
+      operationId: register
+      summary: Crear cuenta de reportante con consentimiento de datos (RF-001, Ley 1581)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, acceptedPolicyVersion]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 10, writeOnly: true }
+                acceptedPolicyVersion: { type: string }
+      responses:
+        '201': { description: Cuenta creada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      operationId: login
+      summary: Iniciar sesión; el servidor entrega la cookie de sesión (ADR-014)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, writeOnly: true }
+      responses:
+        '204':
+          description: Sesión iniciada
+          headers:
+            Set-Cookie:
+              description: Cookie de sesión HttpOnly, Secure, SameSite
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/logout:
+    post:
+      tags: [Autenticación]
+      operationId: logout
+      summary: Cerrar sesión y revocarla en el servidor
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        '204': { description: Sesión cerrada }
+  /auth/session:
+    get:
+      tags: [Autenticación]
+      operationId: getSession
+      summary: Consultar la sesión actual y su rol (RF-002)
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Sesión activa
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [role]
+                properties:
+                  role: { type: string, enum: [reportante, comercio, moderador] }
+                  csrfToken: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /moderation/queue:
+    get:
+      tags: [Moderación]
+      operationId: getModerationQueue
+      summary: Cola de reportes en revisión (RF-012, RF-013)
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: reason
+          in: query
+          schema: { type: string, enum: [desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Elementos pendientes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ModerationItem' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /moderation/{itemId}/decision:
+    post:
+      tags: [Moderación]
+      operationId: decideModerationItem
+      summary: Registrar la decisión del moderador; queda auditada (RF-013)
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [aprobar, descartar, observar_cuentas] }
+                note: { type: string, maxLength: 500 }
+      responses:
+        '204': { description: Decisión registrada }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /commerce/claims:
+    post:
+      tags: [Comercios]
+      operationId: claimEstablishment
+      summary: Solicitar el perfil de un establecimiento (RF-015)
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [establishmentId]
+              properties:
+                establishmentId: { type: string, format: uuid }
+      responses:
+        '202': { description: Solicitud en verificación }
+  /commerce/prices:
+    put:
+      tags: [Comercios]
+      operationId: upsertOfficialPrice
+      summary: Publicar o actualizar un precio oficial (RF-016, EC-02)
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [presentationId, priceCop]
+              properties:
+                presentationId: { type: string, format: uuid }
+                priceCop: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Precio oficial publicado }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /commerce/prices/bulk:
+    post:
+      tags: [Comercios]
+      operationId: bulkOfficialPrices
+      summary: Carga masiva de precios oficiales por plantilla CSV (RF-016, ADR-016)
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema: { type: string }
+      responses:
+        '202': { description: Archivo recibido para procesar }
+  /commerce/promotions:
+    post:
+      tags: [Comercios]
+      operationId: createPromotion
+      summary: Publicar una promoción con reglas y vigencia (RF-017, EC-06)
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Promotion' }
+      responses:
+        '201': { description: Promoción publicada en colección aparte }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: valora_session
+      description: Sesión administrada por el servidor (ADR-014).
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID generado por la PWA al guardar el reporte en la cola local.
+      schema: { type: string, format: uuid }
+  headers:
+    CacheControl:
+      schema: { type: string, example: 'public, max-age=30' }
+  responses:
+    BadRequest:
+      description: Datos inválidos
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Se requiere sesión
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: El rol no tiene permiso
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: Límite de frecuencia superado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: REPORT_TOO_OLD }
+        message: { type: string }
+    BaseUnit:
+      type: string
+      enum: [g, ml, und]
+    Presentation:
+      type: object
+      required: [id, quantity, unit]
+      properties:
+        id: { type: string, format: uuid }
+        barcode: { type: string }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unit: { $ref: '#/components/schemas/BaseUnit' }
+    Product:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        category: { type: string }
+        presentations:
+          type: array
+          items: { $ref: '#/components/schemas/Presentation' }
+    Establishment:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [barrio, minimercado, supermercado] }
+        distanceM: { type: integer, minimum: 0 }
+        hasVerifiedProfile: { type: boolean }
+    ComparisonItem:
+      type: object
+      required: [establishment, presentationId, priceCop, unitPrice, source, freshness, reliability, observedAt]
+      properties:
+        establishment: { $ref: '#/components/schemas/Establishment' }
+        presentationId: { type: string, format: uuid }
+        priceCop: { type: integer, minimum: 1 }
+        unitPrice:
+          type: object
+          required: [valueCop, per]
+          properties:
+            valueCop: { type: number }
+            per: { type: string, enum: [kg, l, und] }
+        source: { type: string, enum: [comunidad, oficial, siembra] }
+        freshness: { type: string, enum: [vigente, por_vencer, vencido] }
+        reliability: { type: string, enum: [alta, media, baja, en_revision] }
+        isCheapest: { type: boolean }
+        confirmations: { type: integer, minimum: 0 }
+        observedAt: { type: string, format: date-time }
+    Promotion:
+      type: object
+      required: [presentationId, type, validUntil]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        establishmentId: { type: string, format: uuid, readOnly: true }
+        presentationId: { type: string, format: uuid }
+        type: { type: string, enum: [descuento_porcentual, precio_especial, pague_x_lleve_y] }
+        percent: { type: number, minimum: 1, maximum: 90 }
+        specialPriceCop: { type: integer, minimum: 1 }
+        payX: { type: integer, minimum: 1 }
+        takeY: { type: integer, minimum: 2 }
+        validFrom: { type: string, format: date }
+        validUntil: { type: string, format: date }
+    Comparison:
+      type: object
+      required: [productId, criteria, results, promotions]
+      properties:
+        productId: { type: string, format: uuid }
+        criteria:
+          type: object
+          description: Criterios de orden declarados al usuario (EC-06).
+          properties:
+            sort: { type: string }
+            radiusKm: { type: number }
+        cheapestPriceCop: { type: integer }
+        averagePriceCop: { type: integer, description: Solo precios vigentes y por vencer. }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/ComparisonItem' }
+        promotions:
+          type: array
+          description: Siempre separadas del resultado; no alteran el orden.
+          items: { $ref: '#/components/schemas/Promotion' }
+    ReportCreate:
+      type: object
+      required: [presentationId, establishmentId, priceCop, observedAt]
+      properties:
+        presentationId: { type: string, format: uuid }
+        establishmentId: { type: string, format: uuid }
+        priceCop: { type: integer, minimum: 1, maximum: 10000000 }
+        priceType: { type: string, enum: [normal, oferta, combo], default: normal }
+        observedAt:
+          type: string
+          format: date-time
+          description: Hora real de observación en la tienda; puede ser anterior si estuvo en la cola sin conexión (máximo 24 h).
+    ReportReceipt:
+      type: object
+      required: [id, status, receivedAt]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [recibido, en_revision, vigente, descartado] }
+        receivedAt: { type: string, format: date-time }
+    ModerationItem:
+      type: object
+      required: [id, reason, reportedPriceCop, medianPriceCop]
+      properties:
+        id: { type: string, format: uuid }
+        reason: { type: string, enum: [desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
+        productName: { type: string }
+        establishmentName: { type: string }
+        reportedPriceCop: { type: integer }
+        medianPriceCop: { type: integer }
+        officialPriceCop: { type: integer }
+        deviationPercent: { type: number }
+        reportersCount: { type: integer }
+        createdAt: { type: string, format: date-time }

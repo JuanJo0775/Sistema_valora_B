@@ -1,0 +1,19 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Verdana, Arial, sans-serif","fontSize":"14px","primaryColor":"#FFF1DF","primaryBorderColor":"#F08A24","primaryTextColor":"#3A2414","secondaryColor":"#FFF7D6","tertiaryColor":"#FFFBF4","lineColor":"#B8692A","textColor":"#3A2414","clusterBkg":"#FFFBF4","clusterBorder":"#E8C9A0","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFE3C7","actorBorder":"#F08A24","actorTextColor":"#3A2414","actorLineColor":"#E8B98A","signalColor":"#8A4B14","signalTextColor":"#3A2414","labelBoxBkgColor":"#FFE3C7","labelBoxBorderColor":"#F08A24","labelTextColor":"#3A2414","loopTextColor":"#8A4B14","noteBkgColor":"#FFF7D6","noteBorderColor":"#E3A21A","noteTextColor":"#3A2414","activationBkgColor":"#FFD7A8","activationBorderColor":"#F08A24","sequenceNumberColor":"#FFFFFF"}}}%%
+stateDiagram-v2
+  direction TB
+  [*] --> Pendiente: sin conexión
+  [*] --> Recibido: enviado
+  Pendiente --> Recibido: vuelve la señal
+  Recibido --> Vigente: pasa validaciones
+  Recibido --> EnRevision: desviación > 40 % o marcado dudoso
+  EnRevision --> Vigente: moderador aprueba
+  EnRevision --> Descartado: moderador descarta
+  Vigente --> PorVencer: pasan 7 días
+  PorVencer --> Vigente: alguien lo confirma
+  PorVencer --> Vencido: pasan 14 días
+  Vencido --> Vigente: nuevo reporte u oficial
+  Vigente --> Reemplazado: llega uno más reciente
+  Descartado --> [*]
+  Reemplazado --> [*]
+  state "En revisión" as EnRevision
+  state "Por vencer" as PorVencer

@@ -1,0 +1,20 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Verdana, Arial, sans-serif","fontSize":"14px","primaryColor":"#FFF1DF","primaryBorderColor":"#F08A24","primaryTextColor":"#3A2414","secondaryColor":"#FFF7D6","tertiaryColor":"#FFFBF4","lineColor":"#B8692A","textColor":"#3A2414","clusterBkg":"#FFFBF4","clusterBorder":"#E8C9A0","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFE3C7","actorBorder":"#F08A24","actorTextColor":"#3A2414","actorLineColor":"#E8B98A","signalColor":"#8A4B14","signalTextColor":"#3A2414","labelBoxBkgColor":"#FFE3C7","labelBoxBorderColor":"#F08A24","labelTextColor":"#3A2414","loopTextColor":"#8A4B14","noteBkgColor":"#FFF7D6","noteBorderColor":"#E3A21A","noteTextColor":"#3A2414","activationBkgColor":"#FFD7A8","activationBorderColor":"#F08A24","sequenceNumberColor":"#FFFFFF"}}}%%
+sequenceDiagram
+  autonumber
+  actor M as Comercio
+  participant W as Portal /comercios
+  participant K as API · commerce
+  participant C as comparison
+  participant L as reliability
+  M->>W: Cambia precio de "Leche 1 L" a $4.250
+  W->>K: PUT /v1/commerce/prices
+  K->>K: Verifica comercio y rol (RBAC)
+  K->>C: PrecioOficialPublicado (síncrono, misma transacción)
+  C->>C: Actualiza price_current como "Oficial"
+  K-->>W: 200 Publicado
+  Note over K,C: Visible en segundos, margen máximo 5 min (EC-02)
+  M->>W: Crea promoción "Pague 2 lleve 3"
+  W->>K: POST /v1/commerce/promotions
+  K-->>W: Guardada en colección aparte (no altera el orden, EC-06)
+  L--)K: Usuarios reportan $4.400 (diferencia > 5 %)
+  K-->>M: Aviso de discrepancia para confirmar o corregir

@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Verdana, Arial, sans-serif","fontSize":"14px","primaryColor":"#FFF1DF","primaryBorderColor":"#F08A24","primaryTextColor":"#3A2414","secondaryColor":"#FFF7D6","tertiaryColor":"#FFFBF4","lineColor":"#B8692A","textColor":"#3A2414","clusterBkg":"#FFFBF4","clusterBorder":"#E8C9A0","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFE3C7","actorBorder":"#F08A24","actorTextColor":"#3A2414","actorLineColor":"#E8B98A","signalColor":"#8A4B14","signalTextColor":"#3A2414","labelBoxBkgColor":"#FFE3C7","labelBoxBorderColor":"#F08A24","labelTextColor":"#3A2414","loopTextColor":"#8A4B14","noteBkgColor":"#FFF7D6","noteBorderColor":"#E3A21A","noteTextColor":"#3A2414","activationBkgColor":"#FFD7A8","activationBorderColor":"#F08A24","sequenceNumberColor":"#FFFFFF"}}}%%
+flowchart TB
+  COMM["<b>commerce</b> · corte 3<br/><small>puede usar a todos</small>"]:::evol
+  NUC["<b>Núcleo de precios</b><br/><small>pricing · reliability · comparison</small>"]:::nucleo
+  SOP["<b>Soporte</b><br/><small>identity · catalog · establishments · imports</small>"]:::soporte
+  SH["<b>shared</b><br/><small>bus, outbox, configuración, errores, logs</small>"]:::datos
+  DOM["<b>domain</b> · núcleo puro<br/><small>no importa framework, base de datos ni módulos</small>"]:::dominio
+  COMM -->|"solo por index.ts"| NUC
+  COMM -->|"solo por index.ts"| SOP
+  NUC -->|"solo por index.ts"| SOP
+  NUC --> SH
+  SOP --> SH
+  NUC --> DOM
+  SOP --> DOM
+  COMM --> DOM
+  NO["<b>Prohibido</b><br/>· núcleo o soporte → commerce<br/>· leer tablas de otro módulo<br/>· domain → cualquier cosa<br/><small>dependency-cruiser lo bloquea en CI</small>"]:::nota
+
+classDef persona fill:#FFD7A8,stroke:#C2570C,stroke-width:2px,color:#3A2414
+classDef sistema fill:#FD8A2E,stroke:#C2570C,stroke-width:2px,color:#2A1405
+classDef nucleo fill:#FFE3C7,stroke:#F08A24,stroke-width:2px,color:#3A2414
+classDef soporte fill:#FFF4D6,stroke:#E3A21A,stroke-width:2px,color:#3A2414
+classDef evol fill:#FFE6DC,stroke:#E06A3A,stroke-width:2px,stroke-dasharray:6 4,color:#3A2414
+classDef externo fill:#F4EFE8,stroke:#A39788,stroke-width:1.5px,stroke-dasharray:4 3,color:#4A3F35
+classDef datos fill:#FFF8EC,stroke:#C98A2B,stroke-width:2px,color:#3A2414
+classDef dominio fill:#FFFDF7,stroke:#8A4B14,stroke-width:2.5px,color:#3A2414
+classDef nota fill:#FFFBEA,stroke:#E8D49A,stroke-width:1px,color:#6B5530

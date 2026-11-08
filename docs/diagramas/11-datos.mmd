@@ -1,0 +1,93 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Verdana, Arial, sans-serif","fontSize":"14px","primaryColor":"#FFF1DF","primaryBorderColor":"#F08A24","primaryTextColor":"#3A2414","secondaryColor":"#FFF7D6","tertiaryColor":"#FFFBF4","lineColor":"#B8692A","textColor":"#3A2414","clusterBkg":"#FFFBF4","clusterBorder":"#E8C9A0","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFE3C7","actorBorder":"#F08A24","actorTextColor":"#3A2414","actorLineColor":"#E8B98A","signalColor":"#8A4B14","signalTextColor":"#3A2414","labelBoxBkgColor":"#FFE3C7","labelBoxBorderColor":"#F08A24","labelTextColor":"#3A2414","loopTextColor":"#8A4B14","noteBkgColor":"#FFF7D6","noteBorderColor":"#E3A21A","noteTextColor":"#3A2414","activationBkgColor":"#FFD7A8","activationBorderColor":"#F08A24","sequenceNumberColor":"#FFFFFF"}}}%%
+erDiagram
+  PRODUCT ||--o{ PRESENTATION : "tiene"
+  CATEGORY ||--o{ PRODUCT : "agrupa"
+  PRESENTATION ||--o{ PRICE_REPORT : "se reporta"
+  ESTABLISHMENT ||--o{ PRICE_REPORT : "en"
+  USER ||--o{ PRICE_REPORT : "seudónimo"
+  PRICE_REPORT ||--o| MODERATION_ITEM : "puede ir a"
+  PRESENTATION ||--o{ PRICE_CURRENT : "precio vigente"
+  ESTABLISHMENT ||--o{ PRICE_CURRENT : "en"
+  ESTABLISHMENT ||--o| COMMERCE_PROFILE : "reclama"
+  COMMERCE_PROFILE ||--o{ OFFICIAL_PRICE : "publica"
+  COMMERCE_PROFILE ||--o{ PROMOTION : "publica"
+  IMPORT_BATCH ||--o{ SOURCE_RECORD : "contiene"
+  PRODUCT {
+    uuid id PK
+    string nombre
+    uuid categoria_id FK
+  }
+  PRESENTATION {
+    uuid id PK
+    uuid producto_id FK
+    string codigo_barras
+    decimal cantidad
+    string unidad_base "g, ml, und"
+  }
+  ESTABLISHMENT {
+    uuid id PK
+    string nombre
+    string tipo "barrio, mini, super"
+    geography ubicacion "PostGIS"
+  }
+  PRICE_REPORT {
+    uuid id PK
+    uuid presentacion_id FK
+    uuid establecimiento_id FK
+    string reporter_pseudonym
+    int precio_cop
+    timestamp observed_at
+    timestamp received_at
+    string idempotency_key UK
+  }
+  PRICE_CURRENT {
+    uuid presentacion_id PK
+    uuid establecimiento_id PK
+    int precio_cop
+    decimal precio_unidad_base
+    string fuente "comunidad, oficial"
+    string confiabilidad
+    timestamp stale_after
+    timestamp expired_after
+  }
+  MODERATION_ITEM {
+    uuid id PK
+    uuid reporte_id FK
+    string motivo
+    string decision
+  }
+  USER {
+    uuid id PK
+    string correo
+    string rol
+    string version_politica
+  }
+  COMMERCE_PROFILE {
+    uuid id PK
+    uuid establecimiento_id FK
+    bool verificado
+  }
+  OFFICIAL_PRICE {
+    uuid id PK
+    uuid presentacion_id FK
+    int precio_cop
+  }
+  PROMOTION {
+    uuid id PK
+    string tipo "pct, especial, XxY"
+    date hasta
+  }
+  CATEGORY {
+    uuid id PK
+    int ttl_dias
+  }
+  IMPORT_BATCH {
+    uuid id PK
+    string fuente
+    date fecha_corte
+  }
+  SOURCE_RECORD {
+    uuid id PK
+    string producto_ref
+    int precio
+  }

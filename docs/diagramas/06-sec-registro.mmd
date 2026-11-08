@@ -1,0 +1,31 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Verdana, Arial, sans-serif","fontSize":"14px","primaryColor":"#FFF1DF","primaryBorderColor":"#F08A24","primaryTextColor":"#3A2414","secondaryColor":"#FFF7D6","tertiaryColor":"#FFFBF4","lineColor":"#B8692A","textColor":"#3A2414","clusterBkg":"#FFFBF4","clusterBorder":"#E8C9A0","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFE3C7","actorBorder":"#F08A24","actorTextColor":"#3A2414","actorLineColor":"#E8B98A","signalColor":"#8A4B14","signalTextColor":"#3A2414","labelBoxBkgColor":"#FFE3C7","labelBoxBorderColor":"#F08A24","labelTextColor":"#3A2414","loopTextColor":"#8A4B14","noteBkgColor":"#FFF7D6","noteBorderColor":"#E3A21A","noteTextColor":"#3A2414","activationBkgColor":"#FFD7A8","activationBorderColor":"#F08A24","sequenceNumberColor":"#FFFFFF"}}}%%
+sequenceDiagram
+  autonumber
+  actor R as Reportante
+  participant W as PWA
+  participant Q as Cola local (IndexedDB)
+  participant A as API · pricing
+  participant B as Outbox / bus
+  participant L as reliability
+  participant C as comparison
+  R->>W: Elige tienda, producto y precio (modo góndola)
+  W->>Q: Guarda reporte con clave única y hora real
+  alt Sin conexión
+    W-->>R: "Pendiente de envío"
+    Note over W,Q: Espera hasta recuperar señal
+  end
+  W->>A: POST /v1/reports + Idempotency-Key
+  A->>A: Valida: precio > 0, máx. 24 h, 1 por hora
+  A->>B: Inserta reporte + evento PrecioReportado (misma transacción)
+  A-->>W: 201 Recibido
+  W->>Q: Borra de la cola
+  W-->>R: "¡Gracias!"
+  Note over A,W: Si reintenta con la misma clave, recibe la misma respuesta sin duplicar
+  B--)L: PrecioReportado (diferido, segundos)
+  L->>L: Calcula score y compara con la mediana
+  alt Desviación mayor a 40 %
+    L->>B: ReporteEnRevision → cola del moderador
+  else Normal
+    L->>B: ScoreActualizado
+    B--)C: Actualiza price_current (vigente, stale_after, expired_after)
+  end

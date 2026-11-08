@@ -1,0 +1,25 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Verdana, Arial, sans-serif","fontSize":"14px","primaryColor":"#FFF1DF","primaryBorderColor":"#F08A24","primaryTextColor":"#3A2414","secondaryColor":"#FFF7D6","tertiaryColor":"#FFFBF4","lineColor":"#B8692A","textColor":"#3A2414","clusterBkg":"#FFFBF4","clusterBorder":"#E8C9A0","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFE3C7","actorBorder":"#F08A24","actorTextColor":"#3A2414","actorLineColor":"#E8B98A","signalColor":"#8A4B14","signalTextColor":"#3A2414","labelBoxBkgColor":"#FFE3C7","labelBoxBorderColor":"#F08A24","labelTextColor":"#3A2414","loopTextColor":"#8A4B14","noteBkgColor":"#FFF7D6","noteBorderColor":"#E3A21A","noteTextColor":"#3A2414","activationBkgColor":"#FFD7A8","activationBorderColor":"#F08A24","sequenceNumberColor":"#FFFFFF"}}}%%
+flowchart TD
+  A(["Llega un reporte"]):::nucleo --> B{"¿Supera 40 % de<br/>desviación de la mediana?"}:::soporte
+  A2(["Un usuario lo marca<br/>como dudoso"]):::persona --> Q
+  B -->|"No"| V(["Vigente en la comparación"]):::nucleo
+  B -->|"Sí"| Q["Entra a la cola de moderación<br/>se muestra con aviso, fuera del promedio"]:::evol
+  Q --> M["Moderador revisa: mediana de la zona,<br/>precio oficial, historial y cuentas"]:::soporte
+  M --> D{"Decisión"}:::soporte
+  D -->|"Es correcto"| V
+  D -->|"Falso o error"| X(["Descartado"]):::externo
+  D -->|"Patrón coordinado"| O["Cuentas en observación<br/>y baja su reputación"]:::evol
+  O --> X
+  V --> R["Sube la reputación del reportante"]:::datos
+  X --> R2["Baja la reputación del reportante"]:::datos
+  M --> AU[("Auditoría: quién, cuándo y por qué")]:::datos
+
+classDef persona fill:#FFD7A8,stroke:#C2570C,stroke-width:2px,color:#3A2414
+classDef sistema fill:#FD8A2E,stroke:#C2570C,stroke-width:2px,color:#2A1405
+classDef nucleo fill:#FFE3C7,stroke:#F08A24,stroke-width:2px,color:#3A2414
+classDef soporte fill:#FFF4D6,stroke:#E3A21A,stroke-width:2px,color:#3A2414
+classDef evol fill:#FFE6DC,stroke:#E06A3A,stroke-width:2px,stroke-dasharray:6 4,color:#3A2414
+classDef externo fill:#F4EFE8,stroke:#A39788,stroke-width:1.5px,stroke-dasharray:4 3,color:#4A3F35
+classDef datos fill:#FFF8EC,stroke:#C98A2B,stroke-width:2px,color:#3A2414
+classDef dominio fill:#FFFDF7,stroke:#8A4B14,stroke-width:2.5px,color:#3A2414
+classDef nota fill:#FFFBEA,stroke:#E8D49A,stroke-width:1px,color:#6B5530

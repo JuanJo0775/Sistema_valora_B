@@ -1,0 +1,17 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Verdana, Arial, sans-serif","fontSize":"14px","primaryColor":"#FFF1DF","primaryBorderColor":"#F08A24","primaryTextColor":"#3A2414","secondaryColor":"#FFF7D6","tertiaryColor":"#FFFBF4","lineColor":"#B8692A","textColor":"#3A2414","clusterBkg":"#FFFBF4","clusterBorder":"#E8C9A0","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFE3C7","actorBorder":"#F08A24","actorTextColor":"#3A2414","actorLineColor":"#E8B98A","signalColor":"#8A4B14","signalTextColor":"#3A2414","labelBoxBkgColor":"#FFE3C7","labelBoxBorderColor":"#F08A24","labelTextColor":"#3A2414","loopTextColor":"#8A4B14","noteBkgColor":"#FFF7D6","noteBorderColor":"#E3A21A","noteTextColor":"#3A2414","activationBkgColor":"#FFD7A8","activationBorderColor":"#F08A24","sequenceNumberColor":"#FFFFFF"}}}%%
+sequenceDiagram
+  autonumber
+  actor U as Consumidor
+  participant W as PWA
+  participant A as API · comparison
+  participant D as price_current
+  U->>W: Busca "arroz 500 g" y elige radio 1,2 km
+  W->>A: GET /v1/products?q=arroz
+  A-->>W: Productos y presentaciones
+  W->>A: GET /v1/products/{id}/comparison?lat&lng&radio
+  A->>D: Lee precios cercanos (PostGIS)
+  A->>A: Calcula vigencia al leer (now vs stale_after / expired_after)
+  A->>A: Ordena con función pura: precio, precio por unidad, distancia, actualidad
+  A-->>W: Resultados + promociones en campo aparte
+  Note over A,W: Cache-Control y ETag · meta p95 ≤ 2 s con 500 usuarios (EC-04)
+  W-->>U: Escalera de precios, sellos de confianza, promoción rotulada
