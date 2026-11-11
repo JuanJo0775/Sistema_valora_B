@@ -7,11 +7,24 @@
 3. Implementa una unidad vertical pequeña dentro del monolito modular.
 4. Añade o actualiza pruebas según el nivel aplicable.
 5. Abre un pull request hacia `dev` (nunca hacia `main`) con `Closes #N` de la issue.
-6. Quien abre el pull request puede mezclarlo cuando **todas** las verificaciones de la CI (`Calidad` y `Pruebas`) estén en verde. La revisión de otro integrante es bienvenida pero opcional; si alguien pide cambios, se atienden antes de mezclar. La rama debe estar al día con `dev`.
-7. Mezcla con **"Create a merge commit"** o "Rebase and merge". **Nunca "Squash and merge"**: borra los commits rojo → verde → refactor del historial.
-8. Borra la rama después de mezclar.
+6. Quien abre el pull request puede mezclarlo cuando **todas** las verificaciones de la CI (`Calidad` y `Pruebas`) estén en verde. La revisión de otro integrante es bienvenida pero opcional; si alguien pide cambios, se atienden antes de mezclar.
+7. La rama debe estar **al día con `dev`**. Si GitHub dice que la rama está atrás («This branch is out-of-date»), pulsa **«Update branch» → «Update with rebase»**, o ejecuta `gh pr update-branch <N> --rebase`. Luego espera a que la CI vuelva a quedar en verde.
+8. Mezcla con **"Create a merge commit"** o **"Rebase and merge"**. **Nunca "Squash and merge"**: borra los commits rojo → verde → refactor del historial.
+9. GitHub borra la rama remota al mezclar. En tu equipo, vuelve a `dev`, actualízala (`git pull`) y borra la rama local (`git branch -d <rama>`, o `-D` si la mezclaste con rebase).
 
 `main` solo recibe pull requests desde `dev` al cerrar un hito o una entrega, y se marca con una etiqueta de versión (`v0.1.0`, `v0.2.0`…).
+
+### Protección de `dev` y `main` (configurada en GitHub)
+
+GitHub hace cumplir estas reglas; no dependen de la memoria del equipo:
+
+- No se puede hacer push directo, force push ni borrar `dev` o `main`: todo entra por pull request.
+- Para mezclar, `Calidad` y `Pruebas` deben estar en verde y la rama al día con la base.
+- No hay "Squash and merge".
+
+### Si la CI se queda «en cola»
+
+Si los checks de un pull request no arrancan («Queued» o «Expected — Waiting for status to be reported») después de unos minutos y GitHub no reporta incidentes en <https://www.githubstatus.com>, **cierra y vuelve a abrir el pull request**. Eso dispara una ejecución nueva de la CI sin agregar commits. «Re-run jobs» a veces no funciona con ejecuciones trabadas.
 
 Antes de abrir el pull request corre en local `pnpm typecheck`, `pnpm lint`, `pnpm test:cov` y `pnpm depcheck`. La descripción del pull request va en español: qué cambia y por qué, RF/EC/ADR relacionados y cómo se probó.
 
