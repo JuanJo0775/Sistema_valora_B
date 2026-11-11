@@ -1,4 +1,5 @@
 import {
+  Body,
   ConflictException,
   Controller,
   ForbiddenException,
@@ -7,8 +8,10 @@ import {
   HttpStatus,
   type INestApplication,
   Param,
+  Post,
   UnauthorizedException,
 } from '@nestjs/common';
+import { IsInt, IsPositive } from 'class-validator';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
@@ -37,6 +40,15 @@ const httpErrors = {
   'too-many': () => new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS),
 };
 
+// DTO que solo existe en esta prueba, con mensajes en español como los tendrán los DTOs reales.
+class TestReportDto {
+  @IsInt({ message: 'debe ser un número entero' })
+  priceCop!: number;
+
+  @IsPositive({ message: 'debe ser mayor que 0' })
+  quantity!: number;
+}
+
 // Controlador que solo existe en esta prueba: lanza cada tipo de error para ver cómo responde la API.
 @Controller('test-errors')
 class ErrorsTestController {
@@ -48,6 +60,11 @@ class ErrorsTestController {
   @Get('http/:name')
   http(@Param('name') name: keyof typeof httpErrors): never {
     throw httpErrors[name]();
+  }
+
+  @Post('validation')
+  validation(@Body() body: TestReportDto): TestReportDto {
+    return body;
   }
 }
 
@@ -106,5 +123,16 @@ describe('formato de error { code, message }', () => {
     const response = await request(server).get(`/v1/test-errors/http/${name}`).expect(status);
 
     expect(response.body).toEqual({ code, message });
+  });
+  it('un cuerpo con dos campos inválidos responde 400 con los dos errores juntos', async () => {
+    const response = await request(server)
+      .post('/v1/test-errors/validation')
+      .send({ priceCop: 'abc', quantity: 0 })
+      .expect(400);
+
+    expect(response.body).toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'priceCop: debe ser un número entero; quantity: debe ser mayor que 0',
+    });
   });
 });
