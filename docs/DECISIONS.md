@@ -48,6 +48,17 @@ Estas versiones se fijaron al configurar el backend. ADR-018 decide el framework
 - SIPSA: referencia mayorista; nunca presentarlo como precio de una tienda.
 - Los reportes sospechosos quedan fuera de la comparación vigente mientras se revisan, pero permanecen en el historial.
 
+## Precio por unidad base (RF-004, decidido por el equipo el 11 de noviembre de 2026)
+
+Precisiones a RF-004 tomadas al construir la regla en `src/domain/unit-price.ts` (issue #11):
+
+- **Se muestra por 100 g, 100 ml o unidad**, como dice RF-004. El contrato (`unitPrice.per`) pasa de `kg`/`l`/`und` a `100g`/`100ml`/`und`.
+- **Unidades de entrada:** `g`, `kg`, `ml`, `l` y `und`. `kg` y `l` se convierten a `g` y `ml` (×1000); los empaques se expanden (6 × 330 ml = 1980 ml).
+- **Redondeo:** el precio mostrado se redondea al peso entero con la mitad hacia arriba ($1.333,33 → $1.333). Comparar y ordenar usa siempre el valor exacto, para que dos precios que se muestran iguales no empaten por el redondeo.
+- **Aritmética exacta sin dependencias:** las cantidades decimales se leen como fracción de enteros (`bigint`), porque la coma flotante altera valores como 1,005 kg. `domain` no importa paquetes externos.
+- **Precio de entrada:** entero en pesos mayor o igual a $1, como `priceCop` en el contrato.
+- ADR-007 (catálogo con unidad base) sigue **propuesto**; esta regla no depende de cómo se guarde el catálogo.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
