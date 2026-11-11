@@ -41,7 +41,7 @@ El backend es la fuente de verdad del contrato OpenAPI. El frontend consume ese 
 ## No incluido en el MVP
 
 - Microservicios, broker distribuido o Kubernetes.
-- Docker / Docker Compose / Testcontainers.
+- Docker / Docker Compose / Testcontainers en el despliegue y en el desarrollo local. La CI de GitHub Actions sí usa contenedores de servicio de PostgreSQL + PostGIS para las pruebas (aclaración de ADR-012, 11 de noviembre de 2026).
 - Integración automática completa con SIPSA.
 - Scraping de catálogos de cadenas.
 - Sistema de alertas de bajada de precio.

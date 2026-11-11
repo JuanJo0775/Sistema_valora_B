@@ -14,8 +14,9 @@ API y lógica de negocio de **Valora**, plataforma colaborativa para comparar pr
 - Decisiones aceptadas: sesiones administradas por servidor, PWA con registro offline-first y carga inicial manual con SIPSA solo como referencia comparable.
 - Framework: NestJS sobre Express (ADR-018, aceptado).
 - Persistencia: PostgreSQL + PostGIS (ADR-003, aceptado).
-- Pendiente: acceso a datos (Drizzle, ADR por registrar), estrategia CQRS/outbox y mecanismo de despliegue reproducible.
-- Docker no forma parte del MVP aprobado.
+- Acceso a datos: Drizzle ORM con migraciones SQL (ADR-021, aceptado). Eventos internos con outbox (ADR-015, aceptado).
+- Pendiente: precio vigente precalculado (ADR-004) y mecanismo de despliegue reproducible (ADR-012).
+- Docker no forma parte del MVP ni del desarrollo local; solo la CI usa contenedores de servicio de PostgreSQL + PostGIS para las pruebas.
 
 El proyecto tiene la configuración base y una sola ruta, `GET /v1/health`. No hay todavía módulos de negocio, persistencia ni despliegue.
 
