@@ -1,4 +1,4 @@
-import { freshnessOf } from './freshness';
+import { freshnessOf, InvalidObservationDateError } from './freshness';
 
 const SECOND = 1000;
 const DAY = 24 * 60 * 60 * SECOND;
@@ -31,5 +31,15 @@ describe('límites de la vigencia (TTL de 7 días)', () => {
     ['14 días y 1 segundo', 14 * DAY + SECOND, 'desactualizado'],
   ] as const)('reportado hace %s está %s', (_label, age, expected) => {
     expect(freshnessOf({ observedAt: observedAgo(age), now, ttlDays: 7 })).toBe(expected);
+  });
+});
+
+describe('fecha de observación inválida', () => {
+  it('rechaza una fecha de observación posterior al momento actual', () => {
+    const inTheFuture = new Date(now.getTime() + SECOND);
+
+    expect(() => freshnessOf({ observedAt: inTheFuture, now, ttlDays: 7 })).toThrow(
+      InvalidObservationDateError,
+    );
   });
 });
