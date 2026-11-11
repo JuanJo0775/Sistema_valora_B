@@ -4,6 +4,8 @@ export type Freshness = 'vigente' | 'por_confirmar' | 'desactualizado';
 
 export class InvalidObservationDateError extends DomainError {}
 
+export class InvalidTtlError extends DomainError {}
+
 export interface FreshnessInput {
   observedAt: Date;
   now: Date;
@@ -13,6 +15,9 @@ export interface FreshnessInput {
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
 export function freshnessOf({ observedAt, now, ttlDays }: FreshnessInput): Freshness {
+  if (!Number.isFinite(ttlDays) || ttlDays <= 0) {
+    throw new InvalidTtlError('El TTL debe ser un número de días mayor que cero.');
+  }
   if (Number.isNaN(observedAt.getTime())) {
     throw new InvalidObservationDateError('La fecha de observación no es una fecha válida.');
   }
