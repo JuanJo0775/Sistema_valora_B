@@ -124,6 +124,7 @@ describe('formato de error { code, message }', () => {
 
     expect(response.body).toEqual({ code, message });
   });
+
   it('un cuerpo con dos campos inválidos responde 400 con los dos errores juntos', async () => {
     const response = await request(server)
       .post('/v1/test-errors/validation')
@@ -133,6 +134,18 @@ describe('formato de error { code, message }', () => {
     expect(response.body).toEqual({
       code: 'VALIDATION_ERROR',
       message: 'priceCop: debe ser un número entero; quantity: debe ser mayor que 0',
+    });
+  });
+
+  it('un campo que el endpoint no declara se rechaza con 400', async () => {
+    const response = await request(server)
+      .post('/v1/test-errors/validation')
+      .send({ priceCop: 4000, quantity: 1, reporterLocation: '4.53,-75.68' })
+      .expect(400);
+
+    expect(response.body).toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'reporterLocation: no está permitido',
     });
   });
 });
