@@ -1,3 +1,5 @@
+import { DomainError } from './domain-error';
+
 export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'und';
 
 export interface Presentation {
@@ -52,14 +54,6 @@ const BASE_UNIT: Record<Unit, { per: UnitPricePer; factor: bigint; shownPer: big
   l: { per: '100ml', factor: 1000n, shownPer: 100n },
   und: { per: 'und', factor: 1n, shownPer: 1n },
 };
-
-// Error de una regla del dominio; el nombre de la clase identifica la regla incumplida.
-abstract class DomainError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = new.target.name;
-  }
-}
 
 export class InvalidQuantityError extends DomainError {}
 
