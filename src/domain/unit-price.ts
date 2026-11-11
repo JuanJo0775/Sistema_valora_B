@@ -51,3 +51,7 @@ export function calculateUnitPrice(priceCop: number, presentation: Presentation)
   const baseQuantity = quantity * factor * packCount;
   return { per, displayCop: Math.round((priceCop * shownPer) / baseQuantity) };
 }
+
+export function compareUnitPrices(a: UnitPrice, b: UnitPrice): number {
+  return a.displayCop - b.displayCop;
+}
