@@ -500,7 +500,10 @@ components:
       schema: { type: string, example: 'public, max-age=30' }
   responses:
     BadRequest:
-      description: Datos inválidos
+      description: >-
+        Datos inválidos. Responde code VALIDATION_ERROR; message junta los errores de cada campo como
+        «campo: mensaje», separados por «; ». Un campo no declarado responde «campo: no está permitido»
+        y un cuerpo que no es JSON válido, «El cuerpo de la solicitud no es JSON válido.»
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -524,13 +527,32 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    UnprocessableEntity:
+      description: Regla de negocio incumplida. code identifica la regla (por ejemplo, INVALID_QUANTITY).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalServerError:
+      description: >-
+        Error inesperado. Responde siempre code INTERNAL_ERROR y el mensaje «Ocurrió un error
+        inesperado.»; el detalle solo queda en el registro del servidor.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
   schemas:
     Error:
       type: object
+      description: >-
+        Única forma de error de la API (issue #41). Solo tiene code y message. Valores de code:
+        VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), NOT_FOUND (404),
+        CONFLICT (409), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
+        con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
+        INVALID_OBSERVATION_DATE, INVALID_TTL y los que agreguen las reglas futuras.
       required: [code, message]
+      additionalProperties: false
       properties:
-        code: { type: string, example: REPORT_TOO_OLD }
-        message: { type: string }
+        code: { type: string, example: INVALID_QUANTITY }
+        message: { type: string, example: La cantidad de la presentación debe ser mayor que cero. }
     BaseUnit:
       type: string
       enum: [g, ml, und]
