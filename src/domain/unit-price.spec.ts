@@ -28,4 +28,11 @@ describe('precio por unidad base', () => {
     expect(unitPrice.per).toBe('100ml');
     expect(unitPrice.displayCop).toBe(500);
   });
+
+  it('12 unidades a $6.000 equivalen a $500 por unidad', () => {
+    const unitPrice = calculateUnitPrice(6000, { quantity: 12, unit: 'und' });
+
+    expect(unitPrice.per).toBe('und');
+    expect(unitPrice.displayCop).toBe(500);
+  });
 });
