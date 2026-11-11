@@ -36,11 +36,22 @@ El proyecto tiene la configuración base y una sola ruta, `GET /v1/health`. No h
 
 ## Instalación
 
+El proyecto fija la versión de pnpm en `packageManager` (pnpm 10.18.3) y se usa a través de corepack, que viene con Node 22. No instales otra versión de pnpm de forma global.
+
 ```bash
-corepack enable   # o: corepack pnpm <comando>, si no tienes permisos de administrador
+corepack enable
 pnpm install
 cp .env.example .env
 ```
+
+**Nota para Windows:** `corepack enable` crea accesos directos dentro de la carpeta de instalación de Node (en `Program Files`) y falla con `EPERM` si la terminal no es de administrador. Alternativa sin permisos de administrador:
+
+```bash
+corepack prepare pnpm@10.18.3 --activate
+corepack pnpm install     # anteponer "corepack" a cada comando: corepack pnpm test, corepack pnpm lint, etc.
+```
+
+En esta guía `pnpm <comando>` equivale a `corepack pnpm <comando>` si no pudiste ejecutar `corepack enable`.
 
 ## Crear las bases de datos
 
