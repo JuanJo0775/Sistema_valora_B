@@ -78,6 +78,11 @@ export class ErrorFilter implements ExceptionFilter {
         httpAdapter.reply(response, this.withOwnMessage(exception, status, known), status);
         return;
       }
+      if (status < 500) {
+        const body = { code: 'REQUEST_ERROR', message: 'La solicitud no se pudo procesar.' };
+        httpAdapter.reply(response, body, status);
+        return;
+      }
     }
 
     // Grill de la #41, pregunta 5: el detalle solo va al log del servidor (nunca el cuerpo de la petición).
