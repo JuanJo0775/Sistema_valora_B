@@ -15,4 +15,10 @@ describe('vigencia de un precio según su TTL', () => {
       'por_confirmar',
     );
   });
+
+  it('un producto reportado hace más del doble de su TTL está desactualizado', () => {
+    expect(freshnessOf({ observedAt: observedAgo(30 * DAY), now, ttlDays: 14 })).toBe(
+      'desactualizado',
+    );
+  });
 });
