@@ -195,9 +195,10 @@ Recorre todos los estados por los que pasa un precio, desde que se registra hast
 
 ![Ciclo de vida de un precio](09-estados.png)
 
-- Solo los estados Vigente y Por vencer cuentan para el promedio y para el sello de más barato.
-- Los 7 y 14 días son valores de partida que se deben calibrar con las entrevistas.
-- Un precio vencido revive si alguien lo confirma o si el comercio lo publica.
+- Solo los estados Vigente y Por confirmar cuentan para el promedio y para el sello de más barato.
+- El TTL depende de la categoría (ADR-005): 7 días para frescos y 14 para el resto son valores de partida provisionales, que se deben calibrar con evidencia de actualización de precios en comercios (todavía no existe).
+- Un precio desactualizado revive si alguien lo confirma o si el comercio lo publica.
+- La regla de vigencia está en `src/domain/freshness.ts` (issue #18). La imagen `09-estados.png` todavía muestra los nombres anteriores («Por vencer», «Vencido») y se debe regenerar desde `09-estados.mmd`.
 
 **Relación:** RF-010 · RF-011 · EC-02 · ADR-005
 
