@@ -22,3 +22,14 @@ describe('vigencia de un precio según su TTL', () => {
     );
   });
 });
+
+describe('límites de la vigencia (TTL de 7 días)', () => {
+  it.each([
+    ['exactamente 7 días', 7 * DAY, 'vigente'],
+    ['7 días y 1 segundo', 7 * DAY + SECOND, 'por_confirmar'],
+    ['exactamente 14 días', 14 * DAY, 'por_confirmar'],
+    ['14 días y 1 segundo', 14 * DAY + SECOND, 'desactualizado'],
+  ] as const)('reportado hace %s está %s', (_label, age, expected) => {
+    expect(freshnessOf({ observedAt: observedAgo(age), now, ttlDays: 7 })).toBe(expected);
+  });
+});
