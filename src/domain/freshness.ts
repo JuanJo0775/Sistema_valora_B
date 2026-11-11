@@ -11,7 +11,8 @@ const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 export function freshnessOf({ observedAt, now, ttlDays }: FreshnessInput): Freshness {
   const age = now.getTime() - observedAt.getTime();
   const ttl = ttlDays * DAY_IN_MILLISECONDS;
-  if (age < ttl) return 'vigente';
-  if (age < 2 * ttl) return 'por_confirmar';
+  // RN1: vigente «durante un TTL»; RN2: desactualizado solo «después de 2 veces el TTL»
+  if (age <= ttl) return 'vigente';
+  if (age <= 2 * ttl) return 'por_confirmar';
   return 'desactualizado';
 }
