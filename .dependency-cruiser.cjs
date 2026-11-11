@@ -42,6 +42,5 @@ module.exports = {
     doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
-    exclude: { path: '\.(spec|e2e-spec)\.ts$' },
   },
 };
