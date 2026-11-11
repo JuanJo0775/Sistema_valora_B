@@ -1,4 +1,4 @@
-import { calculateUnitPrice } from './unit-price';
+import { calculateUnitPrice, InvalidQuantityError } from './unit-price';
 
 describe('precio por unidad base', () => {
   it('500 g a $4.000 equivale a $800 por 100 g', () => {
@@ -43,4 +43,22 @@ describe('precio por unidad base', () => {
   ])('$%i por %i g se muestra redondeado al peso entero: $%i por 100 g', (price, grams, shown) => {
     expect(calculateUnitPrice(price, { quantity: grams, unit: 'g' }).displayCop).toBe(shown);
   });
+});
+
+describe('validación de la presentación', () => {
+  it.each([0, -500, Number.NaN, Number.POSITIVE_INFINITY])(
+    'rechaza una cantidad de %p porque debe ser mayor que cero',
+    (quantity) => {
+      expect(() => calculateUnitPrice(4000, { quantity, unit: 'g' })).toThrow(InvalidQuantityError);
+    },
+  );
+
+  it.each([0, -2, 1.5])(
+    'rechaza un empaque de %p unidades porque debe ser un entero mayor que cero',
+    (packCount) => {
+      expect(() => calculateUnitPrice(9900, { quantity: 330, unit: 'ml', packCount })).toThrow(
+        InvalidQuantityError,
+      );
+    },
+  );
 });
