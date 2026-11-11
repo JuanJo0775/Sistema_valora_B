@@ -34,3 +34,6 @@ jobs:
 
       - name: Reglas de dependencia
         run: pnpm depcheck
+
+      - name: Compilar
+        run: pnpm build
