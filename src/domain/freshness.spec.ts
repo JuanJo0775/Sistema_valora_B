@@ -9,4 +9,10 @@ describe('vigencia de un precio según su TTL', () => {
   it('un producto fresco (TTL 7 días) reportado hace 3 días está vigente', () => {
     expect(freshnessOf({ observedAt: observedAgo(3 * DAY), now, ttlDays: 7 })).toBe('vigente');
   });
+
+  it('un producto no fresco (TTL 14 días) reportado hace 20 días está por confirmar', () => {
+    expect(freshnessOf({ observedAt: observedAgo(20 * DAY), now, ttlDays: 14 })).toBe(
+      'por_confirmar',
+    );
+  });
 });
