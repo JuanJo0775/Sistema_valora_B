@@ -134,3 +134,13 @@ describe('dimensiones incompatibles', () => {
     expect(() => compareUnitPrices(a, b)).toThrow(IncompatibleUnitsError);
   });
 });
+
+describe('cantidades que JavaScript escribe en notación exponencial', () => {
+  it('0,0000005 kg a $1 equivale a $200.000 por 100 g', () => {
+    expect(calculateUnitPrice(1, { quantity: 0.0000005, unit: 'kg' }).displayCop).toBe(200000);
+  });
+
+  it('2 × 10^21 g a $2.000 equivale a $0 por 100 g', () => {
+    expect(calculateUnitPrice(2000, { quantity: 2e21, unit: 'g' }).displayCop).toBe(0);
+  });
+});
