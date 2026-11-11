@@ -24,7 +24,7 @@ module.exports = {
       from: { path: '^src/modules/([^/]+)/' },
       to: {
         path: '^src/modules/[^/]+/',
-        pathNot: ['^src/modules/$1/', '^src/modules/[^/]+/index\.ts$'],
+        pathNot: ['^src/modules/$1/', '^src/modules/[^/]+/index\\.ts$'],
       },
     },
     {
@@ -34,7 +34,7 @@ module.exports = {
       from: { pathNot: '^src/modules/' },
       to: {
         path: '^src/modules/[^/]+/',
-        pathNot: '^src/modules/[^/]+/index\.ts$',
+        pathNot: '^src/modules/[^/]+/index\\.ts$',
       },
     },
   ],
