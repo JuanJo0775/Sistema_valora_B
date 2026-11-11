@@ -25,6 +25,12 @@ describe('validateEnv con variables faltantes', () => {
   });
 });
 
+describe('validateEnv con PORT fuera de rango', () => {
+  it.each(['', '0', '65536'])('rechaza PORT=%p porque no es un puerto entre 1 y 65535', (port) => {
+    expect(() => validateEnv({ ...validEnv, PORT: port })).toThrow(/PORT/);
+  });
+});
+
 describe('validateEnv con NODE_ENV inválido', () => {
   it('rechaza un entorno que no sea development, test o production', () => {
     expect(() => validateEnv({ ...validEnv, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
