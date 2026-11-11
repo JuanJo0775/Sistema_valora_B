@@ -35,4 +35,12 @@ describe('precio por unidad base', () => {
     expect(unitPrice.per).toBe('und');
     expect(unitPrice.displayCop).toBe(500);
   });
+
+  it.each([
+    [4000, 300, 1333], // $1.333,33… por 100 g
+    [2000, 300, 667], // $666,66… por 100 g
+    [1001, 200, 501], // $500,50 por 100 g: la mitad sube
+  ])('$%i por %i g se muestra redondeado al peso entero: $%i por 100 g', (price, grams, shown) => {
+    expect(calculateUnitPrice(price, { quantity: grams, unit: 'g' }).displayCop).toBe(shown);
+  });
 });
