@@ -62,6 +62,24 @@ Precisiones a RF-004 tomadas al construir la regla en `src/domain/unit-price.ts`
 - **Precio de entrada:** entero en pesos mayor o igual a $1, como `priceCop` en el contrato.
 - ADR-007 (catálogo con unidad base) sigue **propuesto**; esta regla no depende de cómo se guarde el catálogo.
 
+## Base de datos (issue #42, decidido el 11 de noviembre de 2026)
+
+Aplicación de ADR-003 y ADR-021. El detalle está en `docs/decisiones/issue-42-base-de-datos/`.
+
+- **Driver:** `pg` (node-postgres), con Drizzle (`drizzle-orm/node-postgres`).
+- **Migraciones:**
+  - Una sola carpeta `drizzle/` en la raíz, con una secuencia para toda la base.
+  - Cada módulo define sus tablas en su `infrastructure/schema.ts`, dentro de su `pgSchema`.
+  - La primera migración activa PostGIS.
+- **Cuándo se migra:**
+  - A mano con `pnpm db:migrate` (en `valora_dev`).
+  - Automáticamente antes de las pruebas (en `valora_test`) y en la CI.
+  - Nunca al arrancar la API.
+- **Protección de las pruebas:** con `NODE_ENV=test` se usa `DATABASE_URL_TEST`, y solo si el nombre de la base termina en `_test`.
+- **Sin base no hay API:** si la base no responde al arrancar, la API no inicia. El mensaje muestra host, puerto y base, nunca la contraseña.
+- **Límites:** solo `src/shared/database/` y `src/modules/*/infrastructure/` importan `drizzle-orm` o `pg`; `pnpm depcheck` lo verifica.
+- **`db:seed`:** llega con la issue #13 (paso 4), cuando haya datos que sembrar.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
