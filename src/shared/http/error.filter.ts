@@ -1,5 +1,6 @@
 import {
   type ArgumentsHost,
+  BadRequestException,
   Catch,
   type ExceptionFilter,
   HttpException,
@@ -29,6 +30,15 @@ const HTTP_ERRORS: Partial<Record<number, ErrorBody>> = {
 // Mensaje que NestJS pone por defecto en un ConflictException sin texto propio.
 const DEFAULT_CONFLICT_MESSAGE = 'Conflict';
 
+// NestJS convierte el fallo del lector de JSON en un BadRequestException con el mensaje del parser.
+function isMalformedJson(exception: unknown): boolean {
+  return (
+    exception instanceof BadRequestException &&
+    !(exception instanceof RequestValidationError) &&
+    exception.message.includes('JSON')
+  );
+}
+
 // Traduce todo error a la forma única { code, message } con el estado HTTP correcto.
 @Catch()
 export class ErrorFilter implements ExceptionFilter {
@@ -45,6 +55,15 @@ export class ErrorFilter implements ExceptionFilter {
 
     if (exception instanceof RequestValidationError) {
       const body = { code: 'VALIDATION_ERROR', message: exception.message };
+      httpAdapter.reply(response, body, HttpStatus.BAD_REQUEST);
+      return;
+    }
+
+    if (isMalformedJson(exception)) {
+      const body = {
+        code: 'VALIDATION_ERROR',
+        message: 'El cuerpo de la solicitud no es JSON válido.',
+      };
       httpAdapter.reply(response, body, HttpStatus.BAD_REQUEST);
       return;
     }
