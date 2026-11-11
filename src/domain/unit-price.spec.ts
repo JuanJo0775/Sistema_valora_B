@@ -14,4 +14,11 @@ describe('precio por unidad base', () => {
     expect(unitPrice.per).toBe('100g');
     expect(unitPrice.displayCop).toBe(700);
   });
+
+  it('6 x 330 ml a $9.900 equivale a $500 por 100 ml', () => {
+    const unitPrice = calculateUnitPrice(9900, { quantity: 330, unit: 'ml', packCount: 6 });
+
+    expect(unitPrice.per).toBe('100ml');
+    expect(unitPrice.displayCop).toBe(500);
+  });
 });
