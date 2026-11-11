@@ -32,6 +32,11 @@ export class UnitPrice {
   }
 
   compareTo(other: UnitPrice): number {
+    if (this.per !== other.per) {
+      throw new IncompatibleUnitsError(
+        `No se puede comparar un precio por ${this.per} con uno por ${other.per}.`,
+      );
+    }
     const a = this.#exactCop;
     const b = other.#exactCop;
     const difference = a.numerator * b.denominator - b.numerator * a.denominator;
@@ -59,6 +64,13 @@ export class InvalidPriceError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'InvalidPriceError';
+  }
+}
+
+export class IncompatibleUnitsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IncompatibleUnitsError';
   }
 }
 
