@@ -17,7 +17,9 @@
     "test:cov": "jest --coverage",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "depcheck": "depcruise src --config .dependency-cruiser.cjs"
+    "depcheck": "depcruise src --config .dependency-cruiser.cjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@nestjs/common": "^12.4.2",
