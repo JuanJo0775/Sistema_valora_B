@@ -31,10 +31,33 @@ El proyecto tiene la configuración base y una sola ruta, `GET /v1/health`. No h
 
 ## Requisitos
 
-- Node 22 LTS (ver `.nvmrc`) y pnpm (la versión exacta está en `packageManager` de `package.json`; se activa con `corepack`).
-- PostgreSQL 17 (ver `docs/DECISIONS.md`, versiones fijadas) con la extensión PostGIS, con las bases `valora_dev` y `valora_test`. Todavía no se usan: llegan con el paso 3 del H2-01 (Drizzle).
+| Herramienta | Versión                                         | Dónde conseguirla                                                                                              |
+| ----------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Git         | cualquiera reciente                             | <https://git-scm.com/downloads>                                                                                |
+| Node.js     | 22 LTS (ver `.nvmrc`)                           | <https://nodejs.org/en/download> (elige la versión 22 LTS)                                                     |
+| pnpm        | 10.18.3 (fijada en `packageManager`)            | Viene con Node a través de `corepack`; no se instala aparte                                                    |
+| PostgreSQL  | 17 (ver `docs/DECISIONS.md`, versiones fijadas) | <https://www.postgresql.org/download/>                                                                         |
+| PostGIS     | la que corresponda a PostgreSQL 17              | En Windows: al terminar el instalador de PostgreSQL se abre **Stack Builder** → _Spatial Extensions_ → PostGIS |
+
+PostgreSQL y PostGIS todavía no se usan: llegan con el paso 3 del H2-01 (Drizzle). Se pueden instalar desde ya.
+
+Comprueba las versiones:
+
+```bash
+git --version
+node -v          # debe empezar por v22
+corepack --version
+```
 
 ## Instalación
+
+Clona el repositorio y trabaja siempre desde la rama `dev`:
+
+```bash
+git clone https://github.com/JuanJo0775/Sistema_valora_B.git
+cd Sistema_valora_B
+git switch dev
+```
 
 El proyecto fija la versión de pnpm en `packageManager` (pnpm 10.18.3) y se usa a través de corepack, que viene con Node 22. No instales otra versión de pnpm de forma global.
 
@@ -55,7 +78,9 @@ En esta guía `pnpm <comando>` equivale a `corepack pnpm <comando>` si no pudist
 
 ## Crear las bases de datos
 
-Con PostgreSQL en marcha, desde `psql` con un usuario con permisos de creación:
+Con PostgreSQL en marcha, desde `psql` con un usuario con permisos de creación (por ejemplo `postgres`):
+
+**Nota para Windows:** el instalador no agrega `psql` al PATH. Abre **SQL Shell (psql)** desde el menú de inicio, o agrega `C:\Program Files\PostgreSQL\17\bin` a la variable de entorno `Path` y abre una terminal nueva. Si el servicio está detenido, inícialo en **Servicios** (`postgresql-x64-17`).
 
 ```sql
 CREATE DATABASE valora_dev;
@@ -79,6 +104,15 @@ Se validan al arrancar: si falta alguna o es inválida, la aplicación no inicia
 | `SESSION_SECRET`    | Secreto de la sesión; usa un valor propio y aleatorio. |
 
 `.env` no se sube al repositorio; el ejemplo está en `.env.example`.
+
+## Comprobar que todo quedó bien
+
+```bash
+pnpm test        # todas las pruebas deben pasar
+pnpm dev         # arranca la API en http://localhost:3000
+```
+
+Con la API en marcha, abre <http://localhost:3000/v1/health> en el navegador. Debe responder `{"status":"ok"}`. Si la API no arranca, el mensaje de error nombra la variable de entorno que falta o es inválida.
 
 ## Comandos
 
