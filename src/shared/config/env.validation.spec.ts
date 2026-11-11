@@ -24,3 +24,9 @@ describe('validateEnv con variables faltantes', () => {
     expect(() => validateEnv(sinDatabaseUrl)).toThrow(/DATABASE_URL/);
   });
 });
+
+describe('validateEnv con NODE_ENV inválido', () => {
+  it('rechaza un entorno que no sea development, test o production', () => {
+    expect(() => validateEnv({ ...validEnv, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
+  });
+});
