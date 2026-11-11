@@ -1,4 +1,4 @@
-import { type ArgumentsHost, Catch, type ExceptionFilter } from '@nestjs/common';
+import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException } from '@nestjs/common';
 import type { HttpAdapterHost } from '@nestjs/core';
 import { DomainError } from '../../domain/domain-error';
 
@@ -13,6 +13,11 @@ export class ErrorFilter implements ExceptionFilter {
 
     if (exception instanceof DomainError) {
       httpAdapter.reply(response, { code: exception.code, message: exception.message }, 422);
+      return;
+    }
+
+    if (exception instanceof HttpException && exception.getStatus() === 404) {
+      httpAdapter.reply(response, { code: 'NOT_FOUND', message: 'Recurso no encontrado.' }, 404);
     }
   }
 }
