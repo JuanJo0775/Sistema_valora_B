@@ -570,10 +570,13 @@ components:
         priceCop: { type: integer, minimum: 1 }
         unitPrice:
           type: object
+          description: >-
+            Precio normalizado por 100 g, 100 ml o unidad (RF-004). Se muestra redondeado al
+            peso entero con la mitad hacia arriba; el orden de la comparación usa el valor exacto.
           required: [valueCop, per]
           properties:
-            valueCop: { type: number }
-            per: { type: string, enum: [kg, l, und] }
+            valueCop: { type: integer, minimum: 0 }
+            per: { type: string, enum: [100g, 100ml, und] }
         source: { type: string, enum: [comunidad, oficial, siembra] }
         freshness: { type: string, enum: [vigente, por_vencer, vencido] }
         reliability: { type: string, enum: [alta, media, baja, en_revision] }
