@@ -93,7 +93,7 @@ Se validan al arrancar: si falta alguna o es inválida, la aplicación no inicia
 | `pnpm format` / `pnpm format:check` | Prettier.                                                        |
 | `pnpm depcheck`                     | Reglas de dependencia del monolito modular (dependency-cruiser). |
 
-El CI repite `typecheck`, `lint`, `test:cov` y `depcheck` en cada pull request a `main`.
+La CI corre en cada pull request hacia `dev` o `main`, con dos jobs: `Calidad` (`typecheck`, `lint`, `format:check`, `depcheck` y `build`) y `Pruebas` (`test:cov --ci`). Si una sola verificación falla, no se mezcla.
 
 ## Estructura
 
