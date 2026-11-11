@@ -53,26 +53,19 @@ const BASE_UNIT: Record<Unit, { per: UnitPricePer; factor: bigint; shownPer: big
   und: { per: 'und', factor: 1n, shownPer: 1n },
 };
 
-export class InvalidQuantityError extends Error {
+// Error de una regla del dominio; el nombre de la clase identifica la regla incumplida.
+abstract class DomainError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'InvalidQuantityError';
+    this.name = new.target.name;
   }
 }
 
-export class InvalidPriceError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'InvalidPriceError';
-  }
-}
+export class InvalidQuantityError extends DomainError {}
 
-export class IncompatibleUnitsError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'IncompatibleUnitsError';
-  }
-}
+export class InvalidPriceError extends DomainError {}
+
+export class IncompatibleUnitsError extends DomainError {}
 
 // Lee el decimal tal como se escribió (String(0.1) es "0.1"), sin pasar por aritmética de coma flotante.
 function toFraction(value: number): Fraction {
