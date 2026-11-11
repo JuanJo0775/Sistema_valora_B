@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { HttpAdapterHost } from '@nestjs/core';
 import { DomainError } from '../../domain/domain-error';
+import { RequestValidationError } from './validation';
 
 interface ErrorBody {
   code: string;
@@ -39,6 +40,12 @@ export class ErrorFilter implements ExceptionFilter {
 
     if (exception instanceof DomainError) {
       httpAdapter.reply(response, { code: exception.code, message: exception.message }, 422);
+      return;
+    }
+
+    if (exception instanceof RequestValidationError) {
+      const body = { code: 'VALIDATION_ERROR', message: exception.message };
+      httpAdapter.reply(response, body, HttpStatus.BAD_REQUEST);
       return;
     }
 
