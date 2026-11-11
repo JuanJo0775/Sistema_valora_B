@@ -5,6 +5,7 @@ import {
   type ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import type { HttpAdapterHost } from '@nestjs/core';
 import { DomainError } from '../../domain/domain-error';
@@ -42,6 +43,8 @@ function isMalformedJson(exception: unknown): boolean {
 // Traduce todo error a la forma única { code, message } con el estado HTTP correcto.
 @Catch()
 export class ErrorFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ErrorFilter.name);
+
   constructor(private readonly adapterHost: HttpAdapterHost) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -73,8 +76,17 @@ export class ErrorFilter implements ExceptionFilter {
       const known = HTTP_ERRORS[status];
       if (known) {
         httpAdapter.reply(response, this.withOwnMessage(exception, status, known), status);
+        return;
       }
     }
+
+    // Grill de la #41, pregunta 5: el detalle solo va al log del servidor (nunca el cuerpo de la petición).
+    this.logger.error(exception instanceof Error ? exception.stack : String(exception));
+    httpAdapter.reply(
+      response,
+      { code: 'INTERNAL_ERROR', message: 'Ocurrió un error inesperado.' },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
 
   // Un 409 puede traer su propio mensaje (por ejemplo, un reporte repetido); los demás usan el fijo.
