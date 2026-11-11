@@ -7,4 +7,11 @@ describe('precio por unidad base', () => {
     expect(unitPrice.per).toBe('100g');
     expect(unitPrice.displayCop).toBe(800);
   });
+
+  it('1 kg a $7.000 equivale a $700 por 100 g', () => {
+    const unitPrice = calculateUnitPrice(7000, { quantity: 1, unit: 'kg' });
+
+    expect(unitPrice.per).toBe('100g');
+    expect(unitPrice.displayCop).toBe(700);
+  });
 });
