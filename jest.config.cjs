@@ -2,6 +2,7 @@
 module.exports = {
   rootDir: '.',
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/test/setup-env.ts'],
   moduleFileExtensions: ['js', 'json', 'ts'],
   testRegex: '(src|test)/.*\.spec\.ts$',
   transform: { '^.+\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }] },
