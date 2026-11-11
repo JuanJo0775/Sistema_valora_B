@@ -1,4 +1,14 @@
-import { Controller, Get, type INestApplication, Param } from '@nestjs/common';
+import {
+  ConflictException,
+  Controller,
+  ForbiddenException,
+  Get,
+  HttpException,
+  HttpStatus,
+  type INestApplication,
+  Param,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
@@ -18,12 +28,26 @@ const domainErrors = {
   ttl: () => new InvalidTtlError('El TTL debe ser mayor que cero.'),
 };
 
+const httpErrors = {
+  unauthorized: () => new UnauthorizedException(),
+  forbidden: () => new ForbiddenException(),
+  conflict: () => new ConflictException(),
+  'conflict-with-message': () =>
+    new ConflictException('Ya registraste este precio hace menos de una hora.'),
+  'too-many': () => new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS),
+};
+
 // Controlador que solo existe en esta prueba: lanza cada tipo de error para ver cómo responde la API.
 @Controller('test-errors')
 class ErrorsTestController {
   @Get('domain/:name')
   domain(@Param('name') name: keyof typeof domainErrors): never {
     throw domainErrors[name]();
+  }
+
+  @Get('http/:name')
+  http(@Param('name') name: keyof typeof httpErrors): never {
+    throw httpErrors[name]();
   }
 }
 
@@ -65,5 +89,22 @@ describe('formato de error { code, message }', () => {
     const response = await request(server).get('/v1/no-existe').expect(404);
 
     expect(response.body).toEqual({ code: 'NOT_FOUND', message: 'Recurso no encontrado.' });
+  });
+
+  it.each([
+    ['unauthorized', 401, 'UNAUTHORIZED', 'Se requiere sesión.'],
+    ['forbidden', 403, 'FORBIDDEN', 'El rol no tiene permiso.'],
+    ['conflict', 409, 'CONFLICT', 'Conflicto con el estado actual.'],
+    [
+      'conflict-with-message',
+      409,
+      'CONFLICT',
+      'Ya registraste este precio hace menos de una hora.',
+    ],
+    ['too-many', 429, 'TOO_MANY_REQUESTS', 'Límite de frecuencia superado.'],
+  ])('el error HTTP %s responde %i con %s en español', async (name, status, code, message) => {
+    const response = await request(server).get(`/v1/test-errors/http/${name}`).expect(status);
+
+    expect(response.body).toEqual({ code, message });
   });
 });
