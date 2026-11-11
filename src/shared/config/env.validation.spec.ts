@@ -16,3 +16,11 @@ describe('validateEnv', () => {
     expect(env.NODE_ENV).toBe('development');
   });
 });
+
+describe('validateEnv con variables faltantes', () => {
+  it('falla con un mensaje que nombra la variable que falta', () => {
+    const { DATABASE_URL: _omitida, ...sinDatabaseUrl } = validEnv;
+
+    expect(() => validateEnv(sinDatabaseUrl)).toThrow(/DATABASE_URL/);
+  });
+});
