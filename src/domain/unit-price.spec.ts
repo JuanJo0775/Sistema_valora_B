@@ -21,4 +21,11 @@ describe('precio por unidad base', () => {
     expect(unitPrice.per).toBe('100ml');
     expect(unitPrice.displayCop).toBe(500);
   });
+
+  it('1 l a $5.000 equivale a $500 por 100 ml', () => {
+    const unitPrice = calculateUnitPrice(5000, { quantity: 1, unit: 'l' });
+
+    expect(unitPrice.per).toBe('100ml');
+    expect(unitPrice.displayCop).toBe(500);
+  });
 });
