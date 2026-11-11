@@ -1,4 +1,4 @@
-export type Unit = 'g' | 'kg' | 'ml';
+export type Unit = 'g' | 'kg' | 'ml' | 'l';
 
 export interface Presentation {
   quantity: number;
@@ -15,6 +15,7 @@ const BASE_UNIT: Record<Unit, { per: UnitPrice['per']; factor: number }> = {
   g: { per: '100g', factor: 1 },
   kg: { per: '100g', factor: 1000 },
   ml: { per: '100ml', factor: 1 },
+  l: { per: '100ml', factor: 1000 },
 };
 
 export function calculateUnitPrice(priceCop: number, presentation: Presentation): UnitPrice {
