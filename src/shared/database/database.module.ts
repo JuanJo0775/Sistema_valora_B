@@ -4,13 +4,21 @@ import {
   Injectable,
   Module,
   type OnApplicationShutdown,
+  type OnModuleInit,
   type Provider,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { Env } from '../config/env.validation';
-import { resolveDatabaseUrl } from './database-url';
+import { databaseNameOf, resolveDatabaseUrl } from './database-url';
+
+// Motivo legible del fallo: el código de red (por ejemplo, ECONNREFUSED) o el mensaje del error.
+function reasonOf(error: unknown): string {
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === 'string') return code;
+  return error instanceof Error && error.message ? error.message : 'error desconocido';
+}
 
 export type Database = NodePgDatabase;
 
@@ -37,10 +45,25 @@ const databaseProvider: Provider = {
   useFactory: (pool: Pool): Database => drizzle(pool),
 };
 
-// Cierra el pool al apagar la aplicación, para que el proceso (y Jest) terminen limpio.
+// Comprueba la conexión al arrancar y cierra el pool al apagar, para que el proceso (y Jest) terminen limpio.
 @Injectable()
-class PoolCloser implements OnApplicationShutdown {
+class DatabaseLifecycle implements OnModuleInit, OnApplicationShutdown {
   constructor(@Inject(POOL) private readonly pool: Pool) {}
+
+  // Grill de la #42, pregunta 6: sin base no arranca; el mensaje nunca incluye la contraseña.
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.pool.query('select 1');
+    } catch (error) {
+      await this.pool.end();
+      // Se leen solo host, puerto y base de la URL: la contraseña nunca entra al mensaje.
+      const url = new URL(this.pool.options.connectionString ?? '');
+      const target = `${databaseNameOf(url.href)} en ${url.hostname}:${url.port || '5432'}`;
+      throw new Error(`No se pudo conectar a la base de datos ${target}: ${reasonOf(error)}`, {
+        cause: error,
+      });
+    }
+  }
 
   async onApplicationShutdown(): Promise<void> {
     await this.pool.end();
@@ -49,7 +72,7 @@ class PoolCloser implements OnApplicationShutdown {
 
 @Global()
 @Module({
-  providers: [poolProvider, databaseProvider, PoolCloser],
+  providers: [poolProvider, databaseProvider, DatabaseLifecycle],
   exports: [DATABASE],
 })
 export class DatabaseModule {}
