@@ -90,7 +90,7 @@ paths:
           schema: { type: string, enum: [unit_price, distance, recent], default: unit_price }
         - name: onlyCurrent
           in: query
-          description: Si es verdadero, excluye precios por vencer.
+          description: Si es verdadero, solo incluye precios vigentes (excluye los por confirmar).
           schema: { type: boolean, default: false }
       responses:
         '200':
@@ -578,7 +578,13 @@ components:
             valueCop: { type: integer, minimum: 0 }
             per: { type: string, enum: [100g, 100ml, und] }
         source: { type: string, enum: [comunidad, oficial, siembra] }
-        freshness: { type: string, enum: [vigente, por_vencer, vencido] }
+        freshness:
+          type: string
+          enum: [vigente, por_confirmar, desactualizado]
+          description: >-
+            Vigencia según el TTL de la categoría (RF-010, ADR-005), con edad = ahora menos la fecha
+            de observación: vigente si edad ≤ TTL; por_confirmar si TTL < edad ≤ 2 TTL;
+            desactualizado si edad > 2 TTL (no entra al orden de la comparación).
         reliability: { type: string, enum: [alta, media, baja, en_revision] }
         isCheapest: { type: boolean }
         confirmations: { type: integer, minimum: 0 }
@@ -609,7 +615,7 @@ components:
             sort: { type: string }
             radiusKm: { type: number }
         cheapestPriceCop: { type: integer }
-        averagePriceCop: { type: integer, description: Solo precios vigentes y por vencer. }
+        averagePriceCop: { type: integer, description: Solo precios vigentes y por confirmar. }
         results:
           type: array
           items: { $ref: '#/components/schemas/ComparisonItem' }
