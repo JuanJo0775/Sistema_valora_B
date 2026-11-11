@@ -13,6 +13,9 @@ export interface FreshnessInput {
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
 export function freshnessOf({ observedAt, now, ttlDays }: FreshnessInput): Freshness {
+  if (Number.isNaN(observedAt.getTime())) {
+    throw new InvalidObservationDateError('La fecha de observación no es una fecha válida.');
+  }
   const age = now.getTime() - observedAt.getTime();
   if (age < 0) {
     throw new InvalidObservationDateError(
