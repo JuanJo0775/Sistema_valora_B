@@ -37,6 +37,14 @@ module.exports = {
         pathNot: '^src/modules/[^/]+/index\\.ts$',
       },
     },
+    {
+      name: 'base-de-datos-solo-en-infraestructura',
+      comment:
+        'ADR-021: solo src/shared/database y la carpeta infrastructure/ de cada módulo importan drizzle-orm o pg.',
+      severity: 'error',
+      from: { pathNot: ['^src/shared/database/', '^src/modules/[^/]+/infrastructure/'] },
+      to: { path: '(^|/)node_modules/(drizzle-orm|pg)/' },
+    },
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
