@@ -13,7 +13,8 @@ API y lógica de negocio de **Valora**, plataforma colaborativa para comparar pr
 - API aprobada: REST sobre HTTPS, JSON y contrato OpenAPI 3.x bajo `/v1`.
 - Decisiones aceptadas: sesiones administradas por servidor, PWA con registro offline-first y carga inicial manual con SIPSA solo como referencia comparable.
 - Framework: NestJS sobre Express (ADR-018, aceptado).
-- Pendiente: motor de persistencia (ADR-003 propuesto), estrategia CQRS/outbox y mecanismo de despliegue reproducible.
+- Persistencia: PostgreSQL + PostGIS (ADR-003, aceptado).
+- Pendiente: acceso a datos (Drizzle, ADR por registrar), estrategia CQRS/outbox y mecanismo de despliegue reproducible.
 - Docker no forma parte del MVP aprobado.
 
 El proyecto tiene la configuración base y una sola ruta, `GET /v1/health`. No hay todavía módulos de negocio, persistencia ni despliegue.
