@@ -42,4 +42,10 @@ describe('fecha de observación inválida', () => {
       InvalidObservationDateError,
     );
   });
+
+  it('rechaza una fecha de observación que no es una fecha válida', () => {
+    expect(() => freshnessOf({ observedAt: new Date('no es una fecha'), now, ttlDays: 7 })).toThrow(
+      InvalidObservationDateError,
+    );
+  });
 });
