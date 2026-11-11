@@ -60,9 +60,9 @@ Con PostgreSQL en marcha, desde `psql` con un usuario con permisos de creación:
 ```sql
 CREATE DATABASE valora_dev;
 CREATE DATABASE valora_test;
-c valora_dev
+\c valora_dev
 CREATE EXTENSION IF NOT EXISTS postgis;
-c valora_test
+\c valora_test
 CREATE EXTENSION IF NOT EXISTS postgis;
 ```
 
