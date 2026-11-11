@@ -5,5 +5,5 @@ export interface DatabaseEnv {
 }
 
 export function resolveDatabaseUrl(env: DatabaseEnv): string {
-  return env.DATABASE_URL;
+  return env.NODE_ENV === 'test' ? env.DATABASE_URL_TEST : env.DATABASE_URL;
 }
