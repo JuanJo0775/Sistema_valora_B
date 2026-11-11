@@ -19,6 +19,8 @@ export default tseslint.config(
     rules: {
       // Los módulos de NestJS son clases vacías con decorador
       '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
+      // Un parámetro que empieza por "_" se declara a propósito sin usar (por ejemplo, en el verde mínimo de TDD)
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
   {
