@@ -6,13 +6,30 @@ export interface Presentation {
   packCount?: number;
 }
 
-export interface UnitPrice {
-  per: '100g' | '100ml' | 'und';
-  displayCop: number;
+export type UnitPricePer = '100g' | '100ml' | 'und';
+
+// El valor exacto es interno: solo sirve para comparar y nunca se expone ni se serializa.
+export class UnitPrice {
+  readonly #exactCop: number;
+
+  constructor(
+    readonly per: UnitPricePer,
+    exactCop: number,
+  ) {
+    this.#exactCop = exactCop;
+  }
+
+  get displayCop(): number {
+    return Math.round(this.#exactCop);
+  }
+
+  compareTo(other: UnitPrice): number {
+    return this.#exactCop - other.#exactCop;
+  }
 }
 
-// factor: cuántas unidades base hay en la unidad recibida; per: cuántas unidades base muestra el precio
-const BASE_UNIT: Record<Unit, { per: UnitPrice['per']; factor: number; shownPer: number }> = {
+// factor: unidades base que hay en la unidad recibida; shownPer: unidades base por las que se muestra el precio
+const BASE_UNIT: Record<Unit, { per: UnitPricePer; factor: number; shownPer: number }> = {
   g: { per: '100g', factor: 1, shownPer: 100 },
   kg: { per: '100g', factor: 1000, shownPer: 100 },
   ml: { per: '100ml', factor: 1, shownPer: 100 },
@@ -49,9 +66,9 @@ export function calculateUnitPrice(priceCop: number, presentation: Presentation)
   }
   const { per, factor, shownPer } = BASE_UNIT[presentation.unit];
   const baseQuantity = quantity * factor * packCount;
-  return { per, displayCop: Math.round((priceCop * shownPer) / baseQuantity) };
+  return new UnitPrice(per, (priceCop * shownPer) / baseQuantity);
 }
 
 export function compareUnitPrices(a: UnitPrice, b: UnitPrice): number {
-  return a.displayCop - b.displayCop;
+  return a.compareTo(b);
 }
