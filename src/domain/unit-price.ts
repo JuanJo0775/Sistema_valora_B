@@ -8,33 +8,44 @@ export interface Presentation {
 
 export type UnitPricePer = '100g' | '100ml' | 'und';
 
+// Fracción exacta con enteros grandes: evita los errores de la coma flotante (1.005 * 1000 = 1004.999…).
+interface Fraction {
+  numerator: bigint;
+  denominator: bigint;
+}
+
 // El valor exacto es interno: solo sirve para comparar y nunca se expone ni se serializa.
 export class UnitPrice {
-  readonly #exactCop: number;
+  readonly #exactCop: Fraction;
 
   constructor(
     readonly per: UnitPricePer,
-    exactCop: number,
+    exactCop: Fraction,
   ) {
     this.#exactCop = exactCop;
   }
 
+  // Redondeo al peso entero con la mitad hacia arriba: piso de (n / d + 1/2).
   get displayCop(): number {
-    return Math.round(this.#exactCop);
+    const { numerator, denominator } = this.#exactCop;
+    return Number((2n * numerator + denominator) / (2n * denominator));
   }
 
   compareTo(other: UnitPrice): number {
-    return this.#exactCop - other.#exactCop;
+    const a = this.#exactCop;
+    const b = other.#exactCop;
+    const difference = a.numerator * b.denominator - b.numerator * a.denominator;
+    return difference === 0n ? 0 : difference < 0n ? -1 : 1;
   }
 }
 
 // factor: unidades base que hay en la unidad recibida; shownPer: unidades base por las que se muestra el precio
-const BASE_UNIT: Record<Unit, { per: UnitPricePer; factor: number; shownPer: number }> = {
-  g: { per: '100g', factor: 1, shownPer: 100 },
-  kg: { per: '100g', factor: 1000, shownPer: 100 },
-  ml: { per: '100ml', factor: 1, shownPer: 100 },
-  l: { per: '100ml', factor: 1000, shownPer: 100 },
-  und: { per: 'und', factor: 1, shownPer: 1 },
+const BASE_UNIT: Record<Unit, { per: UnitPricePer; factor: bigint; shownPer: bigint }> = {
+  g: { per: '100g', factor: 1n, shownPer: 100n },
+  kg: { per: '100g', factor: 1000n, shownPer: 100n },
+  ml: { per: '100ml', factor: 1n, shownPer: 100n },
+  l: { per: '100ml', factor: 1000n, shownPer: 100n },
+  und: { per: 'und', factor: 1n, shownPer: 1n },
 };
 
 export class InvalidQuantityError extends Error {
@@ -51,6 +62,18 @@ export class InvalidPriceError extends Error {
   }
 }
 
+// Lee el decimal tal como se escribió (String(0.1) es "0.1"), sin pasar por aritmética de coma flotante.
+function toFraction(value: number): Fraction {
+  const [mantissa = '', exponent = '0'] = String(value).split('e');
+  const [integerPart = '', decimalPart = ''] = mantissa.split('.');
+  let numerator = BigInt(integerPart + decimalPart);
+  let denominator = 10n ** BigInt(decimalPart.length);
+  const power = Number(exponent);
+  if (power > 0) numerator *= 10n ** BigInt(power);
+  if (power < 0) denominator *= 10n ** BigInt(-power);
+  return { numerator, denominator };
+}
+
 export function calculateUnitPrice(priceCop: number, presentation: Presentation): UnitPrice {
   if (!Number.isSafeInteger(priceCop) || priceCop < 1) {
     throw new InvalidPriceError('El precio debe ser un entero en pesos mayor o igual a $1.');
@@ -65,8 +88,12 @@ export function calculateUnitPrice(priceCop: number, presentation: Presentation)
     );
   }
   const { per, factor, shownPer } = BASE_UNIT[presentation.unit];
-  const baseQuantity = quantity * factor * packCount;
-  return new UnitPrice(per, (priceCop * shownPer) / baseQuantity);
+  const exactQuantity = toFraction(quantity);
+  // precio × shownPer / (cantidad × factor × empaque), con la cantidad como fracción exacta
+  return new UnitPrice(per, {
+    numerator: BigInt(priceCop) * shownPer * exactQuantity.denominator,
+    denominator: exactQuantity.numerator * factor * BigInt(packCount),
+  });
 }
 
 export function compareUnitPrices(a: UnitPrice, b: UnitPrice): number {
