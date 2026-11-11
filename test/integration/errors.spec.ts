@@ -38,6 +38,7 @@ const httpErrors = {
   'conflict-with-message': () =>
     new ConflictException('Ya registraste este precio hace menos de una hora.'),
   'too-many': () => new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS),
+  'not-allowed': () => new HttpException('Method Not Allowed', HttpStatus.METHOD_NOT_ALLOWED),
 };
 
 // DTO que solo existe en esta prueba, con mensajes en español como los tendrán los DTOs reales.
@@ -175,5 +176,14 @@ describe('formato de error { code, message }', () => {
       message: 'Ocurrió un error inesperado.',
     });
     expect(JSON.stringify(response.body)).not.toContain('price_reports');
+  });
+
+  it('otro error 4xx no previsto conserva su estado y responde REQUEST_ERROR', async () => {
+    const response = await request(server).get('/v1/test-errors/http/not-allowed').expect(405);
+
+    expect(response.body).toEqual({
+      code: 'REQUEST_ERROR',
+      message: 'La solicitud no se pudo procesar.',
+    });
   });
 });
