@@ -8,12 +8,12 @@ stateDiagram-v2
   Recibido --> EnRevision: desviación > 40 % o marcado dudoso
   EnRevision --> Vigente: moderador aprueba
   EnRevision --> Descartado: moderador descarta
-  Vigente --> PorVencer: pasan 7 días
-  PorVencer --> Vigente: alguien lo confirma
-  PorVencer --> Vencido: pasan 14 días
-  Vencido --> Vigente: nuevo reporte u oficial
+  Vigente --> PorConfirmar: pasa 1 TTL
+  PorConfirmar --> Vigente: alguien lo confirma
+  PorConfirmar --> Desactualizado: pasan 2 TTL
+  Desactualizado --> Vigente: nuevo reporte u oficial
   Vigente --> Reemplazado: llega uno más reciente
   Descartado --> [*]
   Reemplazado --> [*]
   state "En revisión" as EnRevision
-  state "Por vencer" as PorVencer
+  state "Por confirmar" as PorConfirmar
