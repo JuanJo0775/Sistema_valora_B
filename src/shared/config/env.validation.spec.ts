@@ -19,7 +19,7 @@ describe('validateEnv', () => {
 
 describe('validateEnv con variables faltantes', () => {
   it('falla con un mensaje que nombra la variable que falta', () => {
-    const { DATABASE_URL: _omitida, ...sinDatabaseUrl } = validEnv;
+    const sinDatabaseUrl = { ...validEnv, DATABASE_URL: undefined };
 
     expect(() => validateEnv(sinDatabaseUrl)).toThrow(/DATABASE_URL/);
   });
