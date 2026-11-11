@@ -198,7 +198,7 @@ Recorre todos los estados por los que pasa un precio, desde que se registra hast
 - Solo los estados Vigente y Por confirmar cuentan para el promedio y para el sello de más barato.
 - El TTL depende de la categoría (ADR-005): 7 días para frescos y 14 para el resto son valores de partida provisionales, que se deben calibrar con evidencia de actualización de precios en comercios (todavía no existe).
 - Un precio desactualizado revive si alguien lo confirma o si el comercio lo publica.
-- La regla de vigencia está en `src/domain/freshness.ts` (issue #18). La imagen `09-estados.png` todavía muestra los nombres anteriores («Por vencer», «Vencido») y se debe regenerar desde `09-estados.mmd`.
+- La regla de vigencia está en `src/domain/freshness.ts` (issue #18).
 
 **Relación:** RF-010 · RF-011 · EC-02 · ADR-005
 
