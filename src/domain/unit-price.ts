@@ -27,7 +27,17 @@ export class InvalidQuantityError extends Error {
   }
 }
 
+export class InvalidPriceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidPriceError';
+  }
+}
+
 export function calculateUnitPrice(priceCop: number, presentation: Presentation): UnitPrice {
+  if (!Number.isSafeInteger(priceCop) || priceCop < 1) {
+    throw new InvalidPriceError('El precio debe ser un entero en pesos mayor o igual a $1.');
+  }
   const { quantity, packCount = 1 } = presentation;
   if (!Number.isFinite(quantity) || quantity <= 0) {
     throw new InvalidQuantityError('La cantidad de la presentación debe ser mayor que cero.');
