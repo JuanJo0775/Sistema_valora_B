@@ -148,4 +148,17 @@ describe('formato de error { code, message }', () => {
       message: 'reporterLocation: no está permitido',
     });
   });
+
+  it('un cuerpo que no es JSON válido responde 400 VALIDATION_ERROR', async () => {
+    const response = await request(server)
+      .post('/v1/test-errors/validation')
+      .set('Content-Type', 'application/json')
+      .send('{"priceCop": 4000,')
+      .expect(400);
+
+    expect(response.body).toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'El cuerpo de la solicitud no es JSON válido.',
+    });
+  });
 });
