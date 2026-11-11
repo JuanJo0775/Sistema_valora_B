@@ -95,4 +95,19 @@ describe('comparación de precios por unidad', () => {
     expect(barato.displayCop).toBe(caro.displayCop);
     expect(compareUnitPrices(barato, caro)).toBeLessThan(0);
   });
+
+  it.each([
+    [2010, { quantity: 1.005, unit: 'kg' }, 1000, { quantity: 500, unit: 'g' }],
+    [3000, { quantity: 0.3, unit: 'kg' }, 1000, { quantity: 100, unit: 'g' }],
+    [6000, { quantity: 1.5, unit: 'l' }, 400, { quantity: 0.1, unit: 'l' }],
+    [4000, { quantity: 500, unit: 'g', packCount: 2 }, 4000, { quantity: 1, unit: 'kg' }],
+  ] as const)(
+    '$%i por %o empata exactamente con $%i por %o',
+    (priceA, presentationA, priceB, presentationB) => {
+      const a = calculateUnitPrice(priceA, presentationA);
+      const b = calculateUnitPrice(priceB, presentationB);
+
+      expect(compareUnitPrices(a, b)).toBe(0);
+    },
+  );
 });
