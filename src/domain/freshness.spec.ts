@@ -1,4 +1,4 @@
-import { freshnessOf, InvalidObservationDateError } from './freshness';
+import { freshnessOf, InvalidObservationDateError, InvalidTtlError } from './freshness';
 
 const SECOND = 1000;
 const DAY = 24 * 60 * 60 * SECOND;
@@ -48,4 +48,15 @@ describe('fecha de observación inválida', () => {
       InvalidObservationDateError,
     );
   });
+});
+
+describe('TTL inválido', () => {
+  it.each([0, -7, Number.NaN, Number.POSITIVE_INFINITY])(
+    'rechaza un TTL de %p días porque debe ser un número mayor que cero',
+    (ttlDays) => {
+      expect(() => freshnessOf({ observedAt: observedAgo(3 * DAY), now, ttlDays })).toThrow(
+        InvalidTtlError,
+      );
+    },
+  );
 });
