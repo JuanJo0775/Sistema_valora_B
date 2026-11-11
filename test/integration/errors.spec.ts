@@ -60,4 +60,10 @@ describe('formato de error { code, message }', () => {
       expect(response.body).toEqual({ code, message });
     },
   );
+
+  it('una ruta que no existe responde 404 con NOT_FOUND en español', async () => {
+    const response = await request(server).get('/v1/no-existe').expect(404);
+
+    expect(response.body).toEqual({ code: 'NOT_FOUND', message: 'Recurso no encontrado.' });
+  });
 });
