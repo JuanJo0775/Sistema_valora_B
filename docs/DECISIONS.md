@@ -9,7 +9,7 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | ID | Decisión | Consecuencia para este repositorio |
 |---|---|---|
 | ADR-001 | Monolito modular | Un único backend desplegable, separado en módulos de dominio. |
-| ADR-002 | REST + JSON + OpenAPI 3.x, HTTPS, versión `/v1` | El contrato de API se mantiene en `docs/api/openapi.yaml`. |
+| ADR-002 | REST + JSON + OpenAPI 3.x, HTTPS, versión `/v1` | El contrato de API se mantiene en `docs/openapi.yaml`. |
 | ADR-010 | PWA con cola persistente para registro sin conexión | El backend debe aceptar reintentos idempotentes; la cola local reside en frontend. |
 | ADR-011 | Carga inicial manual; SIPSA como referencia comparable | No construir integración automática completa con SIPSA ni scraping de cadenas en el MVP. |
 | ADR-018 | Backend: NestJS sobre Express (aceptado el 8 de noviembre de 2026) | Las reglas de `domain` se escriben en TypeScript puro; su validación práctica es el esqueleto H2-01. |
