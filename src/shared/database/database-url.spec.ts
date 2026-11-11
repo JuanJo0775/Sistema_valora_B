@@ -9,4 +9,8 @@ describe('base de datos según el entorno', () => {
   it('en desarrollo usa DATABASE_URL', () => {
     expect(resolveDatabaseUrl({ ...urls, NODE_ENV: 'development' })).toBe(urls.DATABASE_URL);
   });
+
+  it('en pruebas usa DATABASE_URL_TEST', () => {
+    expect(resolveDatabaseUrl({ ...urls, NODE_ENV: 'test' })).toBe(urls.DATABASE_URL_TEST);
+  });
 });
