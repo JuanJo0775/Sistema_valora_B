@@ -1,6 +1,7 @@
 import {
   calculateUnitPrice,
   compareUnitPrices,
+  IncompatibleUnitsError,
   InvalidPriceError,
   InvalidQuantityError,
 } from './unit-price';
@@ -110,4 +111,26 @@ describe('comparación de precios por unidad', () => {
       expect(compareUnitPrices(a, b)).toBe(0);
     },
   );
+});
+
+describe('dimensiones incompatibles', () => {
+  it.each([
+    [
+      { quantity: 500, unit: 'g' },
+      { quantity: 500, unit: 'ml' },
+    ],
+    [
+      { quantity: 1, unit: 'kg' },
+      { quantity: 6, unit: 'und' },
+    ],
+    [
+      { quantity: 1, unit: 'l' },
+      { quantity: 12, unit: 'und' },
+    ],
+  ] as const)('no compara %o con %o porque no son comparables', (presentationA, presentationB) => {
+    const a = calculateUnitPrice(5000, presentationA);
+    const b = calculateUnitPrice(5000, presentationB);
+
+    expect(() => compareUnitPrices(a, b)).toThrow(IncompatibleUnitsError);
+  });
 });
