@@ -1,4 +1,9 @@
-import { calculateUnitPrice, InvalidPriceError, InvalidQuantityError } from './unit-price';
+import {
+  calculateUnitPrice,
+  compareUnitPrices,
+  InvalidPriceError,
+  InvalidQuantityError,
+} from './unit-price';
 
 describe('precio por unidad base', () => {
   it('500 g a $4.000 equivale a $800 por 100 g', () => {
@@ -72,4 +77,14 @@ describe('validación de la presentación', () => {
       );
     },
   );
+});
+
+describe('comparación de precios por unidad', () => {
+  it('1 kg a $7.000 es más barato que 500 g a $4.000', () => {
+    const kilo = calculateUnitPrice(7000, { quantity: 1, unit: 'kg' });
+    const medioKilo = calculateUnitPrice(4000, { quantity: 500, unit: 'g' });
+
+    expect(compareUnitPrices(kilo, medioKilo)).toBeLessThan(0);
+    expect(compareUnitPrices(medioKilo, kilo)).toBeGreaterThan(0);
+  });
 });
