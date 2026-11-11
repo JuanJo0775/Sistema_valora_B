@@ -23,5 +23,5 @@ const BASE_UNIT: Record<Unit, { per: UnitPrice['per']; factor: number; shownPer:
 export function calculateUnitPrice(priceCop: number, presentation: Presentation): UnitPrice {
   const { per, factor, shownPer } = BASE_UNIT[presentation.unit];
   const baseQuantity = presentation.quantity * factor * (presentation.packCount ?? 1);
-  return { per, displayCop: (priceCop * shownPer) / baseQuantity };
+  return { per, displayCop: Math.round((priceCop * shownPer) / baseQuantity) };
 }
