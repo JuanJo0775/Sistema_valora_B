@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsString, validateSync } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsString, validateSync } from 'class-validator';
 
 export class Env {
   @IsInt()
@@ -18,8 +18,7 @@ export class Env {
   @IsNotEmpty()
   SESSION_SECRET!: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsIn(['development', 'test', 'production'])
   NODE_ENV!: string;
 }
 
