@@ -62,6 +62,11 @@ class ErrorsTestController {
     throw httpErrors[name]();
   }
 
+  @Get('unexpected')
+  unexpected(): never {
+    throw new TypeError('detalle interno: falló la consulta a pricing.price_reports');
+  }
+
   @Post('validation')
   validation(@Body() body: TestReportDto): TestReportDto {
     return body;
@@ -160,5 +165,15 @@ describe('formato de error { code, message }', () => {
       code: 'VALIDATION_ERROR',
       message: 'El cuerpo de la solicitud no es JSON válido.',
     });
+  });
+
+  it('un error inesperado responde 500 genérico sin filtrar detalles internos', async () => {
+    const response = await request(server).get('/v1/test-errors/unexpected').expect(500);
+
+    expect(response.body).toEqual({
+      code: 'INTERNAL_ERROR',
+      message: 'Ocurrió un error inesperado.',
+    });
+    expect(JSON.stringify(response.body)).not.toContain('price_reports');
   });
 });
