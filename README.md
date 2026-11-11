@@ -85,13 +85,31 @@ Con PostgreSQL en marcha, desde `psql` con un usuario con permisos de creación 
 **Nota para Windows:** el instalador no agrega `psql` al PATH. Abre **SQL Shell (psql)** desde el menú de inicio, o agrega `C:\Program Files\PostgreSQL\17\bin` a la variable de entorno `Path` y abre una terminal nueva. Si el servicio está detenido, inícialo en **Servicios** (`postgresql-x64-17`).
 
 ```sql
-CREATE DATABASE valora_dev;
-CREATE DATABASE valora_test;
+CREATE ROLE valora LOGIN PASSWORD 'valora';
+CREATE DATABASE valora_dev OWNER valora;
+CREATE DATABASE valora_test OWNER valora;
 \c valora_dev
 CREATE EXTENSION IF NOT EXISTS postgis;
 \c valora_test
 CREATE EXTENSION IF NOT EXISTS postgis;
+\pset pager off
+SELECT postgis_full_version();
 ```
+
+- El usuario `valora` con contraseña `valora` es el de `.env.example` y es solo para el equipo local.
+- `CREATE EXTENSION` lo ejecuta `postgres`, porque `valora` no es superusuario.
+- La última consulta debe mostrar `POSTGIS="3.x…"`.
+- `\pset pager off` evita el error «"more" no se reconoce como un comando» de la consola de Windows.
+
+**Si Stack Builder se cuelga al descargar PostGIS,** usa el instalador directo de <https://download.osgeo.org/postgis/windows/pg17/> (`postgis-bundle-pg17x64-setup-3.x.x-1.exe`). Al instalar, desmarca «Create spatial database».
+
+Después aplica las migraciones en la base de desarrollo:
+
+```bash
+pnpm db:migrate
+```
+
+Las pruebas aplican solas las migraciones en `valora_test` antes de correr, y se niegan a usar una base cuyo nombre no termine en `_test`. Por eso **PostgreSQL debe estar encendido para correr `pnpm test`**. La API tampoco arranca si la base no responde.
 
 ## Variables de entorno
 
@@ -118,33 +136,39 @@ Con la API en marcha, abre <http://localhost:3000/v1/health> en el navegador. De
 
 ## Comandos
 
-| Comando                             | Qué hace                                                         |
-| ----------------------------------- | ---------------------------------------------------------------- |
-| `pnpm dev`                          | Arranca la API en modo observación.                              |
-| `pnpm build` / `pnpm start`         | Compila a `dist/` y arranca la versión compilada.                |
-| `pnpm test` / `pnpm test:watch`     | Corre las pruebas (Jest).                                        |
-| `pnpm test:cov`                     | Pruebas con cobertura en `coverage/`.                            |
-| `pnpm typecheck`                    | Verifica tipos con TypeScript estricto.                          |
-| `pnpm lint`                         | ESLint con reglas estrictas de TypeScript.                       |
-| `pnpm format` / `pnpm format:check` | Prettier.                                                        |
-| `pnpm depcheck`                     | Reglas de dependencia del monolito modular (dependency-cruiser). |
+| Comando                             | Qué hace                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| `pnpm dev`                          | Arranca la API en modo observación.                                            |
+| `pnpm build` / `pnpm start`         | Compila a `dist/` y arranca la versión compilada.                              |
+| `pnpm test` / `pnpm test:watch`     | Corre las pruebas (Jest).                                                      |
+| `pnpm test:cov`                     | Pruebas con cobertura en `coverage/`.                                          |
+| `pnpm typecheck`                    | Verifica tipos con TypeScript estricto.                                        |
+| `pnpm lint`                         | ESLint con reglas estrictas de TypeScript.                                     |
+| `pnpm format` / `pnpm format:check` | Prettier.                                                                      |
+| `pnpm depcheck`                     | Reglas de dependencia del monolito modular (dependency-cruiser).               |
+| `pnpm db:generate`                  | Genera una migración en `drizzle/` a partir de los `schema.ts` de los módulos. |
+| `pnpm db:migrate`                   | Aplica las migraciones pendientes en la base de `DATABASE_URL` (lee `.env`).   |
 
-La CI corre en cada pull request hacia `dev` o `main`, con dos jobs: `Calidad` (`typecheck`, `lint`, `format:check`, `depcheck` y `build`) y `Pruebas` (`test:cov --ci`). Si una sola verificación falla, no se mezcla.
+La CI corre en cada pull request hacia `dev` o `main`, con dos jobs: `Calidad` (`typecheck`, `lint`, `format:check`, `depcheck` y `build`) y `Pruebas` (`test:cov --ci`, con un contenedor de PostgreSQL + PostGIS). Si una sola verificación falla, no se mezcla.
 
 ## Estructura
 
 ```text
-docs/                  Decisiones, arquitectura, contrato OpenAPI y épicas
+docs/                  Decisiones (adr/, decisiones/), arquitectura, contrato OpenAPI y épicas
+drizzle/               Migraciones SQL de toda la base (una sola secuencia)
 src/
   main.ts              Arranque
   app.module.ts        Módulo raíz
-  app.setup.ts         Configuración común (prefijo /v1)
+  app.setup.ts         Configuración común (prefijo /v1, validación y filtro de errores)
   health/              GET /v1/health
+  domain/              Reglas puras: precio por unidad y vigencia
   shared/config/       Variables de entorno validadas
-test/integration/      Pruebas de integración (Supertest)
+  shared/http/         Formato de error { code, message } y validación de entrada
+  shared/database/     Conexión con Drizzle y pg
+test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
 
-Los módulos de negocio (`src/modules/`) y `src/domain/` se crean cuando un paso los necesita. Los módulos no deben convertirse en microservicios: el estilo aprobado es un monolito modular.
+Los módulos de negocio (`src/modules/`) se crean cuando un paso los necesita. Los módulos no deben convertirse en microservicios: el estilo aprobado es un monolito modular.
 
 ## Repositorios
 
