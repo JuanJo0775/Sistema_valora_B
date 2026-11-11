@@ -2,9 +2,13 @@ import { DomainError } from './domain-error';
 
 export type Freshness = 'vigente' | 'por_confirmar' | 'desactualizado';
 
-export class InvalidObservationDateError extends DomainError {}
+export class InvalidObservationDateError extends DomainError {
+  readonly code = 'INVALID_OBSERVATION_DATE';
+}
 
-export class InvalidTtlError extends DomainError {}
+export class InvalidTtlError extends DomainError {
+  readonly code = 'INVALID_TTL';
+}
 
 export interface FreshnessInput {
   observedAt: Date;

@@ -55,11 +55,17 @@ const BASE_UNIT: Record<Unit, { per: UnitPricePer; factor: bigint; shownPer: big
   und: { per: 'und', factor: 1n, shownPer: 1n },
 };
 
-export class InvalidQuantityError extends DomainError {}
+export class InvalidQuantityError extends DomainError {
+  readonly code = 'INVALID_QUANTITY';
+}
 
-export class InvalidPriceError extends DomainError {}
+export class InvalidPriceError extends DomainError {
+  readonly code = 'INVALID_PRICE';
+}
 
-export class IncompatibleUnitsError extends DomainError {}
+export class IncompatibleUnitsError extends DomainError {
+  readonly code = 'INCOMPATIBLE_UNITS';
+}
 
 // Lee el decimal tal como se escribió (String(0.1) es "0.1"), sin pasar por aritmética de coma flotante.
 function toFraction(value: number): Fraction {
