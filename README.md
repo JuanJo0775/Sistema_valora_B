@@ -32,7 +32,7 @@ El proyecto tiene la configuración base y una sola ruta, `GET /v1/health`. No h
 ## Requisitos
 
 - Node 22 LTS (ver `.nvmrc`) y pnpm (la versión exacta está en `packageManager` de `package.json`; se activa con `corepack`).
-- PostgreSQL 16 con la extensión PostGIS, con las bases `valora_dev` y `valora_test`. Todavía no se usan: llegan con el paso 3 del H2-01 (Drizzle).
+- PostgreSQL 17 (ver `docs/DECISIONS.md`, versiones fijadas) con la extensión PostGIS, con las bases `valora_dev` y `valora_test`. Todavía no se usan: llegan con el paso 3 del H2-01 (Drizzle).
 
 ## Instalación
 
