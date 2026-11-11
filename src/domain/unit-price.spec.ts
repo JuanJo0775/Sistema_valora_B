@@ -87,4 +87,12 @@ describe('comparación de precios por unidad', () => {
     expect(compareUnitPrices(kilo, medioKilo)).toBeLessThan(0);
     expect(compareUnitPrices(medioKilo, kilo)).toBeGreaterThan(0);
   });
+
+  it('ordena por el valor exacto aunque los dos se muestren como $1.333 por 100 g', () => {
+    const barato = calculateUnitPrice(4000, { quantity: 300, unit: 'g' }); // $1.333,33…
+    const caro = calculateUnitPrice(13334, { quantity: 1, unit: 'kg' }); // $1.333,40
+
+    expect(barato.displayCop).toBe(caro.displayCop);
+    expect(compareUnitPrices(barato, caro)).toBeLessThan(0);
+  });
 });
