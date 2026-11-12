@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "presentations_barcode_unique" ON "catalog"."presentations" USING btree ("barcode");
