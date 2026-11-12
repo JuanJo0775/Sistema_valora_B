@@ -15,8 +15,9 @@ Hito **H2-01** (esqueleto del núcleo), paso 4 en curso.
 | Infraestructura compartida (#12) | Formato de error `{ code, message }`, PostgreSQL + PostGIS con Drizzle y migraciones, bus de eventos con outbox               |
 | Catálogo (#49, #52)              | Módulo `catalog` con categorías, `GET /v1/products/{productId}` y búsqueda por texto o código de barras en `GET /v1/products` |
 | Establecimientos (#50)           | Módulo `establishments` con ubicación PostGIS y `GET /v1/establishments/nearby`                                               |
+| Semilla (#51)                    | `pnpm db:seed`: tiendas de OpenStreetMap y productos verificados por el equipo, desde `seed/`                                 |
 
-Siguiente: semilla de productos y tiendas (#51). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
+Siguiente: registrar un precio (paso 5, #14). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
 ## Primeros pasos (desde cero)
 
@@ -105,7 +106,15 @@ pnpm db:migrate
 
 Crea en `valora_dev` los esquemas y tablas (`shared`, `catalog`, `establishments`…) y carga las categorías del catálogo. **No necesitas migrar `valora_test`:** las pruebas lo hacen solas.
 
-### 7. Comprueba que todo funciona
+### 7. Carga los datos iniciales
+
+```bash
+pnpm db:seed
+```
+
+Carga en `valora_dev` las tiendas y los productos **verificados** de `seed/`. Se puede correr las veces que se quiera: no duplica ni borra. Cómo verificar filas y qué hace cada columna: [seed/README.md](seed/README.md).
+
+### 8. Comprueba que todo funciona
 
 ```bash
 pnpm test        # todas las pruebas deben pasar (PostgreSQL debe estar encendido)
@@ -115,7 +124,8 @@ pnpm dev         # arranca la API en http://localhost:3000
 Con la API en marcha:
 
 - <http://localhost:3000/v1/health> debe responder `{"status":"ok"}`.
-- `GET /v1/products/{productId}` ya existe, pero responde 404 hasta que se cargue la semilla de productos (#51).
+- <http://localhost:3000/v1/establishments/nearby?lat=4.5339&lng=-75.6811> lista las tiendas sembradas cerca del centro de Armenia.
+- Los productos aparecen en `GET /v1/products?q=…` cuando el equipo los verifique en `seed/productos.csv` y se vuelva a correr `pnpm db:seed`.
 
 Si la API no arranca, el mensaje dice qué falta: una variable de entorno o la conexión a la base (base, host y puerto).
 
@@ -128,6 +138,7 @@ git switch dev
 git pull
 pnpm install       # por si alguien agregó dependencias
 pnpm db:migrate    # por si alguien agregó migraciones
+pnpm db:seed       # por si alguien verificó datos nuevos
 git switch -c feat/<tema>
 ```
 
@@ -177,18 +188,19 @@ Si alguien agrega una variable, aparece en `.env.example`: cópiala a tu `.env`.
 
 ## Comandos
 
-| Comando                             | Qué hace                                                                     |
-| ----------------------------------- | ---------------------------------------------------------------------------- |
-| `pnpm dev`                          | Arranca la API en modo observación.                                          |
-| `pnpm build` / `pnpm start`         | Compila a `dist/` y arranca la versión compilada.                            |
-| `pnpm test` / `pnpm test:watch`     | Corre las pruebas (Jest). Necesita PostgreSQL encendido.                     |
-| `pnpm test:cov`                     | Pruebas con cobertura en `coverage/`.                                        |
-| `pnpm typecheck`                    | Verifica tipos con TypeScript estricto.                                      |
-| `pnpm lint`                         | ESLint con reglas estrictas de TypeScript.                                   |
-| `pnpm format` / `pnpm format:check` | Prettier.                                                                    |
-| `pnpm depcheck`                     | Reglas de dependencia del monolito modular (dependency-cruiser).             |
-| `pnpm db:generate`                  | Genera una migración en `drizzle/` a partir de los `schema.ts`.              |
-| `pnpm db:migrate`                   | Aplica las migraciones pendientes en la base de `DATABASE_URL` (lee `.env`). |
+| Comando                             | Qué hace                                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------- |
+| `pnpm dev`                          | Arranca la API en modo observación.                                                           |
+| `pnpm build` / `pnpm start`         | Compila a `dist/` y arranca la versión compilada.                                             |
+| `pnpm test` / `pnpm test:watch`     | Corre las pruebas (Jest). Necesita PostgreSQL encendido.                                      |
+| `pnpm test:cov`                     | Pruebas con cobertura en `coverage/`.                                                         |
+| `pnpm typecheck`                    | Verifica tipos con TypeScript estricto.                                                       |
+| `pnpm lint`                         | ESLint con reglas estrictas de TypeScript.                                                    |
+| `pnpm format` / `pnpm format:check` | Prettier.                                                                                     |
+| `pnpm depcheck`                     | Reglas de dependencia del monolito modular (dependency-cruiser).                              |
+| `pnpm db:generate`                  | Genera una migración en `drizzle/` a partir de los `schema.ts`.                               |
+| `pnpm db:migrate`                   | Aplica las migraciones pendientes en la base de `DATABASE_URL` (lee `.env`).                  |
+| `pnpm db:seed`                      | Carga las filas verificadas de `seed/` en la base de `DATABASE_URL` (sin duplicar ni borrar). |
 
 Antes de abrir un pull request, corre `pnpm typecheck`, `pnpm lint`, `pnpm test:cov` y `pnpm depcheck`. La CI corre en cada pull request hacia `dev` o `main`, con dos jobs obligatorios: `Calidad` (`typecheck`, `lint`, `format:check`, `depcheck` y `build`) y `Pruebas` (`test:cov --ci`). Si una sola verificación falla, no se mezcla.
 
@@ -211,18 +223,21 @@ Antes de abrir un pull request, corre `pnpm typecheck`, `pnpm lint`, `pnpm test:
 ```text
 docs/                  Decisiones (adr/, decisiones/), arquitectura, contrato OpenAPI y épicas
 drizzle/               Migraciones SQL de toda la base (una sola secuencia)
+seed/                  Datos iniciales (CSV) que carga pnpm db:seed
 src/
   main.ts              Arranque
   app.module.ts        Módulo raíz
   app.setup.ts         Configuración común (prefijo /v1, validación y filtro de errores)
   health/              GET /v1/health
-  domain/              Reglas puras: precio por unidad y vigencia
+  domain/              Reglas puras: precio por unidad, vigencia y código de barras
   shared/config/       Variables de entorno validadas
   shared/http/         Formato de error { code, message } y validación de entrada
   shared/database/     Conexión con Drizzle y pg
   shared/events/       Bus de eventos interno con outbox (ADR-015)
   modules/catalog/     Productos, presentaciones y categorías
   modules/establishments/  Tiendas con ubicación y búsqueda por cercanía
+  modules/imports/     Semilla: lee seed/ y guarda por catalog y establishments
+  seed.ts              Entrada de pnpm db:seed
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
 
