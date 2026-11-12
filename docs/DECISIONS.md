@@ -105,6 +105,19 @@ Aplicación de ADR-007 (aceptado el 11-nov-2026). El detalle está en `docs/deci
 - **Caché de `GET /v1/products/{productId}`:** `Cache-Control: public, max-age=300` y `ETag` (valor inicial calibrable con EC-04).
 - **Pendiente:** agregar `brand` a `POST /product-requests` (RF-003 la pide) con la issue de solicitudes de producto.
 
+## Semilla (issue #51, decidido el 11 de noviembre de 2026)
+
+Aplicación de RF-014, ADR-011 y ADR-019. El detalle está en `docs/decisiones/issue-51-semilla/` y en `seed/README.md`.
+
+- **Datos:** `seed/tiendas.csv` (OpenStreetMap, una consulta autorizada el 12-nov-2026, citada con «© colaboradores de OpenStreetMap, ODbL») y `seed/productos.csv` (lista que verifica el equipo). Son los mismos CSV que se revisan en Excel. No traen precios.
+- **Módulo `imports`** (sin tablas propias): lee y valida los CSV, y guarda por los casos de uso públicos `ImportCatalog` e `ImportEstablishments`. No escribe tablas de otros esquemas.
+- **Ids fijos** UUID v5 (`node:crypto`): tienda por `osm_id`; producto por nombre y marca; presentación por producto, cantidad, unidad y unidades del empaque. Repetir la semilla actualiza; no duplica.
+- **Solo filas verificadas:** tiendas con `revisar = no`; productos con `verificar = no` y `responsable`.
+- **Todo o nada:** con una fila verificada inválida no se guarda nada, y cada error nombra el archivo y la fila.
+- **Nunca borra:** los registros que ya no están en los CSV se informan.
+- **Trazabilidad** (RF-014 RN5): en los CSV y en el historial de Git; una fila verificada sin fuente o fecha se rechaza.
+- **Códigos de barras:** GTIN de 8, 12, 13 y 14 dígitos con dígito de control (`src/domain/gtin.ts`).
+
 ## Búsqueda de productos (issue #52, decidido el 11 de noviembre de 2026)
 
 Aplicación de RF-003 RN4 y ADR-003. El detalle está en `docs/decisiones/issue-52-busqueda/`.
