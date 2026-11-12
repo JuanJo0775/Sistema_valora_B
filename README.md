@@ -6,7 +6,7 @@ API y lógica de negocio de **Valora**, plataforma colaborativa para comparar pr
 
 ## Estado
 
-Hito **H2-01** (esqueleto del núcleo), paso 4 en curso.
+Hito **H2-01** (esqueleto del núcleo), paso 5 en curso.
 
 | Listo en `dev`                   | Qué hay                                                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -16,8 +16,9 @@ Hito **H2-01** (esqueleto del núcleo), paso 4 en curso.
 | Catálogo (#49, #52)              | Módulo `catalog` con categorías, `GET /v1/products/{productId}` y búsqueda por texto o código de barras en `GET /v1/products` |
 | Establecimientos (#50)           | Módulo `establishments` con ubicación PostGIS y `GET /v1/establishments/nearby`                                               |
 | Semilla (#51)                    | `pnpm db:seed`: tiendas de OpenStreetMap y productos verificados por el equipo, desde `seed/`                                 |
+| Registro de precios (#14)        | Módulos `pricing` y `comparison`: `POST /v1/reports` con `Idempotency-Key` y precio vigente en `price_current` por el outbox  |
 
-Siguiente: registrar un precio (paso 5, #14). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
+Siguiente: consultar la comparación (paso 6, #15). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
 ## Primeros pasos (desde cero)
 
@@ -229,7 +230,7 @@ src/
   app.module.ts        Módulo raíz
   app.setup.ts         Configuración común (prefijo /v1, validación y filtro de errores)
   health/              GET /v1/health
-  domain/              Reglas puras: precio por unidad, vigencia y código de barras
+  domain/              Reglas puras: precio por unidad, vigencia, código de barras y precio vigente
   shared/config/       Variables de entorno validadas
   shared/http/         Formato de error { code, message } y validación de entrada
   shared/database/     Conexión con Drizzle y pg
@@ -237,6 +238,8 @@ src/
   modules/catalog/     Productos, presentaciones y categorías
   modules/establishments/  Tiendas con ubicación y búsqueda por cercanía
   modules/imports/     Semilla: lee seed/ y guarda por catalog y establishments
+  modules/pricing/     Reportes de precio (solo inserción) e idempotencia
+  modules/comparison/  Precio vigente (price_current), actualizado por PriceReported
   seed.ts              Entrada de pnpm db:seed
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
