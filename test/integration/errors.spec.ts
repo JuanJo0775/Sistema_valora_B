@@ -37,6 +37,11 @@ const httpErrors = {
   conflict: () => new ConflictException(),
   'conflict-with-message': () =>
     new ConflictException('Ya registraste este precio hace menos de una hora.'),
+  'conflict-with-code': () =>
+    new ConflictException({
+      code: 'IDEMPOTENCY_KEY_REUSED',
+      message: 'La clave Idempotency-Key ya se usó con otro reporte.',
+    }),
   'too-many': () => new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS),
   'not-allowed': () => new HttpException('Method Not Allowed', HttpStatus.METHOD_NOT_ALLOWED),
 };
@@ -123,6 +128,12 @@ describe('formato de error { code, message }', () => {
       409,
       'CONFLICT',
       'Ya registraste este precio hace menos de una hora.',
+    ],
+    [
+      'conflict-with-code',
+      409,
+      'IDEMPOTENCY_KEY_REUSED',
+      'La clave Idempotency-Key ya se usó con otro reporte.',
     ],
     ['too-many', 429, 'TOO_MANY_REQUESTS', 'Límite de frecuencia superado.'],
   ])('el error HTTP %s responde %i con %s en español', async (name, status, code, message) => {
