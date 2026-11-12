@@ -3,10 +3,12 @@ import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import { AppModule } from '../../src/app.module';
 import { ImportCatalog, PresentationExists } from '../../src/modules/catalog';
+import { EstablishmentExists, ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 
 // Datos de prueba: solo existen dentro de esta prueba.
 const presentationId = 'e1111111-1111-4111-8111-aaaaaaaaaaaa';
+const storeId = 'e2222222-2222-4222-8222-222222222222';
 const missingId = 'e9999999-9999-4999-8999-999999999999';
 
 describe('comprobar por la interfaz pública que algo existe (grill de la #14, pregunta 5)', () => {
@@ -41,5 +43,19 @@ describe('comprobar por la interfaz pública que algo existe (grill de la #14, p
 
     await expect(presentations.exists(presentationId)).resolves.toBe(true);
     await expect(presentations.exists(missingId)).resolves.toBe(false);
+  });
+
+  it('establishments dice si una tienda existe', async () => {
+    await app.get(ImportEstablishments).save({
+      id: storeId,
+      name: 'Tienda de prueba',
+      type: 'barrio',
+      lat: 4.5339,
+      lng: -75.6811,
+    });
+    const establishments = app.get(EstablishmentExists);
+
+    await expect(establishments.exists(storeId)).resolves.toBe(true);
+    await expect(establishments.exists(missingId)).resolves.toBe(false);
   });
 });
