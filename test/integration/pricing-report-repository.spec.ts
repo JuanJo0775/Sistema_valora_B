@@ -54,4 +54,23 @@ describe('repositorio de reportes de pricing', () => {
     );
     expect(outbox.rows).toEqual([{ id: event.id, type: 'PriceReported' }]);
   });
+
+  it('dos registros simultáneos con la misma clave dejan un solo reporte y un solo evento', async () => {
+    const retry = { ...report, id: 'a5555555-5555-4555-8555-555555555555' };
+    const retryEvent = createEvent('PriceReported', 1, { reportId: retry.id });
+
+    const results = await Promise.all([
+      repository.save(report, event),
+      repository.save(retry, retryEvent),
+    ]);
+
+    // El que no insertó recibe el reporte guardado por el otro.
+    expect(results.map((result) => result.created).sort()).toEqual([false, true]);
+    const saved = results.find((result) => result.created)?.report;
+    expect(results.find((result) => !result.created)?.report).toEqual(saved);
+    const counts = await db.execute<{ reports: string; events: string }>(
+      sql`select (select count(*) from pricing.reports) as reports, (select count(*) from shared.outbox) as events`,
+    );
+    expect(counts.rows[0]).toEqual({ reports: '1', events: '1' });
+  });
 });
