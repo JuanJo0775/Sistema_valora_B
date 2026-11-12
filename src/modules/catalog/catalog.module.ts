@@ -6,6 +6,7 @@ import {
   PRODUCT_IMPORT_REPOSITORY,
   type ProductImportRepository,
 } from './application/import-catalog';
+import { PresentationExists } from './application/presentation-exists';
 import { PRODUCT_REPOSITORY, type ProductRepository } from './application/product-repository';
 import { SearchProducts } from './application/search-products';
 import { ProductsController } from './http/products.controller';
@@ -41,7 +42,13 @@ import { DrizzleProductRepository } from './infrastructure/drizzle-product-repos
       useFactory: (repository: ProductImportRepository): ImportCatalog =>
         new ImportCatalog(repository),
     },
+    {
+      provide: PresentationExists,
+      inject: [PRODUCT_REPOSITORY],
+      useFactory: (products: ProductRepository): PresentationExists =>
+        new PresentationExists(products),
+    },
   ],
-  exports: [ImportCatalog],
+  exports: [ImportCatalog, PresentationExists],
 })
 export class CatalogModule {}

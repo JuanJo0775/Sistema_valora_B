@@ -56,6 +56,14 @@ export class DrizzleProductRepository implements ProductRepository {
     return product ? [product] : [];
   }
 
+  async presentationExists(presentationId: string): Promise<boolean> {
+    const [found] = await this.db
+      .select({ id: presentations.id })
+      .from(presentations)
+      .where(eq(presentations.id, presentationId));
+    return found !== undefined;
+  }
+
   // Grill de la #52: cada palabra en el nombre o la marca, sin tildes ni mayúsculas (pregunta 1);
   // primero lo que más se parece a lo escrito y, en empate, por nombre (pregunta 4).
   async search(query: ProductSearch): Promise<ProductView[]> {
