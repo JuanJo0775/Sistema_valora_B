@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { assertObservedAtAccepted } from '../../../domain/observation-date';
 import { createEvent } from '../../../shared/events';
-import type { ReportInput, ReportRepository } from './report-repository';
+import type { NewReport, ReportInput, ReportRepository } from './report-repository';
 
 // Puertos hacia catalog, establishments y el reloj: el caso de uso no conoce sus implementaciones.
 export interface ExistenceCheck {
@@ -48,18 +48,41 @@ export class UnknownEstablishmentError extends DomainError {
   readonly code = 'UNKNOWN_ESTABLISHMENT';
 }
 
+// Grill de la #14, pregunta 3: la misma clave con otro reporte es un conflicto (409).
+export class IdempotencyKeyReusedError extends Error {
+  readonly code = 'IDEMPOTENCY_KEY_REUSED';
+}
+
+// Huella del reporte (grill de la #14, pregunta 6): distingue un reintento de un reporte distinto.
+function hashOf(report: ReportInput): string {
+  const fields = [
+    report.presentationId,
+    report.establishmentId,
+    report.priceCop,
+    report.priceType,
+    report.observedAt.toISOString(),
+  ];
+  return createHash('sha256').update(JSON.stringify(fields)).digest('hex');
+}
+
+// EC-07: un reintento de la cola sin conexión recibe la respuesta original.
+function retryResult(stored: NewReport, requestHash: string): RegisterReportResult {
+  if (stored.requestHash !== requestHash) {
+    throw new IdempotencyKeyReusedError('La clave Idempotency-Key ya se usó con otro reporte.');
+  }
+  return {
+    receipt: { id: stored.id, status: 'recibido', receivedAt: stored.receivedAt },
+    created: false,
+  };
+}
+
 export class RegisterReport {
   constructor(private readonly deps: RegisterReportDependencies) {}
 
   async execute({ idempotencyKey, report }: RegisterReportCommand): Promise<RegisterReportResult> {
-    // EC-07: un reintento de la cola sin conexión recibe la respuesta original.
+    const requestHash = hashOf(report);
     const existing = await this.deps.reports.findByIdempotencyKey(idempotencyKey);
-    if (existing) {
-      return {
-        receipt: { id: existing.id, status: 'recibido', receivedAt: existing.receivedAt },
-        created: false,
-      };
-    }
+    if (existing) return retryResult(existing, requestHash);
     const receivedAt = this.deps.clock.now();
     assertObservedAtAccepted({ observedAt: report.observedAt, receivedAt });
     if (!(await this.deps.presentations.exists(report.presentationId))) {
@@ -73,6 +96,7 @@ export class RegisterReport {
       id: randomUUID(),
       receivedAt,
       idempotencyKey,
+      requestHash,
     };
     const saved = await this.deps.reports.save(
       newReport,
@@ -86,9 +110,8 @@ export class RegisterReport {
         receivedAt: newReport.receivedAt.toISOString(),
       }),
     );
-    return {
-      receipt: { id: saved.report.id, status: 'recibido', receivedAt: saved.report.receivedAt },
-      created: saved.created,
-    };
+    // Dos reintentos simultáneos: el que no insertó responde como reintento.
+    if (!saved.created) return retryResult(saved.report, requestHash);
+    return { receipt: { id: newReport.id, status: 'recibido', receivedAt }, created: true };
   }
 }
