@@ -30,14 +30,12 @@ describe('GET /v1/products/{productId}', () => {
 
   beforeEach(async () => {
     await db.execute(sql`truncate catalog.presentations, catalog.products`);
-    await db
-      .insert(products)
-      .values({
-        id: riceId,
-        name: 'Arroz blanco',
-        brand: 'Diana',
-        categoryCode: 'grains-groceries',
-      });
+    await db.insert(products).values({
+      id: riceId,
+      name: 'Arroz blanco',
+      brand: 'Diana',
+      categoryCode: 'grains-groceries',
+    });
     await db.insert(presentations).values({
       id: '9a2e7c10-1b2d-4e3f-8a9b-0c1d2e3f4a5b',
       productId: riceId,
@@ -65,6 +63,23 @@ describe('GET /v1/products/{productId}', () => {
           packCount: 1,
         },
       ],
+    });
+  });
+
+  it('un producto que no existe responde 404 NOT_FOUND', async () => {
+    const response = await request(server)
+      .get('/v1/products/00000000-0000-4000-8000-000000000000')
+      .expect(404);
+
+    expect(response.body).toEqual({ code: 'NOT_FOUND', message: 'Recurso no encontrado.' });
+  });
+
+  it('un id que no es UUID responde 400 VALIDATION_ERROR', async () => {
+    const response = await request(server).get('/v1/products/arroz').expect(400);
+
+    expect(response.body).toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'productId: debe ser un UUID',
     });
   });
 });
