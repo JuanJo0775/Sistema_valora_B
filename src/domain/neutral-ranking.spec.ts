@@ -124,4 +124,24 @@ describe('orden neutral de la comparación', () => {
       ]);
     });
   });
+
+  describe('por fecha', () => {
+    it('el precio visto más recientemente va primero y, a la misma hora, el más barato por unidad', () => {
+      const result = rankOffers(
+        [
+          offer({ store: 'viejo-barato', observedAt: '2026-11-11T09:00:00Z', priceCop: 1800 }),
+          offer({ store: 'nuevo-caro', observedAt: '2026-11-12T10:00:00Z', priceCop: 2500 }),
+          offer({ store: 'nuevo-medio', observedAt: '2026-11-12T10:00:00Z', priceCop: 2000 }),
+        ],
+        'recent',
+      );
+
+      expect(result.sort).toBe('recent');
+      expect(storesOf(result.offers)).toEqual([
+        'nuevo-medio/p-500g',
+        'nuevo-caro/p-500g',
+        'viejo-barato/p-500g',
+      ]);
+    });
+  });
 });
