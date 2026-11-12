@@ -12,4 +12,10 @@ describe('hora de observación de un reporte', () => {
       assertObservedAtAccepted({ observedAt: minutesAfterReceipt(6), receivedAt });
     }).toThrow(InvalidObservationDateError);
   });
+
+  it('un precio visto 3 minutos en el futuro se acepta, por la diferencia entre relojes', () => {
+    expect(() => {
+      assertObservedAtAccepted({ observedAt: minutesAfterReceipt(3), receivedAt });
+    }).not.toThrow();
+  });
 });
