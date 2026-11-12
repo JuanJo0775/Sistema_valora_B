@@ -83,5 +83,25 @@ describe('orden neutral de la comparación', () => {
 
       expect(storesOf(result.offers)).toEqual(['visto-tarde/p-500g', 'visto-temprano/p-500g']);
     });
+
+    it('si todo empata, decide el identificador de la tienda y luego el de la presentación, carácter por carácter', () => {
+      const result = rankOffers(
+        [
+          offer({ store: 'tienda-b', presentationId: 'p-2' }),
+          offer({ store: 'tienda-b', presentationId: 'p-1' }),
+          offer({ store: 'tienda-a', presentationId: 'p-1' }),
+          // Carácter por carácter, la «T» mayúscula va antes que la «t» minúscula.
+          offer({ store: 'Tienda-c', presentationId: 'p-1' }),
+        ],
+        'unit_price',
+      );
+
+      expect(storesOf(result.offers)).toEqual([
+        'Tienda-c/p-1',
+        'tienda-a/p-1',
+        'tienda-b/p-1',
+        'tienda-b/p-2',
+      ]);
+    });
   });
 });
