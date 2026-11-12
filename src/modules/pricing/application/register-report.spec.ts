@@ -92,4 +92,16 @@ describe('registrar un reporte de precio', () => {
     ).rejects.toThrow(InvalidObservationDateError);
     expect(reports.reports).toHaveLength(0);
   });
+
+  it('un reintento con la misma clave y el mismo reporte devuelve el recibo original sin duplicar', async () => {
+    const { reports, registerReport } = setup();
+    const command = { idempotencyKey: '77777777-7777-4777-8777-777777777777', report };
+
+    const first = await registerReport.execute(command);
+    const retry = await registerReport.execute(command);
+
+    expect(retry).toEqual({ receipt: first.receipt, created: false });
+    expect(reports.reports).toHaveLength(1);
+    expect(reports.events).toHaveLength(1);
+  });
 });
