@@ -114,4 +114,50 @@ describe('bus de eventos con outbox', () => {
 
     expect(calls).toBe(1);
   });
+
+  it('si el suscriptor falla, el evento queda pendiente con el error y se reintenta en la siguiente revisión', async () => {
+    let calls = 0;
+    bus.subscribe('receptor-que-falla-una-vez', 'PrecioDePruebaReintento', () => {
+      calls += 1;
+      return calls === 1
+        ? Promise.reject(new Error('reliability no disponible'))
+        : Promise.resolve();
+    });
+    const event = events.createEvent('PrecioDePruebaReintento', 1, {});
+    await db.transaction(async (tx) => {
+      await publisher.publish(tx, event);
+    });
+
+    await relay.runOnce();
+    const afterFailure = await outboxRow(event.id);
+
+    await relay.runOnce();
+    const afterRetry = await outboxRow(event.id);
+
+    expect(afterFailure).toEqual({
+      attempts: 1,
+      last_error: 'reliability no disponible',
+      delivered: false,
+      failed: false,
+    });
+    expect(calls).toBe(2);
+    expect(afterRetry.delivered).toBe(true);
+  });
+
+  async function outboxRow(id: string): Promise<OutboxRow> {
+    const result = await db.execute<OutboxRow>(
+      sql`select attempts, last_error, delivered_at is not null as delivered, failed_at is not null as failed
+          from shared.outbox where id = ${id}`,
+    );
+    const row = result.rows[0];
+    if (!row) throw new Error(`No existe el evento ${id} en shared.outbox`);
+    return row;
+  }
 });
+
+interface OutboxRow extends Record<string, unknown> {
+  attempts: number;
+  last_error: string | null;
+  delivered: boolean;
+  failed: boolean;
+}
