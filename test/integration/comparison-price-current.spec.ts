@@ -73,4 +73,32 @@ describe('precio vigente en comparison, actualizado por PriceReported (ADR-004)'
       { report_id: 'c3333333-3333-4333-8333-333333333333', price_cop: 4500 },
     ]);
   });
+
+  it('un reporte tardío no reemplaza el vigente, y uno más reciente sí', async () => {
+    const noon = {
+      reportId: 'c4444444-4444-4444-8444-444444444444',
+      priceCop: 4500,
+      observedAt: '2026-11-12T12:00:00.000Z',
+      receivedAt: '2026-11-12T12:01:00.000Z',
+    };
+    await report(noon);
+
+    await report({
+      reportId: 'c5555555-5555-4555-8555-555555555555',
+      priceCop: 3900,
+      observedAt: '2026-11-12T09:00:00.000Z',
+      receivedAt: '2026-11-12T15:00:00.000Z',
+    });
+    expect(await currentPrice()).toEqual([{ report_id: noon.reportId, price_cop: 4500 }]);
+
+    await report({
+      reportId: 'c6666666-6666-4666-8666-666666666666',
+      priceCop: 4800,
+      observedAt: '2026-11-12T16:00:00.000Z',
+      receivedAt: '2026-11-12T16:01:00.000Z',
+    });
+    expect(await currentPrice()).toEqual([
+      { report_id: 'c6666666-6666-4666-8666-666666666666', price_cop: 4800 },
+    ]);
+  });
 });
