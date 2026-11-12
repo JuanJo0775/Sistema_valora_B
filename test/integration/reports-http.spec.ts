@@ -7,6 +7,7 @@ import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { OutboxRelay } from '../../src/shared/events';
 
 // Presentación y tienda de prueba: solo existen dentro de esta prueba.
 const presentationId = 'b1111111-1111-4111-8111-aaaaaaaaaaaa';
@@ -134,5 +135,30 @@ describe('POST /v1/reports', () => {
     expect(response.body).toMatchObject({ code });
     const saved = await db.execute(sql`select id from pricing.reports`);
     expect(saved.rows).toHaveLength(0);
+  });
+
+  it('de punta a punta: el reporte llega por el outbox a price_current, sin datos del reportante', async () => {
+    const created = await post(body()).expect(201);
+    const { id } = created.body as { id: string };
+
+    await app.get(OutboxRelay).runOnce();
+
+    const current = await db.execute<{ report_id: string; price_cop: number }>(
+      sql`select report_id, price_cop from comparison.price_current`,
+    );
+    expect(current.rows).toEqual([{ report_id: id, price_cop: 4500 }]);
+    // EC-08: el evento no lleva nada que identifique o ubique al reportante.
+    const event = await db.execute<{ payload: Record<string, unknown> }>(
+      sql`select payload from shared.outbox`,
+    );
+    expect(Object.keys(event.rows[0]?.payload ?? {}).sort()).toEqual([
+      'establishmentId',
+      'observedAt',
+      'presentationId',
+      'priceCop',
+      'priceType',
+      'receivedAt',
+      'reportId',
+    ]);
   });
 });
