@@ -4,6 +4,7 @@ import {
   ESTABLISHMENT_REPOSITORY,
   type EstablishmentRepository,
 } from './application/establishment-repository';
+import { EstablishmentExists } from './application/establishment-exists';
 import {
   ESTABLISHMENT_IMPORT_REPOSITORY,
   type EstablishmentImportRepository,
@@ -40,7 +41,13 @@ import { DrizzleEstablishmentRepository } from './infrastructure/drizzle-establi
       useFactory: (repository: EstablishmentImportRepository): ImportEstablishments =>
         new ImportEstablishments(repository),
     },
+    {
+      provide: EstablishmentExists,
+      inject: [ESTABLISHMENT_REPOSITORY],
+      useFactory: (repository: EstablishmentRepository): EstablishmentExists =>
+        new EstablishmentExists(repository),
+    },
   ],
-  exports: [ImportEstablishments],
+  exports: [ImportEstablishments, EstablishmentExists],
 })
 export class EstablishmentsModule {}
