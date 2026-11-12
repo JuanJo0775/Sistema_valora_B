@@ -11,6 +11,16 @@ const sunflowerOil = {
   name: 'Aceite de girasol',
   categoryCode: 'grains-groceries',
 };
+const rice = {
+  id: 'b2222222-2222-4222-8222-222222222222',
+  name: 'Arroz blanco',
+  categoryCode: 'grains-groceries',
+};
+const otherRice = {
+  id: 'c3333333-3333-4333-8333-333333333333',
+  name: 'Arroz integral',
+  categoryCode: 'grains-groceries',
+};
 
 describe('búsqueda de productos del catálogo', () => {
   let pool: Pool;
@@ -63,5 +73,18 @@ describe('búsqueda de productos del catálogo', () => {
         ],
       },
     ]);
+  });
+
+  it('encuentra por un pedazo de palabra y por la marca, y no muestra productos sin todas las palabras', async () => {
+    await db
+      .insert(products)
+      .values([sunflowerOil, { ...rice, brand: 'Diana' }, { ...otherRice, brand: 'Roa' }]);
+
+    const names = async (text: string) =>
+      (await repository.search({ text, limit: 20 })).map((product) => product.name);
+
+    expect(await names('gira')).toEqual(['Aceite de girasol']);
+    expect(await names('arroz diana')).toEqual(['Arroz blanco']);
+    expect(await names('aceite diana')).toEqual([]);
   });
 });
