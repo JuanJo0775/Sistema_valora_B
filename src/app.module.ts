@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
 import { CatalogModule } from './modules/catalog';
+import { ComparisonModule } from './modules/comparison';
 import { EstablishmentsModule } from './modules/establishments';
 import { validateEnv } from './shared/config/env.validation';
 import { DatabaseModule } from './shared/database/database.module';
@@ -14,6 +15,7 @@ import { EventsModule } from './shared/events';
     EventsModule,
     CatalogModule,
     EstablishmentsModule,
+    ComparisonModule,
   ],
   controllers: [HealthController],
 })
