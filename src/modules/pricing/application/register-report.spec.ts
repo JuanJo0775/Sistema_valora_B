@@ -1,6 +1,10 @@
 import type { DomainEvent } from '../../../shared/events';
 import type { NewReport, ReportRepository, SavedReport } from './report-repository';
-import { RegisterReport } from './register-report';
+import {
+  RegisterReport,
+  UnknownEstablishmentError,
+  UnknownPresentationError,
+} from './register-report';
 
 const presentationId = '11111111-1111-4111-8111-111111111111';
 const establishmentId = '22222222-2222-4222-8222-222222222222';
@@ -55,5 +59,24 @@ describe('registrar un reporte de precio', () => {
       receipt: { id: expect.any(String) as string, status: 'recibido', receivedAt: now },
     });
     expect(reports.reports[0]).toMatchObject({ ...report, receivedAt: now });
+  });
+
+  it('rechaza una presentación o una tienda que no existen, sin guardar nada', async () => {
+    const { reports, registerReport } = setup();
+    const missing = '99999999-9999-4999-8999-999999999999';
+
+    await expect(
+      registerReport.execute({
+        idempotencyKey: '44444444-4444-4444-8444-444444444444',
+        report: { ...report, presentationId: missing },
+      }),
+    ).rejects.toThrow(UnknownPresentationError);
+    await expect(
+      registerReport.execute({
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+        report: { ...report, establishmentId: missing },
+      }),
+    ).rejects.toThrow(UnknownEstablishmentError);
+    expect(reports.reports).toHaveLength(0);
   });
 });
