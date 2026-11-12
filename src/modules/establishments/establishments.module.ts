@@ -4,8 +4,14 @@ import {
   ESTABLISHMENT_REPOSITORY,
   type EstablishmentRepository,
 } from './application/establishment-repository';
+import {
+  ESTABLISHMENT_IMPORT_REPOSITORY,
+  type EstablishmentImportRepository,
+  ImportEstablishments,
+} from './application/import-establishments';
 import { ListNearbyEstablishments } from './application/list-nearby-establishments';
 import { EstablishmentsController } from './http/establishments.controller';
+import { DrizzleEstablishmentImportRepository } from './infrastructure/drizzle-establishment-import-repository';
 import { DrizzleEstablishmentRepository } from './infrastructure/drizzle-establishment-repository';
 
 @Module({
@@ -22,6 +28,19 @@ import { DrizzleEstablishmentRepository } from './infrastructure/drizzle-establi
       useFactory: (repository: EstablishmentRepository): ListNearbyEstablishments =>
         new ListNearbyEstablishments(repository),
     },
+    {
+      provide: ESTABLISHMENT_IMPORT_REPOSITORY,
+      inject: [DATABASE],
+      useFactory: (db: Database): EstablishmentImportRepository =>
+        new DrizzleEstablishmentImportRepository(db),
+    },
+    {
+      provide: ImportEstablishments,
+      inject: [ESTABLISHMENT_IMPORT_REPOSITORY],
+      useFactory: (repository: EstablishmentImportRepository): ImportEstablishments =>
+        new ImportEstablishments(repository),
+    },
   ],
+  exports: [ImportEstablishments],
 })
 export class EstablishmentsModule {}

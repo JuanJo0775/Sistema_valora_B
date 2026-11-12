@@ -1,0 +1,37 @@
+import type { Unit } from '../../../domain/unit-price';
+
+// Producto completo tal como lo carga la semilla (issue #51), con ids fijos ya calculados.
+export interface ProductImport {
+  id: string;
+  name: string;
+  brand?: string;
+  categoryCode: string;
+  presentations: {
+    id: string;
+    barcode?: string;
+    quantity: number;
+    unit: Unit;
+    packCount: number;
+  }[];
+}
+
+export interface ProductImportRepository {
+  // Inserta o actualiza por id: repetir la semilla no duplica (grill de la #51, pregunta 2).
+  save(product: ProductImport): Promise<void>;
+  listProductIds(): Promise<string[]>;
+}
+
+export const PRODUCT_IMPORT_REPOSITORY = Symbol('PRODUCT_IMPORT_REPOSITORY');
+
+// Puerta de entrada pública para que el módulo imports guarde productos sin tocar las tablas de catalog.
+export class ImportCatalog {
+  constructor(private readonly products: ProductImportRepository) {}
+
+  save(product: ProductImport): Promise<void> {
+    return this.products.save(product);
+  }
+
+  listProductIds(): Promise<string[]> {
+    return this.products.listProductIds();
+  }
+}
