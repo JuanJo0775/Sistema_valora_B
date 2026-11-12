@@ -52,6 +52,14 @@ export class RegisterReport {
   constructor(private readonly deps: RegisterReportDependencies) {}
 
   async execute({ idempotencyKey, report }: RegisterReportCommand): Promise<RegisterReportResult> {
+    // EC-07: un reintento de la cola sin conexión recibe la respuesta original.
+    const existing = await this.deps.reports.findByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      return {
+        receipt: { id: existing.id, status: 'recibido', receivedAt: existing.receivedAt },
+        created: false,
+      };
+    }
     const receivedAt = this.deps.clock.now();
     assertObservedAtAccepted({ observedAt: report.observedAt, receivedAt });
     if (!(await this.deps.presentations.exists(report.presentationId))) {
