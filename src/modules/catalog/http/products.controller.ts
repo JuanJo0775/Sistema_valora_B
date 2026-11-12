@@ -25,13 +25,14 @@ export class ProductsController {
   @Header('Cache-Control', 'public, max-age=30')
   async search(@Query() query: SearchProductsQueryDto): Promise<{ items: ProductResponse[] }> {
     // Grill de la #52, pregunta 3: se escribe o se escanea, nunca las dos cosas ni ninguna.
-    if (query.q === undefined && query.barcode === undefined) {
-      throw new RequestValidationError('Envía q o barcode');
-    }
-    if (query.q !== undefined && query.barcode !== undefined) {
+    const { q, barcode, limit } = query;
+    if (q !== undefined && barcode !== undefined) {
       throw new RequestValidationError('Envía solo q o barcode, no ambos');
     }
-    const found = await this.searchProducts.execute(query);
+    let found;
+    if (q !== undefined) found = await this.searchProducts.execute({ q, limit });
+    else if (barcode !== undefined) found = await this.searchProducts.execute({ barcode, limit });
+    else throw new RequestValidationError('Envía q o barcode');
     return { items: found.map(toProductResponse) };
   }
 
