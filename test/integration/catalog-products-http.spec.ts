@@ -131,6 +131,7 @@ describe('GET /v1/products/{productId}', () => {
         'Envía solo q o barcode, no ambos',
       ],
       ['q de un solo carácter', { q: 'a' }, 'q: debe tener al menos 2 caracteres'],
+      ['q con solo espacios', { q: '   ' }, 'q: debe tener al menos 2 caracteres'],
       ['barcode con letras', { barcode: '77025ABC' }, 'barcode: debe tener de 8 a 14 dígitos'],
       ['límite mayor que 50', { q: 'arroz', limit: 51 }, 'limit: debe estar entre 1 y 50'],
     ])('%s responde 400 VALIDATION_ERROR', async (_case, query, message) => {
