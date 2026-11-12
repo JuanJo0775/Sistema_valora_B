@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Unit } from '../../../domain/unit-price';
 import type {
@@ -69,7 +69,13 @@ export class DrizzleProductRepository implements ProductRepository {
       })
       .from(products)
       .innerJoin(categories, eq(products.categoryCode, categories.code))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      // Grill de la #52, pregunta 4: primero lo que más se parece a lo escrito; en empate, por nombre.
+      .orderBy(
+        desc(sql`similarity(${searchText}, trim(catalog.search_text(${query.text}, null)))`),
+        asc(products.name),
+      )
+      .limit(query.limit);
     if (rows.length === 0) return [];
 
     const presentationRows = await this.db
