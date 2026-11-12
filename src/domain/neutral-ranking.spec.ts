@@ -52,5 +52,24 @@ describe('orden neutral de la comparación', () => {
         'tienda-cara/p-500g',
       ]);
     });
+
+    it('con el mismo precio por unidad, va primero la tienda más cercana', () => {
+      const result = rankOffers(
+        [
+          offer({ store: 'tienda-lejana', distanceMeters: 2500 }),
+          // 1 kg a $4.000 equivale a 500 g a $2.000: el mismo precio por 100 g.
+          offer({
+            store: 'tienda-cercana',
+            priceCop: 4000,
+            presentation: { quantity: 1, unit: 'kg' },
+            presentationId: 'p-1kg',
+            distanceMeters: 300,
+          }),
+        ],
+        'unit_price',
+      );
+
+      expect(storesOf(result.offers)).toEqual(['tienda-cercana/p-1kg', 'tienda-lejana/p-500g']);
+    });
   });
 });
