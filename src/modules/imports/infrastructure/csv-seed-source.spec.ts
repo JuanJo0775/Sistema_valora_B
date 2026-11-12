@@ -17,7 +17,7 @@ describe('lector de los CSV de la semilla', () => {
   it('entiende el archivo que guarda Excel: BOM, separador ; y columnas por nombre', async () => {
     writeFileSync(
       join(folder, 'tiendas.csv'),
-      '﻿osm_id;nombre;tipo\r\nnode/1;Tienda de prueba; barrio \r\n\r\nnode/2;Otra tienda;minimercado\r\n',
+      '\uFEFFosm_id;nombre;tipo\r\nnode/1;Tienda de prueba; barrio \r\n\r\nnode/2;Otra tienda;minimercado\r\n',
     );
     writeFileSync(join(folder, 'productos.csv'), 'producto;marca\n');
 
