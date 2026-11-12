@@ -28,6 +28,10 @@ class InMemoryProductRepository implements ProductRepository {
   search(): Promise<ProductView[]> {
     return Promise.reject(new Error('GetProduct no busca productos'));
   }
+
+  findByBarcode(): Promise<ProductView[]> {
+    return Promise.reject(new Error('GetProduct no busca por código de barras'));
+  }
 }
 
 describe('consultar un producto del catálogo', () => {

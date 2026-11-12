@@ -31,6 +31,7 @@ export interface ProductSearch {
 export interface ProductRepository {
   findById(id: string): Promise<ProductView | null>;
   search(query: ProductSearch): Promise<ProductView[]>;
+  findByBarcode(barcode: string): Promise<ProductView[]>;
 }
 
 export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');

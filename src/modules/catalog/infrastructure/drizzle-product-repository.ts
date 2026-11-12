@@ -49,6 +49,17 @@ export class DrizzleProductRepository implements ProductRepository {
     };
   }
 
+  // El código de barras es único (#49): como mucho hay un producto con esa presentación.
+  async findByBarcode(barcode: string): Promise<ProductView[]> {
+    const [presentation] = await this.db
+      .select({ productId: presentations.productId })
+      .from(presentations)
+      .where(eq(presentations.barcode, barcode));
+    if (!presentation) return [];
+    const product = await this.findById(presentation.productId);
+    return product ? [product] : [];
+  }
+
   // Grill de la #52, pregunta 1: cada palabra debe aparecer en el nombre o la marca, sin tildes ni mayúsculas.
   async search(query: ProductSearch): Promise<ProductView[]> {
     const searchText = sql`catalog.search_text(${products.name}, ${products.brand})`;
