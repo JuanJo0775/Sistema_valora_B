@@ -2,7 +2,11 @@ import { sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { DrizzleProductRepository } from '../../src/modules/catalog/infrastructure/drizzle-product-repository';
-import { presentations, products } from '../../src/modules/catalog/infrastructure/schema';
+import {
+  categories,
+  presentations,
+  products,
+} from '../../src/modules/catalog/infrastructure/schema';
 import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
 
 const riceId = '3f1c2a64-5c1e-4b8a-9d61-0a7b1f2e3c4d';
@@ -82,5 +86,36 @@ describe('repositorio de productos con Drizzle', () => {
 
   it('devuelve null si el producto no existe', async () => {
     await expect(new DrizzleProductRepository(db).findById(riceId)).resolves.toBeNull();
+  });
+
+  it('después de migrar existen las 8 categorías iniciales con su marca de fresca', async () => {
+    const rows = await db.select().from(categories).orderBy(categories.code);
+
+    expect(rows.map((row) => [row.code, row.isFresh])).toEqual([
+      ['bakery', true],
+      ['beverages', false],
+      ['dairy-eggs', true],
+      ['fruits-vegetables', true],
+      ['grains-groceries', false],
+      ['household-cleaning', false],
+      ['meat-fish', true],
+      ['personal-care', false],
+    ]);
+  });
+
+  it('la base rechaza dos presentaciones con el mismo código de barras', async () => {
+    await db
+      .insert(products)
+      .values({ id: riceId, name: 'Arroz blanco', categoryCode: 'grains-groceries' });
+    const presentation = { productId: riceId, quantity: '1', unit: 'kg', barcode: '7702511000014' };
+    await db
+      .insert(presentations)
+      .values({ id: '9a2e7c10-1b2d-4e3f-8a9b-0c1d2e3f4a5b', ...presentation });
+
+    await expect(
+      db
+        .insert(presentations)
+        .values({ id: 'b71d0e22-3c4f-4a5b-9c6d-7e8f9a0b1c2d', ...presentation }),
+    ).rejects.toThrow();
   });
 });
