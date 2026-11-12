@@ -1,11 +1,32 @@
-import { Controller, Get, Header, NotFoundException, Param, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Query,
+} from '@nestjs/common';
 import { RequestValidationError } from '../../../shared/http/validation';
 import { GetProduct, ProductNotFoundError } from '../application/get-product';
+import { SearchProducts } from '../application/search-products';
 import { type ProductResponse, toProductResponse } from './product.response';
+import { SearchProductsQueryDto } from './search-products.query';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly getProduct: GetProduct) {}
+  constructor(
+    private readonly getProduct: GetProduct,
+    private readonly searchProducts: SearchProducts,
+  ) {}
+
+  // Grill de la #52, pregunta 4: caché pública de 30 segundos (valor inicial calibrable, EC-04).
+  @Get()
+  @Header('Cache-Control', 'public, max-age=30')
+  async search(@Query() query: SearchProductsQueryDto): Promise<{ items: ProductResponse[] }> {
+    const found = await this.searchProducts.execute(query);
+    return { items: found.map(toProductResponse) };
+  }
 
   // Grill de la #49, pregunta 7: caché pública de 5 minutos (valor inicial calibrable, EC-04).
   @Get(':productId')
