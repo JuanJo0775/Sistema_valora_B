@@ -16,4 +16,12 @@ describe('qué reporte queda como precio vigente', () => {
 
     expect(replacesCurrentPrice(late, current)).toBe(false);
   });
+
+  it('con la misma hora de observación, gana el reporte que llegó después', () => {
+    const first = { observedAt: at('12:00'), receivedAt: at('12:01') };
+    const second = { observedAt: at('12:00'), receivedAt: at('12:05') };
+
+    expect(replacesCurrentPrice(second, first)).toBe(true);
+    expect(replacesCurrentPrice(first, second)).toBe(false);
+  });
 });
