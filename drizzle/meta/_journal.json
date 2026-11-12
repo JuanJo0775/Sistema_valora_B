@@ -8,6 +8,13 @@
       "when": 1794436280554,
       "tag": "0000_enable-postgis",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794442809588,
+      "tag": "0001_shared-outbox",
+      "breakpoints": true
     }
   ]
 }

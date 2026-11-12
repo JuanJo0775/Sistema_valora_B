@@ -3,9 +3,14 @@ import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
 import { validateEnv } from './shared/config/env.validation';
 import { DatabaseModule } from './shared/database/database.module';
+import { EventsModule } from './shared/events';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }), DatabaseModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    DatabaseModule,
+    EventsModule,
+  ],
   controllers: [HealthController],
 })
 export class AppModule {}
