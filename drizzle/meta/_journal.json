@@ -50,6 +50,13 @@
       "when": 1794454673737,
       "tag": "0006_catalog-search",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794512262879,
+      "tag": "0007_pricing",
+      "breakpoints": true
     }
   ]
 }
