@@ -27,6 +27,8 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         distanceM: sql<number>`round(${distance})::int`.mapWith(Number),
       })
       .from(establishments)
+      // ST_DWithin usa el índice GiST de la ubicación.
+      .where(sql`ST_DWithin(${establishments.location}, ${point}, ${query.radiusMeters})`)
       .orderBy(distance);
 
     return rows.map((row) => ({
