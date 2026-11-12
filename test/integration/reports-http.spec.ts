@@ -78,4 +78,61 @@ describe('POST /v1/reports', () => {
     const retry = await post(report).expect(200);
     expect(retry.body).toEqual(created.body);
   });
+
+  it('la misma clave con otro cuerpo responde 409 IDEMPOTENCY_KEY_REUSED', async () => {
+    const report = body();
+    await post(report).expect(201);
+
+    const response = await post({ ...report, priceCop: 5000 }).expect(409);
+
+    expect(response.body).toEqual({
+      code: 'IDEMPOTENCY_KEY_REUSED',
+      message: 'La clave Idempotency-Key ya se usó con otro reporte.',
+    });
+  });
+
+  it.each([
+    ['sin Idempotency-Key', body(), null, 'Idempotency-Key: debe ser un UUID'],
+    ['con una clave que no es UUID', body(), 'clave-123', 'Idempotency-Key: debe ser un UUID'],
+    [
+      'con priceType combo',
+      { ...body(), priceType: 'combo' },
+      idempotencyKey,
+      'priceType: debe ser normal u oferta',
+    ],
+    [
+      'con el precio fuera de rango',
+      { ...body(), priceCop: 0 },
+      idempotencyKey,
+      'priceCop: debe estar entre 1 y 10000000',
+    ],
+  ])('%s responde 400 VALIDATION_ERROR', async (_case, payload, key, message) => {
+    const response = await post(payload, key).expect(400);
+
+    expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
+  });
+
+  it.each([
+    [
+      'una presentación que no existe',
+      { presentationId: 'b9999999-9999-4999-8999-999999999999' },
+      'UNKNOWN_PRESENTATION',
+    ],
+    [
+      'una tienda que no existe',
+      { establishmentId: 'b9999999-9999-4999-8999-999999999999' },
+      'UNKNOWN_ESTABLISHMENT',
+    ],
+    [
+      'un precio visto en una hora futura',
+      { observedAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
+      'INVALID_OBSERVATION_DATE',
+    ],
+  ])('%s responde 422 con su código y no guarda nada', async (_case, change, code) => {
+    const response = await post({ ...body(), ...change }).expect(422);
+
+    expect(response.body).toMatchObject({ code });
+    const saved = await db.execute(sql`select id from pricing.reports`);
+    expect(saved.rows).toHaveLength(0);
+  });
 });
