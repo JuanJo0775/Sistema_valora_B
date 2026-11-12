@@ -58,11 +58,19 @@ function isMalformedJson(exception: unknown): boolean {
   );
 }
 
-// Un 409 puede traer su propio mensaje (por ejemplo, un reporte repetido); los demás usan el fijo.
+// Código propio de un 409, si lo trae (por ejemplo, IDEMPOTENCY_KEY_REUSED en la issue #14).
+function ownCode(exception: HttpException): string | undefined {
+  const body = exception.getResponse();
+  if (typeof body !== 'object' || !('code' in body)) return undefined;
+  return typeof body.code === 'string' ? body.code : undefined;
+}
+
+// Un 409 puede traer su propio código y su propio mensaje; los demás usan los fijos.
 function withOwnMessage(exception: HttpException, status: number, known: ErrorBody): ErrorBody {
-  const hasOwnMessage =
-    status === (HttpStatus.CONFLICT as number) && exception.message !== DEFAULT_CONFLICT_MESSAGE;
-  return hasOwnMessage ? { code: known.code, message: exception.message } : known;
+  if (status !== (HttpStatus.CONFLICT as number)) return known;
+  const code = ownCode(exception) ?? known.code;
+  const hasOwnMessage = exception.message !== DEFAULT_CONFLICT_MESSAGE;
+  return { code, message: hasOwnMessage ? exception.message : known.message };
 }
 
 // Decide el estado y el cuerpo de la respuesta; null significa «error inesperado».
