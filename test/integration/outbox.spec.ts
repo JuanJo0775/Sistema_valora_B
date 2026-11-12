@@ -99,4 +99,19 @@ describe('bus de eventos con outbox', () => {
 
     expect(received.map((e) => e.id)).toEqual([event.id]);
   });
+
+  it('un evento repetido no se procesa dos veces para el mismo receptor', async () => {
+    let calls = 0;
+    bus.subscribe('receptor-repetido', 'PrecioDePruebaRepetido', () => {
+      calls += 1;
+      return Promise.resolve();
+    });
+    const event = events.createEvent('PrecioDePruebaRepetido', 1, {});
+
+    // Entrega «al menos una vez»: el repartidor puede caerse después de entregar y antes de marcar.
+    await bus.deliver(event);
+    await bus.deliver(event);
+
+    expect(calls).toBe(1);
+  });
 });
