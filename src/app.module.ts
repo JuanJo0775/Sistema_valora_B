@@ -4,6 +4,7 @@ import { HealthController } from './health/health.controller';
 import { CatalogModule } from './modules/catalog';
 import { ComparisonModule } from './modules/comparison';
 import { EstablishmentsModule } from './modules/establishments';
+import { PricingModule } from './modules/pricing';
 import { validateEnv } from './shared/config/env.validation';
 import { DatabaseModule } from './shared/database/database.module';
 import { EventsModule } from './shared/events';
@@ -15,6 +16,7 @@ import { EventsModule } from './shared/events';
     EventsModule,
     CatalogModule,
     EstablishmentsModule,
+    PricingModule,
     ComparisonModule,
   ],
   controllers: [HealthController],
