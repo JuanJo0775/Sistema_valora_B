@@ -104,4 +104,24 @@ describe('orden neutral de la comparación', () => {
       ]);
     });
   });
+
+  describe('por distancia', () => {
+    it('la tienda más cercana va primero y, a la misma distancia, la más barata por unidad', () => {
+      const result = rankOffers(
+        [
+          offer({ store: 'cerca-cara', distanceMeters: 300, priceCop: 2500 }),
+          offer({ store: 'lejos-barata', distanceMeters: 800, priceCop: 1800 }),
+          offer({ store: 'cerca-media', distanceMeters: 300, priceCop: 2000 }),
+        ],
+        'distance',
+      );
+
+      expect(result.sort).toBe('distance');
+      expect(storesOf(result.offers)).toEqual([
+        'cerca-media/p-500g',
+        'cerca-cara/p-500g',
+        'lejos-barata/p-500g',
+      ]);
+    });
+  });
 });
