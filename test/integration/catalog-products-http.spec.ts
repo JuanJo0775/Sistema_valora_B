@@ -93,4 +93,34 @@ describe('GET /v1/products/{productId}', () => {
       message: 'productId: debe ser un UUID',
     });
   });
+
+  describe('GET /v1/products (búsqueda)', () => {
+    it('con q responde los productos que coinciden y una caché pública de 30 segundos', async () => {
+      const response = await request(server)
+        .get('/v1/products')
+        .query({ q: 'arroz DIANA' })
+        .expect(200);
+
+      expect(response.headers['cache-control']).toBe('public, max-age=30');
+      expect(response.body).toEqual({
+        items: [
+          {
+            id: riceId,
+            name: 'Arroz blanco',
+            brand: 'Diana',
+            category: { code: 'grains-groceries', name: 'Granos y abarrotes' },
+            presentations: [
+              {
+                id: '9a2e7c10-1b2d-4e3f-8a9b-0c1d2e3f4a5b',
+                barcode: '7702511000014',
+                quantity: 1,
+                unit: 'kg',
+                packCount: 1,
+              },
+            ],
+          },
+        ],
+      });
+    });
+  });
 });
