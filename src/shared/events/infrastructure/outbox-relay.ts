@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq, isNull } from 'drizzle-orm';
+import { asc, eq, isNull, sql } from 'drizzle-orm';
 import { DATABASE, type Database } from '../../database/database.module';
 import { EventBus } from './event-bus';
 import { outbox } from './schema';
@@ -20,14 +20,23 @@ export class OutboxRelay {
       .orderBy(asc(outbox.occurredAt));
 
     for (const row of pending) {
-      await this.bus.deliver({
-        id: row.id,
-        type: row.type,
-        version: row.version,
-        occurredAt: row.occurredAt,
-        payload: row.payload,
-      });
-      await this.db.update(outbox).set({ deliveredAt: new Date() }).where(eq(outbox.id, row.id));
+      try {
+        await this.bus.deliver({
+          id: row.id,
+          type: row.type,
+          version: row.version,
+          occurredAt: row.occurredAt,
+          payload: row.payload,
+        });
+        await this.db.update(outbox).set({ deliveredAt: new Date() }).where(eq(outbox.id, row.id));
+      } catch (error) {
+        // Grill de la #43, pregunta 3: el evento sigue pendiente con un intento más y su error.
+        const lastError = error instanceof Error ? error.message : String(error);
+        await this.db
+          .update(outbox)
+          .set({ attempts: sql`${outbox.attempts} + 1`, lastError })
+          .where(eq(outbox.id, row.id));
+      }
     }
   }
 }
