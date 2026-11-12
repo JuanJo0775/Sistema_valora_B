@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
+import { assertObservedAtAccepted } from '../../../domain/observation-date';
 import { createEvent } from '../../../shared/events';
 import type { ReportInput, ReportRepository } from './report-repository';
 
@@ -51,6 +52,8 @@ export class RegisterReport {
   constructor(private readonly deps: RegisterReportDependencies) {}
 
   async execute({ idempotencyKey, report }: RegisterReportCommand): Promise<RegisterReportResult> {
+    const receivedAt = this.deps.clock.now();
+    assertObservedAtAccepted({ observedAt: report.observedAt, receivedAt });
     if (!(await this.deps.presentations.exists(report.presentationId))) {
       throw new UnknownPresentationError('La presentación no existe en el catálogo.');
     }
@@ -60,7 +63,7 @@ export class RegisterReport {
     const newReport = {
       ...report,
       id: randomUUID(),
-      receivedAt: this.deps.clock.now(),
+      receivedAt,
       idempotencyKey,
     };
     const saved = await this.deps.reports.save(
