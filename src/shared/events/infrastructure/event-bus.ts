@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DATABASE, type Database, type Transaction } from '../../database/database.module';
 import type { DomainEvent } from '../domain-event';
+import { processedEvents } from './schema';
 
 export type EventHandler = (event: DomainEvent, tx: Transaction) => Promise<void>;
 
@@ -21,9 +22,19 @@ export class EventBus {
     this.subscriptions.set(type, [...current, { consumer, handler }]);
   }
 
+  // Grill de la #43, pregunta 4: el registro en processed_events y el trabajo del suscriptor van en
+  // la misma transacción; si el par (receptor, evento) ya existe, el suscriptor no se vuelve a llamar.
   async deliver(event: DomainEvent): Promise<void> {
-    for (const { handler } of this.subscriptions.get(event.type) ?? []) {
-      await this.db.transaction((tx) => handler(event, tx));
+    for (const { consumer, handler } of this.subscriptions.get(event.type) ?? []) {
+      await this.db.transaction(async (tx) => {
+        const registered = await tx
+          .insert(processedEvents)
+          .values({ consumer, eventId: event.id })
+          .onConflictDoNothing()
+          .returning({ eventId: processedEvents.eventId });
+        if (registered.length === 0) return;
+        await handler(event, tx);
+      });
     }
   }
 }
