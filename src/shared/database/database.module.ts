@@ -22,6 +22,9 @@ function reasonOf(error: unknown): string {
 
 export type Database = NodePgDatabase;
 
+// Transacción de Drizzle: la reciben los repositorios para guardar su cambio y sus eventos juntos.
+export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
 // Token para inyectar la instancia de Drizzle en los repositorios de infrastructure/.
 export const DATABASE = Symbol('DATABASE');
 const POOL = Symbol('POOL');
