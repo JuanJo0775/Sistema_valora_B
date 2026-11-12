@@ -77,4 +77,26 @@ describe('bus de eventos con outbox', () => {
 
     expect(received).toEqual([]);
   });
+
+  it('un evento pendiente se entrega aunque la app se reinicie antes de repartirlo', async () => {
+    const event = events.createEvent('PrecioDePruebaReinicio', 1, { priceCop: 2500 });
+    await db.transaction(async (tx) => {
+      await publisher.publish(tx, event);
+    });
+
+    // «Reinicio»: una instancia nueva de la app, con su propio bus y su propio repartidor.
+    const { AppModule } = await import('../../src/app.module');
+    const restartedRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const restarted = restartedRef.createNestApplication({ logger: false });
+    await restarted.init();
+    const received: Events.DomainEvent[] = [];
+    restarted.get(events.EventBus).subscribe('receptor-reinicio', 'PrecioDePruebaReinicio', (e) => {
+      received.push(e);
+      return Promise.resolve();
+    });
+    await restarted.get(events.OutboxRelay).runOnce();
+    await restarted.close();
+
+    expect(received.map((e) => e.id)).toEqual([event.id]);
+  });
 });
