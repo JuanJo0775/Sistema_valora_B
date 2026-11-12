@@ -1,0 +1,38 @@
+﻿producto;marca;categoria;cantidad;unidad;unidades_empaque;codigo_barras;verificar;fuente;responsable;fecha
+Arroz blanco;Diana;grains-groceries;500;g;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Arroz blanco;Diana;grains-groceries;1;kg;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Arroz blanco;Roa;grains-groceries;500;g;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Arroz blanco;Roa;grains-groceries;1;kg;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Aceite de girasol;Premier;grains-groceries;1000;ml;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Aceite de girasol;Premier;grains-groceries;3000;ml;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Azúcar blanca;Manuelita;grains-groceries;1;kg;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Fríjol rojo;;grains-groceries;500;g;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Lenteja;;grains-groceries;500;g;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Panela;;grains-groceries;500;g;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Sal refinada;Refisal;grains-groceries;500;g;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Pasta spaghetti;Doria;grains-groceries;250;g;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Pasta spaghetti;Doria;grains-groceries;500;g;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Café molido;Sello Rojo;grains-groceries;250;g;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Chocolate de mesa;Corona;grains-groceries;250;g;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Atún en aceite;Van Camp's;grains-groceries;160;g;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Leche entera;Colanta;dairy-eggs;1100;ml;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Leche entera;Alquería;dairy-eggs;1100;ml;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Huevos rojos AA;;dairy-eggs;30;und;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Huevos rojos AA;;dairy-eggs;12;und;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Queso campesino;;dairy-eggs;500;g;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Pan tajado blanco;Bimbo;bakery;600;g;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Papa pastusa;;fruits-vegetables;1;kg;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Tomate chonto;;fruits-vegetables;1;kg;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Cebolla cabezona;;fruits-vegetables;1;kg;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Plátano hartón verde;;fruits-vegetables;1;und;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Banano;;fruits-vegetables;1;kg;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Carne de res molida;;meat-fish;500;g;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Pechuga de pollo;;meat-fish;1;kg;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Gaseosa cola;Coca-Cola;beverages;1500;ml;1;;no;Propuesta de Claude Code, por revisar;;2026-11-11
+Gaseosa cola;Coca-Cola;beverages;400;ml;6;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Agua sin gas;Cristal;beverages;600;ml;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Detergente en polvo;Fab;household-cleaning;1;kg;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Lavaloza en crema;Axion;household-cleaning;450;g;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Papel higiénico doble hoja;Familia;household-cleaning;12;und;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Crema dental;Colgate;personal-care;75;ml;1;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
+Jabón de baño;Protex;personal-care;110;g;3;;sí;Propuesta de Claude Code, por revisar;;2026-11-11
