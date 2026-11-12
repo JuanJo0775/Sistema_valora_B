@@ -24,7 +24,10 @@ export function rankOffers<T extends RankableOffer>(
   return {
     sort,
     offers: [...offers].sort(
-      (a, b) => a.unitPrice.compareTo(b.unitPrice) || a.distanceMeters - b.distanceMeters,
+      (a, b) =>
+        a.unitPrice.compareTo(b.unitPrice) ||
+        a.distanceMeters - b.distanceMeters ||
+        b.observedAt.getTime() - a.observedAt.getTime(),
     ),
   };
 }
