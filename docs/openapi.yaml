@@ -144,29 +144,41 @@ paths:
       tags: [Establecimientos]
       operationId: listNearbyEstablishments
       summary: Establecimientos cercanos (RF-005)
+      description: >-
+        La ubicación aproximada del usuario (lat, lng) se usa solo para calcular la cercanía: no se guarda,
+        no se registra en los logs ni aparece en la respuesta (RF-005 RN5, EC-08). Por eso la respuesta
+        lleva Cache-Control no-store, aunque es una lectura pública. Devuelve las tiendas registradas
+        dentro del radio, de la más cercana a la más lejana.
       parameters:
         - name: lat
           in: query
           required: true
-          schema: { type: number }
+          schema: { type: number, minimum: -90, maximum: 90 }
         - name: lng
           in: query
           required: true
-          schema: { type: number }
+          schema: { type: number, minimum: -180, maximum: 180 }
         - name: radiusKm
           in: query
-          schema: { type: number, default: 2 }
+          description: Radio de búsqueda en kilómetros (valores iniciales calibrables, ADR-019).
+          schema: { type: number, minimum: 0.5, maximum: 3, default: 2 }
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Establecimientos ordenados por distancia
+          headers:
+            Cache-Control:
+              schema: { type: string, example: no-store }
           content:
             application/json:
               schema:
                 type: object
+                required: [items]
                 properties:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/Establishment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
   /reports:
     post:
       tags: [Reportes]
@@ -598,13 +610,18 @@ components:
           items: { $ref: '#/components/schemas/Presentation' }
     Establishment:
       type: object
-      required: [id, name, type]
+      required: [id, name, type, lat, lng]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        type: { type: string, enum: [barrio, minimercado, supermercado] }
-        distanceM: { type: integer, minimum: 0 }
-        hasVerifiedProfile: { type: boolean }
+        type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+        address: { type: string, description: Opcional; muchas tiendas no tienen dirección formal. }
+        lat: { type: number, description: Latitud de la tienda (nunca la del usuario, RF-005 RN4). }
+        lng: { type: number, description: Longitud de la tienda. }
+        distanceM:
+          type: integer
+          minimum: 0
+          description: Metros desde el punto consultado; siempre viene en GET /establishments/nearby.
     ComparisonItem:
       type: object
       required: [establishment, presentationId, priceCop, unitPrice, source, freshness, reliability, observedAt]
