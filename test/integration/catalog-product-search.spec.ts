@@ -108,9 +108,14 @@ describe('búsqueda de productos del catálogo', () => {
     const found = await repository.search({ text: 'leche', limit: 20 });
     const firstTwo = await repository.search({ text: 'leche', limit: 2 });
 
-    expect(found[0]?.name).toBe('Leche');
-    expect(found.at(-1)?.name).toBe('Galletas con leche');
-    expect(firstTwo).toHaveLength(2);
+    // similarity de pg_trgm: «Leche» 1,0 > «Leche entera» 0,46 > empate en 0,32, que se ordena por nombre.
+    expect(found.map((product) => product.name)).toEqual([
+      'Leche',
+      'Leche entera',
+      'Galletas con leche',
+      'Leche deslactosada',
+    ]);
+    expect(firstTwo.map((product) => product.name)).toEqual(['Leche', 'Leche entera']);
   });
 
   it('a igual parecido, ordena por nombre', async () => {
