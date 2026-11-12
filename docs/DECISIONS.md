@@ -13,6 +13,7 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | ADR-003 | PostgreSQL + PostGIS (aceptado por el equipo el 3 de noviembre de 2026) | Motor relacional único con PostGIS para cercanía; búsqueda de texto inicial en PostgreSQL (`unaccent`, `pg_trgm`, por validar); reportes de solo inserción; sin motor de búsqueda ni base poliglota en el MVP. La versión se fija en implementación (ver "Versiones fijadas"). |
 | ADR-010 | PWA con cola persistente para registro sin conexión | El backend debe aceptar reintentos idempotentes; la cola local reside en frontend. |
 | ADR-011 | Carga inicial manual; SIPSA como referencia comparable | No construir integración automática completa con SIPSA ni scraping de cadenas en el MVP. |
+| ADR-004 | CQRS ligero con precio vigente precalculado (aceptado el 12 de noviembre de 2026) | Reportes de solo inserción en `pricing`; modelo de lectura `comparison.price_current`, actualizado por el evento `PriceReported` a través del outbox (segundos de retraso). Gana el reporte con el mayor `observedAt`. Score y anómalos son diferidos. |
 | ADR-005 | Vigencia y confiabilidad: TTL por categoría y score ponderado (aceptado el 11 de noviembre de 2026) | Estados vigente, por confirmar (1 a 2 TTL) y desactualizado (más de 2 TTL); score con una función pura. Se acepta el modelo: los valores (7 y 14 días, pesos del score) siguen provisionales y parametrizables hasta calibrarlos. |
 | ADR-014 | Sesiones administradas por servidor, cookie HttpOnly/Secure/SameSite, CSRF y Argon2id | No sustituir por JWT bearer sin una nueva decisión aprobada. |
 | ADR-015 | Eventos de dominio internos con outbox (aceptado el 11 de noviembre de 2026) | El evento se guarda en la tabla outbox del esquema `shared` en la misma transacción que el cambio; un repartidor del mismo proceso lo entrega al menos una vez y los receptores ignoran repetidos. `PrecioOficialPublicado` se procesa en la misma transacción (EC-02). Sin broker externo. |
@@ -26,7 +27,6 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 
 | Tema | Estado actual | No asumir |
 |---|---|---|
-| CQRS ligero (precio vigente precalculado) | ADR-004 propuesto | No implementar proyecciones complejas hasta validar necesidad. El outbox ya no depende de ADR-004: lo decide ADR-015. |
 | Valores de vigencia y score | ADR-005 aceptado; valores provisionales | TTL 7/14 días, corroboración 5 % y umbral de anomalía 40 % son hipótesis/provisionales y parametrizables. |
 | Despliegue | ADR-012 en discusión | Proveedor, modelo de servicio y orquestación por definir; confirmar RDA3 con el docente. |
 | Herramientas de pruebas y calidad | Jest y Supertest en uso desde H2-01 | SonarQube y el resto del plan de calidad siguen por confirmar. |
@@ -142,6 +142,26 @@ Aplicación de RF-005, ADR-003 y ADR-019. El detalle está en `docs/decisiones/i
 - **Privacidad:** la ubicación del usuario solo existe como parámetro de la consulta. Una prueba de integración verifica que no aparece en la respuesta ni en el log, y que no se guarda ninguna fila.
 - **`hasVerifiedProfile`** sale del contrato hasta el módulo comercial (corte 3).
 - **Pendiente:** el estado de moderación (RF-005 RN7) y la detección de duplicados (RN3) se agregan con la issue de sugerencias de tiendas.
+
+## Registro de reportes (issue #14, decidido el 12 de noviembre de 2026)
+
+Aplicación de RF-006, RF-007, ADR-004, ADR-010 y ADR-015. El detalle está en `docs/decisiones/issue-14-registrar-reporte/`.
+
+- **Módulos nuevos:** `pricing` (tabla `reports`, de solo inserción) y `comparison` (tabla `price_current`). Migraciones `0007_pricing` y `0008_comparison`: el plan proponía una sola, pero cada módulo entró con su propio ciclo.
+- **Sin sesión hasta la #16:** `reporter_id` es opcional y no tiene llave foránea. La #16 agrega el guard de sesión y CSRF y lo vuelve obligatorio.
+- **Idempotencia:**
+  - `idempotency_key` (con índice único) y `request_hash` (SHA-256 de los campos) se guardan en el reporte y no caducan.
+  - Misma clave y mismo cuerpo → 200 con el recibo original. Misma clave con otro cuerpo → 409 `IDEMPOTENCY_KEY_REUSED`.
+  - Dos registros simultáneos con la misma clave los resuelve el índice único.
+- **Validaciones de la #14:**
+  - Formato → 400.
+  - `observedAt` más de 5 minutos en el futuro → 422 `INVALID_OBSERVATION_DATE` (`src/domain/observation-date.ts`).
+  - Presentación o tienda inexistentes → 422 `UNKNOWN_PRESENTATION` o `UNKNOWN_ESTABLISHMENT`. Se comprueban con `PresentationExists` y `EstablishmentExists`.
+  - Quedan para la #29: la ventana de 24 h, el límite por usuario, `DUPLICATE_REPORT` y el 429.
+- **Precio vigente:** gana el mayor `observedAt`; en un empate, el mayor `receivedAt` (`src/domain/current-price.ts`). El suscriptor de `comparison` bloquea la fila (`FOR UPDATE`) antes de decidir, para que dos eventos simultáneos no se pisen. El plan proponía repetir la regla en el `WHERE` del upsert; así la regla vive en un solo lugar.
+- **Evento `PriceReported` versión 1:** `reportId`, `presentationId`, `establishmentId`, `priceCop`, `priceType`, `observedAt` y `receivedAt`. No lleva datos del reportante (EC-08).
+- **`priceType`:** `normal` y `oferta`. `combo` sale del contrato hasta definir qué significa.
+- **Errores 409:** el filtro común conserva el `code` propio de un 409.
 
 ## Regla de cambio
 
