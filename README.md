@@ -115,13 +115,15 @@ Las pruebas aplican solas las migraciones en `valora_test` antes de correr, y se
 
 Se validan al arrancar: si falta alguna o es inválida, la aplicación no inicia y el mensaje nombra la variable.
 
-| Variable            | Descripción                                            |
-| ------------------- | ------------------------------------------------------ |
-| `PORT`              | Puerto HTTP (entero).                                  |
-| `NODE_ENV`          | `development`, `test` o `production`.                  |
-| `DATABASE_URL`      | Conexión a la base de desarrollo.                      |
-| `DATABASE_URL_TEST` | Conexión a la base de pruebas.                         |
-| `SESSION_SECRET`    | Secreto de la sesión; usa un valor propio y aleatorio. |
+| Variable                  | Descripción                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `PORT`                    | Puerto HTTP (entero).                                                                 |
+| `NODE_ENV`                | `development`, `test` o `production`.                                                 |
+| `DATABASE_URL`            | Conexión a la base de desarrollo.                                                     |
+| `DATABASE_URL_TEST`       | Conexión a la base de pruebas.                                                        |
+| `SESSION_SECRET`          | Secreto de la sesión; usa un valor propio y aleatorio.                                |
+| `OUTBOX_POLL_INTERVAL_MS` | Cada cuántos milisegundos el repartidor revisa la bandeja de eventos (inicial: 5000). |
+| `OUTBOX_MAX_ATTEMPTS`     | Intentos de entrega antes de marcar un evento como fallido (inicial: 5).              |
 
 `.env` no se sube al repositorio; el ejemplo está en `.env.example`.
 
@@ -165,6 +167,7 @@ src/
   shared/config/       Variables de entorno validadas
   shared/http/         Formato de error { code, message } y validación de entrada
   shared/database/     Conexión con Drizzle y pg
+  shared/events/       Bus de eventos interno con outbox (ADR-015)
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
 
