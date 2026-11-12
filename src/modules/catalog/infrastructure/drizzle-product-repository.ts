@@ -9,44 +9,40 @@ import type {
 } from '../application/product-repository';
 import { categories, presentations, products } from './schema';
 
+type PresentationRow = typeof presentations.$inferSelect;
+
+// Nombre y marca normalizados (función de la migración 0006): sin tildes y en minúsculas.
+const searchText = sql`catalog.search_text(${products.name}, ${products.brand})`;
+
+function toPresentationView(presentation: PresentationRow): PresentationView {
+  return {
+    id: presentation.id,
+    ...(presentation.barcode === null ? {} : { barcode: presentation.barcode }),
+    // numeric llega como texto desde pg; la respuesta lo entrega como número.
+    quantity: Number(presentation.quantity),
+    // La restricción CHECK de la tabla garantiza que es una de las 5 unidades.
+    unit: presentation.unit as Unit,
+    packCount: presentation.packCount,
+  };
+}
+
+// Cada palabra debe aparecer; los comodines de LIKE que escribe el usuario se buscan como texto.
+function wordConditions(text: string): SQL[] {
+  return text
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+    .map((word) => word.replace(/[\\%_]/g, (wildcard) => `\\${wildcard}`))
+    .map((word) => sql`${searchText} like '%' || trim(catalog.search_text(${word}, null)) || '%'`);
+}
+
 export class DrizzleProductRepository implements ProductRepository {
   constructor(private readonly db: NodePgDatabase) {}
 
   async findById(id: string): Promise<ProductView | null> {
-    const [row] = await this.db
-      .select({
-        id: products.id,
-        name: products.name,
-        brand: products.brand,
-        categoryCode: categories.code,
-        categoryName: categories.name,
-      })
-      .from(products)
-      .innerJoin(categories, eq(products.categoryCode, categories.code))
-      .where(eq(products.id, id));
-    if (!row) return null;
-
-    const presentationRows = await this.db
-      .select()
-      .from(presentations)
-      .where(eq(presentations.productId, id))
-      .orderBy(asc(presentations.id));
-
-    return {
-      id: row.id,
-      name: row.name,
-      ...(row.brand === null ? {} : { brand: row.brand }),
-      category: { code: row.categoryCode, name: row.categoryName },
-      presentations: presentationRows.map((presentation): PresentationView => ({
-        id: presentation.id,
-        ...(presentation.barcode === null ? {} : { barcode: presentation.barcode }),
-        // numeric llega como texto desde pg; la respuesta lo entrega como número.
-        quantity: Number(presentation.quantity),
-        // La restricción CHECK de la tabla garantiza que es una de las 5 unidades.
-        unit: presentation.unit as Unit,
-        packCount: presentation.packCount,
-      })),
-    };
+    const [product] = await this.withPresentations(
+      await this.selectProducts().where(eq(products.id, id)),
+    );
+    return product ?? null;
   }
 
   // El código de barras es único (#49): como mucho hay un producto con esa presentación.
@@ -60,19 +56,21 @@ export class DrizzleProductRepository implements ProductRepository {
     return product ? [product] : [];
   }
 
-  // Grill de la #52, pregunta 1: cada palabra debe aparecer en el nombre o la marca, sin tildes ni mayúsculas.
+  // Grill de la #52: cada palabra en el nombre o la marca, sin tildes ni mayúsculas (pregunta 1);
+  // primero lo que más se parece a lo escrito y, en empate, por nombre (pregunta 4).
   async search(query: ProductSearch): Promise<ProductView[]> {
-    const searchText = sql`catalog.search_text(${products.name}, ${products.brand})`;
-    const conditions: SQL[] = query.text
-      .split(/\s+/)
-      .filter((word) => word.length > 0)
-      // Los comodines de LIKE que escribe el usuario se buscan como texto («100%» no coincide con todo).
-      .map((word) => word.replace(/[\\%_]/g, (wildcard) => `\\${wildcard}`))
-      .map(
-        (word) => sql`${searchText} like '%' || trim(catalog.search_text(${word}, null)) || '%'`,
-      );
+    const rows = await this.selectProducts()
+      .where(and(...wordConditions(query.text)))
+      .orderBy(
+        desc(sql`similarity(${searchText}, trim(catalog.search_text(${query.text}, null)))`),
+        asc(products.name),
+      )
+      .limit(query.limit);
+    return this.withPresentations(rows);
+  }
 
-    const rows = await this.db
+  private selectProducts() {
+    return this.db
       .select({
         id: products.id,
         name: products.name,
@@ -82,15 +80,14 @@ export class DrizzleProductRepository implements ProductRepository {
       })
       .from(products)
       .innerJoin(categories, eq(products.categoryCode, categories.code))
-      .where(and(...conditions))
-      // Grill de la #52, pregunta 4: primero lo que más se parece a lo escrito; en empate, por nombre.
-      .orderBy(
-        desc(sql`similarity(${searchText}, trim(catalog.search_text(${query.text}, null)))`),
-        asc(products.name),
-      )
-      .limit(query.limit);
-    if (rows.length === 0) return [];
+      .$dynamic();
+  }
 
+  // Lee las presentaciones de todos los productos en una sola consulta, conservando su orden.
+  private async withPresentations(
+    rows: Awaited<ReturnType<DrizzleProductRepository['selectProducts']>>,
+  ): Promise<ProductView[]> {
+    if (rows.length === 0) return [];
     const presentationRows = await this.db
       .select()
       .from(presentations)
@@ -109,13 +106,7 @@ export class DrizzleProductRepository implements ProductRepository {
       category: { code: row.categoryCode, name: row.categoryName },
       presentations: presentationRows
         .filter((presentation) => presentation.productId === row.id)
-        .map((presentation): PresentationView => ({
-          id: presentation.id,
-          ...(presentation.barcode === null ? {} : { barcode: presentation.barcode }),
-          quantity: Number(presentation.quantity),
-          unit: presentation.unit as Unit,
-          packCount: presentation.packCount,
-        })),
+        .map(toPresentationView),
     }));
   }
 }
