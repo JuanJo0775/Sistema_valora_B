@@ -60,4 +60,20 @@ describe('GET /v1/establishments/nearby', () => {
       ],
     });
   });
+
+  it.each([
+    ['falta lat', { lng: center.lng }, 'lat: debe estar entre -90 y 90'],
+    ['lat fuera de rango', { ...center, lat: 91 }, 'lat: debe estar entre -90 y 90'],
+    ['lng fuera de rango', { ...center, lng: -181 }, 'lng: debe estar entre -180 y 180'],
+    ['radio menor que 0,5 km', { ...center, radiusKm: 0.4 }, 'radiusKm: debe estar entre 0,5 y 3'],
+    ['radio mayor que 3 km', { ...center, radiusKm: 5 }, 'radiusKm: debe estar entre 0,5 y 3'],
+    ['límite mayor que 50', { ...center, limit: 51 }, 'limit: debe estar entre 1 y 50'],
+  ])('%s responde 400 VALIDATION_ERROR', async (_case, query, message) => {
+    const response = await request(server)
+      .get('/v1/establishments/nearby')
+      .query(query)
+      .expect(400);
+
+    expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
+  });
 });
