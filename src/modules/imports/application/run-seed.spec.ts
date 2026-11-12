@@ -154,4 +154,108 @@ describe('semilla de datos iniciales', () => {
       products: { saved: 1, presentations: 2, skipped: 1 },
     });
   });
+
+  it.each([
+    [
+      'código de barras con dígito de control equivocado',
+      [productRow(2, { codigo_barras: '7702511000015' })],
+      [],
+      'productos.csv, fila 2: el código de barras «7702511000015» no es válido',
+    ],
+    [
+      'categoría que no existe',
+      [productRow(2, { categoria: 'snacks' })],
+      [],
+      'productos.csv, fila 2: la categoría «snacks» no existe',
+    ],
+    [
+      'unidad desconocida',
+      [productRow(2, { unidad: 'lb' })],
+      [],
+      'productos.csv, fila 2: la unidad «lb» no es válida (g, kg, ml, l o und)',
+    ],
+    [
+      'cantidad que no es positiva',
+      [productRow(2, { cantidad: '0' })],
+      [],
+      'productos.csv, fila 2: la cantidad debe ser un número mayor que 0',
+    ],
+    [
+      'unidades del empaque no enteras',
+      [productRow(2, { unidades_empaque: '1.5' })],
+      [],
+      'productos.csv, fila 2: unidades_empaque debe ser un entero mayor o igual a 1',
+    ],
+    [
+      'producto sin fuente',
+      [productRow(2, { fuente: '' })],
+      [],
+      'productos.csv, fila 2: falta la fuente',
+    ],
+    [
+      'producto con fecha mal escrita',
+      [productRow(2, { fecha: '12/11/2026' })],
+      [],
+      'productos.csv, fila 2: la fecha debe tener el formato AAAA-MM-DD',
+    ],
+    [
+      'código de barras repetido en el archivo',
+      [
+        productRow(2, { codigo_barras: '7702511000014' }),
+        productRow(3, { cantidad: '1', unidad: 'kg', codigo_barras: '7702511000014' }),
+      ],
+      [],
+      'productos.csv, fila 3: el código de barras «7702511000014» ya está en la fila 2',
+    ],
+    [
+      'producto con dos categorías',
+      [productRow(2), productRow(3, { cantidad: '1', unidad: 'kg', categoria: 'dairy-eggs' })],
+      [],
+      'productos.csv, fila 3: «Arroz de prueba» ya tiene la categoría grains-groceries en la fila 2',
+    ],
+    [
+      'tienda con tipo desconocido',
+      [],
+      [storeRow(2, { tipo: 'tienda' })],
+      'tiendas.csv, fila 2: el tipo «tienda» no es válido (barrio, minimercado, supermercado o descuento)',
+    ],
+    [
+      'tienda con coordenadas fuera de rango',
+      [],
+      [storeRow(2, { lat: '95' })],
+      'tiendas.csv, fila 2: las coordenadas no son válidas',
+    ],
+    [
+      'tienda sin nombre',
+      [],
+      [storeRow(2, { nombre: '' })],
+      'tiendas.csv, fila 2: falta el nombre',
+    ],
+    [
+      'tienda sin fuente',
+      [],
+      [storeRow(2, { fuente: '' })],
+      'tiendas.csv, fila 2: falta la fuente',
+    ],
+  ])(
+    'una fila verificada con %s no deja guardar nada y nombra la fila',
+    async (_case, products, stores, error) => {
+      const catalog = new InMemoryCatalog();
+      const storesTarget = new InMemoryStores();
+      const seed = new RunSeed(
+        new InMemorySource(
+          [productRow(10, { producto: 'Otro producto' }), ...products],
+          [storeRow(20), ...stores],
+        ),
+        catalog,
+        storesTarget,
+      );
+
+      const result = await seed.execute();
+
+      expect(result).toEqual({ ok: false, errors: [error] });
+      expect(catalog.saved).toEqual([]);
+      expect(storesTarget.saved).toEqual([]);
+    },
+  );
 });
