@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { DomainError } from '../../../domain/domain-error';
 import { createEvent } from '../../../shared/events';
 import type { ReportInput, ReportRepository } from './report-repository';
 
@@ -37,10 +38,25 @@ export interface RegisterReportResult {
 
 export const PRICE_REPORTED = 'PriceReported';
 
+// Grill de la #14, pregunta 5: reglas incumplidas (422) con código estable.
+export class UnknownPresentationError extends DomainError {
+  readonly code = 'UNKNOWN_PRESENTATION';
+}
+
+export class UnknownEstablishmentError extends DomainError {
+  readonly code = 'UNKNOWN_ESTABLISHMENT';
+}
+
 export class RegisterReport {
   constructor(private readonly deps: RegisterReportDependencies) {}
 
   async execute({ idempotencyKey, report }: RegisterReportCommand): Promise<RegisterReportResult> {
+    if (!(await this.deps.presentations.exists(report.presentationId))) {
+      throw new UnknownPresentationError('La presentación no existe en el catálogo.');
+    }
+    if (!(await this.deps.establishments.exists(report.establishmentId))) {
+      throw new UnknownEstablishmentError('El establecimiento no existe en el directorio.');
+    }
     const newReport = {
       ...report,
       id: randomUUID(),
