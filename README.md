@@ -168,10 +168,11 @@ src/
   shared/http/         Formato de error { code, message } y validación de entrada
   shared/database/     Conexión con Drizzle y pg
   shared/events/       Bus de eventos interno con outbox (ADR-015)
+  modules/catalog/     Productos, presentaciones y categorías
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
 
-Los módulos de negocio (`src/modules/`) se crean cuando un paso los necesita. Los módulos no deben convertirse en microservicios: el estilo aprobado es un monolito modular.
+Los demás módulos de negocio (`src/modules/`) se crean cuando un paso los necesita. Los módulos no deben convertirse en microservicios: el estilo aprobado es un monolito modular.
 
 ## Repositorios
 
