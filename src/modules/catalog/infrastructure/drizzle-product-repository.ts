@@ -55,6 +55,8 @@ export class DrizzleProductRepository implements ProductRepository {
     const conditions: SQL[] = query.text
       .split(/\s+/)
       .filter((word) => word.length > 0)
+      // Los comodines de LIKE que escribe el usuario se buscan como texto («100%» no coincide con todo).
+      .map((word) => word.replace(/[\\%_]/g, (wildcard) => `\\${wildcard}`))
       .map(
         (word) => sql`${searchText} like '%' || trim(catalog.search_text(${word}, null)) || '%'`,
       );
