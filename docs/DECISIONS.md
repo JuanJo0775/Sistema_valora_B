@@ -77,8 +77,22 @@ Aplicación de ADR-003 y ADR-021. El detalle está en `docs/decisiones/issue-42-
   - Nunca al arrancar la API.
 - **Protección de las pruebas:** con `NODE_ENV=test` se usa `DATABASE_URL_TEST`, y solo si el nombre de la base termina en `_test`.
 - **Sin base no hay API:** si la base no responde al arrancar, la API no inicia. El mensaje muestra host, puerto y base, nunca la contraseña.
-- **Límites:** solo `src/shared/database/` y `src/modules/*/infrastructure/` importan `drizzle-orm` o `pg`; `pnpm depcheck` lo verifica.
+- **Límites:** solo `src/shared/database/` y las carpetas `infrastructure/` (de `shared` y de cada módulo) importan `drizzle-orm` o `pg`; `pnpm depcheck` lo verifica.
 - **`db:seed`:** llega con la issue #13 (paso 4), cuando haya datos que sembrar.
+
+## Bus de eventos con outbox (issue #43, decidido el 11 de noviembre de 2026)
+
+Aplicación de ADR-015. El detalle está en `docs/decisiones/issue-43-outbox/`.
+
+- **Bus propio y mínimo** en `src/shared/events/`, en lugar de `@nestjs/event-emitter` (que ADR-018 mencionaba como posibilidad). El outbox necesita saber si cada entrega funcionó, y esa librería no lo informa por defecto.
+- **Repartidor:**
+  - Revisa la bandeja cada `OUTBOX_POLL_INTERVAL_MS` (valor inicial **5000**, calibrable; EC-02 exige menos de 5 minutos).
+  - Reintenta hasta `OUTBOX_MAX_ATTEMPTS` (valor inicial **5**, calibrable). Después, el evento queda **fallido** con su error, se registra en el log y no bloquea a los demás.
+- **Repetidos:** la tabla común `shared.processed_events` (receptor, evento) se escribe en la misma transacción que el trabajo del suscriptor.
+- **Pendientes:**
+  - Definir la retención de `shared.outbox` y `shared.processed_events` cuando haya datos de volumen (ADR-003).
+  - Construir la entrega síncrona de `PrecioOficialPublicado` (EC-02) con el módulo `commerce` (corte 3).
+  - Bloquear filas (`FOR UPDATE SKIP LOCKED`) si algún día corre más de una copia de la API.
 
 ## Regla de cambio
 
