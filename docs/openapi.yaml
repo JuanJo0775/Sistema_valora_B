@@ -194,8 +194,10 @@ paths:
       operationId: createReport
       summary: Registrar el precio observado en un establecimiento (RF-006, RF-007)
       description: |
-        Idempotente por la cabecera Idempotency-Key: un reintento con la misma clave devuelve
-        la misma respuesta y no crea duplicados (EC-01, EC-07). La confianza se calcula después (ADR-004).
+        Idempotente por la cabecera Idempotency-Key: un reintento con la misma clave y el mismo cuerpo
+        devuelve la respuesta original y no crea duplicados (EC-01, EC-07). El precio vigente se
+        actualiza segundos después con el evento PriceReported; la confianza se calcula después (ADR-004).
+        Hasta la issue #16 la ruta no exige sesión (grill de la #14, pregunta 2).
       security:
         - sessionCookie: []
           csrfToken: []
@@ -213,23 +215,37 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReportReceipt' }
         '200':
-          description: Reintento con la misma clave; se devuelve el resultado original
+          description: Reintento con la misma clave y el mismo cuerpo; se devuelve el id, el estado y la hora de llegada originales
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReportReceipt' }
         '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        '401':
+          description: Se requiere sesión (desde la issue #16)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '409':
-          description: Ya existe un reporte de esta cuenta para el mismo producto y establecimiento en la última hora
+          description: >-
+            Conflicto. code IDEMPOTENCY_KEY_REUSED: la misma Idempotency-Key ya se usó con otro cuerpo.
+            code DUPLICATE_REPORT (desde la issue #29): ya existe un reporte de esta cuenta para el mismo
+            producto y establecimiento en la última hora.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '422':
-          description: Antigüedad mayor a 24 horas o precio fuera de rango
+          description: >-
+            Regla de negocio incumplida. code INVALID_OBSERVATION_DATE: observedAt está más de 5 minutos
+            en el futuro (la antigüedad mayor a 24 horas se valida desde la issue #29). code
+            UNKNOWN_PRESENTATION o UNKNOWN_ESTABLISHMENT: la presentación o el establecimiento no existen.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '429':
+          description: Límite de frecuencia superado (desde la issue #29)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /reports/{reportId}/flag:
     post:
       tags: [Reportes]
@@ -700,11 +716,17 @@ components:
         presentationId: { type: string, format: uuid }
         establishmentId: { type: string, format: uuid }
         priceCop: { type: integer, minimum: 1, maximum: 10000000 }
-        priceType: { type: string, enum: [normal, oferta, combo], default: normal }
+        priceType:
+          type: string
+          enum: [normal, oferta]
+          default: normal
+          description: combo queda fuera hasta definir qué significa (grill de la #14, pregunta 8).
         observedAt:
           type: string
           format: date-time
-          description: Hora real de observación en la tienda; puede ser anterior si estuvo en la cola sin conexión (máximo 24 h).
+          description: >-
+            Hora real de observación en la tienda; puede ser anterior si estuvo en la cola sin conexión.
+            No puede estar más de 5 minutos en el futuro; el máximo de 24 h de antigüedad llega con la issue #29.
     ReportReceipt:
       type: object
       required: [id, status, receivedAt]
