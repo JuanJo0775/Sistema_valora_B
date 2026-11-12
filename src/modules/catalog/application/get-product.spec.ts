@@ -1,4 +1,4 @@
-import { GetProduct } from './get-product';
+import { GetProduct, ProductNotFoundError } from './get-product';
 import type { ProductRepository, ProductView } from './product-repository';
 
 const rice: ProductView = {
@@ -31,5 +31,12 @@ describe('consultar un producto del catálogo', () => {
     const getProduct = new GetProduct(new InMemoryProductRepository([rice]));
 
     await expect(getProduct.execute(rice.id)).resolves.toEqual(rice);
+  });
+
+  it('un producto que no existe en el catálogo lanza ProductNotFoundError', async () => {
+    const getProduct = new GetProduct(new InMemoryProductRepository([rice]));
+    const missingId = '00000000-0000-4000-8000-000000000000';
+
+    await expect(getProduct.execute(missingId)).rejects.toThrow(ProductNotFoundError);
   });
 });
