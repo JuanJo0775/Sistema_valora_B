@@ -22,6 +22,15 @@ export class Env {
 
   @IsIn(['development', 'test', 'production'])
   NODE_ENV!: string;
+
+  // Repartidor de eventos (ADR-015, grill de la #43): valores iniciales calibrables, no umbrales aprobados.
+  @IsInt()
+  @Min(1)
+  OUTBOX_POLL_INTERVAL_MS!: number;
+
+  @IsInt()
+  @Min(1)
+  OUTBOX_MAX_ATTEMPTS!: number;
 }
 
 export function validateEnv(raw: Record<string, unknown>): Env {
