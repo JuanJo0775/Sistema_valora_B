@@ -138,5 +138,21 @@ describe('GET /v1/products/{productId}', () => {
 
       expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
     });
+
+    it('con barcode responde el producto de esa presentación, o la lista vacía si nadie la tiene', async () => {
+      const found = await request(server)
+        .get('/v1/products')
+        .query({ barcode: '7702511000014' })
+        .expect(200);
+      const missing = await request(server)
+        .get('/v1/products')
+        .query({ barcode: '7700000000000' })
+        .expect(200);
+
+      expect((found.body as { items: { id: string }[] }).items.map((item) => item.id)).toEqual([
+        riceId,
+      ]);
+      expect(missing.body).toEqual({ items: [] });
+    });
   });
 });
