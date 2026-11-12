@@ -1,9 +1,15 @@
 import { Module } from '@nestjs/common';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { GetProduct } from './application/get-product';
+import {
+  ImportCatalog,
+  PRODUCT_IMPORT_REPOSITORY,
+  type ProductImportRepository,
+} from './application/import-catalog';
 import { PRODUCT_REPOSITORY, type ProductRepository } from './application/product-repository';
 import { SearchProducts } from './application/search-products';
 import { ProductsController } from './http/products.controller';
+import { DrizzleProductImportRepository } from './infrastructure/drizzle-product-import-repository';
 import { DrizzleProductRepository } from './infrastructure/drizzle-product-repository';
 
 @Module({
@@ -24,6 +30,18 @@ import { DrizzleProductRepository } from './infrastructure/drizzle-product-repos
       inject: [PRODUCT_REPOSITORY],
       useFactory: (products: ProductRepository): SearchProducts => new SearchProducts(products),
     },
+    {
+      provide: PRODUCT_IMPORT_REPOSITORY,
+      inject: [DATABASE],
+      useFactory: (db: Database): ProductImportRepository => new DrizzleProductImportRepository(db),
+    },
+    {
+      provide: ImportCatalog,
+      inject: [PRODUCT_IMPORT_REPOSITORY],
+      useFactory: (repository: ProductImportRepository): ImportCatalog =>
+        new ImportCatalog(repository),
+    },
   ],
+  exports: [ImportCatalog],
 })
 export class CatalogModule {}
