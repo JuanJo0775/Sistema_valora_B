@@ -32,6 +32,10 @@ class InMemoryProductRepository implements ProductRepository {
   findByBarcode(): Promise<ProductView[]> {
     return Promise.reject(new Error('GetProduct no busca por código de barras'));
   }
+
+  presentationExists(): Promise<boolean> {
+    return Promise.reject(new Error('GetProduct no comprueba presentaciones'));
+  }
 }
 
 describe('consultar un producto del catálogo', () => {
