@@ -6,6 +6,8 @@ const validEnv = {
   DATABASE_URL_TEST: 'postgresql://valora:valora@localhost:5432/valora_test',
   SESSION_SECRET: 'secreto-de-ejemplo',
   NODE_ENV: 'development',
+  OUTBOX_POLL_INTERVAL_MS: '5000',
+  OUTBOX_MAX_ATTEMPTS: '5',
 };
 
 describe('validateEnv', () => {
@@ -29,6 +31,23 @@ describe('validateEnv con PORT fuera de rango', () => {
   it.each(['', '0', '65536'])('rechaza PORT=%p porque no es un puerto entre 1 y 65535', (port) => {
     expect(() => validateEnv({ ...validEnv, PORT: port })).toThrow(/PORT/);
   });
+});
+
+describe('validateEnv con las variables del repartidor de eventos', () => {
+  it('convierte el intervalo y los intentos a números', () => {
+    const env = validateEnv(validEnv);
+
+    expect(env.OUTBOX_POLL_INTERVAL_MS).toBe(5000);
+    expect(env.OUTBOX_MAX_ATTEMPTS).toBe(5);
+  });
+
+  it.each(['OUTBOX_POLL_INTERVAL_MS', 'OUTBOX_MAX_ATTEMPTS'])(
+    'falla si %s falta o no es un entero mayor que cero',
+    (variable) => {
+      expect(() => validateEnv({ ...validEnv, [variable]: undefined })).toThrow(variable);
+      expect(() => validateEnv({ ...validEnv, [variable]: '0' })).toThrow(variable);
+    },
+  );
 });
 
 describe('validateEnv con NODE_ENV inválido', () => {
