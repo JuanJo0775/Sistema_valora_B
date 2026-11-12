@@ -55,14 +55,24 @@ paths:
       tags: [Catálogo]
       operationId: getProduct
       summary: Consultar un producto y sus presentaciones (RF-003, RF-004)
+      description: >-
+        Lectura pública con caché de 5 minutos (valor inicial calibrable, EC-04) y ETag: una petición con
+        If-None-Match igual al ETag responde 304 si el producto no cambió.
       parameters:
         - $ref: '#/components/parameters/ProductId'
       responses:
         '200':
-          description: Producto con presentaciones
+          description: Producto con su categoría y sus presentaciones
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=300' }
+            ETag:
+              schema: { type: string }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Product' }
+        '304': { description: El producto no cambió desde el ETag enviado }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
   /products/{productId}/comparison:
     get:
@@ -266,7 +276,7 @@ paths:
                 name: { type: string, maxLength: 120 }
                 barcode: { type: string }
                 quantity: { type: number, exclusiveMinimum: 0 }
-                unit: { $ref: '#/components/schemas/BaseUnit' }
+                unit: { $ref: '#/components/schemas/Unit' }
       responses:
         '202': { description: Solicitud registrada para revisión }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -553,24 +563,36 @@ components:
       properties:
         code: { type: string, example: INVALID_QUANTITY }
         message: { type: string, example: La cantidad de la presentación debe ser mayor que cero. }
-    BaseUnit:
+    Unit:
       type: string
-      enum: [g, ml, und]
+      description: Unidad tal como se escribe en el empaque; la unidad base (g, ml, und) la calcula el dominio (RF-004).
+      enum: [g, kg, ml, l, und]
     Presentation:
       type: object
-      required: [id, quantity, unit]
+      required: [id, quantity, unit, packCount]
       properties:
         id: { type: string, format: uuid }
-        barcode: { type: string }
+        barcode: { type: string, description: Único en el catálogo (RF-003 RN2). }
         quantity: { type: number, exclusiveMinimum: 0 }
-        unit: { $ref: '#/components/schemas/BaseUnit' }
+        unit: { $ref: '#/components/schemas/Unit' }
+        packCount:
+          type: integer
+          minimum: 1
+          description: Unidades del empaque (6 en «6 × 330 ml»); 1 si no es un empaque.
+    Category:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, example: dairy-eggs, description: Código fijo de la lista cerrada de categorías. }
+        name: { type: string, example: Lácteos y huevos }
     Product:
       type: object
-      required: [id, name]
+      required: [id, name, category, presentations]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        category: { type: string }
+        brand: { type: string, description: Opcional; los productos a granel o frescos pueden no tener marca. }
+        category: { $ref: '#/components/schemas/Category' }
         presentations:
           type: array
           items: { $ref: '#/components/schemas/Presentation' }
