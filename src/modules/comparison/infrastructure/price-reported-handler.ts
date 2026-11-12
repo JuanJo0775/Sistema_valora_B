@@ -1,3 +1,5 @@
+import { and, eq } from 'drizzle-orm';
+import { replacesCurrentPrice } from '../../../domain/current-price';
 import type { Transaction } from '../../../shared/database/database.module';
 import type { DomainEvent } from '../../../shared/events';
 import { priceCurrent } from './schema';
@@ -13,10 +15,11 @@ interface PriceReportedV1 {
   receivedAt: string;
 }
 
-// Suscriptor de PriceReported: deja el reporte en price_current (ADR-004).
+// Suscriptor de PriceReported: deja en price_current el reporte observado más recientemente
+// (ADR-004; grill de la #14, pregunta 7).
 export async function onPriceReported(event: DomainEvent, tx: Transaction): Promise<void> {
   const payload = event.payload as unknown as PriceReportedV1;
-  await tx.insert(priceCurrent).values({
+  const candidate = {
     presentationId: payload.presentationId,
     establishmentId: payload.establishmentId,
     reportId: payload.reportId,
@@ -24,5 +27,22 @@ export async function onPriceReported(event: DomainEvent, tx: Transaction): Prom
     priceType: payload.priceType,
     observedAt: new Date(payload.observedAt),
     receivedAt: new Date(payload.receivedAt),
-  });
+  };
+
+  const inserted = await tx
+    .insert(priceCurrent)
+    .values(candidate)
+    .onConflictDoNothing()
+    .returning({ reportId: priceCurrent.reportId });
+  if (inserted.length > 0) return;
+
+  // Ya hay un precio vigente: se bloquea la fila para que dos eventos simultáneos no se pisen.
+  const samePlace = and(
+    eq(priceCurrent.presentationId, candidate.presentationId),
+    eq(priceCurrent.establishmentId, candidate.establishmentId),
+  );
+  const [current] = await tx.select().from(priceCurrent).where(samePlace).for('update');
+  if (current && replacesCurrentPrice(candidate, current)) {
+    await tx.update(priceCurrent).set(candidate).where(samePlace);
+  }
 }
