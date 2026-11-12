@@ -24,6 +24,8 @@ export interface SeedSummary {
   ok: true;
   stores: { saved: number; skipped: number };
   products: { saved: number; presentations: number; skipped: number };
+  // Grill de la #51, pregunta 4: se informan, nunca se borran.
+  notInFiles: { stores: number; products: number };
 }
 
 export class RunSeed {
@@ -52,6 +54,11 @@ export class RunSeed {
     for (const store of stores) await this.stores.save(store);
     for (const product of products) await this.catalog.save(product);
 
+    const storeIdsInFile = new Set(storeRows.map(storeId));
+    const productIdsInFile = new Set(productRows.map(productId));
+    const missing = (ids: string[], inFile: Set<string>): number =>
+      ids.filter((id) => !inFile.has(id)).length;
+
     return {
       ok: true,
       stores: { saved: stores.length, skipped: storeRows.length - stores.length },
@@ -60,14 +67,23 @@ export class RunSeed {
         presentations: verifiedProducts.length,
         skipped: productRows.length - verifiedProducts.length,
       },
+      notInFiles: {
+        stores: missing(await this.stores.listIds(), storeIdsInFile),
+        products: missing(await this.catalog.listProductIds(), productIdsInFile),
+      },
     };
   }
 }
 
+// Ids fijos (grill de la #51, pregunta 2): tienda por osm_id; producto por nombre y marca.
+const storeId = (row: SeedRow): string => stableId('establishment', text(row, 'osm_id'));
+const productId = (row: SeedRow): string =>
+  stableId('product', text(row, 'producto').toLowerCase(), text(row, 'marca').toLowerCase());
+
 function toStore(row: SeedRow): EstablishmentImport {
   const address = text(row, 'direccion');
   return {
-    id: stableId('establishment', text(row, 'osm_id')),
+    id: storeId(row),
     name: text(row, 'nombre'),
     type: text(row, 'tipo') as EstablishmentType,
     ...(address === '' ? {} : { address }),
@@ -82,7 +98,7 @@ function groupProducts(rows: SeedRow[]): ProductImport[] {
   for (const row of rows) {
     const name = text(row, 'producto');
     const brand = text(row, 'marca');
-    const id = stableId('product', name.toLowerCase(), brand.toLowerCase());
+    const id = productId(row);
     const product = byId.get(id) ?? {
       id,
       name,
