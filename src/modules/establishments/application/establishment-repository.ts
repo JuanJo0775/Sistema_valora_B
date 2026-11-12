@@ -22,6 +22,7 @@ export interface NearbyQuery {
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.
 export interface EstablishmentRepository {
   findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]>;
+  exists(establishmentId: string): Promise<boolean>;
 }
 
 export const ESTABLISHMENT_REPOSITORY = Symbol('ESTABLISHMENT_REPOSITORY');

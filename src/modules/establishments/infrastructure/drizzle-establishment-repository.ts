@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
   EstablishmentRepository,
@@ -10,6 +10,14 @@ import { establishments } from './schema';
 
 export class DrizzleEstablishmentRepository implements EstablishmentRepository {
   constructor(private readonly db: NodePgDatabase) {}
+
+  async exists(establishmentId: string): Promise<boolean> {
+    const [found] = await this.db
+      .select({ id: establishments.id })
+      .from(establishments)
+      .where(eq(establishments.id, establishmentId));
+    return found !== undefined;
+  }
 
   // La ubicación del usuario solo viaja como parámetro de esta consulta: no se guarda (RF-005 RN5).
   async findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]> {
