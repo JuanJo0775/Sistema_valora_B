@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  type BeforeApplicationShutdown,
+  Inject,
+  Injectable,
+  Logger,
+  type OnApplicationBootstrap,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { Env } from '../../config/env.validation';
@@ -10,9 +16,12 @@ type OutboxRow = typeof outbox.$inferSelect;
 
 // Repartidor: entrega los eventos pendientes de la bandeja de salida (ADR-015).
 @Injectable()
-export class OutboxRelay {
+export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShutdown {
   private readonly logger = new Logger(OutboxRelay.name);
   private readonly maxAttempts: number;
+  private readonly pollIntervalMs: number;
+  private timer: NodeJS.Timeout | undefined;
+  private running: Promise<void> | undefined;
 
   constructor(
     @Inject(DATABASE) private readonly db: Database,
@@ -20,6 +29,27 @@ export class OutboxRelay {
     config: ConfigService<Env, true>,
   ) {
     this.maxAttempts = config.get('OUTBOX_MAX_ATTEMPTS', { infer: true });
+    this.pollIntervalMs = config.get('OUTBOX_POLL_INTERVAL_MS', { infer: true });
+  }
+
+  // Grill de la #43, pregunta 2: revisa la bandeja cada OUTBOX_POLL_INTERVAL_MS, sin solapar revisiones.
+  onApplicationBootstrap(): void {
+    this.timer = setInterval(() => {
+      if (this.running) return;
+      this.running = this.runOnce()
+        .catch((error: unknown) => {
+          this.logger.error(error instanceof Error ? error.stack : String(error));
+        })
+        .finally(() => {
+          this.running = undefined;
+        });
+    }, this.pollIntervalMs);
+  }
+
+  // Se detiene antes de que se cierre la conexión a la base.
+  async beforeApplicationShutdown(): Promise<void> {
+    clearInterval(this.timer);
+    await this.running;
   }
 
   async runOnce(): Promise<void> {
