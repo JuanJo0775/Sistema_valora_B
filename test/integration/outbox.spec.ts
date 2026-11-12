@@ -144,6 +144,36 @@ describe('bus de eventos con outbox', () => {
     expect(afterRetry.delivered).toBe(true);
   });
 
+  it('al quinto fallo el evento queda fallido, no se reintenta y los demás se siguen entregando', async () => {
+    let failingCalls = 0;
+    bus.subscribe('receptor-que-siempre-falla', 'PrecioDePruebaFallido', () => {
+      failingCalls += 1;
+      return Promise.reject(new Error('error permanente'));
+    });
+    const delivered: string[] = [];
+    bus.subscribe('receptor-sano', 'PrecioDePruebaSano', (event) => {
+      delivered.push(event.id);
+      return Promise.resolve();
+    });
+    const failing = events.createEvent('PrecioDePruebaFallido', 1, {});
+    const healthy = events.createEvent('PrecioDePruebaSano', 1, {});
+    await db.transaction(async (tx) => {
+      await publisher.publish(tx, failing);
+      await publisher.publish(tx, healthy);
+    });
+
+    for (let review = 0; review < 7; review += 1) await relay.runOnce();
+
+    expect(failingCalls).toBe(5); // OUTBOX_MAX_ATTEMPTS=5 en las pruebas
+    expect(await outboxRow(failing.id)).toEqual({
+      attempts: 5,
+      last_error: 'error permanente',
+      delivered: false,
+      failed: true,
+    });
+    expect(delivered).toEqual([healthy.id]);
+  });
+
   async function outboxRow(id: string): Promise<OutboxRow> {
     const result = await db.execute<OutboxRow>(
       sql`select attempts, last_error, delivered_at is not null as delivered, failed_at is not null as failed
