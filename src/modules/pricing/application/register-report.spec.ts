@@ -2,6 +2,7 @@ import { InvalidObservationDateError } from '../../../domain/freshness';
 import type { DomainEvent } from '../../../shared/events';
 import type { NewReport, ReportRepository, SavedReport } from './report-repository';
 import {
+  IdempotencyKeyReusedError,
   RegisterReport,
   UnknownEstablishmentError,
   UnknownPresentationError,
@@ -103,5 +104,17 @@ describe('registrar un reporte de precio', () => {
     expect(retry).toEqual({ receipt: first.receipt, created: false });
     expect(reports.reports).toHaveLength(1);
     expect(reports.events).toHaveLength(1);
+  });
+
+  it('la misma clave con otro reporte se rechaza como clave reutilizada', async () => {
+    const { reports, registerReport } = setup();
+    const idempotencyKey = '88888888-8888-4888-8888-888888888888';
+
+    await registerReport.execute({ idempotencyKey, report });
+
+    await expect(
+      registerReport.execute({ idempotencyKey, report: { ...report, priceCop: 5000 } }),
+    ).rejects.toThrow(IdempotencyKeyReusedError);
+    expect(reports.reports).toHaveLength(1);
   });
 });
