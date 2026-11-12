@@ -6,44 +6,32 @@ API y lógica de negocio de **Valora**, plataforma colaborativa para comparar pr
 
 ## Estado
 
-<badge>Configuración inicial (H2-01, paso 1)</badge>
+Hito **H2-01** (esqueleto del núcleo), paso 4 en curso.
 
-- Lenguaje aprobado: TypeScript.
-- Estilo aprobado: monolito modular.
-- API aprobada: REST sobre HTTPS, JSON y contrato OpenAPI 3.x bajo `/v1`.
-- Decisiones aceptadas: sesiones administradas por servidor, PWA con registro offline-first y carga inicial manual con SIPSA solo como referencia comparable.
-- Framework: NestJS sobre Express (ADR-018, aceptado).
-- Persistencia: PostgreSQL + PostGIS (ADR-003, aceptado).
-- Acceso a datos: Drizzle ORM con migraciones SQL (ADR-021, aceptado). Eventos internos con outbox (ADR-015, aceptado).
-- Pendiente: precio vigente precalculado (ADR-004) y mecanismo de despliegue reproducible (ADR-012).
-- Docker no forma parte del MVP ni del desarrollo local; solo la CI usa contenedores de servicio de PostgreSQL + PostGIS para las pruebas.
+| Listo en `dev`                   | Qué hay                                                                                                         |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Configuración y calidad (#10)    | NestJS, TypeScript estricto, ESLint, Prettier, Jest, reglas de dependencia y CI                                 |
+| Reglas del dominio (#11, #18)    | Precio por unidad base (RF-004) y vigencia por TTL (RF-010)                                                     |
+| Infraestructura compartida (#12) | Formato de error `{ code, message }`, PostgreSQL + PostGIS con Drizzle y migraciones, bus de eventos con outbox |
+| Catálogo (#49)                   | Módulo `catalog` con categorías y `GET /v1/products/{productId}`                                                |
 
-El proyecto tiene la configuración base y una sola ruta, `GET /v1/health`. No hay todavía módulos de negocio, persistencia ni despliegue.
+Siguiente: establecimientos (#50), semilla (#51) y búsqueda de productos (#52). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
-## Responsabilidades
+## Primeros pasos (desde cero)
 
-- Identidad, autenticación, sesiones y autorización RBAC.
-- Catálogo de productos y presentaciones.
-- Directorio y geolocalización de establecimientos.
-- Registro e historial de reportes de precios.
-- Reglas de confiabilidad, detección de anomalías y moderación.
-- Consulta y comparación de precios.
-- Carga semilla manual y referencias SIPSA.
-- Módulo comercial del Corte 3, según el alcance aprobado.
+Sigue los pasos en orden. Al final, `pnpm test` debe pasar completo y `GET /v1/health` debe responder.
 
-## Requisitos
+### 1. Instala las herramientas
 
-| Herramienta | Versión                                         | Dónde conseguirla                                                                                              |
-| ----------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Git         | cualquiera reciente                             | <https://git-scm.com/downloads>                                                                                |
-| Node.js     | 22 LTS (ver `.nvmrc`)                           | <https://nodejs.org/en/download> (elige la versión 22 LTS)                                                     |
-| pnpm        | 10.18.3 (fijada en `packageManager`)            | Viene con Node a través de `corepack`; no se instala aparte                                                    |
-| PostgreSQL  | 17 (ver `docs/DECISIONS.md`, versiones fijadas) | <https://www.postgresql.org/download/>                                                                         |
-| PostGIS     | la que corresponda a PostgreSQL 17              | En Windows: al terminar el instalador de PostgreSQL se abre **Stack Builder** → _Spatial Extensions_ → PostGIS |
+| Herramienta | Versión                              | Dónde conseguirla                                                                          |
+| ----------- | ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| Git         | cualquiera reciente                  | <https://git-scm.com/downloads>                                                            |
+| Node.js     | 22 LTS (ver `.nvmrc`)                | <https://nodejs.org/en/download>                                                           |
+| pnpm        | 10.18.3 (fijada en `packageManager`) | Viene con Node por `corepack`; **no** la instales aparte                                   |
+| PostgreSQL  | 17                                   | <https://www.postgresql.org/download/>                                                     |
+| PostGIS     | 3.x para PostgreSQL 17               | Stack Builder → _Spatial Extensions_, o el instalador directo (ver «Problemas frecuentes») |
 
-PostgreSQL y PostGIS todavía no se usan: llegan con el paso 3 del H2-01 (Drizzle). Se pueden instalar desde ya.
-
-Comprueba las versiones:
+Comprueba:
 
 ```bash
 git --version
@@ -51,9 +39,11 @@ node -v          # debe empezar por v22
 corepack --version
 ```
 
-## Instalación
+Deja al menos **5 GB libres** en el disco: la instalación, las pruebas y las migraciones fallan con `ENOSPC` si el disco se llena.
 
-Clona el repositorio y trabaja siempre desde la rama `dev`:
+### 2. Clona el repositorio
+
+Se trabaja siempre a partir de la rama `dev`:
 
 ```bash
 git clone https://github.com/JuanJo0775/Sistema_valora_B.git
@@ -61,28 +51,33 @@ cd Sistema_valora_B
 git switch dev
 ```
 
-El proyecto fija la versión de pnpm en `packageManager` (pnpm 10.18.3) y se usa a través de corepack, que viene con Node 22. No instales otra versión de pnpm de forma global.
+### 3. Instala las dependencias
 
 ```bash
 corepack enable
 pnpm install
-cp .env.example .env
 ```
 
-**Nota para Windows:** `corepack enable` crea accesos directos dentro de la carpeta de instalación de Node (en `Program Files`) y falla con `EPERM` si la terminal no es de administrador. Alternativa sin permisos de administrador:
+En Windows, si `corepack enable` falla con `EPERM`, usa esto (no necesita administrador) y antepón `corepack` a cada comando de esta guía (`corepack pnpm test`, `corepack pnpm dev`…):
 
 ```bash
 corepack prepare pnpm@10.18.3 --activate
-corepack pnpm install     # anteponer "corepack" a cada comando: corepack pnpm test, corepack pnpm lint, etc.
+corepack pnpm install
 ```
 
-En esta guía `pnpm <comando>` equivale a `corepack pnpm <comando>` si no pudiste ejecutar `corepack enable`.
+### 4. Crea tu archivo `.env`
 
-## Crear las bases de datos
+```bash
+cp .env.example .env
+```
 
-Con PostgreSQL en marcha, desde `psql` con un usuario con permisos de creación (por ejemplo `postgres`):
+En PowerShell: `Copy-Item .env.example .env`. Luego, en `.env`, cambia `SESSION_SECRET` por un texto largo y aleatorio. Los demás valores ya sirven si creas la base como en el paso 5. `.env` **nunca** se sube al repositorio.
 
-**Nota para Windows:** el instalador no agrega `psql` al PATH. Abre **SQL Shell (psql)** desde el menú de inicio, o agrega `C:\Program Files\PostgreSQL\17\bin` a la variable de entorno `Path` y abre una terminal nueva. Si el servicio está detenido, inícialo en **Servicios** (`postgresql-x64-17`).
+### 5. Crea el usuario y las bases de datos
+
+1. Enciende PostgreSQL. En Windows: **Servicios** → `postgresql-x64-17` → **Iniciar**, y ponlo en inicio **Automático**.
+2. Abre **SQL Shell (psql)** desde el menú de inicio (el instalador no agrega `psql` al PATH). Pulsa Enter en los cuatro primeros datos y escribe la contraseña del usuario `postgres`.
+3. Pega:
 
 ```sql
 CREATE ROLE valora LOGIN PASSWORD 'valora';
@@ -96,20 +91,72 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 SELECT postgis_full_version();
 ```
 
-- El usuario `valora` con contraseña `valora` es el de `.env.example` y es solo para el equipo local.
-- `CREATE EXTENSION` lo ejecuta `postgres`, porque `valora` no es superusuario.
-- La última consulta debe mostrar `POSTGIS="3.x…"`.
-- `\pset pager off` evita el error «"more" no se reconoce como un comando» de la consola de Windows.
+La última línea debe mostrar `POSTGIS="3.x…"`. Sal con `\q`.
 
-**Si Stack Builder se cuelga al descargar PostGIS,** usa el instalador directo de <https://download.osgeo.org/postgis/windows/pg17/> (`postgis-bundle-pg17x64-setup-3.x.x-1.exe`). Al instalar, desmarca «Create spatial database».
+- El usuario `valora` con contraseña `valora` es el de `.env.example` y es **solo para tu equipo local**.
+- `CREATE EXTENSION` se ejecuta como `postgres`, porque `valora` no es superusuario.
 
-Después aplica las migraciones en la base de desarrollo:
+### 6. Aplica las migraciones
 
 ```bash
 pnpm db:migrate
 ```
 
-Las pruebas aplican solas las migraciones en `valora_test` antes de correr, y se niegan a usar una base cuyo nombre no termine en `_test`. Por eso **PostgreSQL debe estar encendido para correr `pnpm test`**. La API tampoco arranca si la base no responde.
+Crea en `valora_dev` los esquemas y tablas (`shared`, `catalog`…) y carga las categorías del catálogo. **No necesitas migrar `valora_test`:** las pruebas lo hacen solas.
+
+### 7. Comprueba que todo funciona
+
+```bash
+pnpm test        # todas las pruebas deben pasar (PostgreSQL debe estar encendido)
+pnpm dev         # arranca la API en http://localhost:3000
+```
+
+Con la API en marcha:
+
+- <http://localhost:3000/v1/health> debe responder `{"status":"ok"}`.
+- `GET /v1/products/{productId}` ya existe, pero responde 404 hasta que se cargue la semilla de productos (#51).
+
+Si la API no arranca, el mensaje dice qué falta: una variable de entorno o la conexión a la base (base, host y puerto).
+
+## Día a día
+
+### Al empezar una tarea
+
+```bash
+git switch dev
+git pull
+pnpm install       # por si alguien agregó dependencias
+pnpm db:migrate    # por si alguien agregó migraciones
+git switch -c feat/<tema>
+```
+
+El flujo completo (ramas, commits, TDD, pull requests y cómo mezclar) está en [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Migraciones (Drizzle)
+
+- Cada módulo define sus tablas en `src/modules/<módulo>/infrastructure/schema.ts`, dentro de su propio esquema de PostgreSQL.
+- Todas las migraciones viven en **una sola carpeta**, `drizzle/`, con una secuencia numerada para toda la base.
+
+Para cambiar la base:
+
+1. Edita el `schema.ts` del módulo.
+2. Genera la migración con un nombre que diga qué hace:
+
+   ```bash
+   pnpm db:generate --name <que-hace>
+   ```
+
+   Para datos de referencia o SQL propio (como las categorías), usa `pnpm exec drizzle-kit generate --custom --name <que-hace>` y escribe el SQL en el archivo vacío que crea.
+
+3. **Revisa el `.sql` generado** antes de hacer commit.
+4. Aplícala en tu base: `pnpm db:migrate`.
+5. Haz commit del `.sql` **y** de los archivos de `drizzle/meta/`.
+
+Reglas:
+
+- **Nunca edites una migración que ya está en `dev`.** Para corregir algo, crea una migración nueva.
+- La API **no** migra sola al arrancar: siempre es `pnpm db:migrate`.
+- Las pruebas migran `valora_test` antes de correr y se niegan a usar una base cuyo nombre no termine en `_test`.
 
 ## Variables de entorno
 
@@ -120,38 +167,43 @@ Se validan al arrancar: si falta alguna o es inválida, la aplicación no inicia
 | `PORT`                    | Puerto HTTP (entero).                                                                 |
 | `NODE_ENV`                | `development`, `test` o `production`.                                                 |
 | `DATABASE_URL`            | Conexión a la base de desarrollo.                                                     |
-| `DATABASE_URL_TEST`       | Conexión a la base de pruebas.                                                        |
+| `DATABASE_URL_TEST`       | Conexión a la base de pruebas; su nombre debe terminar en `_test`.                    |
 | `SESSION_SECRET`          | Secreto de la sesión; usa un valor propio y aleatorio.                                |
 | `OUTBOX_POLL_INTERVAL_MS` | Cada cuántos milisegundos el repartidor revisa la bandeja de eventos (inicial: 5000). |
 | `OUTBOX_MAX_ATTEMPTS`     | Intentos de entrega antes de marcar un evento como fallido (inicial: 5).              |
 
-`.env` no se sube al repositorio; el ejemplo está en `.env.example`.
-
-## Comprobar que todo quedó bien
-
-```bash
-pnpm test        # todas las pruebas deben pasar
-pnpm dev         # arranca la API en http://localhost:3000
-```
-
-Con la API en marcha, abre <http://localhost:3000/v1/health> en el navegador. Debe responder `{"status":"ok"}`. Si la API no arranca, el mensaje de error nombra la variable de entorno que falta o es inválida.
+Si alguien agrega una variable, aparece en `.env.example`: cópiala a tu `.env`.
 
 ## Comandos
 
-| Comando                             | Qué hace                                                                       |
-| ----------------------------------- | ------------------------------------------------------------------------------ |
-| `pnpm dev`                          | Arranca la API en modo observación.                                            |
-| `pnpm build` / `pnpm start`         | Compila a `dist/` y arranca la versión compilada.                              |
-| `pnpm test` / `pnpm test:watch`     | Corre las pruebas (Jest).                                                      |
-| `pnpm test:cov`                     | Pruebas con cobertura en `coverage/`.                                          |
-| `pnpm typecheck`                    | Verifica tipos con TypeScript estricto.                                        |
-| `pnpm lint`                         | ESLint con reglas estrictas de TypeScript.                                     |
-| `pnpm format` / `pnpm format:check` | Prettier.                                                                      |
-| `pnpm depcheck`                     | Reglas de dependencia del monolito modular (dependency-cruiser).               |
-| `pnpm db:generate`                  | Genera una migración en `drizzle/` a partir de los `schema.ts` de los módulos. |
-| `pnpm db:migrate`                   | Aplica las migraciones pendientes en la base de `DATABASE_URL` (lee `.env`).   |
+| Comando                             | Qué hace                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| `pnpm dev`                          | Arranca la API en modo observación.                                          |
+| `pnpm build` / `pnpm start`         | Compila a `dist/` y arranca la versión compilada.                            |
+| `pnpm test` / `pnpm test:watch`     | Corre las pruebas (Jest). Necesita PostgreSQL encendido.                     |
+| `pnpm test:cov`                     | Pruebas con cobertura en `coverage/`.                                        |
+| `pnpm typecheck`                    | Verifica tipos con TypeScript estricto.                                      |
+| `pnpm lint`                         | ESLint con reglas estrictas de TypeScript.                                   |
+| `pnpm format` / `pnpm format:check` | Prettier.                                                                    |
+| `pnpm depcheck`                     | Reglas de dependencia del monolito modular (dependency-cruiser).             |
+| `pnpm db:generate`                  | Genera una migración en `drizzle/` a partir de los `schema.ts`.              |
+| `pnpm db:migrate`                   | Aplica las migraciones pendientes en la base de `DATABASE_URL` (lee `.env`). |
 
-La CI corre en cada pull request hacia `dev` o `main`, con dos jobs: `Calidad` (`typecheck`, `lint`, `format:check`, `depcheck` y `build`) y `Pruebas` (`test:cov --ci`, con un contenedor de PostgreSQL + PostGIS). Si una sola verificación falla, no se mezcla.
+Antes de abrir un pull request, corre `pnpm typecheck`, `pnpm lint`, `pnpm test:cov` y `pnpm depcheck`. La CI corre en cada pull request hacia `dev` o `main`, con dos jobs obligatorios: `Calidad` (`typecheck`, `lint`, `format:check`, `depcheck` y `build`) y `Pruebas` (`test:cov --ci`). Si una sola verificación falla, no se mezcla.
+
+## Problemas frecuentes
+
+| Síntoma                                                                  | Causa y solución                                                                                                                                                                        |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm test` o `pnpm dev` dicen «No se pudo conectar a la base de datos…» | PostgreSQL está apagado. Inícialo en **Servicios** (`postgresql-x64-17`).                                                                                                               |
+| `CREATE EXTENSION postgis` dice que no existe                            | PostGIS no quedó instalado para PostgreSQL 17. Reinstálalo (fila siguiente).                                                                                                            |
+| Stack Builder se cuelga («no responde») al descargar PostGIS             | Ciérralo y usa el instalador directo: <https://download.osgeo.org/postgis/windows/pg17/> (`postgis-bundle-pg17x64-setup-3.x.x-1.exe`). Al instalar, desmarca «Create spatial database». |
+| En `psql` aparece «"more" no se reconoce como un comando»                | Ejecuta `\pset pager off` y repite la consulta.                                                                                                                                         |
+| `corepack enable` falla con `EPERM`                                      | Usa la alternativa del paso 3.                                                                                                                                                          |
+| Algo falla con `ENOSPC`, «out of memory» o «failed to cache»             | El disco o la memoria se llenaron. Libera espacio (y vacía la Papelera), cierra programas y reinicia. Si la RAM es poca, corre `pnpm test -- --runInBand`.                              |
+| Las pruebas fallan al migrar con «could not create unique index»         | Una prueba que falló dejó filas en `valora_test`. Vacía las tablas del módulo, por ejemplo `TRUNCATE catalog.presentations, catalog.products;` en `valora_test`, y repite.              |
+| La API no arranca y nombra una variable                                  | Falta en tu `.env`. Cópiala de `.env.example`.                                                                                                                                          |
+| Los checks de un pull request se quedan «en cola»                        | Cierra y reabre el pull request (ver [CONTRIBUTING.md](CONTRIBUTING.md)).                                                                                                               |
 
 ## Estructura
 
@@ -172,26 +224,32 @@ src/
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
 
-Los demás módulos de negocio (`src/modules/`) se crean cuando un paso los necesita. Los módulos no deben convertirse en microservicios: el estilo aprobado es un monolito modular.
+Cada módulo de `src/modules/` expone solo su `index.ts`. Los demás módulos se crean cuando un paso los necesita. El estilo aprobado es un monolito modular: los módulos no se convierten en microservicios.
+
+## Responsabilidades del backend
+
+- Identidad, autenticación, sesiones y autorización RBAC.
+- Catálogo de productos y presentaciones.
+- Directorio y geolocalización de establecimientos.
+- Registro e historial de reportes de precios.
+- Reglas de confiabilidad, detección de anomalías y moderación.
+- Consulta y comparación de precios.
+- Carga semilla manual y referencias SIPSA.
+- Módulo comercial del Corte 3, según el alcance aprobado.
+
+## Decisiones y alcance
+
+- [Decisiones vigentes](docs/DECISIONS.md) (incluye las versiones fijadas)
+- [Decisiones por issue](docs/decisiones/) (grill, contrato y plan de cada tarea)
+- [Arquitectura y límites de módulos](docs/ARCHITECTURE.md)
+- [Contrato de API (OpenAPI)](docs/openapi.yaml) y [guía del contrato](docs/API_CONTRACT.md)
+- [Diagramas](docs/diagramas/README.md)
+- [Épicas](docs/epics/README.md)
+- [Plantilla ADR](docs/adr/0000-template.md)
+
+**Fuera del MVP:** venta en línea, carrito, pagos, pedidos, domicilios, alertas de bajada de precio y extracción automatizada de catálogos de terceros. SIPSA no se presenta como precio minorista de tienda.
 
 ## Repositorios
 
 - Backend: [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B)
 - Frontend: [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F)
-
-## Trabajo
-
-Las épicas se registran como issues con prefijo `[EPIC]`. Cada PR debe enlazar la épica y los requisitos relacionados. Consultar [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Decisiones y alcance
-
-- [Decisiones vigentes](docs/DECISIONS.md)
-- [Arquitectura y límites de módulos](docs/ARCHITECTURE.md)
-- [Contrato de API](docs/API_CONTRACT.md)
-- [Épicas](docs/epics/README.md)
-- [Plantilla ADR](docs/adr/0000-template.md)
-- [Propuesta de modelo C4 (Structurizr DSL, pendiente de aprobación)](docs/c4/structurizr-proposal.dsl)
-
-## Alcance excluido del MVP
-
-Venta en línea, carrito, pagos, pedidos, domicilios, alertas de bajada de precio y extracción automatizada de catálogos de terceros. Las alertas son opcionales/futuras; SIPSA no se presenta como precio minorista de tienda.
