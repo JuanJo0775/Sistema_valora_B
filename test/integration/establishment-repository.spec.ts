@@ -58,4 +58,15 @@ describe('repositorio de establecimientos con PostGIS', () => {
     expect(Math.abs((found[0]?.distanceM ?? 0) - 100)).toBeLessThan(5);
     expect(Math.abs((found[1]?.distanceM ?? 0) - 500)).toBeLessThan(10);
   });
+
+  it('deja fuera las tiendas que están más lejos que el radio', async () => {
+    await db.insert(establishments).values([
+      { ...near, type: 'barrio', location: at(100) },
+      { ...middle, type: 'supermercado', location: at(3000) },
+    ]);
+
+    const found = await repository.findNearby({ ...center, radiusMeters: 1000, limit: 20 });
+
+    expect(found.map((store) => store.name)).toEqual([near.name]);
+  });
 });
