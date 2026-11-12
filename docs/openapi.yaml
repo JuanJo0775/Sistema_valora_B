@@ -26,20 +26,29 @@ paths:
       tags: [Catálogo]
       operationId: searchProducts
       summary: Buscar productos por texto o código de barras (RF-003)
+      description: >-
+        Se envía exactamente uno de q o barcode; sin ninguno o con los dos responde 400 VALIDATION_ERROR
+        («Envía q o barcode» o «Envía solo q o barcode, no ambos»). Con q, cada palabra debe aparecer en
+        el nombre o en la marca, en cualquier orden y también como pedazo («gira» encuentra «girasol»), sin
+        distinguir tildes ni mayúsculas (RF-003 RN4); los resultados se ordenan por parecido con lo escrito
+        y, en empate, por nombre. Con barcode responde el producto que tiene esa presentación o la lista
+        vacía (no 404). Caché pública de 30 segundos (valor inicial calibrable, EC-04).
       parameters:
         - name: q
           in: query
-          description: Texto libre, sin distinguir tildes.
+          description: Texto libre; cada palabra debe aparecer en el nombre o la marca, sin distinguir tildes.
           schema: { type: string, minLength: 2 }
         - name: barcode
           in: query
+          description: Código de barras leído del empaque (EAN/GTIN).
           schema: { type: string, pattern: '^[0-9]{8,14}$' }
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
-          description: Productos encontrados
+          description: Productos encontrados, del más parecido al menos parecido
           headers:
-            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=30' }
           content:
             application/json:
               schema:
