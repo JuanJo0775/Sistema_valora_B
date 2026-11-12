@@ -145,4 +145,29 @@ describe('búsqueda de productos del catálogo', () => {
     expect(await names('100%')).toEqual(['Jugo 100% naranja']);
     expect(await names('_')).toEqual(['Arroz_extra']);
   });
+
+  it('por código de barras encuentra el producto de esa presentación, o nada si nadie lo tiene', async () => {
+    await db.insert(products).values([sunflowerOil, rice]);
+    await db.insert(presentations).values([
+      {
+        id: 'a1111111-1111-4111-8111-aaaaaaaaaaaa',
+        productId: sunflowerOil.id,
+        quantity: '1000',
+        unit: 'ml',
+        barcode: '7702511000014',
+      },
+      {
+        id: 'a1111111-1111-4111-8111-bbbbbbbbbbbb',
+        productId: sunflowerOil.id,
+        quantity: '3000',
+        unit: 'ml',
+      },
+    ]);
+
+    const found = await repository.findByBarcode('7702511000014');
+
+    expect(found.map((product) => product.name)).toEqual(['Aceite de girasol']);
+    expect(found[0]?.presentations).toHaveLength(2);
+    await expect(repository.findByBarcode('7700000000000')).resolves.toEqual([]);
+  });
 });
