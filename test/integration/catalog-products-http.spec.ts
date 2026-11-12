@@ -122,5 +122,21 @@ describe('GET /v1/products/{productId}', () => {
         ],
       });
     });
+
+    it.each([
+      ['sin q ni barcode', {}, 'Envía q o barcode'],
+      [
+        'con q y barcode',
+        { q: 'arroz', barcode: '7702511000014' },
+        'Envía solo q o barcode, no ambos',
+      ],
+      ['q de un solo carácter', { q: 'a' }, 'q: debe tener al menos 2 caracteres'],
+      ['barcode con letras', { barcode: '77025ABC' }, 'barcode: debe tener de 8 a 14 dígitos'],
+      ['límite mayor que 50', { q: 'arroz', limit: 51 }, 'limit: debe estar entre 1 y 50'],
+    ])('%s responde 400 VALIDATION_ERROR', async (_case, query, message) => {
+      const response = await request(server).get('/v1/products').query(query).expect(400);
+
+      expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
+    });
   });
 });
