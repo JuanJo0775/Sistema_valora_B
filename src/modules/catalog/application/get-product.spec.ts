@@ -24,6 +24,10 @@ class InMemoryProductRepository implements ProductRepository {
   findById(id: string): Promise<ProductView | null> {
     return Promise.resolve(this.products.find((product) => product.id === id) ?? null);
   }
+
+  search(): Promise<ProductView[]> {
+    return Promise.reject(new Error('GetProduct no busca productos'));
+  }
 }
 
 describe('consultar un producto del catálogo', () => {

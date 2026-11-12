@@ -23,8 +23,14 @@ export interface ProductView {
 }
 
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.
+export interface ProductSearch {
+  text: string;
+  limit: number;
+}
+
 export interface ProductRepository {
   findById(id: string): Promise<ProductView | null>;
+  search(query: ProductSearch): Promise<ProductView[]>;
 }
 
 export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');

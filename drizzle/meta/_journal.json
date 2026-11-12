@@ -43,6 +43,13 @@
       "when": 1794452635604,
       "tag": "0005_establishments",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794454673737,
+      "tag": "0006_catalog-search",
+      "breakpoints": true
     }
   ]
 }
