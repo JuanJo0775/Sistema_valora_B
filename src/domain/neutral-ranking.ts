@@ -17,6 +17,12 @@ export interface Ranking<T extends RankableOffer> {
   offers: T[];
 }
 
+// Comparación carácter por carácter, sin depender del idioma de la máquina.
+function compareIds(a: string, b: string): number {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
 export function rankOffers<T extends RankableOffer>(
   offers: readonly T[],
   sort: SortCriterion,
@@ -27,7 +33,9 @@ export function rankOffers<T extends RankableOffer>(
       (a, b) =>
         a.unitPrice.compareTo(b.unitPrice) ||
         a.distanceMeters - b.distanceMeters ||
-        b.observedAt.getTime() - a.observedAt.getTime(),
+        b.observedAt.getTime() - a.observedAt.getTime() ||
+        compareIds(a.establishmentId, b.establishmentId) ||
+        compareIds(a.presentationId, b.presentationId),
     ),
   };
 }
