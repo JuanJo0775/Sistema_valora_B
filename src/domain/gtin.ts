@@ -1,5 +1,9 @@
-// Código de barras GTIN (EAN-13) con su dígito de control (RF-003 RN2).
+// Largos de GTIN aceptados: EAN-8, UPC-A, EAN-13 y GTIN-14 (grill de la #51, pregunta 6).
+const GTIN_FORMAT = /^(\d{8}|\d{12}|\d{13}|\d{14})$/;
+
+// Código de barras GTIN con su dígito de control (RF-003 RN2).
 export function isValidGtin(code: string): boolean {
+  if (!GTIN_FORMAT.test(code)) return false;
   const digits = Array.from(code, Number);
   const checkDigit = digits.pop();
   // Desde la derecha, sin el dígito de control, los pesos alternan 3 y 1.
