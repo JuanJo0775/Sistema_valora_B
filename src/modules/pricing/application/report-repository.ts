@@ -16,6 +16,7 @@ export interface NewReport extends ReportInput {
   id: string;
   receivedAt: Date;
   idempotencyKey: string;
+  requestHash: string;
 }
 
 export interface SavedReport {
