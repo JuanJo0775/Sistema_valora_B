@@ -66,6 +66,17 @@ describe('GET /v1/products/{productId}', () => {
     });
   });
 
+  it('si el producto no cambió, una petición con If-None-Match igual al ETag responde 304', async () => {
+    const first = await request(server).get(`/v1/products/${riceId}`).expect(200);
+    const etag = first.headers['etag'];
+
+    expect(etag).toEqual(expect.any(String));
+    await request(server)
+      .get(`/v1/products/${riceId}`)
+      .set('If-None-Match', String(etag))
+      .expect(304);
+  });
+
   it('un producto que no existe responde 404 NOT_FOUND', async () => {
     const response = await request(server)
       .get('/v1/products/00000000-0000-4000-8000-000000000000')
