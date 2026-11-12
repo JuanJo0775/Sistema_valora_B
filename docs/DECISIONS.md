@@ -105,6 +105,16 @@ Aplicación de ADR-007 (aceptado el 11-nov-2026). El detalle está en `docs/deci
 - **Caché de `GET /v1/products/{productId}`:** `Cache-Control: public, max-age=300` y `ETag` (valor inicial calibrable con EC-04).
 - **Pendiente:** agregar `brand` a `POST /product-requests` (RF-003 la pide) con la issue de solicitudes de producto.
 
+## Búsqueda de productos (issue #52, decidido el 11 de noviembre de 2026)
+
+Aplicación de RF-003 RN4 y ADR-003. El detalle está en `docs/decisiones/issue-52-busqueda/`.
+
+- **Extensiones:** `unaccent` y `pg_trgm` se crean en la migración `0006`. En PostgreSQL 17 son «de confianza», así que no hace falta el usuario `postgres`.
+- **Comparación:** cada palabra de `q` debe aparecer en el nombre o la marca, en cualquier orden y también como pedazo, sin distinguir tildes ni mayúsculas. Usa la función `catalog.search_text` (inmutable) y un índice GIN de trigramas. Los comodines `%` y `_` que escribe el usuario se buscan como texto.
+- **Orden:** por `similarity` de `pg_trgm` y, en empate, por nombre. La medida favorece los nombres cortos: con «leche», «Galletas con leche» y «Leche deslactosada» empatan. Si el equipo quiere priorizar los nombres que empiezan por lo buscado, se agrega como un criterio más.
+- **`q` o `barcode`, exactamente uno;** un código sin producto responde la lista vacía. `q` se recorta antes de validar, así que una búsqueda de solo espacios responde 400.
+- **Caché:** `Cache-Control: public, max-age=30` (valor inicial calibrable).
+
 ## Establecimientos (issue #50, decidido el 11 de noviembre de 2026)
 
 Aplicación de RF-005, ADR-003 y ADR-019. El detalle está en `docs/decisiones/issue-50-establecimientos/`.
