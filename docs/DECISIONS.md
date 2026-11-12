@@ -105,6 +105,21 @@ Aplicación de ADR-007 (aceptado el 11-nov-2026). El detalle está en `docs/deci
 - **Caché de `GET /v1/products/{productId}`:** `Cache-Control: public, max-age=300` y `ETag` (valor inicial calibrable con EC-04).
 - **Pendiente:** agregar `brand` a `POST /product-requests` (RF-003 la pide) con la issue de solicitudes de producto.
 
+## Establecimientos (issue #50, decidido el 11 de noviembre de 2026)
+
+Aplicación de RF-005, ADR-003 y ADR-019. El detalle está en `docs/decisiones/issue-50-establecimientos/`.
+
+- **Tipos:** `barrio`, `minimercado`, `supermercado` y `descuento` (el cuarto ya estaba en ADR-019 y en el prototipo del mapa). Los valores siguen en español, como estaban en el contrato.
+- **Dirección** opcional; las coordenadas de la tienda son obligatorias y se devuelven en la API.
+- **Ubicación de la tienda:** columna `geography(Point, 4326)` con índice GiST; la cercanía se calcula con `ST_DWithin` y `ST_Distance` (metros).
+- **`GET /v1/establishments/nearby`:**
+  - Radio de 0,5 a 3 km, con 2 por defecto (valores iniciales calibrables).
+  - `lat` y `lng` validados; `limit` común (20 por defecto, 50 como máximo).
+  - Respuesta con `Cache-Control: no-store`, como excepción a la caché de las lecturas públicas: la URL lleva la ubicación del usuario (EC-08).
+- **Privacidad:** la ubicación del usuario solo existe como parámetro de la consulta. Una prueba de integración verifica que no aparece en la respuesta ni en el log, y que no se guarda ninguna fila.
+- **`hasVerifiedProfile`** sale del contrato hasta el módulo comercial (corte 3).
+- **Pendiente:** el estado de moderación (RF-005 RN7) y la detección de duplicados (RN3) se agregan con la issue de sugerencias de tiendas.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

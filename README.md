@@ -14,8 +14,9 @@ Hito **H2-01** (esqueleto del núcleo), paso 4 en curso.
 | Reglas del dominio (#11, #18)    | Precio por unidad base (RF-004) y vigencia por TTL (RF-010)                                                     |
 | Infraestructura compartida (#12) | Formato de error `{ code, message }`, PostgreSQL + PostGIS con Drizzle y migraciones, bus de eventos con outbox |
 | Catálogo (#49)                   | Módulo `catalog` con categorías y `GET /v1/products/{productId}`                                                |
+| Establecimientos (#50)           | Módulo `establishments` con ubicación PostGIS y `GET /v1/establishments/nearby`                                 |
 
-Siguiente: establecimientos (#50), semilla (#51) y búsqueda de productos (#52). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
+Siguiente: semilla de productos y tiendas (#51) y búsqueda de productos (#52). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
 ## Primeros pasos (desde cero)
 
@@ -102,7 +103,7 @@ La última línea debe mostrar `POSTGIS="3.x…"`. Sal con `\q`.
 pnpm db:migrate
 ```
 
-Crea en `valora_dev` los esquemas y tablas (`shared`, `catalog`…) y carga las categorías del catálogo. **No necesitas migrar `valora_test`:** las pruebas lo hacen solas.
+Crea en `valora_dev` los esquemas y tablas (`shared`, `catalog`, `establishments`…) y carga las categorías del catálogo. **No necesitas migrar `valora_test`:** las pruebas lo hacen solas.
 
 ### 7. Comprueba que todo funciona
 
@@ -221,6 +222,7 @@ src/
   shared/database/     Conexión con Drizzle y pg
   shared/events/       Bus de eventos interno con outbox (ADR-015)
   modules/catalog/     Productos, presentaciones y categorías
+  modules/establishments/  Tiendas con ubicación y búsqueda por cercanía
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
 
