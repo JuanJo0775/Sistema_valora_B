@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, integer, numeric, pgSchema, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  integer,
+  numeric,
+  pgSchema,
+  text,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 // Esquema propio del módulo (ADR-003, ADR-021). Ningún otro módulo lee estas tablas.
 export const catalog = pgSchema('catalog');
@@ -38,5 +47,7 @@ export const presentations = catalog.table(
     check('presentations_quantity_positive', sql`${table.quantity} > 0`),
     check('presentations_unit_valid', sql`${table.unit} in ('g', 'kg', 'ml', 'l', 'und')`),
     check('presentations_pack_count_positive', sql`${table.packCount} >= 1`),
+    // RF-003 RN2: un código de barras pertenece a una sola presentación (grill de la #49, pregunta 6).
+    uniqueIndex('presentations_barcode_unique').on(table.barcode),
   ],
 );
