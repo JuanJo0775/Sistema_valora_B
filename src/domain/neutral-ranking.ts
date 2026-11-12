@@ -27,6 +27,19 @@ export function rankOffers<T extends RankableOffer>(
   offers: readonly T[],
   sort: SortCriterion,
 ): Ranking<T> {
+  if (sort === 'recent') {
+    return {
+      sort,
+      offers: [...offers].sort(
+        (a, b) =>
+          b.observedAt.getTime() - a.observedAt.getTime() ||
+          a.unitPrice.compareTo(b.unitPrice) ||
+          a.distanceMeters - b.distanceMeters ||
+          compareIds(a.establishmentId, b.establishmentId) ||
+          compareIds(a.presentationId, b.presentationId),
+      ),
+    };
+  }
   if (sort === 'distance') {
     return {
       sort,
