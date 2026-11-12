@@ -5,6 +5,7 @@ import type {
   EstablishmentType,
   ImportEstablishments,
 } from '../../establishments';
+import { isVerifiedProduct, isVerifiedStore, productErrors, storeErrors, text } from './seed-rows';
 import type { SeedRow, SeedSource } from './seed-source';
 import { stableId } from './stable-id';
 
@@ -14,18 +15,16 @@ export type SeedCatalog = Pick<ImportCatalog, 'save' | 'listProductIds'> & {
 };
 export type SeedStores = Pick<ImportEstablishments, 'save' | 'listIds'>;
 
+export interface SeedFailure {
+  ok: false;
+  errors: string[];
+}
+
 export interface SeedSummary {
   ok: true;
   stores: { saved: number; skipped: number };
   products: { saved: number; presentations: number; skipped: number };
 }
-
-const text = (row: SeedRow, column: string): string => (row.values[column] ?? '').trim();
-
-// Grill de la #51, pregunta 3: solo se cargan las filas que el equipo ya revisó.
-const isVerifiedStore = (row: SeedRow): boolean => text(row, 'revisar') === 'no';
-const isVerifiedProduct = (row: SeedRow): boolean =>
-  text(row, 'verificar') === 'no' && text(row, 'responsable') !== '';
 
 export class RunSeed {
   constructor(
@@ -34,11 +33,20 @@ export class RunSeed {
     private readonly stores: SeedStores,
   ) {}
 
-  async execute(): Promise<SeedSummary> {
+  async execute(): Promise<SeedSummary | SeedFailure> {
     const storeRows = await this.source.readStores();
     const productRows = await this.source.readProducts();
-    const stores = storeRows.filter(isVerifiedStore).map(toStore);
+    const verifiedStores = storeRows.filter(isVerifiedStore);
     const verifiedProducts = productRows.filter(isVerifiedProduct);
+
+    // Todo o nada: con una sola fila inválida no se guarda nada y se listan todos los errores.
+    const errors = [
+      ...productErrors(verifiedProducts, await this.catalog.listCategoryCodes()),
+      ...storeErrors(verifiedStores),
+    ];
+    if (errors.length > 0) return { ok: false, errors };
+
+    const stores = verifiedStores.map(toStore);
     const products = groupProducts(verifiedProducts);
 
     for (const store of stores) await this.stores.save(store);
