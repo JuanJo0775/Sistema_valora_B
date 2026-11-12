@@ -59,4 +59,22 @@ describe('bus de eventos con outbox', () => {
       }),
     ]);
   });
+
+  it('un evento publicado en una transacción revertida nunca se entrega', async () => {
+    const received: Events.DomainEvent[] = [];
+    bus.subscribe('receptor-revertido', 'PrecioDePruebaRevertido', (event) => {
+      received.push(event);
+      return Promise.resolve();
+    });
+
+    await expect(
+      db.transaction(async (tx) => {
+        await publisher.publish(tx, events.createEvent('PrecioDePruebaRevertido', 1, {}));
+        throw new Error('falla el cambio que causó el evento');
+      }),
+    ).rejects.toThrow('falla el cambio');
+    await relay.runOnce();
+
+    expect(received).toEqual([]);
+  });
 });
