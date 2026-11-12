@@ -1,4 +1,4 @@
-import type { INestApplication } from '@nestjs/common';
+import { ConsoleLogger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
@@ -76,4 +76,57 @@ describe('GET /v1/establishments/nearby', () => {
 
     expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
   });
+
+  // EC-08 y RF-005 RN5: la ubicación del usuario no se guarda, no se registra ni se expone.
+  it('la ubicación consultada no aparece en la respuesta ni en el log, y no se guarda', async () => {
+    const userLocation = { lat: '4.53987654', lng: '-75.68123456' };
+    const rowsBefore = await countAllRows(db);
+    const written: string[] = [];
+    const capture = (chunk: unknown): boolean => {
+      written.push(String(chunk));
+      return true;
+    };
+    const stdout = jest.spyOn(process.stdout, 'write').mockImplementation(capture);
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(capture);
+
+    // Con el registro real de NestJS: el módulo de pruebas usa por defecto TestingLogger, que solo
+    // imprime errores y escondería una fuga en un log normal.
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .setLogger(new ConsoleLogger())
+      .compile();
+    const loggedApp = moduleRef.createNestApplication({
+      logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    });
+    configureApp(loggedApp);
+    await loggedApp.init();
+    const response = await request(loggedApp.getHttpServer() as Parameters<typeof request>[0])
+      .get('/v1/establishments/nearby')
+      .query(userLocation)
+      .expect(200);
+    await loggedApp.close();
+    stdout.mockRestore();
+    stderr.mockRestore();
+
+    const output = written.join('') + JSON.stringify(response.body);
+    expect(output).not.toContain(userLocation.lat);
+    expect(output).not.toContain(userLocation.lng);
+    expect(await countAllRows(db)).toBe(rowsBefore);
+  });
 });
+
+// Total de filas en todas las tablas de la aplicación (sin las de PostgreSQL y PostGIS).
+async function countAllRows(db: Database): Promise<number> {
+  const tables = await db.execute<{ name: string }>(
+    sql`select format('%I.%I', table_schema, table_name) as name from information_schema.tables
+        where table_type = 'BASE TABLE'
+          and table_schema not in ('pg_catalog', 'information_schema', 'public', 'topology')`,
+  );
+  let total = 0;
+  for (const { name } of tables.rows) {
+    const result = await db.execute<{ count: string }>(
+      sql.raw(`select count(*) as count from ${name}`),
+    );
+    total += Number(result.rows[0]?.count ?? 0);
+  }
+  return total;
+}
