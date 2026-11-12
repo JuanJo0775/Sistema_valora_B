@@ -38,11 +38,25 @@ export class DrizzleReportRepository implements ReportRepository {
   }
 
   // ADR-015: el reporte y su evento se confirman juntos o no se guarda ninguno.
+  // Si otra solicitud ya guardó la misma clave, PostgreSQL espera a que confirme, no inserta nada
+  // y se devuelve el reporte que quedó guardado (grill de la #14, pregunta 6).
   async save(report: NewReport, event: DomainEvent): Promise<SavedReport> {
     return this.db.transaction(async (tx) => {
-      await tx.insert(reports).values(report);
-      await this.outbox.publish(tx, event);
-      return { report, created: true };
+      const inserted = await tx
+        .insert(reports)
+        .values(report)
+        .onConflictDoNothing({ target: reports.idempotencyKey })
+        .returning({ id: reports.id });
+      if (inserted.length > 0) {
+        await this.outbox.publish(tx, event);
+        return { report, created: true };
+      }
+      const [stored] = await tx
+        .select()
+        .from(reports)
+        .where(eq(reports.idempotencyKey, report.idempotencyKey));
+      if (!stored) throw new Error('El reporte con esta clave no se encontró tras el conflicto.');
+      return { report: toNewReport(stored), created: false };
     });
   }
 }
