@@ -94,6 +94,17 @@ Aplicación de ADR-015. El detalle está en `docs/decisiones/issue-43-outbox/`.
   - Construir la entrega síncrona de `PrecioOficialPublicado` (EC-02) con el módulo `commerce` (corte 3).
   - Bloquear filas (`FOR UPDATE SKIP LOCKED`) si algún día corre más de una copia de la API.
 
+## Catálogo (issue #49, decidido el 11 de noviembre de 2026)
+
+Aplicación de ADR-007 (aceptado el 11-nov-2026). El detalle está en `docs/decisiones/issue-49-catalogo/` y en el grill común `docs/decisiones/issue-13-catalogo-y-establecimientos/`.
+
+- **Presentación tal como se escribe:** `quantity`, `unit` (`g`, `kg`, `ml`, `l` o `und`) y `packCount` (1 si no es un empaque). La unidad base la calcula `src/domain/unit-price.ts`. En el contrato, `BaseUnit` pasó a llamarse `Unit`.
+- **Marca:** `brand` opcional.
+- **Categorías:** lista cerrada en la tabla `catalog.categories`, cargada por migración. Cada categoría guarda si es fresca, para el TTL de ADR-005. La lista inicial tiene 8 categorías (4 frescas) y se cambia con una migración nueva. En la API se muestra como `{ code, name }`.
+- **Código de barras:** único entre presentaciones (índice único). El dígito de control EAN-13 se valida en la issue #51.
+- **Caché de `GET /v1/products/{productId}`:** `Cache-Control: public, max-age=300` y `ETag` (valor inicial calibrable con EC-04).
+- **Pendiente:** agregar `brand` a `POST /product-requests` (RF-003 la pide) con la issue de solicitudes de producto.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
