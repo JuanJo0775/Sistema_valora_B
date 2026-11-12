@@ -71,5 +71,17 @@ describe('orden neutral de la comparación', () => {
 
       expect(storesOf(result.offers)).toEqual(['tienda-cercana/p-1kg', 'tienda-lejana/p-500g']);
     });
+
+    it('con el mismo precio y la misma distancia, va primero el precio visto más recientemente', () => {
+      const result = rankOffers(
+        [
+          offer({ store: 'visto-temprano', observedAt: '2026-11-12T07:00:00Z' }),
+          offer({ store: 'visto-tarde', observedAt: '2026-11-12T11:00:00Z' }),
+        ],
+        'unit_price',
+      );
+
+      expect(storesOf(result.offers)).toEqual(['visto-tarde/p-500g', 'visto-temprano/p-500g']);
+    });
   });
 });
