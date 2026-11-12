@@ -8,15 +8,15 @@ API y lógica de negocio de **Valora**, plataforma colaborativa para comparar pr
 
 Hito **H2-01** (esqueleto del núcleo), paso 4 en curso.
 
-| Listo en `dev`                   | Qué hay                                                                                                         |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Configuración y calidad (#10)    | NestJS, TypeScript estricto, ESLint, Prettier, Jest, reglas de dependencia y CI                                 |
-| Reglas del dominio (#11, #18)    | Precio por unidad base (RF-004) y vigencia por TTL (RF-010)                                                     |
-| Infraestructura compartida (#12) | Formato de error `{ code, message }`, PostgreSQL + PostGIS con Drizzle y migraciones, bus de eventos con outbox |
-| Catálogo (#49)                   | Módulo `catalog` con categorías y `GET /v1/products/{productId}`                                                |
-| Establecimientos (#50)           | Módulo `establishments` con ubicación PostGIS y `GET /v1/establishments/nearby`                                 |
+| Listo en `dev`                   | Qué hay                                                                                                                       |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Configuración y calidad (#10)    | NestJS, TypeScript estricto, ESLint, Prettier, Jest, reglas de dependencia y CI                                               |
+| Reglas del dominio (#11, #18)    | Precio por unidad base (RF-004) y vigencia por TTL (RF-010)                                                                   |
+| Infraestructura compartida (#12) | Formato de error `{ code, message }`, PostgreSQL + PostGIS con Drizzle y migraciones, bus de eventos con outbox               |
+| Catálogo (#49, #52)              | Módulo `catalog` con categorías, `GET /v1/products/{productId}` y búsqueda por texto o código de barras en `GET /v1/products` |
+| Establecimientos (#50)           | Módulo `establishments` con ubicación PostGIS y `GET /v1/establishments/nearby`                                               |
 
-Siguiente: semilla de productos y tiendas (#51) y búsqueda de productos (#52). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
+Siguiente: semilla de productos y tiendas (#51). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
 ## Primeros pasos (desde cero)
 
