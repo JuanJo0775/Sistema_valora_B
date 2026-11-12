@@ -23,6 +23,8 @@ export function rankOffers<T extends RankableOffer>(
 ): Ranking<T> {
   return {
     sort,
-    offers: [...offers].sort((a, b) => a.unitPrice.compareTo(b.unitPrice)),
+    offers: [...offers].sort(
+      (a, b) => a.unitPrice.compareTo(b.unitPrice) || a.distanceMeters - b.distanceMeters,
+    ),
   };
 }
