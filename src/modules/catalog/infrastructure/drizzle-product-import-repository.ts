@@ -1,7 +1,7 @@
 import { asc } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { ProductImport, ProductImportRepository } from '../application/import-catalog';
-import { presentations, products } from './schema';
+import { categories, presentations, products } from './schema';
 
 export class DrizzleProductImportRepository implements ProductImportRepository {
   constructor(private readonly db: NodePgDatabase) {}
@@ -51,5 +51,13 @@ export class DrizzleProductImportRepository implements ProductImportRepository {
   async listProductIds(): Promise<string[]> {
     const rows = await this.db.select({ id: products.id }).from(products).orderBy(asc(products.id));
     return rows.map((row) => row.id);
+  }
+
+  async listCategoryCodes(): Promise<string[]> {
+    const rows = await this.db
+      .select({ code: categories.code })
+      .from(categories)
+      .orderBy(asc(categories.code));
+    return rows.map((row) => row.code);
   }
 }

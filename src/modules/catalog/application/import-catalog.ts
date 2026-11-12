@@ -19,6 +19,7 @@ export interface ProductImportRepository {
   // Inserta o actualiza por id: repetir la semilla no duplica (grill de la #51, pregunta 2).
   save(product: ProductImport): Promise<void>;
   listProductIds(): Promise<string[]>;
+  listCategoryCodes(): Promise<string[]>;
 }
 
 export const PRODUCT_IMPORT_REPOSITORY = Symbol('PRODUCT_IMPORT_REPOSITORY');
@@ -33,5 +34,10 @@ export class ImportCatalog {
 
   listProductIds(): Promise<string[]> {
     return this.products.listProductIds();
+  }
+
+  // Para validar la categoría de cada fila antes de guardar (lista cerrada, grill de la #49).
+  listCategoryCodes(): Promise<string[]> {
+    return this.products.listCategoryCodes();
   }
 }

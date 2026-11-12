@@ -10,9 +10,7 @@ import type { SeedRow, SeedSource } from './seed-source';
 import { stableId } from './stable-id';
 
 // Lo que la semilla usa de catalog y establishments, a través de su interfaz pública.
-export type SeedCatalog = Pick<ImportCatalog, 'save' | 'listProductIds'> & {
-  listCategoryCodes(): Promise<string[]>;
-};
+export type SeedCatalog = Pick<ImportCatalog, 'save' | 'listProductIds' | 'listCategoryCodes'>;
 export type SeedStores = Pick<ImportEstablishments, 'save' | 'listIds'>;
 
 export interface SeedFailure {
