@@ -1,10 +1,12 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Matches, Max, Min, MinLength } from 'class-validator';
 
 // Parámetros de GET /v1/products (grill de la #52). Que llegue exactamente uno de q o barcode
 // lo revisa el controlador.
 export class SearchProductsQueryDto {
+  // Se quitan los espacios de los extremos: «   » no es una búsqueda (devolvería todo el catálogo).
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(2, { message: 'debe tener al menos 2 caracteres' })
   q?: string;
