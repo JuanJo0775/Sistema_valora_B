@@ -87,4 +87,40 @@ describe('búsqueda de productos del catálogo', () => {
     expect(await names('arroz diana')).toEqual(['Arroz blanco']);
     expect(await names('aceite diana')).toEqual([]);
   });
+
+  it('ordena por parecido con lo escrito, desempata por nombre y respeta el límite', async () => {
+    const dairy = 'dairy-eggs';
+    await db.insert(products).values([
+      {
+        id: 'd1111111-1111-4111-8111-111111111111',
+        name: 'Galletas con leche',
+        categoryCode: 'bakery',
+      },
+      { id: 'd2222222-2222-4222-8222-222222222222', name: 'Leche', categoryCode: dairy },
+      { id: 'd3333333-3333-4333-8333-333333333333', name: 'Leche entera', categoryCode: dairy },
+      {
+        id: 'd4444444-4444-4444-8444-444444444444',
+        name: 'Leche deslactosada',
+        categoryCode: dairy,
+      },
+    ]);
+
+    const found = await repository.search({ text: 'leche', limit: 20 });
+    const firstTwo = await repository.search({ text: 'leche', limit: 2 });
+
+    expect(found[0]?.name).toBe('Leche');
+    expect(found.at(-1)?.name).toBe('Galletas con leche');
+    expect(firstTwo).toHaveLength(2);
+  });
+
+  it('a igual parecido, ordena por nombre', async () => {
+    await db.insert(products).values([
+      { id: 'e2222222-2222-4222-8222-222222222222', name: 'Pan blanco', categoryCode: 'bakery' },
+      { id: 'e1111111-1111-4111-8111-111111111111', name: 'Pan blando', categoryCode: 'bakery' },
+    ]);
+
+    const found = await repository.search({ text: 'pan', limit: 20 });
+
+    expect(found.map((product) => product.name)).toEqual(['Pan blanco', 'Pan blando']);
+  });
 });
