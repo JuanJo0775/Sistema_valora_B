@@ -258,4 +258,25 @@ describe('semilla de datos iniciales', () => {
       expect(storesTarget.saved).toEqual([]);
     },
   );
+
+  it('informa los registros de la base que ya no están en los CSV, sin borrarlos', async () => {
+    const keptStore = stableId('establishment', 'node/2');
+    const keptProduct = stableId('product', 'arroz de prueba', 'marca de prueba');
+    const stores = new InMemoryStores([keptStore, 'a0000000-0000-4000-8000-000000000001']);
+    const catalog = new InMemoryCatalog([
+      keptProduct,
+      'b0000000-0000-4000-8000-000000000001',
+      'b0000000-0000-4000-8000-000000000002',
+    ]);
+    const seed = new RunSeed(
+      // Una fila pendiente sigue «estando en el CSV»: no se informa como ausente.
+      new InMemorySource([productRow(2, { verificar: 'sí' })], [storeRow(2)]),
+      catalog,
+      stores,
+    );
+
+    const result = await seed.execute();
+
+    expect(result).toMatchObject({ ok: true, notInFiles: { stores: 1, products: 2 } });
+  });
 });
