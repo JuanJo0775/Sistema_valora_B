@@ -1,3 +1,4 @@
+import { InvalidObservationDateError } from '../../../domain/freshness';
 import type { DomainEvent } from '../../../shared/events';
 import type { NewReport, ReportRepository, SavedReport } from './report-repository';
 import {
@@ -77,6 +78,18 @@ describe('registrar un reporte de precio', () => {
         report: { ...report, establishmentId: missing },
       }),
     ).rejects.toThrow(UnknownEstablishmentError);
+    expect(reports.reports).toHaveLength(0);
+  });
+
+  it('rechaza un precio visto en el futuro, sin guardar nada', async () => {
+    const { reports, registerReport } = setup();
+
+    await expect(
+      registerReport.execute({
+        idempotencyKey: '66666666-6666-4666-8666-666666666666',
+        report: { ...report, observedAt: new Date('2026-11-12T14:10:00Z') },
+      }),
+    ).rejects.toThrow(InvalidObservationDateError);
     expect(reports.reports).toHaveLength(0);
   });
 });
