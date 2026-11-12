@@ -128,4 +128,21 @@ describe('búsqueda de productos del catálogo', () => {
 
     expect(found.map((product) => product.name)).toEqual(['Pan blanco', 'Pan blando']);
   });
+
+  it('los comodines que escribe el usuario (% y _) se buscan como texto, no coinciden con todo', async () => {
+    await db
+      .insert(products)
+      .values([
+        sunflowerOil,
+        { ...rice, name: 'Jugo 100% naranja' },
+        { ...otherRice, name: 'Arroz_extra' },
+      ]);
+
+    const names = async (text: string) =>
+      (await repository.search({ text, limit: 20 })).map((product) => product.name);
+
+    expect(await names('%')).toEqual(['Jugo 100% naranja']);
+    expect(await names('100%')).toEqual(['Jugo 100% naranja']);
+    expect(await names('_')).toEqual(['Arroz_extra']);
+  });
 });
