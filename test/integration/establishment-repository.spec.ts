@@ -69,4 +69,15 @@ describe('repositorio de establecimientos con PostGIS', () => {
 
     expect(found.map((store) => store.name)).toEqual([near.name]);
   });
+
+  it('devuelve como máximo el límite pedido, quedándose con las más cercanas', async () => {
+    await db.insert(establishments).values([
+      { ...middle, type: 'barrio', location: at(500) },
+      { ...near, type: 'barrio', location: at(100) },
+    ]);
+
+    const found = await repository.findNearby({ ...center, radiusMeters: 1000, limit: 1 });
+
+    expect(found.map((store) => store.name)).toEqual([near.name]);
+  });
 });
