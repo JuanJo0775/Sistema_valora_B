@@ -28,6 +28,21 @@ module.exports = {
       },
     },
     {
+      name: 'soporte-no-conoce-nucleo',
+      comment:
+        'Los módulos de soporte (identity, catalog, establishments, imports) no importan el núcleo (pricing, reliability, comparison) ni commerce.',
+      severity: 'error',
+      from: { path: '^src/modules/(identity|catalog|establishments|imports)/' },
+      to: { path: '^src/modules/(pricing|reliability|comparison|commerce)/' },
+    },
+    {
+      name: 'nucleo-no-conoce-commerce',
+      comment: 'EC-05: el núcleo nunca depende del módulo comercial.',
+      severity: 'error',
+      from: { path: '^src/modules/(pricing|reliability|comparison)/' },
+      to: { path: '^src/modules/commerce/' },
+    },
+    {
       name: 'fuera-de-modulos-solo-por-index',
       comment: 'El código fuera de src/modules solo importa el index.ts de cada módulo.',
       severity: 'error',
