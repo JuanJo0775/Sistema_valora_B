@@ -8,6 +8,7 @@ import { ImportCatalog } from '../../src/modules/catalog';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
+import { type SignedIn, signIn } from '../support/sign-in';
 
 // Presentación y tienda de prueba: solo existen dentro de esta prueba.
 const presentationId = 'b1111111-1111-4111-8111-aaaaaaaaaaaa';
@@ -26,6 +27,7 @@ describe('POST /v1/reports', () => {
   let app: INestApplication;
   let server: Parameters<typeof request>[0];
   let db: Database;
+  let reporter: SignedIn;
 
   beforeAll(async () => {
     // Intervalo muy largo: el repartidor del outbox se llama a mano con runOnce().
@@ -36,6 +38,10 @@ describe('POST /v1/reports', () => {
     await app.init();
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
+    // Una sola cuenta de reportante para todo el archivo: los límites de inicio de sesión cuentan
+    // por IP.
+    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    reporter = await signIn(server, db, 'reportante@correo.com');
   });
 
   afterAll(async () => {
@@ -61,10 +67,29 @@ describe('POST /v1/reports', () => {
     });
   });
 
+  // Con la sesión del reportante y su token CSRF (grill de la #16, preguntas 4 y 5).
   const post = (payload: object, key: string | null = idempotencyKey) => {
-    const call = request(server).post('/v1/reports').send(payload);
+    const call = request(server)
+      .post('/v1/reports')
+      .set('Cookie', reporter.cookie)
+      .set('X-CSRF-Token', reporter.csrfToken)
+      .send(payload);
     return key === null ? call : call.set('Idempotency-Key', key);
   };
+
+  describe('sesión y rol (#62)', () => {
+    it('sin sesión responde 401 y no guarda nada', async () => {
+      const response = await request(server)
+        .post('/v1/reports')
+        .set('Idempotency-Key', idempotencyKey)
+        .send(body())
+        .expect(401);
+
+      expect(response.body).toEqual({ code: 'UNAUTHORIZED', message: 'Se requiere sesión.' });
+      const saved = await db.execute(sql`select id from pricing.reports`);
+      expect(saved.rows).toHaveLength(0);
+    });
+  });
 
   it('responde 201 con el recibo, y el reintento idéntico responde 200 con el mismo recibo', async () => {
     const report = body();
