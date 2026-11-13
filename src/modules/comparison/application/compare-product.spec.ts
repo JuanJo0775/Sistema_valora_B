@@ -99,4 +99,13 @@ describe('comparar los precios de un producto', () => {
     expect(item?.unitPrice.per).toBe('100g');
     expect(item?.unitPrice.displayCop).toBe(400);
   });
+
+  it('un precio de una tienda fuera del radio no aparece', async () => {
+    // El doble de las tiendas solo conoce t1: t2 está fuera del radio.
+    const compare = setup({ prices: [price('t1'), price('t2', 1500)], stores: [store('t1')] });
+
+    const comparison = await compare.execute(input());
+
+    expect(comparison?.results.map((item) => item.establishment.id)).toEqual(['t1']);
+  });
 });
