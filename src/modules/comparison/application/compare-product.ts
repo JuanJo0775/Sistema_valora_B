@@ -46,6 +46,8 @@ export interface ComparisonItem {
   // Grill de la #15, pregunta 7: hoy todo precio viene de reportes de la comunidad.
   source: 'comunidad';
   freshness: Freshness;
+  // Grill de la #15, pregunta 6: el precio por unidad más bajo entre los no desactualizados.
+  isCheapest: boolean;
   observedAt: Date;
 }
 
@@ -62,9 +64,20 @@ export interface Comparison {
 // en un solo lugar para calibrarlos).
 const TTL_DAYS = { fresh: 7, other: 14 } as const;
 
-// Lo que rankOffers puede leer, junto al resultado que se devuelve tal cual.
+// Lo que rankOffers puede leer, junto al resultado que se devuelve.
 interface Candidate extends RankableOffer {
-  item: ComparisonItem;
+  item: Omit<ComparisonItem, 'isCheapest'>;
+}
+
+// El precio por unidad más bajo (valor exacto) de la lista, si hay alguno.
+function lowestUnitPrice(candidates: Candidate[]): UnitPrice | undefined {
+  return candidates.reduce<UnitPrice | undefined>(
+    (lowest, candidate) =>
+      lowest === undefined || candidate.unitPrice.compareTo(lowest) < 0
+        ? candidate.unitPrice
+        : lowest,
+    undefined,
+  );
 }
 
 // La #14 acepta precios vistos hasta 5 minutos «en el futuro» por la diferencia de relojes: para la
@@ -98,7 +111,7 @@ export class CompareProduct {
       const establishment = storesById.get(price.establishmentId);
       const presentation = presentations.get(price.presentationId);
       if (!establishment || !presentation) continue;
-      const item: ComparisonItem = {
+      const item: Candidate['item'] = {
         establishment,
         presentationId: price.presentationId,
         priceCop: price.priceCop,
@@ -133,10 +146,20 @@ export class CompareProduct {
           ...rankOffers(candidates.filter(isStale), input.sort).offers,
         ];
 
+    // Entre los resultados que se muestran; un desactualizado nunca es el más barato.
+    const cheapest = lowestUnitPrice(ranked.filter((candidate) => !isStale(candidate)));
+    const isCheapest = (candidate: Candidate) =>
+      !isStale(candidate) &&
+      cheapest !== undefined &&
+      candidate.unitPrice.compareTo(cheapest) === 0;
+
     return {
       productId: product.id,
       criteria: { sort: input.sort, radiusKm: input.radiusKm },
-      results: ranked.map((candidate) => candidate.item),
+      results: ranked.map((candidate) => ({
+        ...candidate.item,
+        isCheapest: isCheapest(candidate),
+      })),
       promotions: [],
     };
   }
