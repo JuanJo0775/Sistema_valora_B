@@ -32,8 +32,17 @@ export interface CompareProductInput {
   onlyCurrent: boolean;
 }
 
+export interface ComparisonItem {
+  presentationId: string;
+}
+
 export interface Comparison {
   productId: string;
+  // El orden declarado al usuario (EC-06).
+  criteria: { sort: SortCriterion; radiusKm: number };
+  results: ComparisonItem[];
+  // ADR-009: siempre aparte; vacío hasta el módulo comercial (grill de la #15, pregunta 6).
+  promotions: [];
 }
 
 export class CompareProduct {
@@ -42,6 +51,11 @@ export class CompareProduct {
   async execute(input: CompareProductInput): Promise<Comparison | null> {
     const product = await this.ports.products.find(input.productId);
     if (!product) return null;
-    return { productId: product.id };
+    return {
+      productId: product.id,
+      criteria: { sort: input.sort, radiusKm: input.radiusKm },
+      results: [],
+      promotions: [],
+    };
   }
 }
