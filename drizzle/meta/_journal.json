@@ -71,6 +71,13 @@
       "when": 1794536242704,
       "tag": "0009_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794539595200,
+      "tag": "0010_pricing-reporter-required",
+      "breakpoints": true
     }
   ]
 }

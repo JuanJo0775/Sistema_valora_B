@@ -12,7 +12,8 @@ export const reports = pricingSchema.table(
     // Sin llaves foráneas: catalog y establishments son de otros esquemas (grill de la #14, pregunta 5).
     presentationId: uuid('presentation_id').notNull(),
     establishmentId: uuid('establishment_id').notNull(),
-    // Opcional hasta la #16, que agrega la sesión (pregunta 2). Nunca sale en respuestas ni eventos.
+    // Obligatorio desde la #16 con CHECK ... NOT VALID (abajo): los reportes anteriores no lo tienen.
+    // Nunca sale en respuestas ni eventos (EC-08).
     reporterId: uuid('reporter_id'),
     priceCop: integer('price_cop').notNull(),
     priceType: text('price_type').notNull(),
@@ -25,6 +26,8 @@ export const reports = pricingSchema.table(
   },
   (table) => [
     uniqueIndex('reports_idempotency_key_idx').on(table.idempotencyKey),
+    // Grill de la #16, pregunta 8: la migración lo crea NOT VALID para no revisar los anteriores.
+    check('reports_reporter_required', sql`${table.reporterId} is not null`),
     check('reports_price_cop_range', sql`${table.priceCop} between 1 and 10000000`),
     check('reports_price_type_valid', sql`${table.priceType} in ('normal', 'oferta')`),
     check(

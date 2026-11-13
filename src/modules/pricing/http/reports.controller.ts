@@ -6,9 +6,11 @@ import {
   HttpStatus,
   Post,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { RequestValidationError } from '../../../shared/http/validation';
+import { type AuthenticatedSession, CurrentSession, Roles, SessionGuard } from '../../identity';
 import { IdempotencyKeyReusedError, RegisterReport } from '../application/register-report';
 import { ReportCreateDto } from './report-create.dto';
 
@@ -30,10 +32,14 @@ export class ReportsController {
 
   // EC-07: 201 la primera vez; 200 con el recibo original si es un reintento con la misma clave.
   @Post()
+  @UseGuards(SessionGuard)
+  // Grill de la #16, pregunta 5: solo el reportante aporta precios de la comunidad (EC-06).
+  @Roles('reportante')
   async create(
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: ReportCreateDto,
     @Res({ passthrough: true }) response: StatusResponse,
+    @CurrentSession() session: AuthenticatedSession,
   ): Promise<ReportReceiptResponse> {
     if (idempotencyKey === undefined || !isUUID(idempotencyKey)) {
       throw new RequestValidationError('Idempotency-Key: debe ser un UUID');
@@ -42,6 +48,7 @@ export class ReportsController {
       const { receipt, created } = await this.registerReport.execute({
         idempotencyKey,
         report: {
+          reporterId: session.accountId,
           presentationId: body.presentationId,
           establishmentId: body.establishmentId,
           priceCop: body.priceCop,

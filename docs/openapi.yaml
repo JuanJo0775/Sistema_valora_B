@@ -217,7 +217,9 @@ paths:
         Idempotente por la cabecera Idempotency-Key: un reintento con la misma clave y el mismo cuerpo
         devuelve la respuesta original y no crea duplicados (EC-01, EC-07). El precio vigente se
         actualiza segundos después con el evento PriceReported; la confianza se calcula después (ADR-004).
-        Hasta la issue #16 la ruta no exige sesión (grill de la #14, pregunta 2).
+        Exige sesión de reportante y la cabecera X-CSRF-Token (issue #16); el reporte guarda la cuenta,
+        que nunca sale en respuestas ni eventos (EC-08). La misma Idempotency-Key usada por otra cuenta
+        responde 409.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -241,13 +243,14 @@ paths:
               schema: { $ref: '#/components/schemas/ReportReceipt' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401':
-          description: Se requiere sesión (desde la issue #16)
+          description: Se requiere sesión
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '409':
           description: >-
-            Conflicto. code IDEMPOTENCY_KEY_REUSED: la misma Idempotency-Key ya se usó con otro cuerpo.
+            Conflicto. code IDEMPOTENCY_KEY_REUSED: la misma Idempotency-Key ya se usó con otro cuerpo o por otra cuenta.
             code DUPLICATE_REPORT (desde la issue #29): ya existe un reporte de esta cuenta para el mismo
             producto y establecimiento en la última hora.
           content:

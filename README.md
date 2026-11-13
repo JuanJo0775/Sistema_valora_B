@@ -19,9 +19,9 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Registro de precios (#14)        | Módulos `pricing` y `comparison`: `POST /v1/reports` con `Idempotency-Key` y precio vigente en `price_current` por el outbox  |
 | Orden neutral (#21)              | Regla `rankOffers` del dominio: orden por precio por unidad, distancia o fecha, con desempate determinista (EC-06)            |
 | Comparación (#15)                | `GET /v1/products/{productId}/comparison`: precios vigentes en las tiendas del radio, en orden neutral y sin caché (EC-08)    |
-| Sesión (#16, primera parte)      | Módulo `identity`: registro con consentimiento, inicio y cierre de sesión con cookie, CSRF, roles y límites de frecuencia     |
+| Sesión (#16, #62)                | Módulo `identity`: registro, sesión con cookie, CSRF, roles y límites; `POST /v1/reports` exige sesión de reportante          |
 
-Siguiente: `POST /v1/reports` con sesión de reportante (paso 7, #62). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
+Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
 ## Primeros pasos (desde cero)
 

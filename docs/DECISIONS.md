@@ -148,7 +148,7 @@ Aplicación de RF-005, ADR-003 y ADR-019. El detalle está en `docs/decisiones/i
 Aplicación de RF-006, RF-007, ADR-004, ADR-010 y ADR-015. El detalle está en `docs/decisiones/issue-14-registrar-reporte/`.
 
 - **Módulos nuevos:** `pricing` (tabla `reports`, de solo inserción) y `comparison` (tabla `price_current`). Migraciones `0007_pricing` y `0008_comparison`: el plan proponía una sola, pero cada módulo entró con su propio ciclo.
-- **Sin sesión hasta la #16:** `reporter_id` es opcional y no tiene llave foránea. La #16 agrega el guard de sesión y CSRF y lo vuelve obligatorio.
+- **Sin sesión hasta la #16:** `reporter_id` era opcional y no tiene llave foránea. Desde la #62 la ruta exige sesión de reportante y CSRF, y `reporter_id` es obligatorio en los reportes nuevos.
 - **Idempotencia:**
   - `idempotency_key` (con índice único) y `request_hash` (SHA-256 de los campos) se guardan en el reporte y no caducan.
   - Misma clave y mismo cuerpo → 200 con el recibo original. Misma clave con otro cuerpo → 409 `IDEMPOTENCY_KEY_REUSED`.
@@ -204,6 +204,7 @@ Aplicación de RF-001, RF-002, ADR-014 y EC-08. El detalle está en `docs/decisi
 - **Límites** (valores provisionales, en memoria detrás del puerto `AttemptLimiter`): 5 fallos de inicio de sesión por correo, 20 intentos por IP y 10 registros por IP en 15 minutos; 429 con `Retry-After`. Al reiniciar el servidor vuelven a cero; detrás de un proxy hará falta `trust proxy`.
 - **Dependencias:** `@node-rs/argon2` y `cookie` 1.x (la 2.x solo trae ESM y Jest no la carga en Node 22).
 - **Filtro de errores:** un 403 y un 401 conservan su propio código y mensaje, como el 409; un 429 envía `Retry-After`.
+- **`POST /reports` (#62):** `SessionGuard` con `@Roles('reportante')`; el reporte guarda la cuenta en `reporter_id`, que entra en la huella de idempotencia (la misma clave usada por otra cuenta responde 409). Migración `0010` con `CHECK (reporter_id IS NOT NULL) NOT VALID`: drizzle-kit la generó y se agregó `NOT VALID` a mano antes de aplicarla. La comparación sigue pública.
 
 ## Regla de cambio
 

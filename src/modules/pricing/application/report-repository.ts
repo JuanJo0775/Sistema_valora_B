@@ -3,8 +3,10 @@ import type { DomainEvent } from '../../../shared/events';
 // Grill de la #14, pregunta 8: combo queda fuera hasta definir qué significa.
 export type PriceType = 'normal' | 'oferta';
 
-// Lo que el reportante observó en la tienda.
+// Lo que el reportante observó en la tienda, y quién lo reporta.
 export interface ReportInput {
+  // Cuenta de la sesión (#62). Nunca sale en respuestas ni eventos (EC-08).
+  reporterId: string;
   presentationId: string;
   establishmentId: string;
   priceCop: number;
