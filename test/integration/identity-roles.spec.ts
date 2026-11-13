@@ -6,6 +6,7 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { IdentityModule, Roles, SessionGuard } from '../../src/modules/identity';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { signIn } from '../support/sign-in';
 
 // Ruta que solo existe en esta prueba (grill de la #16, pregunta 5): solo un reportante pasa.
 @Controller('test-roles')
@@ -44,20 +45,8 @@ describe('acceso por rol (RF-002)', () => {
     await db.execute(sql`truncate identity.sessions, identity.accounts`);
   });
 
-  // Crea la cuenta con el rol indicado (moderador y comercio no se crean por la API) y su cookie.
-  const cookieFor = async (email: string, role: string): Promise<string> => {
-    await request(server)
-      .post('/v1/auth/register')
-      .send({ email, password: 'una-clave-larga', acceptedPolicyVersion: '2026-11' })
-      .expect(201);
-    await db.execute(sql`update identity.accounts set role = ${role} where email = ${email}`);
-    const response = await request(server)
-      .post('/v1/auth/login')
-      .send({ email, password: 'una-clave-larga' })
-      .expect(204);
-    const [cookie] = response.headers['set-cookie'] as unknown as string[];
-    return (cookie ?? '').split(';')[0] ?? '';
-  };
+  const cookieFor = async (email: string, role: string): Promise<string> =>
+    (await signIn(server, db, email, role)).cookie;
 
   it('un reportante pasa', async () => {
     const cookie = await cookieFor('ana@correo.com', 'reportante');
