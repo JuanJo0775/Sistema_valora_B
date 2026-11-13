@@ -96,4 +96,39 @@ describe('GET /v1/products/{productId}/comparison', () => {
       promotions: [],
     });
   });
+
+  it.each([
+    ['un productId que no es UUID', userLocation, 'producto-1', 'productId: debe ser un UUID'],
+    ['sin lat', { lng: userLocation.lng }, productId, 'lat: debe estar entre -90 y 90'],
+    [
+      'con radiusKm 5',
+      { ...userLocation, radiusKm: '5' },
+      productId,
+      'radiusKm: debe estar entre 0,5 y 3',
+    ],
+    [
+      'con un sort desconocido',
+      { ...userLocation, sort: 'promoted' },
+      productId,
+      'sort: debe ser unit_price, distance o recent',
+    ],
+    [
+      'con onlyCurrent que no es booleano',
+      { ...userLocation, onlyCurrent: 'si' },
+      productId,
+      'onlyCurrent: debe ser true o false',
+    ],
+  ])('%s responde 400 VALIDATION_ERROR', async (_case, query, id, message) => {
+    const response = await compare(query, id).expect(400);
+
+    expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
+  });
+
+  it('un producto que no existe responde 404', async () => {
+    const response = await compare(userLocation, 'a7777777-7777-4777-8777-999999999999').expect(
+      404,
+    );
+
+    expect(response.body).toEqual({ code: 'NOT_FOUND', message: 'Recurso no encontrado.' });
+  });
 });
