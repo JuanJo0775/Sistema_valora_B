@@ -80,8 +80,11 @@ export function reliabilityScore(
     params.reputationWeight * input.reputationOf(candidate.reporterKey) +
     params.corroborationWeight * capped(weight(supporting)) -
     params.contradictionWeight * capped(weight(opposing));
-  // Pregunta 4: decae en línea recta y llega a 0 a las 2 veces el TTL («desactualizado»).
-  const ageDays = (input.now.getTime() - candidate.observedAt.getTime()) / DAY_IN_MILLISECONDS;
+  // Pregunta 4: decae en línea recta y llega a 0 a las 2 veces el TTL («desactualizado»). La edad
+  // cuenta desde el reporte más reciente entre el candidato y los que lo confirman: alguien lo acaba
+  // de ver. Una edad negativa (margen de relojes de la #14) cuenta como 0.
+  const lastSeen = Math.max(...[candidate, ...supporting].map((seen) => seen.observedAt.getTime()));
+  const ageDays = Math.max(0, input.now.getTime() - lastSeen) / DAY_IN_MILLISECONDS;
   const ageFactor = Math.max(0, 1 - ageDays / (2 * input.ttlDays));
   return {
     score: ageFactor * Math.min(1, Math.max(0, raw)),
