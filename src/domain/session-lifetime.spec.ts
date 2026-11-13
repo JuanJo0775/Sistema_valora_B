@@ -8,4 +8,11 @@ describe('vida de una sesión', () => {
     expect(isSessionActive({ createdAt: daysAgo(10), lastSeenAt: daysAgo(6), now })).toBe(true);
     expect(isSessionActive({ createdAt: daysAgo(10), lastSeenAt: daysAgo(7.01), now })).toBe(false);
   });
+
+  it('una sesión vence a los 30 días del inicio aunque se use todos los días', () => {
+    expect(isSessionActive({ createdAt: daysAgo(29), lastSeenAt: daysAgo(0.1), now })).toBe(true);
+    expect(isSessionActive({ createdAt: daysAgo(30.01), lastSeenAt: daysAgo(0.1), now })).toBe(
+      false,
+    );
+  });
 });
