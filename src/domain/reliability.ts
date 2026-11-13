@@ -10,6 +10,8 @@ export const RELIABILITY_PARAMS = {
   maxCorroborations: 3,
   // Pregunta 3: reputación de una cuenta nueva. Una cuenta neutra pesa 1 al corroborar.
   neutralReputation: 0.5,
+  // Pregunta 3: cuánto sube con una confirmación y cuánto baja con un rechazo.
+  reputationSteps: { corroborated: 0.05, rejected: 0.2 },
   // Pregunta 6: umbrales de los niveles.
   levels: { high: 0.6, medium: 0.25 },
 };
@@ -105,4 +107,20 @@ export function reliabilityLevel(
   if (score >= params.levels.high) return 'alta';
   if (score >= params.levels.medium) return 'media';
   return 'baja';
+}
+
+export type ReputationEvent = 'corroborated' | 'rejected';
+
+// Pregunta 3: ganar confianza cuesta más que perderla. Guardarla y llamar a esta regla le toca a la
+// #31 (corroboración) y a la moderación (#32, #33).
+export function updateReputation(
+  current: number,
+  event: ReputationEvent,
+  params: ReliabilityParams = RELIABILITY_PARAMS,
+): number {
+  const step =
+    event === 'corroborated'
+      ? params.reputationSteps.corroborated
+      : -params.reputationSteps.rejected;
+  return Math.min(1, Math.max(0, current + step));
 }
