@@ -12,3 +12,10 @@ export interface AttemptLimiter {
   record(key: string, rule: AttemptRule): void;
   reset(key: string): void;
 }
+
+// Se superó el límite: el controlador responde 429 con Retry-After.
+export class TooManyAttemptsError extends Error {
+  constructor(readonly retryAfterSeconds: number) {
+    super('Límite de frecuencia superado.');
+  }
+}

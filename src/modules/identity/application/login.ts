@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { SESSION_MAX_DAYS } from '../../../domain/session-lifetime';
 import type { AccountRepository } from './account-repository';
-import type { AttemptLimiter } from './attempt-limiter';
+import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
 import type { Clock } from './clock';
 import type { PasswordHasher } from './password-hasher';
 import { normalizeEmail } from './register-account';
@@ -27,6 +27,8 @@ export interface LoginResult {
   expiresAt: Date;
 }
 
+export { TooManyAttemptsError } from './attempt-limiter';
+
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
 export const emailKey = (email: string) => `login-correo:${email}`;
@@ -38,8 +40,9 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
-// Límites provisionales (pregunta 10): 5 fallos por correo en 15 minutos.
+// Límites provisionales (pregunta 10): 5 fallos por correo y 20 intentos por IP en 15 minutos.
 export const LOGIN_FAILURES_PER_EMAIL = { limit: 5, windowMinutes: 15 };
+export const LOGIN_ATTEMPTS_PER_IP = { limit: 20, windowMinutes: 15 };
 
 export class Login {
   // Hash de una clave aleatoria: se verifica contra él cuando la cuenta no existe, para que tarde lo
@@ -50,11 +53,19 @@ export class Login {
 
   async execute(input: LoginInput): Promise<LoginResult> {
     const email = normalizeEmail(input.email);
+    const { limiter } = this.ports;
+    const ipKey = `login-ip:${input.ip}`;
+    const wait =
+      limiter.retryAfterSeconds(ipKey, LOGIN_ATTEMPTS_PER_IP) ??
+      limiter.retryAfterSeconds(emailKey(email), LOGIN_FAILURES_PER_EMAIL);
+    if (wait !== null) throw new TooManyAttemptsError(wait);
+    limiter.record(ipKey, LOGIN_ATTEMPTS_PER_IP);
+
     const account = await this.ports.accounts.findByEmail(email);
     const hash = account?.passwordHash ?? (await this.dummy());
     const valid = await this.ports.hasher.verify(hash, input.password);
     if (!account || !valid) {
-      this.ports.limiter.record(emailKey(email), LOGIN_FAILURES_PER_EMAIL);
+      limiter.record(emailKey(email), LOGIN_FAILURES_PER_EMAIL);
       throw new InvalidCredentialsError();
     }
 
@@ -70,7 +81,7 @@ export class Login {
       lastSeenAt: now,
       expiresAt,
     });
-    this.ports.limiter.reset(emailKey(email));
+    limiter.reset(emailKey(email));
     return { token, expiresAt };
   }
 
