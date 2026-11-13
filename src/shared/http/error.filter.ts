@@ -46,8 +46,12 @@ const INTERNAL_ERROR: ErrorBody = {
   message: 'Ocurrió un error inesperado.',
 };
 
-// Mensaje que NestJS pone por defecto en un ConflictException sin texto propio.
-const DEFAULT_CONFLICT_MESSAGE = 'Conflict';
+// Mensajes que NestJS pone por defecto cuando la excepción no trae texto propio.
+const DEFAULT_MESSAGES = new Set(['Conflict', 'Forbidden', 'Forbidden resource']);
+
+// Estados que pueden traer su propio código: 409 (IDEMPOTENCY_KEY_REUSED, #14) y 403
+// (CSRF_TOKEN_INVALID, #16).
+const OWN_CODE_STATUSES = new Set<number>([HttpStatus.CONFLICT, HttpStatus.FORBIDDEN]);
 
 // NestJS convierte el fallo del lector de JSON en un BadRequestException con el mensaje del parser.
 function isMalformedJson(exception: unknown): boolean {
@@ -58,19 +62,28 @@ function isMalformedJson(exception: unknown): boolean {
   );
 }
 
-// Código propio de un 409, si lo trae (por ejemplo, IDEMPOTENCY_KEY_REUSED en la issue #14).
+// Código propio de la excepción, si lo trae.
 function ownCode(exception: HttpException): string | undefined {
   const body = exception.getResponse();
   if (typeof body !== 'object' || !('code' in body)) return undefined;
   return typeof body.code === 'string' ? body.code : undefined;
 }
 
-// Un 409 puede traer su propio código y su propio mensaje; los demás usan los fijos.
+// Un 409 o un 403 pueden traer su propio código y su propio mensaje; los demás usan los fijos.
 function withOwnMessage(exception: HttpException, status: number, known: ErrorBody): ErrorBody {
-  if (status !== (HttpStatus.CONFLICT as number)) return known;
+  if (!OWN_CODE_STATUSES.has(status)) return known;
   const code = ownCode(exception) ?? known.code;
-  const hasOwnMessage = exception.message !== DEFAULT_CONFLICT_MESSAGE;
+  const hasOwnMessage = !DEFAULT_MESSAGES.has(exception.message);
   return { code, message: hasOwnMessage ? exception.message : known.message };
+}
+
+// Segundos de espera de un 429, si los trae (grill de la #16, pregunta 10).
+function retryAfterOf(exception: unknown): number | undefined {
+  if (!(exception instanceof HttpException)) return undefined;
+  if (exception.getStatus() !== (HttpStatus.TOO_MANY_REQUESTS as number)) return undefined;
+  const body = exception.getResponse();
+  if (typeof body !== 'object' || !('retryAfterSeconds' in body)) return undefined;
+  return typeof body.retryAfterSeconds === 'number' ? body.retryAfterSeconds : undefined;
 }
 
 // Decide el estado y el cuerpo de la respuesta; null significa «error inesperado».
@@ -119,6 +132,10 @@ export class ErrorFilter implements ExceptionFilter {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
       body: INTERNAL_ERROR,
     };
+    const retryAfter = retryAfterOf(exception);
+    if (retryAfter !== undefined) {
+      this.adapterHost.httpAdapter.setHeader(response, 'Retry-After', String(retryAfter));
+    }
     this.adapterHost.httpAdapter.reply(response, body, status);
   }
 }
