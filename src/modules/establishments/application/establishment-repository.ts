@@ -19,9 +19,18 @@ export interface NearbyQuery {
   limit: number;
 }
 
+// Las tiendas de la lista que están dentro del radio; la ubicación del usuario tampoco se guarda.
+export interface WithinRadiusQuery {
+  ids: string[];
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+}
+
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.
 export interface EstablishmentRepository {
   findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]>;
+  findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
   exists(establishmentId: string): Promise<boolean>;
 }
 

@@ -1,12 +1,22 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
   EstablishmentRepository,
   EstablishmentType,
   NearbyEstablishment,
   NearbyQuery,
+  WithinRadiusQuery,
 } from '../application/establishment-repository';
 import { establishments } from './schema';
+
+interface RadiusSearch {
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  // Condición adicional (por ejemplo, solo algunas tiendas) y tope de resultados.
+  where?: SQL;
+  limit?: number;
+}
 
 export class DrizzleEstablishmentRepository implements EstablishmentRepository {
   constructor(private readonly db: NodePgDatabase) {}
@@ -19,12 +29,21 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     return found !== undefined;
   }
 
+  findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]> {
+    return this.searchWithinRadius(query);
+  }
+
+  // Grill de la #15, pregunta 2: sin tope, para no perder tiendas que tienen precio.
+  findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]> {
+    return this.searchWithinRadius({ ...query, where: inArray(establishments.id, query.ids) });
+  }
+
   // La ubicación del usuario solo viaja como parámetro de esta consulta: no se guarda (RF-005 RN5).
-  async findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]> {
-    const point = sql`ST_SetSRID(ST_MakePoint(${query.lng}, ${query.lat}), 4326)::geography`;
+  private async searchWithinRadius(search: RadiusSearch): Promise<NearbyEstablishment[]> {
+    const point = sql`ST_SetSRID(ST_MakePoint(${search.lng}, ${search.lat}), 4326)::geography`;
     const distance = sql`ST_Distance(${establishments.location}, ${point})`;
 
-    const rows = await this.db
+    const query = this.db
       .select({
         id: establishments.id,
         name: establishments.name,
@@ -36,9 +55,15 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       })
       .from(establishments)
       // ST_DWithin usa el índice GiST de la ubicación.
-      .where(sql`ST_DWithin(${establishments.location}, ${point}, ${query.radiusMeters})`)
+      .where(
+        and(
+          sql`ST_DWithin(${establishments.location}, ${point}, ${search.radiusMeters})`,
+          search.where,
+        ),
+      )
       .orderBy(distance)
-      .limit(query.limit);
+      .$dynamic();
+    const rows = await (search.limit === undefined ? query : query.limit(search.limit));
 
     return rows.map((row) => ({
       id: row.id,
