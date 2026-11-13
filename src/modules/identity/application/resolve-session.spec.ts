@@ -62,4 +62,16 @@ describe('resolver la sesión de una petición', () => {
     expect(recent.sessions.touched).toEqual([]);
     expect(older.sessions.touched).toEqual([now]);
   });
+
+  it.each([
+    ['vencida por inactividad', session({ lastSeenAt: minutesAgo(8 * 24 * 60) }), token],
+    ['vencida por el máximo de 30 días', session({ createdAt: minutesAgo(31 * 24 * 60) }), token],
+    ['cerrada', session({ revokedAt: minutesAgo(5) }), token],
+    ['desconocida', session(), 'otro-token'],
+  ])('una sesión %s no da nada y no marca el uso', async (_case, stored, presented) => {
+    const { sessions, resolve } = setup(stored);
+
+    await expect(resolve.execute(presented)).resolves.toBeNull();
+    expect(sessions.touched).toEqual([]);
+  });
 });
