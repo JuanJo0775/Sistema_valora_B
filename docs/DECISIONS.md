@@ -206,6 +206,18 @@ Aplicación de RF-001, RF-002, ADR-014 y EC-08. El detalle está en `docs/decisi
 - **Filtro de errores:** un 403 y un 401 conservan su propio código y mensaje, como el 409; un 429 envía `Retry-After`.
 - **`POST /reports` (#62):** `SessionGuard` con `@Roles('reportante')`; el reporte guarda la cuenta en `reporter_id`, que entra en la huella de idempotencia (la misma clave usada por otra cuenta responde 409). Migración `0010` con `CHECK (reporter_id IS NOT NULL) NOT VALID`: drizzle-kit la generó y se agregó `NOT VALID` a mano antes de aplicarla. La comparación sigue pública.
 
+## Score de confiabilidad (issue #19, decidido el 13 de noviembre de 2026)
+
+Aplicación de RF-011, ADR-005 y EC-03. El detalle está en `docs/decisiones/issue-19-score/`. La regla vive en `src/domain/reliability.ts`; todos los valores son provisionales y están en `RELIABILITY_PARAMS`.
+
+- **Qué se califica:** el precio vigente de una presentación en una tienda, con los demás reportes de esa presentación y tienda.
+- **Corroborar y contradecir:** otro reporte a ±5 % del candidato corrobora; más lejos, contradice. Solo cuentan reportes de la ventana de vigencia (edad ≤ TTL), del mismo tipo de precio, de otra cuenta y uno por cuenta (el más reciente).
+- **Fórmula:** `score = factorEdad × limitar(0,5 × reputación + 0,5 × min(C, 3)/3 − 0,5 × min(D, 3)/3)`. `C` y `D` suman corroboraciones y contradicciones con peso `reputación / 0,5` de cada cuenta.
+- **Edad:** `factorEdad = 1 − edad / (2 × TTL)`, contada desde el reporte más reciente entre el candidato y los que lo confirman.
+- **Niveles:** `alta` desde 0,6, `media` desde 0,25 y `baja` por debajo. `en_revision` lo decide la moderación (#32).
+- **Reputación:** de 0 a 1, neutra en 0,5; +0,05 cuando otros confirman, −0,20 con un rechazo de moderación (`updateReputation`). Guardarla y usarla le toca a la #31, la #32 y la #33.
+- **Privacidad:** el reportante llega como una clave opaca y la salida no lleva ninguna (RN5, EC-08).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
