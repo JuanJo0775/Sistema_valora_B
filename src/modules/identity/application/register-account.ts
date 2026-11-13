@@ -24,10 +24,15 @@ export class RegisterAccount {
   constructor(private readonly ports: RegisterAccountPorts) {}
 
   async execute(input: RegisterAccountInput): Promise<void> {
+    const email = normalizeEmail(input.email);
+    // Grill de la #16, pregunta 6: el hash se calcula siempre, para que un correo existente tarde
+    // lo mismo; si ya existe, no se cambia nada y el resultado es igual.
+    const passwordHash = await this.ports.hasher.hash(input.password);
+    if (await this.ports.accounts.findByEmail(email)) return;
     await this.ports.accounts.create({
       id: randomUUID(),
-      email: normalizeEmail(input.email),
-      passwordHash: await this.ports.hasher.hash(input.password),
+      email,
+      passwordHash,
       // Grill de la #16, pregunta 5: el registro siempre crea un reportante.
       role: 'reportante',
       policyVersion: input.acceptedPolicyVersion,
