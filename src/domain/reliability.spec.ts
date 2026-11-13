@@ -64,4 +64,16 @@ describe('score de confiabilidad de un precio', () => {
     expect(result.contradictions).toBe(0);
     expect(result.score).toBeCloseTo(0.25);
   });
+
+  it('un reporte más viejo que el TTL ni corrobora ni contradice', () => {
+    const result = score({
+      others: [
+        report('beto', 4000, { observedAt: daysAgo(15) }),
+        report('caro', 4800, { observedAt: daysAgo(20) }),
+      ],
+    });
+
+    expect(result.corroborations).toBe(0);
+    expect(result.contradictions).toBe(0);
+  });
 });
