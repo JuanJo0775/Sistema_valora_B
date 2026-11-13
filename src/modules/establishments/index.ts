@@ -5,4 +5,9 @@ export {
   type EstablishmentImport,
 } from './application/import-establishments';
 export { EstablishmentExists } from './application/establishment-exists';
-export type { EstablishmentType } from './application/establishment-repository';
+export { EstablishmentsWithinRadius } from './application/establishments-within-radius';
+export type {
+  EstablishmentType,
+  NearbyEstablishment,
+  WithinRadiusQuery,
+} from './application/establishment-repository';

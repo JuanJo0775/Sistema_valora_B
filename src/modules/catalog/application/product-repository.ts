@@ -22,6 +22,13 @@ export interface ProductView {
   presentations: PresentationView[];
 }
 
+// Lo que la comparación necesita: las presentaciones y si la categoría es fresca (TTL, ADR-005).
+export interface ProductForComparisonView {
+  id: string;
+  isFresh: boolean;
+  presentations: Omit<PresentationView, 'barcode'>[];
+}
+
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.
 export interface ProductSearch {
   text: string;
@@ -33,6 +40,7 @@ export interface ProductRepository {
   search(query: ProductSearch): Promise<ProductView[]>;
   findByBarcode(barcode: string): Promise<ProductView[]>;
   presentationExists(presentationId: string): Promise<boolean>;
+  findForComparison(productId: string): Promise<ProductForComparisonView | null>;
 }
 
 export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');

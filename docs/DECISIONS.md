@@ -178,6 +178,18 @@ Aplicación de RF-009, EC-06 y ADR-009. El detalle está en `docs/decisiones/iss
 - **Bases distintas:** si los resultados mezclan `100g`, `100ml` o `und`, la regla lanza `IncompatibleUnitsError` con cualquier criterio. El catálogo debe impedir esa mezcla al importar (issue aparte).
 - **Evidencia:** pruebas de neutralidad (campos comerciales no cambian el puesto) y de determinismo (120 permutaciones dan el mismo orden).
 
+## Comparación (issue #15, decidido el 12 de noviembre de 2026)
+
+Aplicación de RF-008, RF-009, RF-010, ADR-004, ADR-005 y ADR-009. El detalle está en `docs/decisiones/issue-15-comparacion/`.
+
+- **Datos de otros módulos:** `comparison` usa dos consultas públicas nuevas, `ProductForComparison` (`catalog`) y `EstablishmentsWithinRadius` (`establishments`), y lee solo su propia tabla `price_current`. `findNearby` y `findWithinRadius` comparten la misma consulta PostGIS; la nueva no tiene tope de resultados.
+- **Radio y caché:** iguales a `/nearby`: de 0,5 a 3 km, 2 por defecto, y `Cache-Control: no-store` sin `ETag` (la URL lleva la ubicación, EC-08). Una prueba verifica que la ubicación no aparece en la respuesta ni en el log, y que no se guarda nada.
+- **Vigencia:** TTL de 7 días para categorías frescas y 14 para el resto, en una sola constante de `comparison` (provisional, ADR-005). Un precio visto dentro del margen de relojes de la #14 («en el futuro») cuenta con edad cero.
+- **Orden:** `rankOffers` (#21). Los desactualizados van al final, ordenados entre sí. Con `onlyCurrent` solo quedan los vigentes.
+- **`isCheapest`:** el precio por unidad más bajo (valor exacto) entre los resultados no desactualizados que se muestran; si varios empatan, todos.
+- **Fuera del contrato o aplazado:** `cheapestPriceCop` y `averagePriceCop` salen (eran precios totales de presentaciones distintas); `reliability` y `confirmations`, desde la #31; `promotions` vacío hasta el corte 3; `source` siempre `comunidad`.
+- **Errores:** 400 (UUID, ubicación, radio, `sort`, `onlyCurrent`), 404 si el producto no existe, 200 con listas vacías si no hay precios, y 422 `INCOMPATIBLE_UNITS` si el producto mezcla bases (la #59 lo impedirá).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

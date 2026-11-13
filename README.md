@@ -6,7 +6,7 @@ API y lógica de negocio de **Valora**, plataforma colaborativa para comparar pr
 
 ## Estado
 
-Hito **H2-01** (esqueleto del núcleo), paso 5 en curso.
+Hito **H2-01** (esqueleto del núcleo), paso 6 en curso.
 
 | Listo en `dev`                   | Qué hay                                                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -18,8 +18,9 @@ Hito **H2-01** (esqueleto del núcleo), paso 5 en curso.
 | Semilla (#51)                    | `pnpm db:seed`: tiendas de OpenStreetMap y productos verificados por el equipo, desde `seed/`                                 |
 | Registro de precios (#14)        | Módulos `pricing` y `comparison`: `POST /v1/reports` con `Idempotency-Key` y precio vigente en `price_current` por el outbox  |
 | Orden neutral (#21)              | Regla `rankOffers` del dominio: orden por precio por unidad, distancia o fecha, con desempate determinista (EC-06)            |
+| Comparación (#15)                | `GET /v1/products/{productId}/comparison`: precios vigentes en las tiendas del radio, en orden neutral y sin caché (EC-08)    |
 
-Siguiente: consultar la comparación (paso 6, #15). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
+Siguiente: sesión, CSRF y roles (paso 7, #16). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
 ## Primeros pasos (desde cero)
 
@@ -240,7 +241,7 @@ src/
   modules/establishments/  Tiendas con ubicación y búsqueda por cercanía
   modules/imports/     Semilla: lee seed/ y guarda por catalog y establishments
   modules/pricing/     Reportes de precio (solo inserción) e idempotencia
-  modules/comparison/  Precio vigente (price_current), actualizado por PriceReported
+  modules/comparison/  Precio vigente (price_current), actualizado por PriceReported, y la consulta de comparación
   seed.ts              Entrada de pnpm db:seed
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
