@@ -35,13 +35,19 @@ export interface ReliabilityResult {
   contradictions: number;
 }
 
-// Pregunta 2 y RN4: del mismo tipo de precio, sin la cuenta del candidato, y una vez por cuenta con
-// su reporte más reciente.
-function latestPerOtherAccount(candidate: ScoredReport, others: ScoredReport[]): ScoredReport[] {
+const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
+
+// Pregunta 2 y RN4: de la ventana de vigencia (edad ≤ TTL), del mismo tipo de precio, sin la cuenta
+// del candidato, y una vez por cuenta con su reporte más reciente.
+function comparableReports({ candidate, others, now, ttlDays }: ReliabilityInput): ScoredReport[] {
+  const windowStart = now.getTime() - ttlDays * DAY_IN_MILLISECONDS;
   const latest = new Map<string, ScoredReport>();
   for (const other of others) {
-    if (other.reporterKey === candidate.reporterKey || other.priceType !== candidate.priceType)
-      continue;
+    const comparable =
+      other.reporterKey !== candidate.reporterKey &&
+      other.priceType === candidate.priceType &&
+      other.observedAt.getTime() >= windowStart;
+    if (!comparable) continue;
     const kept = latest.get(other.reporterKey);
     if (!kept || other.observedAt > kept.observedAt) latest.set(other.reporterKey, other);
   }
@@ -53,7 +59,7 @@ export function reliabilityScore(
   params: ReliabilityParams = RELIABILITY_PARAMS,
 ): ReliabilityResult {
   const { candidate } = input;
-  const others = latestPerOtherAccount(candidate, input.others);
+  const others = comparableReports(input);
   const agrees = (other: ScoredReport) =>
     Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
     params.corroborationTolerance;
