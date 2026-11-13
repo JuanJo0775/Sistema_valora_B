@@ -31,14 +31,32 @@ const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
 export const emailKey = (email: string) => `login-correo:${email}`;
 
+// Grill de la #16, pregunta 6: el mismo error y el mismo mensaje, exista o no la cuenta.
+export class InvalidCredentialsError extends Error {
+  constructor() {
+    super('Correo o contraseña incorrectos.');
+  }
+}
+
+// Límites provisionales (pregunta 10): 5 fallos por correo en 15 minutos.
+export const LOGIN_FAILURES_PER_EMAIL = { limit: 5, windowMinutes: 15 };
+
 export class Login {
+  // Hash de una clave aleatoria: se verifica contra él cuando la cuenta no existe, para que tarde lo
+  // mismo. Se calcula una sola vez, la primera vez que hace falta.
+  private dummyHash: Promise<string> | undefined;
+
   constructor(private readonly ports: LoginPorts) {}
 
   async execute(input: LoginInput): Promise<LoginResult> {
     const email = normalizeEmail(input.email);
     const account = await this.ports.accounts.findByEmail(email);
-    if (!account) throw new Error('pendiente');
-    await this.ports.hasher.verify(account.passwordHash, input.password);
+    const hash = account?.passwordHash ?? (await this.dummy());
+    const valid = await this.ports.hasher.verify(hash, input.password);
+    if (!account || !valid) {
+      this.ports.limiter.record(emailKey(email), LOGIN_FAILURES_PER_EMAIL);
+      throw new InvalidCredentialsError();
+    }
 
     // Grill de la #16, pregunta 3: cada inicio de sesión crea una sesión y un token nuevos.
     const token = newSessionToken();
@@ -54,5 +72,10 @@ export class Login {
     });
     this.ports.limiter.reset(emailKey(email));
     return { token, expiresAt };
+  }
+
+  private dummy(): Promise<string> {
+    this.dummyHash ??= this.ports.hasher.hash(randomUUID());
+    return this.dummyHash;
   }
 }
