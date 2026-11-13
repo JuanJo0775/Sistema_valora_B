@@ -85,4 +85,22 @@ describe('score de confiabilidad de un precio', () => {
     expect(result.corroborations).toBe(5);
     expect(result.score).toBeCloseTo(0.75);
   });
+
+  it('cada corroboración pesa según la reputación de su cuenta, y el score queda entre 0 y 1', () => {
+    const reputations: Record<string, number> = { ana: 0.5, confiable: 1, dudosa: 0.1 };
+    const reputationOf = (key: string) => reputations[key] ?? 0.5;
+
+    // Una cuenta de reputación 1 pesa como dos neutras; una de 0,1, casi nada.
+    expect(score({ reputationOf, others: [report('confiable', 4000)] }).score).toBeCloseTo(
+      0.25 + (0.5 * 2) / 3,
+    );
+    expect(score({ reputationOf, others: [report('dudosa', 4000)] }).score).toBeCloseTo(
+      0.25 + (0.5 * 0.2) / 3,
+    );
+    // Reportante muy confiable y tres corroboraciones: el máximo es 1.
+    const three = ['beto', 'caro', 'dani'].map((key) => report(key, 4000));
+    expect(score({ reputationOf: () => 1, others: three }).score).toBeCloseTo(1);
+    // Reportante sin reputación y contradicho: el mínimo es 0.
+    expect(score({ reputationOf: () => 0, others: [report('beto', 5000)] }).score).toBe(0);
+  });
 });
