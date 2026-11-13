@@ -74,4 +74,24 @@ describe('repositorio de reportes de pricing', () => {
     );
     expect(counts.rows[0]).toEqual({ reports: '1', events: '1' });
   });
+
+  // Grill de la #16, pregunta 8: CHECK ... NOT VALID rechaza reportes nuevos sin reportante y no
+  // revisa los anteriores a la #16.
+  it('un reporte nuevo sin reportante se rechaza; los anteriores no se revisan', async () => {
+    const insertWithoutReporter = db.execute(
+      sql`insert into pricing.reports (id, presentation_id, establishment_id, price_cop, price_type,
+            observed_at, received_at, idempotency_key, request_hash)
+          values (${report.id}, ${report.presentationId}, ${report.establishmentId}, 4500, 'normal',
+            now(), now(), ${report.idempotencyKey}, 'huella')`,
+    );
+
+    // Drizzle envuelve el error de PostgreSQL: la restricción viene en cause.
+    await expect(insertWithoutReporter).rejects.toMatchObject({
+      cause: { constraint: 'reports_reporter_required' },
+    });
+    const constraint = await db.execute<{ convalidated: boolean }>(
+      sql`select convalidated from pg_constraint where conname = 'reports_reporter_required'`,
+    );
+    expect(constraint.rows).toEqual([{ convalidated: false }]);
+  });
 });
