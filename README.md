@@ -17,6 +17,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 5 en curso.
 | Establecimientos (#50)           | Módulo `establishments` con ubicación PostGIS y `GET /v1/establishments/nearby`                                               |
 | Semilla (#51)                    | `pnpm db:seed`: tiendas de OpenStreetMap y productos verificados por el equipo, desde `seed/`                                 |
 | Registro de precios (#14)        | Módulos `pricing` y `comparison`: `POST /v1/reports` con `Idempotency-Key` y precio vigente en `price_current` por el outbox  |
+| Orden neutral (#21)              | Regla `rankOffers` del dominio: orden por precio por unidad, distancia o fecha, con desempate determinista (EC-06)            |
 
 Siguiente: consultar la comparación (paso 6, #15). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
@@ -230,7 +231,7 @@ src/
   app.module.ts        Módulo raíz
   app.setup.ts         Configuración común (prefijo /v1, validación y filtro de errores)
   health/              GET /v1/health
-  domain/              Reglas puras: precio por unidad, vigencia, código de barras y precio vigente
+  domain/              Reglas puras: precio por unidad, vigencia, código de barras, precio vigente y orden neutral
   shared/config/       Variables de entorno validadas
   shared/http/         Formato de error { code, message } y validación de entrada
   shared/database/     Conexión con Drizzle y pg
