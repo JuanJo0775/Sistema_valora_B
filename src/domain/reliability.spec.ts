@@ -1,4 +1,9 @@
-import { reliabilityScore, type ReliabilityInput, type ScoredReport } from './reliability';
+import {
+  reliabilityLevel,
+  reliabilityScore,
+  type ReliabilityInput,
+  type ScoredReport,
+} from './reliability';
 
 const now = new Date('2026-11-13T14:00:00Z');
 const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -129,5 +134,18 @@ describe('score de confiabilidad de un precio', () => {
 
     expect(confirmedToday.score).toBeCloseTo(fresh.score);
     expect(ahead.score).toBeCloseTo(0.25);
+  });
+});
+
+describe('nivel de confiabilidad', () => {
+  it.each([
+    [1, 'alta'],
+    [0.6, 'alta'],
+    [0.59, 'media'],
+    [0.25, 'media'],
+    [0.24, 'baja'],
+    [0, 'baja'],
+  ] as const)('un score de %d es %s', (value, level) => {
+    expect(reliabilityLevel(value)).toBe(level);
   });
 });
