@@ -89,6 +89,20 @@ describe('POST /v1/reports', () => {
       const saved = await db.execute(sql`select id from pricing.reports`);
       expect(saved.rows).toHaveLength(0);
     });
+
+    it.each(['comercio', 'moderador'])('con sesión de %s responde 403 FORBIDDEN', async (role) => {
+      const other = await signIn(server, db, `${role}@correo.com`, role);
+
+      const response = await request(server)
+        .post('/v1/reports')
+        .set('Cookie', other.cookie)
+        .set('X-CSRF-Token', other.csrfToken)
+        .set('Idempotency-Key', idempotencyKey)
+        .send(body())
+        .expect(403);
+
+      expect(response.body).toEqual({ code: 'FORBIDDEN', message: 'El rol no tiene permiso.' });
+    });
   });
 
   it('responde 201 con el recibo, y el reintento idéntico responde 200 con el mismo recibo', async () => {
