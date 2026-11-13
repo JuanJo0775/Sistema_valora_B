@@ -14,8 +14,9 @@ export class InMemoryAttemptLimiter implements AttemptLimiter {
   retryAfterSeconds(key: string, rule: AttemptRule): number | null {
     const window = this.windows.get(key);
     if (!window || window.count < rule.limit) return null;
-    const endsAt = window.startedAt + rule.windowMinutes * 60 * 1000;
-    return Math.ceil((endsAt - this.clock.now().getTime()) / 1000);
+    const remaining =
+      window.startedAt + rule.windowMinutes * 60 * 1000 - this.clock.now().getTime();
+    return remaining > 0 ? Math.ceil(remaining / 1000) : null;
   }
 
   record(key: string, rule: AttemptRule): void {
