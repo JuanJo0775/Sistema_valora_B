@@ -103,4 +103,18 @@ describe('score de confiabilidad de un precio', () => {
     // Reportante sin reputación y contradicho: el mínimo es 0.
     expect(score({ reputationOf: () => 0, others: [report('beto', 5000)] }).score).toBe(0);
   });
+
+  it('el score decae en línea recta: a la mitad del TTL vale el 75 % y a las 2 veces el TTL llega a 0', () => {
+    const at = (days: number) =>
+      score({
+        reputationOf: () => 1,
+        candidate: report('ana', 4000, { observedAt: daysAgo(days) }),
+        others: [report('beto', 4000, { observedAt: daysAgo(days) })],
+      }).score;
+
+    expect(at(0)).toBeCloseTo(0.5 + (0.5 * 2) / 3);
+    expect(at(7)).toBeCloseTo(at(0) * 0.75);
+    expect(at(28)).toBe(0);
+    expect(at(40)).toBe(0);
+  });
 });
