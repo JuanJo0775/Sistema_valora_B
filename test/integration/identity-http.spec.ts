@@ -113,4 +113,38 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
       });
     });
   });
+
+  // Registra a Ana, inicia sesión y devuelve la cookie para las siguientes peticiones.
+  const signedIn = async (): Promise<string> => {
+    await register();
+    const response = await login().expect(204);
+    const [cookie] = response.headers['set-cookie'] as unknown as string[];
+    return (cookie ?? '').split(';')[0] ?? '';
+  };
+
+  describe('GET /v1/auth/session', () => {
+    it('con sesión responde 200 con el rol y el token CSRF, sin correo ni id', async () => {
+      const cookie = await signedIn();
+
+      const response = await request(server)
+        .get('/v1/auth/session')
+        .set('Cookie', cookie)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        role: 'reportante',
+        csrfToken: expect.stringMatching(/^[\w-]{43}$/) as unknown,
+      });
+    });
+
+    it('sin cookie o con una cookie desconocida responde 401', async () => {
+      await request(server).get('/v1/auth/session').expect(401);
+      const response = await request(server)
+        .get('/v1/auth/session')
+        .set('Cookie', 'valora_session=inventada')
+        .expect(401);
+
+      expect(response.body).toEqual({ code: 'UNAUTHORIZED', message: 'Se requiere sesión.' });
+    });
+  });
 });
