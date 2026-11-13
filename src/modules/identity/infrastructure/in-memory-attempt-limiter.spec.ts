@@ -27,4 +27,19 @@ describe('límite de intentos en una ventana fija', () => {
     expect(limiter.retryAfterSeconds('correo:ana@correo.com', rule)).toBe(10 * 60);
     expect(limiter.retryAfterSeconds('correo:otro@correo.com', rule)).toBeNull();
   });
+
+  it('al terminar la ventana, o al reiniciar la clave, se permite de nuevo', () => {
+    const { limiter, advanceMinutes } = setup();
+    const fill = (key: string) => {
+      for (let attempt = 0; attempt < rule.limit; attempt += 1) limiter.record(key, rule);
+    };
+
+    fill('ip:203.0.113.7');
+    advanceMinutes(15);
+    expect(limiter.retryAfterSeconds('ip:203.0.113.7', rule)).toBeNull();
+
+    fill('correo:ana@correo.com');
+    limiter.reset('correo:ana@correo.com');
+    expect(limiter.retryAfterSeconds('correo:ana@correo.com', rule)).toBeNull();
+  });
 });
