@@ -118,4 +118,16 @@ describe('comparar los precios de un producto', () => {
     expect(fresh?.results[0]?.freshness).toBe('por_confirmar');
     expect(notFresh?.results[0]?.freshness).toBe('vigente');
   });
+
+  it('un precio visto unos minutos «en el futuro» (margen de relojes de la #14) cuenta como vigente', async () => {
+    const threeMinutesAhead = {
+      ...price('t1'),
+      observedAt: new Date(now.getTime() + 3 * 60 * 1000),
+    };
+    const compare = setup({ prices: [threeMinutesAhead], stores: [store('t1')] });
+
+    const comparison = await compare.execute(input());
+
+    expect(comparison?.results[0]?.freshness).toBe('vigente');
+  });
 });
