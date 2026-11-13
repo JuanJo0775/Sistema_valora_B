@@ -1,4 +1,4 @@
-import { isSessionActive } from './session-lifetime';
+import { isSessionActive, needsTouch } from './session-lifetime';
 
 const now = new Date('2026-11-12T14:00:00Z');
 const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -25,5 +25,14 @@ describe('vida de una sesión', () => {
     expect(isSessionActive({ createdAt: daysAgo(30.01), lastSeenAt: daysAgo(0.1), now })).toBe(
       false,
     );
+  });
+});
+
+describe('uso de una sesión', () => {
+  const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60 * 1000);
+
+  it('la última vez de uso se actualiza solo si pasaron 5 minutos, para no escribir en cada petición', () => {
+    expect(needsTouch(minutesAgo(4), now)).toBe(false);
+    expect(needsTouch(minutesAgo(5), now)).toBe(true);
   });
 });
