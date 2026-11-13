@@ -58,6 +58,13 @@ export interface Comparison {
 // en un solo lugar para calibrarlos).
 const TTL_DAYS = { fresh: 7, other: 14 } as const;
 
+// La #14 acepta precios vistos hasta 5 minutos «en el futuro» por la diferencia de relojes: para la
+// vigencia, esa edad negativa cuenta como cero.
+function freshnessAt(observedAt: Date, now: Date, ttlDays: number): Freshness {
+  const reference = observedAt > now ? observedAt : now;
+  return freshnessOf({ observedAt, now: reference, ttlDays });
+}
+
 export class CompareProduct {
   constructor(private readonly ports: CompareProductPorts) {}
 
@@ -88,7 +95,7 @@ export class CompareProduct {
         priceCop: price.priceCop,
         unitPrice: calculateUnitPrice(price.priceCop, presentation),
         source: 'comunidad',
-        freshness: freshnessOf({ observedAt: price.observedAt, now, ttlDays }),
+        freshness: freshnessAt(price.observedAt, now, ttlDays),
         observedAt: price.observedAt,
       });
     }
