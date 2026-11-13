@@ -55,7 +55,9 @@ export class IdempotencyKeyReusedError extends Error {
 
 // Huella del reporte (grill de la #14, pregunta 6): distingue un reintento de un reporte distinto.
 function hashOf(report: ReportInput): string {
+  // Con la cuenta: la misma clave usada por otra cuenta es un conflicto, no un reintento.
   const fields = [
+    report.reporterId,
     report.presentationId,
     report.establishmentId,
     report.priceCop,

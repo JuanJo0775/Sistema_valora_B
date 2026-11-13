@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { RequestValidationError } from '../../../shared/http/validation';
-import { Roles, SessionGuard } from '../../identity';
+import { type AuthenticatedSession, CurrentSession, Roles, SessionGuard } from '../../identity';
 import { IdempotencyKeyReusedError, RegisterReport } from '../application/register-report';
 import { ReportCreateDto } from './report-create.dto';
 
@@ -39,6 +39,7 @@ export class ReportsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: ReportCreateDto,
     @Res({ passthrough: true }) response: StatusResponse,
+    @CurrentSession() session: AuthenticatedSession,
   ): Promise<ReportReceiptResponse> {
     if (idempotencyKey === undefined || !isUUID(idempotencyKey)) {
       throw new RequestValidationError('Idempotency-Key: debe ser un UUID');
@@ -47,6 +48,7 @@ export class ReportsController {
       const { receipt, created } = await this.registerReport.execute({
         idempotencyKey,
         report: {
+          reporterId: session.accountId,
           presentationId: body.presentationId,
           establishmentId: body.establishmentId,
           priceCop: body.priceCop,

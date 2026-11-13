@@ -9,6 +9,7 @@ import { createEvent, OutboxPublisher } from '../../src/shared/events';
 // Reporte de prueba: solo existe dentro de esta prueba.
 const report: NewReport = {
   id: 'a1111111-1111-4111-8111-111111111111',
+  reporterId: 'a6666666-6666-4666-8666-666666666666',
   presentationId: 'a2222222-2222-4222-8222-222222222222',
   establishmentId: 'a3333333-3333-4333-8333-333333333333',
   priceCop: 4500,

@@ -14,6 +14,8 @@ type ReportRow = typeof reports.$inferSelect;
 function toNewReport(row: ReportRow): NewReport {
   return {
     id: row.id,
+    // Los reportes anteriores a la #16 no tienen reportante (grill de la #16, pregunta 8).
+    reporterId: row.reporterId ?? '',
     presentationId: row.presentationId,
     establishmentId: row.establishmentId,
     priceCop: row.priceCop,
