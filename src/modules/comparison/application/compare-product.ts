@@ -1,4 +1,6 @@
+import { type Freshness, freshnessOf } from '../../../domain/freshness';
 import type { SortCriterion } from '../../../domain/neutral-ranking';
+import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import type { ProductForComparisonView } from '../../catalog';
 import type { NearbyEstablishment, WithinRadiusQuery } from '../../establishments';
 import type { CurrentPrices } from './current-prices';
@@ -33,7 +35,14 @@ export interface CompareProductInput {
 }
 
 export interface ComparisonItem {
+  establishment: NearbyEstablishment;
   presentationId: string;
+  priceCop: number;
+  unitPrice: UnitPrice;
+  // Grill de la #15, pregunta 7: hoy todo precio viene de reportes de la comunidad.
+  source: 'comunidad';
+  freshness: Freshness;
+  observedAt: Date;
 }
 
 export interface Comparison {
@@ -45,16 +54,46 @@ export interface Comparison {
   promotions: [];
 }
 
+const TTL_DAYS = 14;
+
 export class CompareProduct {
   constructor(private readonly ports: CompareProductPorts) {}
 
   async execute(input: CompareProductInput): Promise<Comparison | null> {
     const product = await this.ports.products.find(input.productId);
     if (!product) return null;
+
+    const presentations = new Map(product.presentations.map((p) => [p.id, p]));
+    const prices = await this.ports.prices.findByPresentations([...presentations.keys()]);
+    const stores = await this.ports.stores.find({
+      ids: [...new Set(prices.map((price) => price.establishmentId))],
+      lat: input.lat,
+      lng: input.lng,
+      radiusMeters: input.radiusKm * 1000,
+    });
+    const storesById = new Map(stores.map((store) => [store.id, store]));
+    const now = this.ports.clock.now();
+
+    const results: ComparisonItem[] = [];
+    for (const price of prices) {
+      const establishment = storesById.get(price.establishmentId);
+      const presentation = presentations.get(price.presentationId);
+      if (!establishment || !presentation) continue;
+      results.push({
+        establishment,
+        presentationId: price.presentationId,
+        priceCop: price.priceCop,
+        unitPrice: calculateUnitPrice(price.priceCop, presentation),
+        source: 'comunidad',
+        freshness: freshnessOf({ observedAt: price.observedAt, now, ttlDays: TTL_DAYS }),
+        observedAt: price.observedAt,
+      });
+    }
+
     return {
       productId: product.id,
       criteria: { sort: input.sort, radiusKm: input.radiusKm },
-      results: [],
+      results,
       promotions: [],
     };
   }
