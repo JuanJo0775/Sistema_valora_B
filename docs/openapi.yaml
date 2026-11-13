@@ -342,6 +342,10 @@ paths:
       tags: [Autenticación]
       operationId: register
       summary: Crear cuenta de reportante con consentimiento de datos (RF-001, Ley 1581)
+      description: >-
+        La cuenta nueva siempre es reportante y no inicia sesión. Si el correo ya tiene cuenta, responde
+        201 igual y no cambia nada, para no revelar qué correos están registrados (EC-08). El correo se
+        guarda sin espacios y en minúsculas.
       requestBody:
         required: true
         content:
@@ -350,18 +354,31 @@ paths:
               type: object
               required: [email, password, acceptedPolicyVersion]
               properties:
-                email: { type: string, format: email }
-                password: { type: string, minLength: 10, writeOnly: true }
-                acceptedPolicyVersion: { type: string }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 10, maxLength: 128, writeOnly: true }
+                acceptedPolicyVersion:
+                  type: string
+                  enum: ['2026-11']
+                  description: Versión vigente de la política de datos (provisional hasta tener el texto).
       responses:
-        '201': { description: Cuenta creada }
+        '201': { description: Cuenta creada, o correo ya registrado (misma respuesta) }
         '400': { $ref: '#/components/responses/BadRequest' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '429':
+          description: Más de 10 registros por IP en 15 minutos (valores provisionales).
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /auth/login:
     post:
       tags: [Autenticación]
       operationId: login
       summary: Iniciar sesión; el servidor entrega la cookie de sesión (ADR-014)
+      description: >-
+        Cada inicio de sesión crea una sesión y un token nuevos. La sesión vence tras 7 días sin uso o
+        30 días después del inicio (valores provisionales). Después, GET /auth/session entrega el token
+        CSRF.
       requestBody:
         required: true
         content:
@@ -370,17 +387,32 @@ paths:
               type: object
               required: [email, password]
               properties:
-                email: { type: string, format: email }
-                password: { type: string, writeOnly: true }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, maxLength: 128, writeOnly: true }
       responses:
         '204':
           description: Sesión iniciada
           headers:
             Set-Cookie:
-              description: Cookie de sesión HttpOnly, Secure, SameSite
+              description: >-
+                valora_session con HttpOnly, Secure, SameSite=Lax, Path=/ y Max-Age de 30 días.
               schema: { type: string }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: >-
+            code UNAUTHORIZED con «Correo o contraseña incorrectos.», exista o no la cuenta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: >-
+            Más de 5 fallos por correo o 20 intentos por IP en 15 minutos (valores provisionales). No
+            revela si la cuenta existe.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /auth/logout:
     post:
       tags: [Autenticación]
@@ -390,7 +422,9 @@ paths:
         - sessionCookie: []
           csrfToken: []
       responses:
-        '204': { description: Sesión cerrada }
+        '204': { description: Sesión revocada en el servidor; la cookie se borra }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /auth/session:
     get:
       tags: [Autenticación]
@@ -405,10 +439,15 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [role]
+                required: [role, csrfToken]
+                description: Sin correo ni id de la cuenta (EC-08).
                 properties:
                   role: { type: string, enum: [reportante, comercio, moderador] }
-                  csrfToken: { type: string }
+                  csrfToken:
+                    type: string
+                    description: >-
+                      Va en la cabecera X-CSRF-Token de las rutas con sesión que modifican datos. El
+                      frontend lo guarda en memoria.
         '401': { $ref: '#/components/responses/Unauthorized' }
   /moderation/queue:
     get:
@@ -541,11 +580,16 @@ components:
       type: apiKey
       in: cookie
       name: valora_session
-      description: Sesión administrada por el servidor (ADR-014).
+      description: >-
+        Sesión administrada por el servidor (ADR-014): token aleatorio; la base guarda solo su hash.
+        HttpOnly, Secure, SameSite=Lax. Vence tras 7 días sin uso o 30 desde el inicio.
     csrfToken:
       type: apiKey
       in: header
       name: X-CSRF-Token
+      description: >-
+        Lo entrega GET /auth/session. Lo exigen las rutas con sesión y método POST, PUT, PATCH o
+        DELETE.
   parameters:
     ProductId:
       name: productId
@@ -565,6 +609,9 @@ components:
   headers:
     CacheControl:
       schema: { type: string, example: 'public, max-age=30' }
+    RetryAfter:
+      description: Segundos que faltan para poder intentar de nuevo.
+      schema: { type: integer, minimum: 1 }
   responses:
     BadRequest:
       description: >-
@@ -580,7 +627,9 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Forbidden:
-      description: El rol no tiene permiso
+      description: >-
+        code FORBIDDEN: el rol no tiene permiso. code CSRF_TOKEN_INVALID: falta la cabecera
+        X-CSRF-Token o no coincide con la sesión.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -591,6 +640,8 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     TooManyRequests:
       description: Límite de frecuencia superado
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
