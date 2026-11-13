@@ -119,6 +119,15 @@ describe('POST /v1/reports', () => {
       const saved = await db.execute(sql`select id from pricing.reports`);
       expect(saved.rows).toHaveLength(0);
     });
+
+    it('con sesión de reportante responde 201 y el reporte guarda su cuenta', async () => {
+      await post(body()).expect(201);
+
+      const saved = await db.execute<{ reporter_id: string }>(
+        sql`select reporter_id from pricing.reports`,
+      );
+      expect(saved.rows).toEqual([{ reporter_id: reporter.accountId }]);
+    });
   });
 
   it('responde 201 con el recibo, y el reintento idéntico responde 200 con el mismo recibo', async () => {
