@@ -108,4 +108,14 @@ describe('comparar los precios de un producto', () => {
 
     expect(comparison?.results.map((item) => item.establishment.id)).toEqual(['t1']);
   });
+
+  it('la vigencia usa el TTL de la categoría: a los 10 días, lo fresco está por confirmar y lo demás sigue vigente', async () => {
+    const tenDaysOld = { prices: [price('t1', 2000, 10)], stores: [store('t1')] };
+
+    const fresh = await setup({ ...tenDaysOld, isFresh: true }).execute(input());
+    const notFresh = await setup({ ...tenDaysOld, isFresh: false }).execute(input());
+
+    expect(fresh?.results[0]?.freshness).toBe('por_confirmar');
+    expect(notFresh?.results[0]?.freshness).toBe('vigente');
+  });
 });
