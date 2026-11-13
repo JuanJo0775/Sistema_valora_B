@@ -35,16 +35,28 @@ export interface ReliabilityResult {
   contradictions: number;
 }
 
+// Pregunta 2 y RN4: sin la cuenta del candidato, y una vez por cuenta con su reporte más reciente.
+function latestPerOtherAccount(candidate: ScoredReport, others: ScoredReport[]): ScoredReport[] {
+  const latest = new Map<string, ScoredReport>();
+  for (const other of others) {
+    if (other.reporterKey === candidate.reporterKey) continue;
+    const kept = latest.get(other.reporterKey);
+    if (!kept || other.observedAt > kept.observedAt) latest.set(other.reporterKey, other);
+  }
+  return [...latest.values()];
+}
+
 export function reliabilityScore(
   input: ReliabilityInput,
   params: ReliabilityParams = RELIABILITY_PARAMS,
 ): ReliabilityResult {
   const { candidate } = input;
+  const others = latestPerOtherAccount(candidate, input.others);
   const agrees = (other: ScoredReport) =>
     Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
     params.corroborationTolerance;
-  const corroborations = input.others.filter(agrees).length;
-  const contradictions = input.others.length - corroborations;
+  const corroborations = others.filter(agrees).length;
+  const contradictions = others.length - corroborations;
   const score =
     params.reputationWeight * input.reputationOf(candidate.reporterKey) +
     (params.corroborationWeight * corroborations) / params.maxCorroborations -
