@@ -3,6 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Unit } from '../../../domain/unit-price';
 import type {
   PresentationView,
+  ProductForComparisonView,
   ProductRepository,
   ProductSearch,
   ProductView,
@@ -62,6 +63,27 @@ export class DrizzleProductRepository implements ProductRepository {
       .from(presentations)
       .where(eq(presentations.id, presentationId));
     return found !== undefined;
+  }
+
+  async findForComparison(productId: string): Promise<ProductForComparisonView | null> {
+    const [product] = await this.db
+      .select({ id: products.id, isFresh: categories.isFresh })
+      .from(products)
+      .innerJoin(categories, eq(products.categoryCode, categories.code))
+      .where(eq(products.id, productId));
+    if (!product) return null;
+    const presentationRows = await this.db
+      .select()
+      .from(presentations)
+      .where(eq(presentations.productId, productId))
+      .orderBy(asc(presentations.id));
+    return {
+      ...product,
+      // La comparación no necesita el código de barras.
+      presentations: presentationRows
+        .map(toPresentationView)
+        .map(({ id, quantity, unit, packCount }) => ({ id, quantity, unit, packCount })),
+    };
   }
 
   // Grill de la #52: cada palabra en el nombre o la marca, sin tildes ni mayúsculas (pregunta 1);
