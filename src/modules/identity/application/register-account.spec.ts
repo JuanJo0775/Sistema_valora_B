@@ -60,4 +60,23 @@ describe('registrar una cuenta', () => {
       },
     ]);
   });
+
+  it('con un correo ya registrado da el mismo resultado, no cambia la cuenta y calcula el hash igual', async () => {
+    const { accounts, hasher, register } = setup();
+    const first = {
+      email: 'ana@correo.com',
+      password: 'la-primera-clave',
+      acceptedPolicyVersion: '2026-11',
+    };
+    await register.execute(first);
+
+    await expect(
+      register.execute({ ...first, email: 'ANA@correo.com', password: 'otra-clave-distinta' }),
+    ).resolves.toBeUndefined();
+
+    expect(accounts.accounts).toHaveLength(1);
+    expect(accounts.accounts[0]?.passwordHash).toBe('hash:la-primera-clave');
+    // El segundo registro también calcula el hash: tarda lo mismo que uno nuevo (pregunta 6).
+    expect(hasher.hashes).toBe(2);
+  });
 });
