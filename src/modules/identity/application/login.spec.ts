@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Account, AccountRepository } from './account-repository';
 import type { AttemptLimiter } from './attempt-limiter';
-import { InvalidCredentialsError, Login, type LoginInput } from './login';
+import { InvalidCredentialsError, Login, type LoginInput, TooManyAttemptsError } from './login';
 import type { PasswordHasher } from './password-hasher';
 import type { NewSession, SessionRepository, StoredSession } from './session-repository';
 
@@ -121,5 +121,29 @@ describe('iniciar sesión', () => {
     expect(limiter.recorded).toEqual(
       expect.arrayContaining(['login-correo:ana@correo.com', 'login-correo:nadie@correo.com']),
     );
+  });
+
+  it.each([
+    ['por correo', 'login-correo:ana@correo.com', 600],
+    ['por IP', 'login-ip:203.0.113.7', 120],
+  ])(
+    'al pasar el límite %s responde con los segundos que faltan, sin verificar la contraseña',
+    async (_case, key, seconds) => {
+      const { hasher, login } = setup({ [key]: seconds });
+
+      const attempt = login.execute(input());
+
+      await expect(attempt).rejects.toThrow(TooManyAttemptsError);
+      await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: seconds });
+      expect(hasher.verified).toHaveLength(0);
+    },
+  );
+
+  it('cada intento cuenta para el límite por IP', async () => {
+    const { limiter, login } = setup();
+
+    await login.execute(input());
+
+    expect(limiter.recorded).toEqual(['login-ip:203.0.113.7']);
   });
 });
