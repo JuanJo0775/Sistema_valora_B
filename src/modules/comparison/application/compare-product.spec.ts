@@ -154,4 +154,16 @@ describe('comparar los precios de un producto', () => {
       'viejo-medio',
     ]);
   });
+
+  it('con onlyCurrent solo quedan los precios vigentes', async () => {
+    // A los 20 días (TTL de 14) un precio está por confirmar.
+    const withPending = {
+      prices: [...mixedAges.prices, price('por-confirmar', 1500, 20)],
+      stores: [...mixedAges.stores, store('por-confirmar')],
+    };
+
+    const comparison = await setup(withPending).execute(input({ onlyCurrent: true }));
+
+    expect(idsOf(comparison)).toEqual(['nuevo-barato', 'nuevo-caro']);
+  });
 });
