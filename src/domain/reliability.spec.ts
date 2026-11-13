@@ -1,6 +1,7 @@
 import { reliabilityScore, type ReliabilityInput, type ScoredReport } from './reliability';
 
 const now = new Date('2026-11-13T14:00:00Z');
+const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
 // Reporte de prueba: por defecto, precio normal recién visto.
 const report = (
@@ -42,5 +43,18 @@ describe('score de confiabilidad de un precio', () => {
     expect(result.score).toBeCloseTo(0.25 - 0.5 / 3);
     expect(result.corroborations).toBe(0);
     expect(result.contradictions).toBe(1);
+  });
+
+  it('la misma cuenta del candidato no corrobora (RN4) y cada otra cuenta cuenta una vez, con su reporte más reciente', () => {
+    const result = score({
+      others: [
+        report('ana', 4000, { observedAt: daysAgo(1) }),
+        report('beto', 4500, { observedAt: daysAgo(2) }),
+        report('beto', 4050, { observedAt: daysAgo(1) }),
+      ],
+    });
+
+    expect(result.corroborations).toBe(1);
+    expect(result.contradictions).toBe(0);
   });
 });
