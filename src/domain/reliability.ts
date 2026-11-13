@@ -10,6 +10,8 @@ export const RELIABILITY_PARAMS = {
   maxCorroborations: 3,
   // Pregunta 3: reputación de una cuenta nueva. Una cuenta neutra pesa 1 al corroborar.
   neutralReputation: 0.5,
+  // Pregunta 6: umbrales de los niveles.
+  levels: { high: 0.6, medium: 0.25 },
 };
 
 export type ReliabilityParams = typeof RELIABILITY_PARAMS;
@@ -91,4 +93,16 @@ export function reliabilityScore(
     corroborations: supporting.length,
     contradictions: opposing.length,
   };
+}
+
+export type ReliabilityLevel = 'alta' | 'media' | 'baja';
+
+// Pregunta 6: en_revision no sale del score, lo decide la moderación (#32).
+export function reliabilityLevel(
+  score: number,
+  params: ReliabilityParams = RELIABILITY_PARAMS,
+): ReliabilityLevel {
+  if (score >= params.levels.high) return 'alta';
+  if (score >= params.levels.medium) return 'media';
+  return 'baja';
 }
