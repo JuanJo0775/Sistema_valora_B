@@ -88,9 +88,12 @@ paths:
       tags: [Comparación]
       operationId: compareProduct
       summary: Comparar precios de un producto entre establecimientos (RF-008, RF-009, RF-010)
-      description: |
-        Lee el modelo precalculado price_current (ADR-004). La vigencia se calcula al leer.
-        El orden depende solo de los criterios declarados; las promociones vienen aparte (ADR-009, EC-06).
+      description: >-
+        Lee el modelo precalculado price_current (ADR-004). La vigencia se calcula al leer. El orden
+        depende solo de los criterios declarados; las promociones vienen aparte (ADR-009, EC-06).
+        La ubicación aproximada del usuario (lat, lng) se usa solo para calcular la cercanía: no se
+        guarda, no se registra en los logs ni aparece en la respuesta (RF-005 RN5, EC-08). Por eso la
+        respuesta lleva Cache-Control no-store, aunque es una lectura pública.
       parameters:
         - $ref: '#/components/parameters/ProductId'
         - name: lat
@@ -103,24 +106,41 @@ paths:
           schema: { type: number, minimum: -180, maximum: 180 }
         - name: radiusKm
           in: query
-          schema: { type: number, minimum: 0.2, maximum: 10, default: 2 }
+          description: Radio de búsqueda en kilómetros (valores iniciales calibrables, ADR-019).
+          schema: { type: number, minimum: 0.5, maximum: 3, default: 2 }
         - name: sort
           in: query
+          description: >-
+            Criterio de orden. Si hay empate, unit_price sigue con la distancia y la fecha más
+            reciente; distance, con el precio por unidad y la fecha; recent, con el precio por unidad
+            y la distancia. Al final deciden el id del establecimiento y el de la presentación,
+            comparados carácter por carácter. El precio por unidad se compara con su valor exacto.
           schema: { type: string, enum: [unit_price, distance, recent], default: unit_price }
         - name: onlyCurrent
           in: query
-          description: Si es verdadero, solo incluye precios vigentes (excluye los por confirmar).
+          description: >-
+            Si es verdadero, solo incluye precios vigentes (excluye los por confirmar y los
+            desactualizados).
           schema: { type: boolean, default: false }
       responses:
         '200':
           description: Resultados y promociones separadas
           headers:
-            Cache-Control: { $ref: '#/components/headers/CacheControl' }
-            ETag: { schema: { type: string } }
+            Cache-Control:
+              schema: { type: string, example: no-store }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Comparison' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: >-
+            Regla de negocio incumplida. code INCOMPATIBLE_UNITS: las presentaciones del producto
+            mezclan bases de unidad (100 g, 100 ml o unidad) y no se pueden comparar; el catálogo lo
+            impide desde la issue #59.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /products/{productId}/history:
     get:
       tags: [Comparación]
@@ -646,10 +666,12 @@ components:
         distanceM:
           type: integer
           minimum: 0
-          description: Metros desde el punto consultado; siempre viene en GET /establishments/nearby.
+          description: >-
+            Metros desde el punto consultado; siempre viene en GET /establishments/nearby y en la
+            comparación.
     ComparisonItem:
       type: object
-      required: [establishment, presentationId, priceCop, unitPrice, source, freshness, reliability, observedAt]
+      required: [establishment, presentationId, priceCop, unitPrice, source, freshness, isCheapest, observedAt]
       properties:
         establishment: { $ref: '#/components/schemas/Establishment' }
         presentationId: { type: string, format: uuid }
@@ -663,7 +685,10 @@ components:
           properties:
             valueCop: { type: integer, minimum: 0 }
             per: { type: string, enum: [100g, 100ml, und] }
-        source: { type: string, enum: [comunidad, oficial, siembra] }
+        source:
+          type: string
+          enum: [comunidad, oficial, siembra]
+          description: Hoy siempre es comunidad; oficial llega con el módulo comercial (corte 3).
         freshness:
           type: string
           enum: [vigente, por_confirmar, desactualizado]
@@ -671,9 +696,19 @@ components:
             Vigencia según el TTL de la categoría (RF-010, ADR-005), con edad = ahora menos la fecha
             de observación: vigente si edad ≤ TTL; por_confirmar si TTL < edad ≤ 2 TTL;
             desactualizado si edad > 2 TTL (no entra al orden de la comparación).
-        reliability: { type: string, enum: [alta, media, baja, en_revision] }
-        isCheapest: { type: boolean }
-        confirmations: { type: integer, minimum: 0 }
+        reliability:
+          type: string
+          enum: [alta, media, baja, en_revision]
+          description: Confiabilidad del precio (desde la issue #31; mientras tanto no se envía).
+        isCheapest:
+          type: boolean
+          description: >-
+            Verdadero en el precio por unidad más bajo (valor exacto) entre los resultados vigentes y
+            por confirmar; si varios empatan, en todos. Un precio desactualizado siempre es falso.
+        confirmations:
+          type: integer
+          minimum: 0
+          description: Corroboraciones del precio (desde la issue #31).
         observedAt: { type: string, format: date-time }
     Promotion:
       type: object
@@ -697,17 +732,21 @@ components:
         criteria:
           type: object
           description: Criterios de orden declarados al usuario (EC-06).
+          required: [sort, radiusKm]
           properties:
-            sort: { type: string }
+            sort: { type: string, enum: [unit_price, distance, recent] }
             radiusKm: { type: number }
-        cheapestPriceCop: { type: integer }
-        averagePriceCop: { type: integer, description: Solo precios vigentes y por confirmar. }
         results:
           type: array
+          description: >-
+            Primero los precios vigentes y por confirmar, ordenados por el criterio declarado; al final
+            los desactualizados, ordenados entre sí con el mismo criterio (no compiten con los demás).
           items: { $ref: '#/components/schemas/ComparisonItem' }
         promotions:
           type: array
-          description: Siempre separadas del resultado; no alteran el orden.
+          description: >-
+            Siempre separadas del resultado; no alteran el orden. Vacío hasta el módulo comercial
+            (corte 3).
           items: { $ref: '#/components/schemas/Promotion' }
     ReportCreate:
       type: object
