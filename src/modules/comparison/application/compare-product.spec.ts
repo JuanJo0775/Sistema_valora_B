@@ -166,4 +166,26 @@ describe('comparar los precios de un producto', () => {
 
     expect(idsOf(comparison)).toEqual(['nuevo-barato', 'nuevo-caro']);
   });
+
+  it('isCheapest marca los precios más bajos por unidad entre los no desactualizados, también si empatan', async () => {
+    const withTie = {
+      prices: [...mixedAges.prices, price('empate-barato', 2000, 2)],
+      stores: [...mixedAges.stores, store('empate-barato')],
+    };
+
+    const comparison = await setup(withTie).execute(input());
+
+    // viejo-barato es el más barato de todos, pero está desactualizado.
+    expect(
+      Object.fromEntries(
+        comparison?.results.map((item) => [item.establishment.id, item.isCheapest]) ?? [],
+      ),
+    ).toEqual({
+      'nuevo-barato': true,
+      'empate-barato': true,
+      'nuevo-caro': false,
+      'viejo-barato': false,
+      'viejo-medio': false,
+    });
+  });
 });
