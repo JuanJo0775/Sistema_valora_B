@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Account, AccountRepository } from './account-repository';
 import type { AttemptLimiter } from './attempt-limiter';
-import { Login, type LoginInput } from './login';
+import { InvalidCredentialsError, Login, type LoginInput } from './login';
 import type { PasswordHasher } from './password-hasher';
 import type { NewSession, SessionRepository, StoredSession } from './session-repository';
 
@@ -105,5 +105,21 @@ describe('iniciar sesión', () => {
     ]);
     expect(expiresAt).toEqual(new Date('2026-12-12T14:00:00Z'));
     expect(limiter.resets).toEqual(['login-correo:ana@correo.com']);
+  });
+
+  it('una contraseña mala y un correo inexistente dan el mismo error, y los dos verifican un hash', async () => {
+    const { hasher, sessions, limiter, login } = setup();
+
+    const wrongPassword = login.execute(input({ password: 'otra-clave' }));
+    await expect(wrongPassword).rejects.toThrow(InvalidCredentialsError);
+    const unknownEmail = login.execute(input({ email: 'nadie@correo.com' }));
+    await expect(unknownEmail).rejects.toThrow(InvalidCredentialsError);
+
+    // También se verifica un hash de relleno: el tiempo no revela si la cuenta existe (pregunta 6).
+    expect(hasher.verified).toHaveLength(2);
+    expect(sessions.sessions).toHaveLength(0);
+    expect(limiter.recorded).toEqual(
+      expect.arrayContaining(['login-correo:ana@correo.com', 'login-correo:nadie@correo.com']),
+    );
   });
 });
