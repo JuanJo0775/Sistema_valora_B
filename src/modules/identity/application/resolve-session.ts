@@ -1,4 +1,4 @@
-import { needsTouch } from '../../../domain/session-lifetime';
+import { isSessionActive, needsTouch } from '../../../domain/session-lifetime';
 import type { Role } from './account-repository';
 import type { Clock } from './clock';
 import type { SessionRepository } from './session-repository';
@@ -21,8 +21,9 @@ export class ResolveSession {
 
   async execute(token: string): Promise<ActiveSession | null> {
     const session = await this.ports.sessions.findByTokenHash(hashSessionToken(token));
-    if (!session) return null;
     const now = this.ports.clock.now();
+    // Grill de la #16, pregunta 3: vencida por inactividad o por el máximo, o cerrada, no sirve.
+    if (!session || !isSessionActive({ ...session, now })) return null;
     if (needsTouch(session.lastSeenAt, now)) await this.ports.sessions.touch(session.id, now);
     return { sessionId: session.id, accountId: session.accountId, role: session.role };
   }
