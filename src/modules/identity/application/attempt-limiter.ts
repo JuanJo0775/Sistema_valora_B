@@ -12,7 +12,3 @@ export interface AttemptLimiter {
   record(key: string, rule: AttemptRule): void;
   reset(key: string): void;
 }
-
-export interface Clock {
-  now(): Date;
-}

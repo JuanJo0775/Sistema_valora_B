@@ -1,4 +1,5 @@
-import type { AttemptLimiter, AttemptRule, Clock } from '../application/attempt-limiter';
+import type { AttemptLimiter, AttemptRule } from '../application/attempt-limiter';
+import type { Clock } from '../application/clock';
 
 interface Window {
   startedAt: number;
