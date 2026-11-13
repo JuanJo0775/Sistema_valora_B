@@ -130,4 +130,28 @@ describe('comparar los precios de un producto', () => {
 
     expect(comparison?.results[0]?.freshness).toBe('vigente');
   });
+
+  // Granos y abarrotes (TTL de 14 días): a los 40 días un precio está desactualizado.
+  const mixedAges = {
+    prices: [
+      price('viejo-medio', 1200, 40),
+      price('nuevo-caro', 2500, 1),
+      price('viejo-barato', 1000, 40),
+      price('nuevo-barato', 2000, 1),
+    ],
+    stores: ['viejo-medio', 'nuevo-caro', 'viejo-barato', 'nuevo-barato'].map((id) => store(id)),
+  };
+  const idsOf = (comparison: Awaited<ReturnType<CompareProduct['execute']>>) =>
+    comparison?.results.map((item) => item.establishment.id);
+
+  it('los desactualizados van al final, ordenados entre sí con el mismo criterio', async () => {
+    const comparison = await setup(mixedAges).execute(input());
+
+    expect(idsOf(comparison)).toEqual([
+      'nuevo-barato',
+      'nuevo-caro',
+      'viejo-barato',
+      'viejo-medio',
+    ]);
+  });
 });
