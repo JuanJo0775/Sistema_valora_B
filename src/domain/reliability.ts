@@ -8,6 +8,8 @@ export const RELIABILITY_PARAMS = {
   corroborationWeight: 0.5,
   contradictionWeight: 0.5,
   maxCorroborations: 3,
+  // Pregunta 3: reputación de una cuenta nueva. Una cuenta neutra pesa 1 al corroborar.
+  neutralReputation: 0.5,
 };
 
 export type ReliabilityParams = typeof RELIABILITY_PARAMS;
@@ -63,14 +65,24 @@ export function reliabilityScore(
   const agrees = (other: ScoredReport) =>
     Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
     params.corroborationTolerance;
-  const corroborations = others.filter(agrees).length;
-  const contradictions = others.length - corroborations;
+  const supporting = others.filter(agrees);
+  const opposing = others.filter((other) => !agrees(other));
+  // Pregunta 5: cada cuenta pesa según su reputación (neutra = 1).
+  const weight = (reports: ScoredReport[]) =>
+    reports.reduce(
+      (total, other) => total + input.reputationOf(other.reporterKey) / params.neutralReputation,
+      0,
+    );
   // Pregunta 5: el aporte se satura en el tope, para que muchas cuentas no empujen sin límite.
   const capped = (count: number) =>
     Math.min(count, params.maxCorroborations) / params.maxCorroborations;
-  const score =
+  const raw =
     params.reputationWeight * input.reputationOf(candidate.reporterKey) +
-    params.corroborationWeight * capped(corroborations) -
-    params.contradictionWeight * capped(contradictions);
-  return { score, corroborations, contradictions };
+    params.corroborationWeight * capped(weight(supporting)) -
+    params.contradictionWeight * capped(weight(opposing));
+  return {
+    score: Math.min(1, Math.max(0, raw)),
+    corroborations: supporting.length,
+    contradictions: opposing.length,
+  };
 }
