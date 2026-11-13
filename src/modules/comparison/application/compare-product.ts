@@ -87,6 +87,33 @@ function freshnessAt(observedAt: Date, now: Date, ttlDays: number): Freshness {
   return freshnessOf({ observedAt, now: reference, ttlDays });
 }
 
+const isStale = (candidate: Candidate) => candidate.item.freshness === 'desactualizado';
+
+// Grill de la #15, pregunta 5: los desactualizados no entran al orden; van al final. Con
+// onlyCurrent solo quedan los vigentes.
+function rankInGroups(candidates: Candidate[], input: CompareProductInput): Candidate[] {
+  const rank = (group: Candidate[]) => rankOffers(group, input.sort).offers;
+  if (input.onlyCurrent) {
+    return rank(candidates.filter((candidate) => candidate.item.freshness === 'vigente'));
+  }
+  return [
+    ...rank(candidates.filter((candidate) => !isStale(candidate))),
+    ...rank(candidates.filter(isStale)),
+  ];
+}
+
+// isCheapest entre los resultados que se muestran; un desactualizado nunca es el más barato.
+function markCheapest(ranked: Candidate[]): ComparisonItem[] {
+  const cheapest = lowestUnitPrice(ranked.filter((candidate) => !isStale(candidate)));
+  return ranked.map((candidate) => ({
+    ...candidate.item,
+    isCheapest:
+      !isStale(candidate) &&
+      cheapest !== undefined &&
+      candidate.unitPrice.compareTo(cheapest) === 0,
+  }));
+}
+
 export class CompareProduct {
   constructor(private readonly ports: CompareProductPorts) {}
 
@@ -94,6 +121,20 @@ export class CompareProduct {
     const product = await this.ports.products.find(input.productId);
     if (!product) return null;
 
+    const candidates = await this.candidatesFor(product, input);
+    return {
+      productId: product.id,
+      criteria: { sort: input.sort, radiusKm: input.radiusKm },
+      results: markCheapest(rankInGroups(candidates, input)),
+      promotions: [],
+    };
+  }
+
+  // Los precios vigentes del producto en las tiendas del radio, con su precio por unidad y vigencia.
+  private async candidatesFor(
+    product: ProductForComparisonView,
+    input: CompareProductInput,
+  ): Promise<Candidate[]> {
     const presentations = new Map(product.presentations.map((p) => [p.id, p]));
     const prices = await this.ports.prices.findByPresentations([...presentations.keys()]);
     const stores = await this.ports.stores.find({
@@ -107,6 +148,7 @@ export class CompareProduct {
     const ttlDays = product.isFresh ? TTL_DAYS.fresh : TTL_DAYS.other;
 
     const candidates: Candidate[] = [];
+    // Un precio sin tienda en el radio (o sin presentación conocida) no entra.
     for (const price of prices) {
       const establishment = storesById.get(price.establishmentId);
       const presentation = presentations.get(price.presentationId);
@@ -129,38 +171,6 @@ export class CompareProduct {
         observedAt: item.observedAt,
       });
     }
-
-    // Grill de la #15, pregunta 5: los desactualizados no entran al orden; van al final. Con
-    // onlyCurrent solo quedan los vigentes.
-    const isStale = (candidate: Candidate) => candidate.item.freshness === 'desactualizado';
-    const ranked = input.onlyCurrent
-      ? rankOffers(
-          candidates.filter((candidate) => candidate.item.freshness === 'vigente'),
-          input.sort,
-        ).offers
-      : [
-          ...rankOffers(
-            candidates.filter((candidate) => !isStale(candidate)),
-            input.sort,
-          ).offers,
-          ...rankOffers(candidates.filter(isStale), input.sort).offers,
-        ];
-
-    // Entre los resultados que se muestran; un desactualizado nunca es el más barato.
-    const cheapest = lowestUnitPrice(ranked.filter((candidate) => !isStale(candidate)));
-    const isCheapest = (candidate: Candidate) =>
-      !isStale(candidate) &&
-      cheapest !== undefined &&
-      candidate.unitPrice.compareTo(cheapest) === 0;
-
-    return {
-      productId: product.id,
-      criteria: { sort: input.sort, radiusKm: input.radiusKm },
-      results: ranked.map((candidate) => ({
-        ...candidate.item,
-        isCheapest: isCheapest(candidate),
-      })),
-      promotions: [],
-    };
+    return candidates;
   }
 }
