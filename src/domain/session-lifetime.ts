@@ -26,3 +26,10 @@ export function isSessionActive({
     daysBetween(createdAt, now) <= SESSION_MAX_DAYS
   );
 }
+
+// Grill de la #16, pregunta 3: last_seen_at se escribe como mucho una vez cada 5 minutos.
+export const SESSION_TOUCH_MINUTES = 5;
+
+export function needsTouch(lastSeenAt: Date, now: Date): boolean {
+  return now.getTime() - lastSeenAt.getTime() >= SESSION_TOUCH_MINUTES * 60 * 1000;
+}
