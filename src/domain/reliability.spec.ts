@@ -76,4 +76,13 @@ describe('score de confiabilidad de un precio', () => {
     expect(result.corroborations).toBe(0);
     expect(result.contradictions).toBe(0);
   });
+
+  it('a partir de 3 corroboraciones, una más no sube el score', () => {
+    const five = ['beto', 'caro', 'dani', 'eli', 'fer'].map((key) => report(key, 4000));
+
+    const result = score({ others: five });
+
+    expect(result.corroborations).toBe(5);
+    expect(result.score).toBeCloseTo(0.75);
+  });
 });
