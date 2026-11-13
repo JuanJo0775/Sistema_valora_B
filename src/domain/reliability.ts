@@ -60,38 +60,52 @@ function comparableReports({ candidate, others, now, ttlDays }: ReliabilityInput
   return [...latest.values()];
 }
 
-export function reliabilityScore(
+const clamp = (value: number) => Math.min(1, Math.max(0, value));
+
+// Pregunta 5: lo que dicen los reportes, sin la edad. Cada cuenta pesa según su reputación (neutra =
+// 1) y el aporte se satura en el tope, para que muchas cuentas no empujen sin límite.
+function evidenceOf(
   input: ReliabilityInput,
-  params: ReliabilityParams = RELIABILITY_PARAMS,
-): ReliabilityResult {
-  const { candidate } = input;
-  const others = comparableReports(input);
-  const agrees = (other: ScoredReport) =>
-    Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
-    params.corroborationTolerance;
-  const supporting = others.filter(agrees);
-  const opposing = others.filter((other) => !agrees(other));
-  // Pregunta 5: cada cuenta pesa según su reputación (neutra = 1).
+  supporting: ScoredReport[],
+  opposing: ScoredReport[],
+  params: ReliabilityParams,
+): number {
   const weight = (reports: ScoredReport[]) =>
     reports.reduce(
       (total, other) => total + input.reputationOf(other.reporterKey) / params.neutralReputation,
       0,
     );
-  // Pregunta 5: el aporte se satura en el tope, para que muchas cuentas no empujen sin límite.
-  const capped = (count: number) =>
-    Math.min(count, params.maxCorroborations) / params.maxCorroborations;
-  const raw =
-    params.reputationWeight * input.reputationOf(candidate.reporterKey) +
-    params.corroborationWeight * capped(weight(supporting)) -
-    params.contradictionWeight * capped(weight(opposing));
-  // Pregunta 4: decae en línea recta y llega a 0 a las 2 veces el TTL («desactualizado»). La edad
-  // cuenta desde el reporte más reciente entre el candidato y los que lo confirman: alguien lo acaba
-  // de ver. Una edad negativa (margen de relojes de la #14) cuenta como 0.
-  const lastSeen = Math.max(...[candidate, ...supporting].map((seen) => seen.observedAt.getTime()));
-  const ageDays = Math.max(0, input.now.getTime() - lastSeen) / DAY_IN_MILLISECONDS;
-  const ageFactor = Math.max(0, 1 - ageDays / (2 * input.ttlDays));
+  const capped = (reports: ScoredReport[]) =>
+    Math.min(weight(reports), params.maxCorroborations) / params.maxCorroborations;
+  return clamp(
+    params.reputationWeight * input.reputationOf(input.candidate.reporterKey) +
+      params.corroborationWeight * capped(supporting) -
+      params.contradictionWeight * capped(opposing),
+  );
+}
+
+// Pregunta 4: decae en línea recta y llega a 0 a las 2 veces el TTL («desactualizado»). La edad
+// cuenta desde el reporte más reciente entre el candidato y los que lo confirman: alguien lo acaba de
+// ver. Una edad negativa (margen de relojes de la #14) cuenta como 0.
+function ageFactor(input: ReliabilityInput, supporting: ScoredReport[]): number {
+  const seen = [input.candidate, ...supporting].map((report) => report.observedAt.getTime());
+  const ageDays = Math.max(0, input.now.getTime() - Math.max(...seen)) / DAY_IN_MILLISECONDS;
+  return Math.max(0, 1 - ageDays / (2 * input.ttlDays));
+}
+
+export function reliabilityScore(
+  input: ReliabilityInput,
+  params: ReliabilityParams = RELIABILITY_PARAMS,
+): ReliabilityResult {
+  const { candidate } = input;
+  const agrees = (other: ScoredReport) =>
+    Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
+    params.corroborationTolerance;
+  const others = comparableReports(input);
+  const supporting = others.filter(agrees);
+  const opposing = others.filter((other) => !agrees(other));
   return {
-    score: ageFactor * Math.min(1, Math.max(0, raw)),
+    score: ageFactor(input, supporting) * evidenceOf(input, supporting, opposing, params),
     corroborations: supporting.length,
     contradictions: opposing.length,
   };
@@ -122,5 +136,5 @@ export function updateReputation(
     event === 'corroborated'
       ? params.reputationSteps.corroborated
       : -params.reputationSteps.rejected;
-  return Math.min(1, Math.max(0, current + step));
+  return clamp(current + step);
 }
