@@ -18,9 +18,10 @@ import type { Role } from '../application/account-repository';
 import { TooManyAttemptsError } from '../application/attempt-limiter';
 import { csrfTokenFor } from '../application/csrf';
 import { InvalidCredentialsError, Login } from '../application/login';
+import { Logout } from '../application/logout';
 import { RegisterAccount } from '../application/register-account';
 import { LoginDto, RegisterDto } from './auth.dto';
-import { sessionCookie } from './session-cookie';
+import { clearedSessionCookie, sessionCookie } from './session-cookie';
 import { type AuthenticatedSession, CurrentSession, SessionGuard } from './session.guard';
 
 // Sin correo ni id de la cuenta (EC-08): el frontend solo necesita el rol.
@@ -52,6 +53,7 @@ export class AuthController {
   constructor(
     private readonly registerAccount: RegisterAccount,
     private readonly login: Login,
+    private readonly logout: Logout,
     private readonly config: ConfigService<Env, true>,
   ) {}
 
@@ -103,5 +105,18 @@ export class AuthController {
   session(@CurrentSession() session: AuthenticatedSession): SessionResponse {
     const secret = this.config.get('SESSION_SECRET', { infer: true });
     return { role: session.role, csrfToken: csrfTokenFor(session.token, secret) };
+  }
+
+  // Grill de la #16, pregunta 3: revoca la sesión en el servidor y borra la cookie. El guard exige
+  // el token CSRF porque es un POST.
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionGuard)
+  async logOut(
+    @CurrentSession() session: AuthenticatedSession,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<void> {
+    await this.logout.execute(session.sessionId);
+    response.setHeader('Set-Cookie', clearedSessionCookie());
   }
 }

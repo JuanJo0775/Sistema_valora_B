@@ -5,6 +5,7 @@ import type { AttemptLimiter } from './application/attempt-limiter';
 import type { Clock } from './application/clock';
 import type { PasswordHasher } from './application/password-hasher';
 import { Login } from './application/login';
+import { Logout } from './application/logout';
 import { RegisterAccount } from './application/register-account';
 import { ResolveSession } from './application/resolve-session';
 import { SESSION_REPOSITORY, type SessionRepository } from './application/session-repository';
@@ -65,6 +66,12 @@ const CLOCK = Symbol('CLOCK');
       inject: [SESSION_REPOSITORY, CLOCK],
       useFactory: (sessions: SessionRepository, clock: Clock): ResolveSession =>
         new ResolveSession({ sessions, clock }),
+    },
+    {
+      provide: Logout,
+      inject: [SESSION_REPOSITORY, CLOCK],
+      useFactory: (sessions: SessionRepository, clock: Clock): Logout =>
+        new Logout({ sessions, clock }),
     },
     SessionGuard,
   ],
