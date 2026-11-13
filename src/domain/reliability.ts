@@ -65,9 +65,12 @@ export function reliabilityScore(
     params.corroborationTolerance;
   const corroborations = others.filter(agrees).length;
   const contradictions = others.length - corroborations;
+  // Pregunta 5: el aporte se satura en el tope, para que muchas cuentas no empujen sin límite.
+  const capped = (count: number) =>
+    Math.min(count, params.maxCorroborations) / params.maxCorroborations;
   const score =
     params.reputationWeight * input.reputationOf(candidate.reporterKey) +
-    (params.corroborationWeight * corroborations) / params.maxCorroborations -
-    (params.contradictionWeight * contradictions) / params.maxCorroborations;
+    params.corroborationWeight * capped(corroborations) -
+    params.contradictionWeight * capped(contradictions);
   return { score, corroborations, contradictions };
 }
