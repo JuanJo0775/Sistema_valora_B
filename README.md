@@ -6,7 +6,7 @@ API y lógica de negocio de **Valora**, plataforma colaborativa para comparar pr
 
 ## Estado
 
-Hito **H2-01** (esqueleto del núcleo), paso 6 en curso.
+Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 
 | Listo en `dev`                   | Qué hay                                                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -19,8 +19,9 @@ Hito **H2-01** (esqueleto del núcleo), paso 6 en curso.
 | Registro de precios (#14)        | Módulos `pricing` y `comparison`: `POST /v1/reports` con `Idempotency-Key` y precio vigente en `price_current` por el outbox  |
 | Orden neutral (#21)              | Regla `rankOffers` del dominio: orden por precio por unidad, distancia o fecha, con desempate determinista (EC-06)            |
 | Comparación (#15)                | `GET /v1/products/{productId}/comparison`: precios vigentes en las tiendas del radio, en orden neutral y sin caché (EC-08)    |
+| Sesión (#16, primera parte)      | Módulo `identity`: registro con consentimiento, inicio y cierre de sesión con cookie, CSRF, roles y límites de frecuencia     |
 
-Siguiente: sesión, CSRF y roles (paso 7, #16). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
+Siguiente: `POST /v1/reports` con sesión de reportante (paso 7, #62). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
 ## Primeros pasos (desde cero)
 
@@ -237,6 +238,7 @@ src/
   shared/http/         Formato de error { code, message } y validación de entrada
   shared/database/     Conexión con Drizzle y pg
   shared/events/       Bus de eventos interno con outbox (ADR-015)
+  modules/identity/    Cuentas, sesión de servidor, CSRF, roles y límites de frecuencia
   modules/catalog/     Productos, presentaciones y categorías
   modules/establishments/  Tiendas con ubicación y búsqueda por cercanía
   modules/imports/     Semilla: lee seed/ y guarda por catalog y establishments
