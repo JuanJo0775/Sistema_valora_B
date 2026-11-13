@@ -1,4 +1,4 @@
-import type { UnitPrice } from './unit-price';
+import { IncompatibleUnitsError, type UnitPrice } from './unit-price';
 
 // Criterios de orden que declara la comparación (parámetro sort del contrato).
 export type SortCriterion = 'unit_price' | 'distance' | 'recent';
@@ -39,10 +39,22 @@ const CHAINS: Record<SortCriterion, Comparator[]> = {
   recent: [moreRecent, cheaperPerUnit, closer, byIds],
 };
 
+// Grill de la #21, pregunta 5: un producto se compara en una sola base, sin importar el criterio.
+function assertSameBase(offers: readonly RankableOffer[]): void {
+  const [first, ...rest] = offers;
+  const mixed = rest.find((other) => other.unitPrice.per !== first?.unitPrice.per);
+  if (first && mixed) {
+    throw new IncompatibleUnitsError(
+      `No se pueden ordenar juntos precios por ${first.unitPrice.per} y por ${mixed.unitPrice.per}.`,
+    );
+  }
+}
+
 export function rankOffers<T extends RankableOffer>(
   offers: readonly T[],
   sort: SortCriterion,
 ): Ranking<T> {
+  assertSameBase(offers);
   const chain = CHAINS[sort];
   const compare: Comparator = (a, b) => {
     for (const comparator of chain) {
