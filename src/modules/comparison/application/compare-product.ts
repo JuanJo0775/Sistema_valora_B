@@ -54,7 +54,9 @@ export interface Comparison {
   promotions: [];
 }
 
-const TTL_DAYS = 14;
+// ADR-005: TTL de 7 días para categorías frescas y 14 para el resto (valores provisionales, aquí
+// en un solo lugar para calibrarlos).
+const TTL_DAYS = { fresh: 7, other: 14 } as const;
 
 export class CompareProduct {
   constructor(private readonly ports: CompareProductPorts) {}
@@ -73,6 +75,7 @@ export class CompareProduct {
     });
     const storesById = new Map(stores.map((store) => [store.id, store]));
     const now = this.ports.clock.now();
+    const ttlDays = product.isFresh ? TTL_DAYS.fresh : TTL_DAYS.other;
 
     const results: ComparisonItem[] = [];
     for (const price of prices) {
@@ -85,7 +88,7 @@ export class CompareProduct {
         priceCop: price.priceCop,
         unitPrice: calculateUnitPrice(price.priceCop, presentation),
         source: 'comunidad',
-        freshness: freshnessOf({ observedAt: price.observedAt, now, ttlDays: TTL_DAYS }),
+        freshness: freshnessOf({ observedAt: price.observedAt, now, ttlDays }),
         observedAt: price.observedAt,
       });
     }
