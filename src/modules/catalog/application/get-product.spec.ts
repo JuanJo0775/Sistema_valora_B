@@ -36,6 +36,10 @@ class InMemoryProductRepository implements ProductRepository {
   presentationExists(): Promise<boolean> {
     return Promise.reject(new Error('GetProduct no comprueba presentaciones'));
   }
+
+  findForComparison(): Promise<null> {
+    return Promise.reject(new Error('GetProduct no consulta para la comparación'));
+  }
 }
 
 describe('consultar un producto del catálogo', () => {
