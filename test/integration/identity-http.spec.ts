@@ -147,4 +147,37 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
       expect(response.body).toEqual({ code: 'UNAUTHORIZED', message: 'Se requiere sesión.' });
     });
   });
+
+  describe('POST /v1/auth/logout', () => {
+    it('sin X-CSRF-Token responde 403 CSRF_TOKEN_INVALID y la sesión sigue activa', async () => {
+      const cookie = await signedIn();
+
+      const response = await request(server)
+        .post('/v1/auth/logout')
+        .set('Cookie', cookie)
+        .expect(403);
+
+      expect(response.body).toEqual({
+        code: 'CSRF_TOKEN_INVALID',
+        message: 'Falta el token CSRF o no coincide con la sesión.',
+      });
+      await request(server).get('/v1/auth/session').set('Cookie', cookie).expect(200);
+    });
+
+    it('con el token CSRF responde 204, borra la cookie y la sesión deja de servir', async () => {
+      const cookie = await signedIn();
+      const session = await request(server).get('/v1/auth/session').set('Cookie', cookie);
+      const { csrfToken } = session.body as { csrfToken: string };
+
+      const response = await request(server)
+        .post('/v1/auth/logout')
+        .set('Cookie', cookie)
+        .set('X-CSRF-Token', csrfToken)
+        .expect(204);
+
+      const [cleared] = response.headers['set-cookie'] as unknown as string[];
+      expect(cleared).toMatch(/^valora_session=; Max-Age=0; /);
+      await request(server).get('/v1/auth/session').set('Cookie', cookie).expect(401);
+    });
+  });
 });
