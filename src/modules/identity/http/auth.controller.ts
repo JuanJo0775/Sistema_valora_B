@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpException,
   HttpStatus,
@@ -8,13 +9,25 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SESSION_MAX_DAYS } from '../../../domain/session-lifetime';
+import type { Env } from '../../../shared/config/env.validation';
+import type { Role } from '../application/account-repository';
 import { TooManyAttemptsError } from '../application/attempt-limiter';
+import { csrfTokenFor } from '../application/csrf';
 import { InvalidCredentialsError, Login } from '../application/login';
 import { RegisterAccount } from '../application/register-account';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { sessionCookie } from './session-cookie';
+import { type AuthenticatedSession, CurrentSession, SessionGuard } from './session.guard';
+
+// Sin correo ni id de la cuenta (EC-08): el frontend solo necesita el rol.
+export interface SessionResponse {
+  role: Role;
+  csrfToken: string;
+}
 
 // Lo que estas rutas leen de la petición, sin depender de los tipos de Express.
 export interface ClientRequest {
@@ -39,6 +52,7 @@ export class AuthController {
   constructor(
     private readonly registerAccount: RegisterAccount,
     private readonly login: Login,
+    private readonly config: ConfigService<Env, true>,
   ) {}
 
   // Grill de la #16, pregunta 6: la misma respuesta exista o no el correo.
@@ -81,5 +95,13 @@ export class AuthController {
       }
       throw error;
     }
+  }
+
+  // Grill de la #16, pregunta 4: el token CSRF se deriva de la sesión y no se guarda.
+  @Get('session')
+  @UseGuards(SessionGuard)
+  session(@CurrentSession() session: AuthenticatedSession): SessionResponse {
+    const secret = this.config.get('SESSION_SECRET', { infer: true });
+    return { role: session.role, csrfToken: csrfTokenFor(session.token, secret) };
   }
 }

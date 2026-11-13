@@ -6,8 +6,10 @@ import type { Clock } from './application/clock';
 import type { PasswordHasher } from './application/password-hasher';
 import { Login } from './application/login';
 import { RegisterAccount } from './application/register-account';
+import { ResolveSession } from './application/resolve-session';
 import { SESSION_REPOSITORY, type SessionRepository } from './application/session-repository';
 import { AuthController } from './http/auth.controller';
+import { SessionGuard } from './http/session.guard';
 import { Argon2PasswordHasher } from './infrastructure/argon2-password-hasher';
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository';
@@ -58,6 +60,15 @@ const CLOCK = Symbol('CLOCK');
         clock: Clock,
       ): Login => new Login({ accounts, hasher, sessions, limiter, clock }),
     },
+    {
+      provide: ResolveSession,
+      inject: [SESSION_REPOSITORY, CLOCK],
+      useFactory: (sessions: SessionRepository, clock: Clock): ResolveSession =>
+        new ResolveSession({ sessions, clock }),
+    },
+    SessionGuard,
   ],
+  // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
+  exports: [ResolveSession, SessionGuard],
 })
 export class IdentityModule {}
