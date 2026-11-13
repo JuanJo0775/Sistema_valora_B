@@ -1,4 +1,4 @@
-import type { INestApplication } from '@nestjs/common';
+import { ConsoleLogger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
@@ -8,6 +8,7 @@ import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { OutboxRelay } from '../../src/shared/events';
 
 // Producto, presentación y tienda de prueba: solo existen dentro de esta prueba.
 const productId = 'a7777777-7777-4777-8777-111111111111';
@@ -22,6 +23,8 @@ describe('GET /v1/products/{productId}/comparison', () => {
   let db: Database;
 
   beforeAll(async () => {
+    // Intervalo muy largo: el repartidor del outbox se llama a mano con runOnce().
+    process.env['OUTBOX_POLL_INTERVAL_MS'] = '3600000';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     configureApp(app);
@@ -36,7 +39,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate comparison.price_current, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, catalog.presentations, catalog.products, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,
@@ -131,4 +134,92 @@ describe('GET /v1/products/{productId}/comparison', () => {
 
     expect(response.body).toEqual({ code: 'NOT_FOUND', message: 'Recurso no encontrado.' });
   });
+
+  // EC-08 y RF-005 RN5: la ubicación del usuario no se guarda, no se registra ni se expone.
+  it('la ubicación consultada no aparece en la respuesta ni en el log, y no se guarda', async () => {
+    const preciseLocation = { lat: '4.53387654', lng: '-75.68123456' };
+    // Con un precio, la ubicación llega hasta la consulta de las tiendas en el radio.
+    const observedAt = new Date(Date.now() - 60 * 60 * 1000);
+    await db.insert(priceCurrent).values({
+      presentationId,
+      establishmentId: storeId,
+      reportId: 'a9999999-9999-4999-8999-999999999999',
+      priceCop: 2000,
+      priceType: 'normal',
+      observedAt,
+      receivedAt: observedAt,
+    });
+    const rowsBefore = await countAllRows(db);
+    const written: string[] = [];
+    const capture = (chunk: unknown): boolean => {
+      written.push(String(chunk));
+      return true;
+    };
+    const stdout = jest.spyOn(process.stdout, 'write').mockImplementation(capture);
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(capture);
+
+    // Con el registro real de NestJS, como en la prueba de /nearby (#50).
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .setLogger(new ConsoleLogger())
+      .compile();
+    const loggedApp = moduleRef.createNestApplication({
+      logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    });
+    configureApp(loggedApp);
+    await loggedApp.init();
+    const response = await request(loggedApp.getHttpServer() as Parameters<typeof request>[0])
+      .get(`/v1/products/${productId}/comparison`)
+      .query(preciseLocation)
+      .expect(200);
+    await loggedApp.close();
+    stdout.mockRestore();
+    stderr.mockRestore();
+
+    const output = written.join('') + JSON.stringify(response.body);
+    expect((response.body as { results: unknown[] }).results).toHaveLength(1);
+    expect(output).not.toContain(preciseLocation.lat);
+    expect(output).not.toContain(preciseLocation.lng);
+    expect(await countAllRows(db)).toBe(rowsBefore);
+  });
+
+  it('de punta a punta: un reporte llega por el outbox y aparece en la comparación', async () => {
+    const observedAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    await request(server)
+      .post('/v1/reports')
+      .set('Idempotency-Key', 'a6666666-6666-4666-8666-666666666666')
+      .send({ presentationId, establishmentId: storeId, priceCop: 4500, observedAt })
+      .expect(201);
+
+    await app.get(OutboxRelay).runOnce();
+    const response = await compare().expect(200);
+
+    expect(response.body).toMatchObject({
+      results: [
+        {
+          establishment: { id: storeId },
+          priceCop: 4500,
+          unitPrice: { valueCop: 900, per: '100g' },
+          freshness: 'vigente',
+          observedAt,
+        },
+      ],
+    });
+  });
 });
+
+// Total de filas en todas las tablas de la aplicación (sin las de PostgreSQL y PostGIS).
+async function countAllRows(db: Database): Promise<number> {
+  const tables = await db.execute<{ name: string }>(
+    sql`select format('%I.%I', table_schema, table_name) as name from information_schema.tables
+        where table_type = 'BASE TABLE'
+          and table_schema not in ('pg_catalog', 'information_schema', 'public', 'topology')`,
+  );
+  let total = 0;
+  for (const { name } of tables.rows) {
+    const result = await db.execute<{ count: string }>(
+      sql.raw(`select count(*) as count from ${name}`),
+    );
+    total += Number(result.rows[0]?.count ?? 0);
+  }
+  return total;
+}
