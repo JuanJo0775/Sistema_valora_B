@@ -8,7 +8,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Reflector } from '@nestjs/core';
 import type { Env } from '../../../shared/config/env.validation';
 import type { Role } from '../application/account-repository';
 import { isValidCsrfToken } from '../application/csrf';
@@ -49,7 +48,6 @@ const header = (request: SessionRequest, name: string): string | undefined => {
 export class SessionGuard implements CanActivate {
   constructor(
     private readonly resolveSession: ResolveSession,
-    private readonly reflector: Reflector,
     private readonly config: ConfigService<Env, true>,
   ) {}
 
@@ -59,7 +57,8 @@ export class SessionGuard implements CanActivate {
     const session = token === undefined ? null : await this.resolveSession.execute(token);
     if (!session || token === undefined) throw new UnauthorizedException();
 
-    const roles = this.reflector.get<Role[] | undefined>(ROLES_KEY, context.getHandler());
+    // SetMetadata guarda los roles en la función de la ruta; se leen sin inyectar Reflector.
+    const roles = Reflect.getMetadata(ROLES_KEY, context.getHandler()) as Role[] | undefined;
     if (roles && !roles.includes(session.role)) throw new ForbiddenException();
 
     const secret = this.config.get('SESSION_SECRET', { infer: true });
