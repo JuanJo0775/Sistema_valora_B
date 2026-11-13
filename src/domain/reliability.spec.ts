@@ -1,4 +1,5 @@
 import {
+  RELIABILITY_PARAMS,
   reliabilityLevel,
   reliabilityScore,
   type ReliabilityInput,
@@ -166,5 +167,73 @@ describe('reputación del reportante', () => {
     );
 
     expect(updateReputation(afterFour, 'rejected')).toBeCloseTo(0.5);
+  });
+});
+
+describe('garantías del score', () => {
+  it('con otros parámetros el resultado cambia: nada está fijo en el código (RN6)', () => {
+    const widerTolerance = { ...RELIABILITY_PARAMS, corroborationTolerance: 0.15 };
+
+    const result = reliabilityScore(
+      {
+        candidate: report('ana', 4000),
+        others: [report('beto', 4500)],
+        reputationOf: () => 0.5,
+        now,
+        ttlDays: 14,
+      },
+      widerTolerance,
+    );
+
+    expect(result.corroborations).toBe(1);
+    expect(
+      reliabilityLevel(0.5, { ...RELIABILITY_PARAMS, levels: { high: 0.4, medium: 0.2 } }),
+    ).toBe('alta');
+  });
+
+  it('la salida no contiene ninguna clave de reportante (RN5, EC-08)', () => {
+    const result = score({
+      candidate: report('cuenta-secreta-ana', 4000),
+      others: [report('cuenta-secreta-beto', 4050), report('cuenta-secreta-caro', 4800)],
+    });
+
+    expect(JSON.stringify(result)).not.toContain('cuenta-secreta');
+  });
+
+  describe('escenarios de RF-011 (Notion)', () => {
+    it('corroboración independiente: 4000 y 4100 de dos cuentas dan más que un reporte único', () => {
+      expect(score({ others: [report('beto', 4100)] }).score).toBeGreaterThan(score({}).score);
+    });
+
+    it('la misma cuenta no corrobora: reportar dos veces el mismo precio no aumenta la corroboración', () => {
+      const twice = score({ others: [report('ana', 4000, { observedAt: daysAgo(1) })] });
+
+      expect(twice.corroborations).toBe(0);
+      expect(twice.score).toBeCloseTo(score({}).score);
+    });
+
+    it('reputación tras un rechazo: baja y sus próximos reportes pesan menos', () => {
+      const before = 0.5;
+      const after = updateReputation(before, 'rejected');
+      const reputationOf = (reputation: number) => () => reputation;
+
+      expect(after).toBeLessThan(before);
+      expect(score({ reputationOf: reputationOf(after) }).score).toBeLessThan(
+        score({ reputationOf: reputationOf(before) }).score,
+      );
+    });
+
+    it('decaimiento temporal: un score de 0,8 sin reportes nuevos baja al pasar el 50 % de la ventana', () => {
+      // Reportante y confirmación con reputación 1: 0,5 + 0,5 × 2/3 ≈ 0,83.
+      const strong = (days: number) =>
+        score({
+          reputationOf: () => 1,
+          candidate: report('ana', 4000, { observedAt: daysAgo(days) }),
+          others: [report('beto', 4000, { observedAt: daysAgo(days) })],
+        }).score;
+
+      expect(strong(0)).toBeGreaterThanOrEqual(0.8);
+      expect(strong(7)).toBeLessThan(0.8);
+    });
   });
 });
