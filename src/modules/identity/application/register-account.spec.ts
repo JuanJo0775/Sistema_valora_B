@@ -1,4 +1,5 @@
 import type { Account, AccountRepository, NewAccount } from './account-repository';
+import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
 import type { PasswordHasher } from './password-hasher';
 import { RegisterAccount } from './register-account';
 
@@ -32,10 +33,22 @@ class FakeHasher implements PasswordHasher {
   }
 }
 
-function setup() {
+// Doble del límite: bloquea las claves indicadas y no cuenta nada más.
+const limiterBlocking = (blocked: Record<string, number>): AttemptLimiter => ({
+  retryAfterSeconds: (key) => blocked[key] ?? null,
+  record: () => undefined,
+  reset: () => undefined,
+});
+
+function setup(blocked: Record<string, number> = {}) {
   const accounts = new InMemoryAccountRepository();
   const hasher = new FakeHasher();
-  const register = new RegisterAccount({ accounts, hasher, clock: { now: () => now } });
+  const register = new RegisterAccount({
+    accounts,
+    hasher,
+    limiter: limiterBlocking(blocked),
+    clock: { now: () => now },
+  });
   return { accounts, hasher, register };
 }
 
@@ -47,6 +60,7 @@ describe('registrar una cuenta', () => {
       email: '  Ana@Correo.com ',
       password: 'una-clave-larga',
       acceptedPolicyVersion: '2026-11',
+      ip: '203.0.113.7',
     });
 
     expect(accounts.accounts).toEqual([
@@ -67,6 +81,7 @@ describe('registrar una cuenta', () => {
       email: 'ana@correo.com',
       password: 'la-primera-clave',
       acceptedPolicyVersion: '2026-11',
+      ip: '203.0.113.7',
     };
     await register.execute(first);
 
@@ -78,5 +93,20 @@ describe('registrar una cuenta', () => {
     expect(accounts.accounts[0]?.passwordHash).toBe('hash:la-primera-clave');
     // El segundo registro también calcula el hash: tarda lo mismo que uno nuevo (pregunta 6).
     expect(hasher.hashes).toBe(2);
+  });
+
+  it('al pasar el límite de registros por IP responde con los segundos que faltan, sin crear nada', async () => {
+    const { accounts, register } = setup({ 'registro-ip:203.0.113.7': 300 });
+
+    const attempt = register.execute({
+      email: 'ana@correo.com',
+      password: 'una-clave-larga',
+      acceptedPolicyVersion: '2026-11',
+      ip: '203.0.113.7',
+    });
+
+    await expect(attempt).rejects.toThrow(TooManyAttemptsError);
+    await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 300 });
+    expect(accounts.accounts).toHaveLength(0);
   });
 });
