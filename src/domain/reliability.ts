@@ -35,11 +35,13 @@ export interface ReliabilityResult {
   contradictions: number;
 }
 
-// Pregunta 2 y RN4: sin la cuenta del candidato, y una vez por cuenta con su reporte más reciente.
+// Pregunta 2 y RN4: del mismo tipo de precio, sin la cuenta del candidato, y una vez por cuenta con
+// su reporte más reciente.
 function latestPerOtherAccount(candidate: ScoredReport, others: ScoredReport[]): ScoredReport[] {
   const latest = new Map<string, ScoredReport>();
   for (const other of others) {
-    if (other.reporterKey === candidate.reporterKey) continue;
+    if (other.reporterKey === candidate.reporterKey || other.priceType !== candidate.priceType)
+      continue;
     const kept = latest.get(other.reporterKey);
     if (!kept || other.observedAt > kept.observedAt) latest.set(other.reporterKey, other);
   }
