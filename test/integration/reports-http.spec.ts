@@ -103,6 +103,22 @@ describe('POST /v1/reports', () => {
 
       expect(response.body).toEqual({ code: 'FORBIDDEN', message: 'El rol no tiene permiso.' });
     });
+
+    it('sin X-CSRF-Token responde 403 CSRF_TOKEN_INVALID y no guarda nada', async () => {
+      const response = await request(server)
+        .post('/v1/reports')
+        .set('Cookie', reporter.cookie)
+        .set('Idempotency-Key', idempotencyKey)
+        .send(body())
+        .expect(403);
+
+      expect(response.body).toEqual({
+        code: 'CSRF_TOKEN_INVALID',
+        message: 'Falta el token CSRF o no coincide con la sesión.',
+      });
+      const saved = await db.execute(sql`select id from pricing.reports`);
+      expect(saved.rows).toHaveLength(0);
+    });
   });
 
   it('responde 201 con el recibo, y el reintento idéntico responde 200 con el mismo recibo', async () => {
