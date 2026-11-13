@@ -190,6 +190,21 @@ Aplicación de RF-008, RF-009, RF-010, ADR-004, ADR-005 y ADR-009. El detalle es
 - **Fuera del contrato o aplazado:** `cheapestPriceCop` y `averagePriceCop` salen (eran precios totales de presentaciones distintas); `reliability` y `confirmations`, desde la #31; `promotions` vacío hasta el corte 3; `source` siempre `comunidad`.
 - **Errores:** 400 (UUID, ubicación, radio, `sort`, `onlyCurrent`), 404 si el producto no existe, 200 con listas vacías si no hay precios, y 422 `INCOMPATIBLE_UNITS` si el producto mezcla bases (la #59 lo impedirá).
 
+## Sesión, CSRF y roles (issue #16, decidido el 12 de noviembre de 2026)
+
+Aplicación de RF-001, RF-002, ADR-014 y EC-08. El detalle está en `docs/decisiones/issue-16-sesion/`. Va en dos pull requests: cuentas y sesión (este), y `POST /reports` protegido (#62).
+
+- **Sesión de servidor:** tabla `identity.sessions`; la cookie `valora_session` lleva un token aleatorio de 256 bits y la base guarda su SHA-256.
+- **Ciclo de vida** (`src/domain/session-lifetime.ts`, valores provisionales): vence tras 7 días sin uso o 30 desde el inicio; `last_seen_at` se escribe como mucho cada 5 minutos; cada inicio de sesión crea una sesión y un token nuevos; cerrar sesión la revoca. Sin limpieza de sesiones vencidas por ahora.
+- **Cookie:** `HttpOnly`, `Secure` siempre, `SameSite=Lax`, `Path=/`, `Max-Age` de 30 días. Mismo origen y sin CORS hasta decidir el despliegue (ADR-012).
+- **CSRF:** `HMAC-SHA256(SESSION_SECRET, token de sesión)`, sin guardarlo; lo entrega `GET /auth/session` y lo exigen las rutas con sesión y `POST`, `PUT`, `PATCH` o `DELETE` (403 `CSRF_TOKEN_INVALID`).
+- **Roles:** uno por cuenta (`reportante`, `comercio`, `moderador`); el registro siempre crea un `reportante`. Solo el `reportante` podrá registrar precios. Guard `SessionGuard` con `@Roles(...)`: 401 sin sesión y 403 `FORBIDDEN` con otro rol.
+- **No revelar cuentas:** el inicio de sesión fallido responde siempre el mismo 401 y verifica un hash de relleno si la cuenta no existe; el registro con un correo existente responde 201 igual y no cambia nada.
+- **Datos:** contraseña de 10 a 128 caracteres sin reglas de composición; correo sin espacios y en minúsculas; Argon2id con 19 MiB, 2 iteraciones y 1 hilo; consentimiento con `policy_version` (`2026-11`, provisional) y `policy_accepted_at`.
+- **Límites** (valores provisionales, en memoria detrás del puerto `AttemptLimiter`): 5 fallos de inicio de sesión por correo, 20 intentos por IP y 10 registros por IP en 15 minutos; 429 con `Retry-After`. Al reiniciar el servidor vuelven a cero; detrás de un proxy hará falta `trust proxy`.
+- **Dependencias:** `@node-rs/argon2` y `cookie` 1.x (la 2.x solo trae ESM y Jest no la carga en Node 22).
+- **Filtro de errores:** un 403 y un 401 conservan su propio código y mensaje, como el 409; un 429 envía `Retry-After`.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
