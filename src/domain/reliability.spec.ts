@@ -3,6 +3,7 @@ import {
   reliabilityScore,
   type ReliabilityInput,
   type ScoredReport,
+  updateReputation,
 } from './reliability';
 
 const now = new Date('2026-11-13T14:00:00Z');
@@ -147,5 +148,23 @@ describe('nivel de confiabilidad', () => {
     [0, 'baja'],
   ] as const)('un score de %d es %s', (value, level) => {
     expect(reliabilityLevel(value)).toBe(level);
+  });
+});
+
+describe('reputación del reportante', () => {
+  it('sube 0,05 cuando otros confirman su reporte, baja 0,20 con un rechazo y queda entre 0 y 1', () => {
+    expect(updateReputation(0.5, 'corroborated')).toBeCloseTo(0.55);
+    expect(updateReputation(0.5, 'rejected')).toBeCloseTo(0.3);
+    expect(updateReputation(0.98, 'corroborated')).toBe(1);
+    expect(updateReputation(0.1, 'rejected')).toBe(0);
+  });
+
+  it('un rechazo borra el efecto de cuatro confirmaciones', () => {
+    const afterFour = [1, 2, 3, 4].reduce(
+      (reputation) => updateReputation(reputation, 'corroborated'),
+      0.5,
+    );
+
+    expect(updateReputation(afterFour, 'rejected')).toBeCloseTo(0.5);
   });
 });
