@@ -117,4 +117,17 @@ describe('score de confiabilidad de un precio', () => {
     expect(at(28)).toBe(0);
     expect(at(40)).toBe(0);
   });
+
+  it('la edad cuenta desde el reporte más reciente que lo confirma, y una edad negativa cuenta como 0', () => {
+    const oldCandidate = report('ana', 4000, { observedAt: daysAgo(10) });
+    const confirmedToday = score({ candidate: oldCandidate, others: [report('beto', 4000)] });
+    const fresh = score({ others: [report('beto', 4000)] });
+    // Margen de relojes de la #14: visto 3 minutos «en el futuro».
+    const ahead = score({
+      candidate: report('ana', 4000, { observedAt: new Date(now.getTime() + 3 * 60 * 1000) }),
+    });
+
+    expect(confirmedToday.score).toBeCloseTo(fresh.score);
+    expect(ahead.score).toBeCloseTo(0.25);
+  });
 });
