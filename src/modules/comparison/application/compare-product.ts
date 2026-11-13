@@ -1,5 +1,9 @@
 import { type Freshness, freshnessOf } from '../../../domain/freshness';
-import type { SortCriterion } from '../../../domain/neutral-ranking';
+import {
+  type RankableOffer,
+  rankOffers,
+  type SortCriterion,
+} from '../../../domain/neutral-ranking';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import type { ProductForComparisonView } from '../../catalog';
 import type { NearbyEstablishment, WithinRadiusQuery } from '../../establishments';
@@ -58,6 +62,11 @@ export interface Comparison {
 // en un solo lugar para calibrarlos).
 const TTL_DAYS = { fresh: 7, other: 14 } as const;
 
+// Lo que rankOffers puede leer, junto al resultado que se devuelve tal cual.
+interface Candidate extends RankableOffer {
+  item: ComparisonItem;
+}
+
 // La #14 acepta precios vistos hasta 5 minutos «en el futuro» por la diferencia de relojes: para la
 // vigencia, esa edad negativa cuenta como cero.
 function freshnessAt(observedAt: Date, now: Date, ttlDays: number): Freshness {
@@ -84,12 +93,12 @@ export class CompareProduct {
     const now = this.ports.clock.now();
     const ttlDays = product.isFresh ? TTL_DAYS.fresh : TTL_DAYS.other;
 
-    const results: ComparisonItem[] = [];
+    const candidates: Candidate[] = [];
     for (const price of prices) {
       const establishment = storesById.get(price.establishmentId);
       const presentation = presentations.get(price.presentationId);
       if (!establishment || !presentation) continue;
-      results.push({
+      const item: ComparisonItem = {
         establishment,
         presentationId: price.presentationId,
         priceCop: price.priceCop,
@@ -97,13 +106,31 @@ export class CompareProduct {
         source: 'comunidad',
         freshness: freshnessAt(price.observedAt, now, ttlDays),
         observedAt: price.observedAt,
+      };
+      candidates.push({
+        item,
+        establishmentId: establishment.id,
+        presentationId: item.presentationId,
+        unitPrice: item.unitPrice,
+        distanceMeters: establishment.distanceM,
+        observedAt: item.observedAt,
       });
     }
+
+    // Grill de la #15, pregunta 5: los desactualizados no entran al orden; van al final.
+    const isStale = (candidate: Candidate) => candidate.item.freshness === 'desactualizado';
+    const ranked = [
+      ...rankOffers(
+        candidates.filter((candidate) => !isStale(candidate)),
+        input.sort,
+      ).offers,
+      ...rankOffers(candidates.filter(isStale), input.sort).offers,
+    ];
 
     return {
       productId: product.id,
       criteria: { sort: input.sort, radiusKm: input.radiusKm },
-      results,
+      results: ranked.map((candidate) => candidate.item),
       promotions: [],
     };
   }
