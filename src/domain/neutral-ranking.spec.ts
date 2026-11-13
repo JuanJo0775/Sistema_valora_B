@@ -1,5 +1,5 @@
 import { rankOffers, type RankableOffer } from './neutral-ranking';
-import { calculateUnitPrice, type Presentation } from './unit-price';
+import { calculateUnitPrice, IncompatibleUnitsError, type Presentation } from './unit-price';
 
 const halfKilo: Presentation = { quantity: 500, unit: 'g' };
 
@@ -144,4 +144,22 @@ describe('orden neutral de la comparación', () => {
       ]);
     });
   });
+
+  it.each(['unit_price', 'distance', 'recent'] as const)(
+    'rechaza ofertas por 100 g mezcladas con ofertas por unidad (orden %s)',
+    (sort) => {
+      const mixed = [
+        offer({ store: 'por-gramos', distanceMeters: 300, observedAt: '2026-11-12T10:00:00Z' }),
+        offer({
+          store: 'por-unidad',
+          presentation: { quantity: 1, unit: 'und' },
+          presentationId: 'p-und',
+          distanceMeters: 900,
+          observedAt: '2026-11-12T07:00:00Z',
+        }),
+      ];
+
+      expect(() => rankOffers(mixed, sort)).toThrow(IncompatibleUnitsError);
+    },
+  );
 });
