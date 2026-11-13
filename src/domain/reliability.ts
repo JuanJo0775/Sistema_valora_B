@@ -80,8 +80,11 @@ export function reliabilityScore(
     params.reputationWeight * input.reputationOf(candidate.reporterKey) +
     params.corroborationWeight * capped(weight(supporting)) -
     params.contradictionWeight * capped(weight(opposing));
+  // Pregunta 4: decae en línea recta y llega a 0 a las 2 veces el TTL («desactualizado»).
+  const ageDays = (input.now.getTime() - candidate.observedAt.getTime()) / DAY_IN_MILLISECONDS;
+  const ageFactor = Math.max(0, 1 - ageDays / (2 * input.ttlDays));
   return {
-    score: Math.min(1, Math.max(0, raw)),
+    score: ageFactor * Math.min(1, Math.max(0, raw)),
     corroborations: supporting.length,
     contradictions: opposing.length,
   };
