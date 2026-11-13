@@ -42,7 +42,14 @@ const httpErrors = {
       code: 'IDEMPOTENCY_KEY_REUSED',
       message: 'La clave Idempotency-Key ya se usó con otro reporte.',
     }),
+  'forbidden-with-code': () =>
+    new ForbiddenException({
+      code: 'CSRF_TOKEN_INVALID',
+      message: 'Falta el token CSRF o no coincide con la sesión.',
+    }),
   'too-many': () => new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS),
+  'too-many-with-retry': () =>
+    new HttpException({ retryAfterSeconds: 120 }, HttpStatus.TOO_MANY_REQUESTS),
   'not-allowed': () => new HttpException('Method Not Allowed', HttpStatus.METHOD_NOT_ALLOWED),
 };
 
@@ -135,11 +142,29 @@ describe('formato de error { code, message }', () => {
       'IDEMPOTENCY_KEY_REUSED',
       'La clave Idempotency-Key ya se usó con otro reporte.',
     ],
+    [
+      'forbidden-with-code',
+      403,
+      'CSRF_TOKEN_INVALID',
+      'Falta el token CSRF o no coincide con la sesión.',
+    ],
     ['too-many', 429, 'TOO_MANY_REQUESTS', 'Límite de frecuencia superado.'],
   ])('el error HTTP %s responde %i con %s en español', async (name, status, code, message) => {
     const response = await request(server).get(`/v1/test-errors/http/${name}`).expect(status);
 
     expect(response.body).toEqual({ code, message });
+  });
+
+  it('un 429 con los segundos de espera responde la cabecera Retry-After', async () => {
+    const response = await request(server)
+      .get('/v1/test-errors/http/too-many-with-retry')
+      .expect(429);
+
+    expect(response.headers['retry-after']).toBe('120');
+    expect(response.body).toEqual({
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Límite de frecuencia superado.',
+    });
   });
 
   it('un cuerpo con dos campos inválidos responde 400 con los dos errores juntos', async () => {
