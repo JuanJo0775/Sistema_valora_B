@@ -52,4 +52,13 @@ describe('comparar los precios de un producto', () => {
   it('un producto que no existe no tiene comparación', async () => {
     await expect(setup().execute(input({ productId: missingId }))).resolves.toBeNull();
   });
+
+  it('un producto sin precios devuelve resultados y promociones vacíos, con el criterio declarado', async () => {
+    await expect(setup().execute(input({ sort: 'distance', radiusKm: 1.5 }))).resolves.toEqual({
+      productId,
+      criteria: { sort: 'distance', radiusKm: 1.5 },
+      results: [],
+      promotions: [],
+    });
+  });
 });
