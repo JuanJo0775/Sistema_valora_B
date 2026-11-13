@@ -35,4 +35,12 @@ describe('score de confiabilidad de un precio', () => {
     expect(result.score).toBeCloseTo(0.25 + 0.5 / 3);
     expect(result.corroborations).toBe(1);
   });
+
+  it('otra cuenta que reporta 4500 frente a 4000 (12,5 %) lo contradice y baja el score a 0,08', () => {
+    const result = score({ others: [report('beto', 4500)] });
+
+    expect(result.score).toBeCloseTo(0.25 - 0.5 / 3);
+    expect(result.corroborations).toBe(0);
+    expect(result.contradictions).toBe(1);
+  });
 });
