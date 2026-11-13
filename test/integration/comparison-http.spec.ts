@@ -9,6 +9,7 @@ import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
+import { signIn } from '../support/sign-in';
 
 // Producto, presentación y tienda de prueba: solo existen dentro de esta prueba.
 const productId = 'a7777777-7777-4777-8777-111111111111';
@@ -182,10 +183,15 @@ describe('GET /v1/products/{productId}/comparison', () => {
     expect(await countAllRows(db)).toBe(rowsBefore);
   });
 
-  it('de punta a punta: un reporte llega por el outbox y aparece en la comparación', async () => {
+  // El reportante necesita sesión (#62); la comparación se consulta sin ella: sigue siendo pública.
+  it('de punta a punta: un reporte con sesión llega por el outbox y la comparación lo muestra sin sesión', async () => {
+    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    const reporter = await signIn(server, db, 'reportante@correo.com');
     const observedAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     await request(server)
       .post('/v1/reports')
+      .set('Cookie', reporter.cookie)
+      .set('X-CSRF-Token', reporter.csrfToken)
       .set('Idempotency-Key', 'a6666666-6666-4666-8666-666666666666')
       .send({ presentationId, establishmentId: storeId, priceCop: 4500, observedAt })
       .expect(201);
