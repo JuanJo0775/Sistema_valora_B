@@ -3,13 +3,14 @@ import { DATABASE, type Database } from '../../shared/database/database.module';
 import { OutboxPublisher } from '../../shared/events';
 import { CatalogModule, PresentationExists } from '../catalog';
 import { EstablishmentExists, EstablishmentsModule } from '../establishments';
+import { IdentityModule } from '../identity';
 import { RegisterReport } from './application/register-report';
 import { REPORT_REPOSITORY, type ReportRepository } from './application/report-repository';
 import { ReportsController } from './http/reports.controller';
 import { DrizzleReportRepository } from './infrastructure/drizzle-report-repository';
 
 @Module({
-  imports: [CatalogModule, EstablishmentsModule],
+  imports: [CatalogModule, EstablishmentsModule, IdentityModule],
   controllers: [ReportsController],
   providers: [
     {

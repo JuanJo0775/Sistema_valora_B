@@ -6,9 +6,11 @@ import {
   HttpStatus,
   Post,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { RequestValidationError } from '../../../shared/http/validation';
+import { SessionGuard } from '../../identity';
 import { IdempotencyKeyReusedError, RegisterReport } from '../application/register-report';
 import { ReportCreateDto } from './report-create.dto';
 
@@ -30,6 +32,7 @@ export class ReportsController {
 
   // EC-07: 201 la primera vez; 200 con el recibo original si es un reintento con la misma clave.
   @Post()
+  @UseGuards(SessionGuard)
   async create(
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: ReportCreateDto,
