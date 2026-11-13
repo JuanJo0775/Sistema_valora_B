@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { RequestValidationError } from '../../../shared/http/validation';
-import { SessionGuard } from '../../identity';
+import { Roles, SessionGuard } from '../../identity';
 import { IdempotencyKeyReusedError, RegisterReport } from '../application/register-report';
 import { ReportCreateDto } from './report-create.dto';
 
@@ -33,6 +33,8 @@ export class ReportsController {
   // EC-07: 201 la primera vez; 200 con el recibo original si es un reintento con la misma clave.
   @Post()
   @UseGuards(SessionGuard)
+  // Grill de la #16, pregunta 5: solo el reportante aporta precios de la comunidad (EC-06).
+  @Roles('reportante')
   async create(
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: ReportCreateDto,
