@@ -69,4 +69,48 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
       expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
     });
   });
+
+  const register = () => request(server).post('/v1/auth/register').send(newAccount()).expect(201);
+  const login = (password = 'una-clave-larga', email = 'ana@correo.com') =>
+    request(server).post('/v1/auth/login').send({ email, password });
+
+  describe('POST /v1/auth/login', () => {
+    it('responde 204 con la cookie de sesión y sus atributos', async () => {
+      await register();
+
+      const response = await login().expect(204);
+
+      const [cookie] = response.headers['set-cookie'] as unknown as string[];
+      expect(cookie).toMatch(/^valora_session=[\w-]{43}; /);
+      expect(cookie).toContain('Max-Age=2592000');
+      expect(cookie).toContain('Path=/');
+      expect(cookie).toContain('HttpOnly');
+      expect(cookie).toContain('Secure');
+      expect(cookie).toContain('SameSite=Lax');
+    });
+
+    it('con una contraseña mala o un correo inexistente responde el mismo 401', async () => {
+      await register();
+
+      const wrongPassword = await login('otra-clave-larga').expect(401);
+      const unknownEmail = await login('una-clave-larga', 'nadie@correo.com').expect(401);
+
+      const expected = { code: 'UNAUTHORIZED', message: 'Correo o contraseña incorrectos.' };
+      expect(wrongPassword.body).toEqual(expected);
+      expect(unknownEmail.body).toEqual(expected);
+    });
+
+    it('al sexto intento fallido con el mismo correo responde 429 con Retry-After', async () => {
+      await register();
+      for (let attempt = 0; attempt < 5; attempt += 1) await login('otra-clave-larga').expect(401);
+
+      const response = await login().expect(429);
+
+      expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+      expect(response.body).toEqual({
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Límite de frecuencia superado.',
+      });
+    });
+  });
 });
