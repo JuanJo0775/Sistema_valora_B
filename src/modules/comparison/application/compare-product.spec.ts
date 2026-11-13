@@ -188,4 +188,16 @@ describe('comparar los precios de un producto', () => {
       'viejo-medio': false,
     });
   });
+
+  it('el orden sigue el criterio pedido: por distancia, la tienda más cercana va primero', async () => {
+    const compare = setup({
+      prices: [price('lejos-barata', 1500), price('cerca-cara', 2500)],
+      stores: [store('lejos-barata', 1800), store('cerca-cara', 150)],
+    });
+
+    const comparison = await compare.execute(input({ sort: 'distance' }));
+
+    expect(comparison?.criteria.sort).toBe('distance');
+    expect(idsOf(comparison)).toEqual(['cerca-cara', 'lejos-barata']);
+  });
 });
