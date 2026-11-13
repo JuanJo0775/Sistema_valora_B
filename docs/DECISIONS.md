@@ -163,6 +163,21 @@ Aplicación de RF-006, RF-007, ADR-004, ADR-010 y ADR-015. El detalle está en `
 - **`priceType`:** `normal` y `oferta`. `combo` sale del contrato hasta definir qué significa.
 - **Errores 409:** el filtro común conserva el `code` propio de un 409.
 
+## Orden neutral (issue #21, decidido el 12 de noviembre de 2026)
+
+Aplicación de RF-009, EC-06 y ADR-009. El detalle está en `docs/decisiones/issue-21-orden-neutral/`. La regla es `rankOffers` en `src/domain/neutral-ranking.ts`.
+
+- **Criterios:** `unit_price` (por defecto, lo pone la capa HTTP), `distance` y `recent`. El resultado devuelve el criterio usado.
+- **Entrada:** la regla solo lee `establishmentId`, `presentationId`, `unitPrice`, `distanceMeters` y `observedAt` (`RankableOffer`). Es genérica: recibe los ítems completos y los devuelve ordenados, pero no puede leer nada comercial.
+- **Desempate:**
+  - `unit_price` → distancia → fecha más reciente → identificadores.
+  - `distance` → precio por unidad → fecha → identificadores.
+  - `recent` → precio por unidad → distancia → identificadores.
+  - Los identificadores (`establishmentId`, luego `presentationId`) se comparan carácter por carácter: el orden es total y no depende del idioma de la máquina. El precio por unidad se compara con el valor exacto, no con el redondeado.
+- **Vigencia:** la regla no la conoce. La #15 decide qué precios entran al orden (desactualizados y `onlyCurrent`).
+- **Bases distintas:** si los resultados mezclan `100g`, `100ml` o `und`, la regla lanza `IncompatibleUnitsError` con cualquier criterio. El catálogo debe impedir esa mezcla al importar (issue aparte).
+- **Evidencia:** pruebas de neutralidad (campos comerciales no cambian el puesto) y de determinismo (120 permutaciones dan el mismo orden).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
