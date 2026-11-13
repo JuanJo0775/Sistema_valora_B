@@ -38,6 +38,24 @@ function setup({ isFresh = false, prices = [], stores = [] }: Fixture = {}) {
   });
 }
 
+// Tienda de prueba a la distancia indicada del punto consultado.
+const store = (id: string, distanceM = 500): NearbyEstablishment => ({
+  id,
+  name: `Tienda ${id}`,
+  type: 'barrio',
+  lat: 4.535,
+  lng: -75.6811,
+  distanceM,
+});
+
+// Precio de 500 g, por defecto $2.000 visto hace un día.
+const price = (establishmentId: string, priceCop = 2000, daysAgo = 1): CurrentPrice => ({
+  presentationId: 'p-500g',
+  establishmentId,
+  priceCop,
+  observedAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
+});
+
 const input = (change: Partial<CompareProductInput> = {}): CompareProductInput => ({
   productId,
   lat: 4.5339,
@@ -60,5 +78,25 @@ describe('comparar los precios de un producto', () => {
       results: [],
       promotions: [],
     });
+  });
+
+  it('un precio se muestra con su tienda, precio total, precio por unidad, fuente, fecha y vigencia', async () => {
+    const reported = price('t1', 2000, 1);
+    const compare = setup({ prices: [reported], stores: [store('t1', 420)] });
+
+    const comparison = await compare.execute(input());
+
+    const [item] = comparison?.results ?? [];
+    expect(item).toMatchObject({
+      establishment: store('t1', 420),
+      presentationId: 'p-500g',
+      priceCop: 2000,
+      source: 'comunidad',
+      freshness: 'vigente',
+      observedAt: reported.observedAt,
+    });
+    // 500 g a $2.000 equivale a $400 por 100 g.
+    expect(item?.unitPrice.per).toBe('100g');
+    expect(item?.unitPrice.displayCop).toBe(400);
   });
 });
