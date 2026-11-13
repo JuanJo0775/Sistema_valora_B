@@ -162,4 +162,89 @@ describe('orden neutral de la comparación', () => {
       expect(() => rankOffers(mixed, sort)).toThrow(IncompatibleUnitsError);
     },
   );
+
+  describe('garantías', () => {
+    const criteria = ['unit_price', 'distance', 'recent'] as const;
+
+    it('dos precios que se muestran iguales ($412) se ordenan por su valor exacto', () => {
+      // $2.062 / 500 g = $412,4 y $2.063 / 500 g = $412,6: ambos se muestran como $412.
+      const result = rankOffers(
+        [offer({ store: 'a-412-6', priceCop: 2063 }), offer({ store: 'b-412-4', priceCop: 2062 })],
+        'unit_price',
+      );
+
+      expect(storesOf(result.offers)).toEqual(['b-412-4/p-500g', 'a-412-6/p-500g']);
+    });
+
+    it('sin ofertas devuelve la lista vacía y el criterio usado', () => {
+      expect(rankOffers([], 'distance')).toEqual({ sort: 'distance', offers: [] });
+    });
+
+    it('no cambia la lista que recibe', () => {
+      const received = [offer({ store: 'cara', priceCop: 2500 }), offer({ store: 'barata' })];
+      const before = [...received];
+
+      rankOffers(received, 'unit_price');
+
+      expect(received).toEqual(before);
+    });
+
+    it.each(criteria)(
+      'una promoción o un perfil comercial no cambian el puesto de una tienda (orden %s)',
+      (sort) => {
+        const neutral = [
+          offer({ store: 'cerca-cara', priceCop: 2500, distanceMeters: 200 }),
+          offer({ store: 'media', priceCop: 2000, observedAt: '2026-11-12T11:00:00Z' }),
+          offer({ store: 'lejos-barata', priceCop: 1800, distanceMeters: 2000 }),
+        ];
+        // La oferta más cara por unidad recibe todo lo que un comercio podría querer usar para subir.
+        const withCommercialFields = neutral.map((plain) =>
+          plain.establishmentId === 'cerca-cara'
+            ? {
+                ...plain,
+                promotion: { type: 'precio_especial', specialPriceCop: 100 },
+                verifiedCommerce: true,
+                paidPlacement: true,
+              }
+            : plain,
+        );
+
+        expect(storesOf(rankOffers(withCommercialFields, sort).offers)).toEqual(
+          storesOf(rankOffers(neutral, sort).offers),
+        );
+      },
+    );
+
+    // Todas las formas de ordenar una lista (5 elementos: 120 permutaciones).
+    function permutations<T>(items: readonly T[]): T[][] {
+      if (items.length <= 1) return [[...items]];
+      return items.flatMap((item, index) =>
+        permutations([...items.slice(0, index), ...items.slice(index + 1)]).map((rest) => [
+          item,
+          ...rest,
+        ]),
+      );
+    }
+
+    it.each(criteria)(
+      'las mismas ofertas dan el mismo orden sin importar cómo lleguen (orden %s)',
+      (sort) => {
+        // Empates escalonados: mismo precio; mismo precio y distancia; todo igual salvo el identificador.
+        const offers = [
+          offer({ store: 'tienda-1', priceCop: 1800 }),
+          offer({ store: 'tienda-2', distanceMeters: 500 }),
+          offer({ store: 'tienda-3', distanceMeters: 500, observedAt: '2026-11-12T09:00:00Z' }),
+          offer({ store: 'tienda-5' }),
+          offer({ store: 'tienda-4' }),
+        ];
+        const expected = storesOf(rankOffers(offers, sort).offers);
+        const orders = permutations(offers);
+
+        expect(orders).toHaveLength(120);
+        for (const order of orders) {
+          expect(storesOf(rankOffers(order, sort).offers)).toEqual(expected);
+        }
+      },
+    );
+  });
 });
