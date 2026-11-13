@@ -47,11 +47,15 @@ const INTERNAL_ERROR: ErrorBody = {
 };
 
 // Mensajes que NestJS pone por defecto cuando la excepción no trae texto propio.
-const DEFAULT_MESSAGES = new Set(['Conflict', 'Forbidden', 'Forbidden resource']);
+const DEFAULT_MESSAGES = new Set(['Conflict', 'Forbidden', 'Forbidden resource', 'Unauthorized']);
 
-// Estados que pueden traer su propio código: 409 (IDEMPOTENCY_KEY_REUSED, #14) y 403
-// (CSRF_TOKEN_INVALID, #16).
-const OWN_CODE_STATUSES = new Set<number>([HttpStatus.CONFLICT, HttpStatus.FORBIDDEN]);
+// Estados que pueden traer su propio código o mensaje: 409 (IDEMPOTENCY_KEY_REUSED, #14), 403
+// (CSRF_TOKEN_INVALID, #16) y 401 («Correo o contraseña incorrectos.», #16).
+const OWN_CODE_STATUSES = new Set<number>([
+  HttpStatus.CONFLICT,
+  HttpStatus.FORBIDDEN,
+  HttpStatus.UNAUTHORIZED,
+]);
 
 // NestJS convierte el fallo del lector de JSON en un BadRequestException con el mensaje del parser.
 function isMalformedJson(exception: unknown): boolean {
@@ -69,7 +73,7 @@ function ownCode(exception: HttpException): string | undefined {
   return typeof body.code === 'string' ? body.code : undefined;
 }
 
-// Un 409 o un 403 pueden traer su propio código y su propio mensaje; los demás usan los fijos.
+// Un 409, 403 o 401 pueden traer su propio código y mensaje; los demás usan los fijos.
 function withOwnMessage(exception: HttpException, status: number, known: ErrorBody): ErrorBody {
   if (!OWN_CODE_STATUSES.has(status)) return known;
   const code = ownCode(exception) ?? known.code;

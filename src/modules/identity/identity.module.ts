@@ -4,10 +4,13 @@ import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/accoun
 import type { AttemptLimiter } from './application/attempt-limiter';
 import type { Clock } from './application/clock';
 import type { PasswordHasher } from './application/password-hasher';
+import { Login } from './application/login';
 import { RegisterAccount } from './application/register-account';
+import { SESSION_REPOSITORY, type SessionRepository } from './application/session-repository';
 import { AuthController } from './http/auth.controller';
 import { Argon2PasswordHasher } from './infrastructure/argon2-password-hasher';
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository';
+import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository';
 import { InMemoryAttemptLimiter } from './infrastructure/in-memory-attempt-limiter';
 
 const PASSWORD_HASHER = Symbol('PASSWORD_HASHER');
@@ -38,6 +41,22 @@ const CLOCK = Symbol('CLOCK');
         limiter: AttemptLimiter,
         clock: Clock,
       ): RegisterAccount => new RegisterAccount({ accounts, hasher, limiter, clock }),
+    },
+    {
+      provide: SESSION_REPOSITORY,
+      inject: [DATABASE],
+      useFactory: (db: Database): SessionRepository => new DrizzleSessionRepository(db),
+    },
+    {
+      provide: Login,
+      inject: [ACCOUNT_REPOSITORY, PASSWORD_HASHER, SESSION_REPOSITORY, ATTEMPT_LIMITER, CLOCK],
+      useFactory: (
+        accounts: AccountRepository,
+        hasher: PasswordHasher,
+        sessions: SessionRepository,
+        limiter: AttemptLimiter,
+        clock: Clock,
+      ): Login => new Login({ accounts, hasher, sessions, limiter, clock }),
     },
   ],
 })
