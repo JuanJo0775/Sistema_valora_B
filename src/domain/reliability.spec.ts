@@ -57,4 +57,11 @@ describe('score de confiabilidad de un precio', () => {
     expect(result.corroborations).toBe(1);
     expect(result.contradictions).toBe(0);
   });
+
+  it('solo se compara el mismo tipo de precio: una oferta no contradice un precio normal', () => {
+    const result = score({ others: [report('beto', 3200, { priceType: 'oferta' })] });
+
+    expect(result.contradictions).toBe(0);
+    expect(result.score).toBeCloseTo(0.25);
+  });
 });
