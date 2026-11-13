@@ -117,15 +117,21 @@ export class CompareProduct {
       });
     }
 
-    // Grill de la #15, pregunta 5: los desactualizados no entran al orden; van al final.
+    // Grill de la #15, pregunta 5: los desactualizados no entran al orden; van al final. Con
+    // onlyCurrent solo quedan los vigentes.
     const isStale = (candidate: Candidate) => candidate.item.freshness === 'desactualizado';
-    const ranked = [
-      ...rankOffers(
-        candidates.filter((candidate) => !isStale(candidate)),
-        input.sort,
-      ).offers,
-      ...rankOffers(candidates.filter(isStale), input.sort).offers,
-    ];
+    const ranked = input.onlyCurrent
+      ? rankOffers(
+          candidates.filter((candidate) => candidate.item.freshness === 'vigente'),
+          input.sort,
+        ).offers
+      : [
+          ...rankOffers(
+            candidates.filter((candidate) => !isStale(candidate)),
+            input.sort,
+          ).offers,
+          ...rankOffers(candidates.filter(isStale), input.sort).offers,
+        ];
 
     return {
       productId: product.id,
