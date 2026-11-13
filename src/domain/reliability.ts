@@ -6,6 +6,7 @@ export const RELIABILITY_PARAMS = {
   // Pregunta 5: pesos de la fórmula y tope de corroboraciones.
   reputationWeight: 0.5,
   corroborationWeight: 0.5,
+  contradictionWeight: 0.5,
   maxCorroborations: 3,
 };
 
@@ -39,13 +40,14 @@ export function reliabilityScore(
   params: ReliabilityParams = RELIABILITY_PARAMS,
 ): ReliabilityResult {
   const { candidate } = input;
-  const corroborations = input.others.filter(
-    (other) =>
-      Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
-      params.corroborationTolerance,
-  ).length;
+  const agrees = (other: ScoredReport) =>
+    Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
+    params.corroborationTolerance;
+  const corroborations = input.others.filter(agrees).length;
+  const contradictions = input.others.length - corroborations;
   const score =
     params.reputationWeight * input.reputationOf(candidate.reporterKey) +
-    (params.corroborationWeight * corroborations) / params.maxCorroborations;
-  return { score, corroborations, contradictions: 0 };
+    (params.corroborationWeight * corroborations) / params.maxCorroborations -
+    (params.contradictionWeight * contradictions) / params.maxCorroborations;
+  return { score, corroborations, contradictions };
 }
