@@ -1,4 +1,4 @@
-import type { INestApplication } from '@nestjs/common';
+import { ConsoleLogger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
@@ -179,5 +179,55 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
       expect(cleared).toMatch(/^valora_session=; Max-Age=0; /);
       await request(server).get('/v1/auth/session').set('Cookie', cookie).expect(401);
     });
+  });
+
+  // EC-08: ninguna respuesta lleva el correo, el id de la cuenta ni el hash, y la contraseña no
+  // aparece en el log.
+  it('las respuestas no exponen datos de la cuenta y el log no muestra la contraseña', async () => {
+    const written: string[] = [];
+    const capture = (chunk: unknown): boolean => {
+      written.push(String(chunk));
+      return true;
+    };
+    const stdout = jest.spyOn(process.stdout, 'write').mockImplementation(capture);
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(capture);
+
+    // Con el registro real de NestJS, como en la prueba de /nearby (#50).
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .setLogger(new ConsoleLogger())
+      .compile();
+    const loggedApp = moduleRef.createNestApplication({
+      logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    });
+    configureApp(loggedApp);
+    await loggedApp.init();
+    const loggedServer = loggedApp.getHttpServer() as Parameters<typeof request>[0];
+    const registered = await request(loggedServer).post('/v1/auth/register').send(newAccount());
+    const failed = await request(loggedServer)
+      .post('/v1/auth/login')
+      .send({ email: 'ana@correo.com', password: 'una-clave-equivocada' });
+    const loggedIn = await request(loggedServer)
+      .post('/v1/auth/login')
+      .send({ email: 'ana@correo.com', password: 'una-clave-larga' });
+    const [cookie] = loggedIn.headers['set-cookie'] as unknown as string[];
+    const session = await request(loggedServer)
+      .get('/v1/auth/session')
+      .set('Cookie', (cookie ?? '').split(';')[0] ?? '');
+    await loggedApp.close();
+    stdout.mockRestore();
+    stderr.mockRestore();
+
+    const account = await db.execute<{ id: string; password_hash: string }>(
+      sql`select id, password_hash from identity.accounts`,
+    );
+    expect(account.rows).toHaveLength(1);
+    expect(session.status).toBe(200);
+    const responses = JSON.stringify([registered.body, failed.body, loggedIn.body, session.body]);
+    for (const secret of ['ana@correo.com', account.rows[0]?.id, account.rows[0]?.password_hash]) {
+      expect(responses).not.toContain(secret);
+    }
+    const output = written.join('');
+    expect(output).not.toContain('una-clave-larga');
+    expect(output).not.toContain('una-clave-equivocada');
   });
 });
