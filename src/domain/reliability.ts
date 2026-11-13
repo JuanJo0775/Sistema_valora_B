@@ -1,7 +1,12 @@
 // Grill de la #19, pregunta 7: valores PROVISIONALES (ADR-005). Se calibran con datos y la
 // calibración se documenta; las funciones aceptan otros parámetros.
 export const RELIABILITY_PARAMS = {
+  // Pregunta 2: otro precio a ±5 % del candidato lo corrobora.
+  corroborationTolerance: 0.05,
+  // Pregunta 5: pesos de la fórmula y tope de corroboraciones.
   reputationWeight: 0.5,
+  corroborationWeight: 0.5,
+  maxCorroborations: 3,
 };
 
 export type ReliabilityParams = typeof RELIABILITY_PARAMS;
@@ -33,6 +38,14 @@ export function reliabilityScore(
   input: ReliabilityInput,
   params: ReliabilityParams = RELIABILITY_PARAMS,
 ): ReliabilityResult {
-  const score = params.reputationWeight * input.reputationOf(input.candidate.reporterKey);
-  return { score, corroborations: 0, contradictions: 0 };
+  const { candidate } = input;
+  const corroborations = input.others.filter(
+    (other) =>
+      Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
+      params.corroborationTolerance,
+  ).length;
+  const score =
+    params.reputationWeight * input.reputationOf(candidate.reporterKey) +
+    (params.corroborationWeight * corroborations) / params.maxCorroborations;
+  return { score, corroborations, contradictions: 0 };
 }
