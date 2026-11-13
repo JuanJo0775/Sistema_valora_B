@@ -39,7 +39,10 @@ function setup() {
   return { reports, registerReport };
 }
 
+const reporterId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 const report = {
+  reporterId,
   presentationId,
   establishmentId,
   priceCop: 4500,
@@ -116,5 +119,20 @@ describe('registrar un reporte de precio', () => {
       registerReport.execute({ idempotencyKey, report: { ...report, priceCop: 5000 } }),
     ).rejects.toThrow(IdempotencyKeyReusedError);
     expect(reports.reports).toHaveLength(1);
+  });
+
+  it('guarda la cuenta que lo reportó; la misma clave usada por otra cuenta es un conflicto', async () => {
+    const { reports, registerReport } = setup();
+    const idempotencyKey = '99999999-9999-4999-8999-111111111111';
+
+    await registerReport.execute({ idempotencyKey, report });
+
+    expect(reports.reports[0]?.reporterId).toBe(reporterId);
+    await expect(
+      registerReport.execute({
+        idempotencyKey,
+        report: { ...report, reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
+      }),
+    ).rejects.toThrow(IdempotencyKeyReusedError);
   });
 });
