@@ -150,5 +150,13 @@ describe('detección de precios anómalos', () => {
 
       expect(result).toMatchObject({ status: 'sospechoso', reason: 'coordinacion' });
     });
+
+    it('si sin el grupo quedan menos de 3 cuentas de referencia, no se puede evaluar: sin_datos', () => {
+      const result = assess(report('nueva-1', 1500), [report('beto', 5000), ...group()], {
+        accountCreatedAt,
+      });
+
+      expect(result).toEqual({ status: 'sin_datos', references: 1 });
+    });
   });
 });
