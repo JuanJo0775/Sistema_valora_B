@@ -64,4 +64,15 @@ describe('detección de precios anómalos', () => {
       deviation: 0.4,
     });
   });
+
+  it('con un número par de referencias, la mediana es el promedio de los dos del medio', () => {
+    const four = [
+      report('beto', 4000),
+      report('caro', 4100),
+      report('dani', 4200),
+      report('eli', 9000),
+    ];
+
+    expect(assess(report('ana', 4150), four)).toMatchObject({ median: 4150, deviation: 0 });
+  });
 });
