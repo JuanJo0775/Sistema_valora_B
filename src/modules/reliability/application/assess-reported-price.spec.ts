@@ -123,4 +123,32 @@ describe('evaluar un precio reportado (reliability)', () => {
     });
     expect(published[0]?.payload).not.toHaveProperty('reporterKey');
   });
+
+  it('un precio fuera de rango queda sospechoso por rango y así se publica', async () => {
+    const { observations, published, assess, seedUsual } = setup();
+    await seedUsual();
+
+    await assess.execute(reported('ana', 2500));
+
+    expect(observations.saved.at(-1)?.verdict).toMatchObject({
+      status: 'sospechoso',
+      reason: 'rango',
+    });
+    expect(published[0]?.payload).toMatchObject({ verdict: 'sospechoso', reason: 'rango' });
+  });
+
+  it('cuentas creadas hace días que reportan juntas un precio raro en la tienda quedan sospechosas por coordinación', async () => {
+    const { published, assess, seedUsual } = setup();
+    await seedUsual();
+    const fromNewAccount = (key: string) => reported(key, 1500, { reporterSince: '2026-11-14' });
+
+    await assess.execute(fromNewAccount('nueva-1'));
+    await assess.execute(fromNewAccount('nueva-2'));
+    await assess.execute(fromNewAccount('nueva-3'));
+
+    expect(published.at(-1)?.payload).toMatchObject({
+      verdict: 'sospechoso',
+      reason: 'coordinacion',
+    });
+  });
 });
