@@ -172,4 +172,19 @@ describe('evaluar un precio reportado (reliability)', () => {
       references: 3,
     });
   });
+
+  it('un reporte que coincide con otro sube la reputación de los dos autores, una sola vez por reporte', async () => {
+    const { reputations, assess } = setup();
+
+    await assess.execute(reported('ana', 4000));
+    await assess.execute(reported('beto', 4050));
+    expect(reputations.values.get('ana')).toBeCloseTo(0.55);
+    expect(reputations.values.get('beto')).toBeCloseTo(0.55);
+
+    // Caro también coincide: ella sube; los reportes de Ana y Beto ya dieron su punto.
+    await assess.execute(reported('caro', 4000));
+    expect(reputations.values.get('caro')).toBeCloseTo(0.55);
+    expect(reputations.values.get('ana')).toBeCloseTo(0.55);
+    expect(reputations.values.get('beto')).toBeCloseTo(0.55);
+  });
 });
