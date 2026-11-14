@@ -1,6 +1,7 @@
 import { assessAnomaly } from '../../../domain/anomaly';
 import { ttlDaysFor } from '../../../domain/freshness';
-import type { ScoredReport } from '../../../domain/report-window';
+import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
+import { comparableReports, type ScoredReport } from '../../../domain/report-window';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import type { Observation, ObservationStore, ReputationStore } from './stores';
 
@@ -68,15 +69,17 @@ export class AssessReportedPrice {
     );
     since.set(observation.reporterKey, observation.reporterSince);
 
+    const ttlDays = ttlDaysFor((await freshness.isFresh(reported.presentationId)) ?? false);
     const verdict = assessAnomaly({
       candidate: toScored(observation),
       others: inStore.map(toScored),
       zone: inZone.map(toScored),
       now: observation.receivedAt,
-      ttlDays: ttlDaysFor((await freshness.isFresh(reported.presentationId)) ?? false),
+      ttlDays,
       accountCreatedAt: (key) => since.get(key) ?? observation.reporterSince,
     });
     await observations.save({ ...observation, verdict });
+    await this.rewardCorroboration(observation, inStore, ttlDays);
 
     await events.publish(
       createEvent(PRICE_ASSESSED, 1, {
@@ -91,5 +94,37 @@ export class AssessReportedPrice {
         reason: verdict.status === 'sospechoso' ? verdict.reason : null,
       }),
     );
+  }
+
+  // Pregunta 8: si otras cuentas de la tienda coinciden con el reporte, ganan el autor nuevo y los de
+  // los reportes que coinciden; cada reporte da su punto una sola vez.
+  private async rewardCorroboration(
+    observation: Omit<Observation, 'verdict'>,
+    inStore: Observation[],
+    ttlDays: number,
+  ): Promise<void> {
+    const scored = new Map(inStore.map((seen) => [toScored(seen), seen]));
+    const candidate = toScored(observation);
+    const agreeing = comparableReports({
+      candidate,
+      others: [...scored.keys()],
+      now: observation.receivedAt,
+      ttlDays,
+    }).filter(
+      (other) =>
+        Math.abs(other.priceCop - candidate.priceCop) / candidate.priceCop <=
+        RELIABILITY_PARAMS.corroborationTolerance,
+    );
+    if (agreeing.length === 0) return;
+    const rewarded = [observation, ...agreeing.flatMap((other) => scored.get(other) ?? [])];
+    const { reputations } = this.ports;
+    const current = await reputations.valuesOf(rewarded.map((seen) => seen.reporterKey));
+    for (const seen of rewarded) {
+      if (!(await reputations.claimPoint(seen.reportId, seen.reporterKey))) continue;
+      const value = current.get(seen.reporterKey) ?? RELIABILITY_PARAMS.neutralReputation;
+      const updated = updateReputation(value, 'corroborated');
+      current.set(seen.reporterKey, updated);
+      await reputations.save(seen.reporterKey, updated);
+    }
   }
 }
