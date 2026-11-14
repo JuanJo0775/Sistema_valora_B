@@ -185,6 +185,26 @@ describe('referencias de la zona (grill de la #31, pregunta 7)', () => {
       references: 3,
     });
   });
+
+  it('la coordinación solo mira la misma tienda: cuentas nuevas de otras tiendas no forman grupo (RF-012)', () => {
+    const createdToday = (key: string) => (key.startsWith('nueva') ? daysAgo(0.2) : aYearAgo);
+    const store = [report('beto', 1500)];
+    // Dos cuentas nuevas reportan el mismo precio, pero en otras tiendas de la zona.
+    const zone = [
+      report('nueva-2', 1500),
+      report('nueva-3', 1500),
+      report('caro', 5000),
+      report('dani', 5100),
+      report('eli', 4900),
+    ];
+
+    const result = assess(report('nueva-1', 1500), store, {
+      zone,
+      accountCreatedAt: createdToday,
+    });
+
+    expect(result).not.toMatchObject({ reason: 'coordinacion' });
+  });
 });
 
 describe('garantías de la detección', () => {
