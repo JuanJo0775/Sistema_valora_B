@@ -20,9 +20,14 @@ export type AnomalyResult =
   | { status: 'sospechoso'; reason: 'rango'; median: number; deviation: number; references: number }
   | { status: 'sin_datos'; references: number };
 
+// Pregunta 4: con un número par de valores, el promedio de los dos del medio. Se llama con al menos
+// minReferences valores.
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)] ?? 0;
+  const middle = Math.floor(sorted.length / 2);
+  const upper = sorted[middle] ?? 0;
+  if (sorted.length % 2 === 1) return upper;
+  return ((sorted[middle - 1] ?? upper) + upper) / 2;
 }
 
 export function assessAnomaly(
