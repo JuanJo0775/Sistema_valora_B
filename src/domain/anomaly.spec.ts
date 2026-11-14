@@ -207,6 +207,27 @@ describe('referencias de la zona (grill de la #31, pregunta 7)', () => {
   });
 });
 
+describe('reportes en revisión (calibración de la #67)', () => {
+  it('los reportes ya en revisión ayudan a formar un grupo pero no mueven la mediana', () => {
+    const createdToday = (key: string) => (key.startsWith('nueva') ? daysAgo(0.2) : aYearAgo);
+    const usual = [report('beto', 9700), report('caro', 9750), report('dani', 9800)];
+    // Un ataque anterior en la tienda: 4 cuentas nuevas a 2500, ya en revisión.
+    const flagged = ['nueva-2', 'nueva-3', 'nueva-4', 'nueva-5'].map((key) => report(key, 2500));
+
+    const honestLater = assess(report('eli', 9800), usual, {
+      flagged,
+      accountCreatedAt: createdToday,
+    });
+    const nextAttacker = assess(report('nueva-1', 2500), usual, {
+      flagged,
+      accountCreatedAt: createdToday,
+    });
+
+    expect(honestLater).toMatchObject({ status: 'normal', median: 9750, references: 3 });
+    expect(nextAttacker).toMatchObject({ status: 'sospechoso', reason: 'coordinacion' });
+  });
+});
+
 describe('garantías de la detección', () => {
   const usual = () => [report('beto', 4900), report('caro', 5000), report('dani', 5100)];
 
