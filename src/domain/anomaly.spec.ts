@@ -122,5 +122,33 @@ describe('detección de precios anómalos', () => {
 
       expect(result).toMatchObject({ status: 'normal' });
     });
+
+    it('cuentas antiguas, o reportes separados por más de 60 minutos, no forman grupo coordinado', () => {
+      const oldAccounts = ['vieja-2', 'vieja-3', 'vieja-4'].map((key) => report(key, 1500));
+      const spreadOut = ['nueva-2', 'nueva-3'].map((key, hour) =>
+        report(key, 1500, { observedAt: minutesAgo((hour + 1) * 90) }),
+      );
+
+      const old = assess(report('vieja-1', 1500), [...usual(), ...oldAccounts], {
+        accountCreatedAt,
+      });
+      const apart = assess(report('nueva-1', 1500), [...usual(), ...spreadOut], {
+        accountCreatedAt,
+      });
+
+      expect(old).not.toMatchObject({ reason: 'coordinacion' });
+      expect(apart).not.toMatchObject({ reason: 'coordinacion' });
+    });
+
+    it('si un reporte cumple rango y coordinación, gana coordinación', () => {
+      // Con solo dos cuentas del grupo, la mediana no se mueve y el rango también lo marcaría.
+      const smallGroup = ['nueva-2', 'nueva-3'].map((key) => report(key, 1500));
+
+      const result = assess(report('nueva-1', 1500), [...usual(), ...smallGroup], {
+        accountCreatedAt,
+      });
+
+      expect(result).toMatchObject({ status: 'sospechoso', reason: 'coordinacion' });
+    });
   });
 });
