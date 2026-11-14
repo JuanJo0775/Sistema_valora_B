@@ -218,6 +218,19 @@ Aplicación de RF-011, ADR-005 y EC-03. El detalle está en `docs/decisiones/iss
 - **Reputación:** de 0 a 1, neutra en 0,5; +0,05 cuando otros confirman, −0,20 con un rechazo de moderación (`updateReputation`). Guardarla y usarla le toca a la #31, la #32 y la #33.
 - **Privacidad:** el reportante llega como una clave opaca y la salida no lleva ninguna (RN5, EC-08).
 
+## Precios anómalos (issue #20, decidido el 14 de noviembre de 2026)
+
+Aplicación de RF-012 (RN1, RN3 y RN4), ADR-005 y EC-03. El detalle está en `docs/decisiones/issue-20-anomalos/`. La regla es `assessAnomaly` en `src/domain/anomaly.ts`; todos los valores son provisionales y están en `ANOMALY_PARAMS`.
+
+- **Alcance:** rango frente a la mediana (RN1) y grupos coordinados (RN3). La ráfaga (RN2) va a la #29.
+- **Referencias:** las arma la #31 (la misma tienda o la zona). Se filtran con `comparableReports` (`src/domain/report-window.ts`), compartido con el score: ventana de vigencia, mismo tipo de precio, otras cuentas y uno por cuenta. La #31 no debe pasar como referencia precios que ya están en revisión.
+- **Rango:** sospechoso si `|precio − mediana| / mediana` es mayor que 40 %, hacia arriba o hacia abajo. Con número par de referencias, la mediana promedia los dos del medio.
+- **Pocos datos:** con menos de 3 cuentas de referencia no se marca y se devuelve `sin_datos` con el número de referencias.
+- **Coordinación:** 3 cuentas nuevas o más (menos de 7 días) con el mismo precio (±5 %), en 60 minutos, cuyo precio se aparta más del 40 % de la mediana calculada sin ellas. Gana sobre el rango. Si sin el grupo quedan menos de 3 referencias, `sin_datos`.
+- **Salida:** `normal`, `sospechoso` (motivo `rango` o `coordinacion`) o `sin_datos`, con la mediana, la desviación y el número de referencias, sin claves de reportante (EC-08).
+- **No borrar (RN4), regla para la #31:** `sospechoso` cambia el estado a «en revisión» y avisa a moderación (#32); ningún reporte se borra (los reportes son de solo inserción desde la #14).
+- **Límite conocido:** cuentas nuevas que reportan el mismo precio falso espaciadas más de 60 minutos no forman grupo y pueden mover la mediana. Se revisa con el conjunto etiquetado de la #31 (80 % de detección).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

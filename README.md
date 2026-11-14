@@ -21,6 +21,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Comparación (#15)                | `GET /v1/products/{productId}/comparison`: precios vigentes en las tiendas del radio, en orden neutral y sin caché (EC-08)    |
 | Sesión (#16, #62)                | Módulo `identity`: registro, sesión con cookie, CSRF, roles y límites; `POST /v1/reports` exige sesión de reportante          |
 | Score de confiabilidad (#19)     | Regla del dominio: corroboración, reputación del reportante y decaimiento por edad, con niveles alta, media y baja (RF-011)   |
+| Precios anómalos (#20)           | Regla del dominio: precio fuera del 40 % de la mediana y grupos coordinados de cuentas nuevas (RF-012)                        |
 
 Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
@@ -234,7 +235,7 @@ src/
   app.module.ts        Módulo raíz
   app.setup.ts         Configuración común (prefijo /v1, validación y filtro de errores)
   health/              GET /v1/health
-  domain/              Reglas puras: precio por unidad, vigencia, código de barras, precio vigente, orden neutral, sesión y confiabilidad
+  domain/              Reglas puras: precio por unidad, vigencia, código de barras, precio vigente, orden neutral, sesión, confiabilidad y anómalos
   shared/config/       Variables de entorno validadas
   shared/http/         Formato de error { code, message } y validación de entrada
   shared/database/     Conexión con Drizzle y pg
