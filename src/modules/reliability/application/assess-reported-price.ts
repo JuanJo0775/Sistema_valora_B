@@ -79,7 +79,11 @@ export class AssessReportedPrice {
       accountCreatedAt: (key) => since.get(key) ?? observation.reporterSince,
     });
     await observations.save({ ...observation, verdict });
-    await this.rewardCorroboration(observation, inStore, ttlDays);
+    // Un sospechoso no da ni recibe reputación: un grupo coordinado no se infla entre sus cuentas.
+    if (verdict.status !== 'sospechoso') {
+      const trusted = inStore.filter((seen) => seen.verdict.status !== 'sospechoso');
+      await this.rewardCorroboration(observation, trusted, ttlDays);
+    }
 
     await events.publish(
       createEvent(PRICE_ASSESSED, 1, {
