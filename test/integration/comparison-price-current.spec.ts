@@ -13,9 +13,11 @@ interface Reported {
   priceCop: number;
   observedAt: string;
   receivedAt: string;
+  // Veredicto de reliability (grill de la #31, pregunta 4); por defecto, normal.
+  verdict?: 'normal' | 'sospechoso' | 'sin_datos';
 }
 
-describe('precio vigente en comparison, actualizado por PriceReported (ADR-004)', () => {
+describe('precio vigente en comparison, actualizado por PriceAssessed (ADR-004, #31)', () => {
   let app: INestApplication;
   let db: Database;
   let events: typeof Events;
@@ -44,11 +46,14 @@ describe('precio vigente en comparison, actualizado por PriceReported (ADR-004)'
   });
 
   const report = async (reported: Reported): Promise<void> => {
-    const event = events.createEvent('PriceReported', 1, {
-      ...reported,
+    const { verdict = 'normal', ...price } = reported;
+    const event = events.createEvent('PriceAssessed', 1, {
+      ...price,
       presentationId,
       establishmentId,
       priceType: 'normal',
+      verdict,
+      reason: verdict === 'sospechoso' ? 'rango' : null,
     });
     await db.transaction((tx) => app.get(events.OutboxPublisher).publish(tx, event));
     await app.get(events.OutboxRelay).runOnce();
@@ -57,6 +62,13 @@ describe('precio vigente en comparison, actualizado por PriceReported (ADR-004)'
   const currentPrice = async () => {
     const result = await db.execute<{ report_id: string; price_cop: number }>(
       sql`select report_id, price_cop from comparison.price_current`,
+    );
+    return result.rows;
+  };
+
+  const currentStatus = async () => {
+    const result = await db.execute<{ report_id: string; status: string }>(
+      sql`select report_id, status from comparison.price_current`,
     );
     return result.rows;
   };
@@ -99,6 +111,51 @@ describe('precio vigente en comparison, actualizado por PriceReported (ADR-004)'
     });
     expect(await currentPrice()).toEqual([
       { report_id: 'c6666666-6666-4666-8666-666666666666', price_cop: 4800 },
+    ]);
+  });
+
+  // Grill de la #31, pregunta 5.
+  it('un precio sospechoso no reemplaza al vigente', async () => {
+    await report({
+      reportId: 'c7777777-7777-4777-8777-111111111111',
+      priceCop: 5000,
+      observedAt: '2026-11-12T12:00:00.000Z',
+      receivedAt: '2026-11-12T12:01:00.000Z',
+    });
+
+    await report({
+      reportId: 'c7777777-7777-4777-8777-222222222222',
+      priceCop: 1500,
+      observedAt: '2026-11-12T16:00:00.000Z',
+      receivedAt: '2026-11-12T16:01:00.000Z',
+      verdict: 'sospechoso',
+    });
+
+    expect(await currentStatus()).toEqual([
+      { report_id: 'c7777777-7777-4777-8777-111111111111', status: 'vigente' },
+    ]);
+  });
+
+  it('sin precio previo, un sospechoso entra en revisión; un normal posterior lo reemplaza', async () => {
+    await report({
+      reportId: 'c8888888-8888-4888-8888-111111111111',
+      priceCop: 1500,
+      observedAt: '2026-11-12T12:00:00.000Z',
+      receivedAt: '2026-11-12T12:01:00.000Z',
+      verdict: 'sospechoso',
+    });
+    expect(await currentStatus()).toEqual([
+      { report_id: 'c8888888-8888-4888-8888-111111111111', status: 'en_revision' },
+    ]);
+
+    await report({
+      reportId: 'c8888888-8888-4888-8888-222222222222',
+      priceCop: 5000,
+      observedAt: '2026-11-12T11:00:00.000Z',
+      receivedAt: '2026-11-12T13:00:00.000Z',
+    });
+    expect(await currentStatus()).toEqual([
+      { report_id: 'c8888888-8888-4888-8888-222222222222', status: 'vigente' },
     ]);
   });
 });
