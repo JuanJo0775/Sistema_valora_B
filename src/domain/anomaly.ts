@@ -95,7 +95,8 @@ export function assessAnomaly(
 
   // Pregunta 5: la mediana se mide sin el grupo, para que no la mueva hacia su propio precio. Varias
   // cuentas nuevas de acuerdo no son sospechosas por sí solas: el precio también debe ser raro.
-  const group = coordinatedWith(input, references, params);
+  // RF-012 RN3: «sobre un mismo establecimiento»; las tiendas de la zona no forman grupo.
+  const group = coordinatedWith(input, inStore, params);
   if (group.length + 1 >= params.coordination.minAccounts) {
     const honest = references.filter((reference) => !group.includes(reference));
     if (notEnough(honest)) return { status: 'sin_datos', references: honest.length };
