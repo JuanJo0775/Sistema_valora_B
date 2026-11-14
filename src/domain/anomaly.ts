@@ -79,13 +79,16 @@ export function assessAnomaly(
     const honest = references.filter((reference) => !group.includes(reference));
     const usualWithoutGroup = median(honest.map((reference) => reference.priceCop));
     const deviation = Math.abs(input.candidate.priceCop - usualWithoutGroup) / usualWithoutGroup;
-    return {
-      status: 'sospechoso',
-      reason: 'coordinacion',
-      median: usualWithoutGroup,
-      deviation,
-      references: honest.length,
-    };
+    // Varias cuentas nuevas de acuerdo no son sospechosas por sí solas: el precio también debe ser raro.
+    if (deviation > params.maxDeviation) {
+      return {
+        status: 'sospechoso',
+        reason: 'coordinacion',
+        median: usualWithoutGroup,
+        deviation,
+        references: honest.length,
+      };
+    }
   }
   const usual = median(references.map((reference) => reference.priceCop));
   const deviation = Math.abs(input.candidate.priceCop - usual) / usual;
