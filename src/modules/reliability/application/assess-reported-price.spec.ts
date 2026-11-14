@@ -151,4 +151,25 @@ describe('evaluar un precio reportado (reliability)', () => {
       reason: 'coordinacion',
     });
   });
+
+  it('con menos de 3 cuentas en la tienda usa la zona, sin los reportes que ya están en revisión', async () => {
+    const { observations, published, assess } = setup();
+    const inNeighbour = (key: string, price: number) =>
+      reported(key, price, { establishmentId: 'tienda-vecina' });
+    await assess.execute(inNeighbour('beto', 4900));
+    await assess.execute(inNeighbour('caro', 5000));
+    await assess.execute(inNeighbour('dani', 5100));
+    // Un precio raro en la vecina queda en revisión y no debe mover la referencia de la zona.
+    await assess.execute(inNeighbour('eli', 900));
+    published.length = 0;
+
+    await assess.execute(reported('ana', 2500));
+
+    expect(observations.saved.at(-1)?.verdict).toMatchObject({
+      status: 'sospechoso',
+      reason: 'rango',
+      median: 5000,
+      references: 3,
+    });
+  });
 });
