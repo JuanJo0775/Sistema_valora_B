@@ -216,8 +216,52 @@ describe('GET /v1/products/{productId}/comparison', () => {
       ],
     });
   });
-});
 
+  // Grill de la #31: pricing → reliability → comparison, con la confiabilidad en la respuesta.
+  it('de punta a punta con reliability: dos cuentas que coinciden suman una confirmación y un precio fuera de rango no reemplaza al vigente', async () => {
+    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    const relay = app.get(OutboxRelay);
+    const reportAs = async (email: string, priceCop: number, minutesAgo: number) => {
+      const reporter = await signIn(server, db, email);
+      await request(server)
+        .post('/v1/reports')
+        .set('Cookie', reporter.cookie)
+        .set('X-CSRF-Token', reporter.csrfToken)
+        .set('Idempotency-Key', crypto.randomUUID())
+        .send({
+          presentationId,
+          establishmentId: storeId,
+          priceCop,
+          observedAt: new Date(Date.now() - minutesAgo * 60 * 1000).toISOString(),
+        })
+        .expect(201);
+      await relay.runOnce();
+      await relay.runOnce();
+      return reporter;
+    };
+
+    const ana = await reportAs('ana@correo.com', 4500, 40);
+    const beto = await reportAs('beto@correo.com', 4550, 30);
+    const confirmed = await compare().expect(200);
+    expect(confirmed.body).toMatchObject({
+      results: [{ priceCop: 4550, confirmations: 1, reliability: 'media' }],
+    });
+
+    const caro = await reportAs('caro@correo.com', 4500, 20);
+    const dani = await reportAs('dani@correo.com', 1500, 10);
+    const afterAttack = await compare().expect(200);
+    expect(afterAttack.body).toMatchObject({ results: [{ priceCop: 4500 }] });
+
+    // EC-08: ni las observaciones de reliability ni los eventos llevan el id de la cuenta o el correo.
+    const stored = await db.execute(sql`select * from reliability.observations`);
+    const events = await db.execute(sql`select payload from shared.outbox`);
+    const everything = JSON.stringify([stored.rows, events.rows]);
+    for (const reporter of [ana, beto, caro, dani]) {
+      expect(everything).not.toContain(reporter.accountId);
+    }
+    expect(everything).not.toContain('@correo.com');
+  });
+});
 // Total de filas en todas las tablas de la aplicación (sin las de PostgreSQL y PostGIS).
 async function countAllRows(db: Database): Promise<number> {
   const tables = await db.execute<{ name: string }>(
