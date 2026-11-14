@@ -211,11 +211,14 @@ describe('POST /v1/reports', () => {
       sql`select report_id, price_cop from comparison.price_current`,
     );
     expect(current.rows).toEqual([{ report_id: id, price_cop: 4500 }]);
-    // EC-08: el evento no lleva nada que identifique o ubique al reportante.
-    const event = await db.execute<{ payload: Record<string, unknown> }>(
-      sql`select payload from shared.outbox`,
+    // EC-08 y grill de la #31, pregunta 2: PriceReported v2 lleva solo la clave seudónima del
+    // reportante y el día de creación de su cuenta; nada que lo identifique o lo ubique.
+    const event = await db.execute<{ version: number; payload: Record<string, unknown> }>(
+      sql`select version, payload from shared.outbox where type = 'PriceReported'`,
     );
-    expect(Object.keys(event.rows[0]?.payload ?? {}).sort()).toEqual([
+    const [reported] = event.rows;
+    expect(reported?.version).toBe(2);
+    expect(Object.keys(reported?.payload ?? {}).sort()).toEqual([
       'establishmentId',
       'observedAt',
       'presentationId',
@@ -223,6 +226,10 @@ describe('POST /v1/reports', () => {
       'priceType',
       'receivedAt',
       'reportId',
+      'reporterKey',
+      'reporterSince',
     ]);
+    expect(reported?.payload['reporterKey']).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(reported?.payload)).not.toContain(reporter.accountId);
   });
 });
