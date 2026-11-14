@@ -47,6 +47,7 @@ const freshPresentations = new Set([
 interface Outcome {
   report: LabeledReport;
   verdict: string;
+  reason: string;
 }
 
 describe('detección de anómalos con el conjunto etiquetado (PR-11, EC-03)', () => {
@@ -92,8 +93,12 @@ describe('detección de anómalos con el conjunto etiquetado (PR-11, EC-03)', ()
 
     for (const report of readLabeledReports()) {
       await assess.execute(report);
-      const verdict = String(published.at(-1)?.payload['verdict']);
-      outcomes.push({ report, verdict });
+      const payload = published.at(-1)?.payload ?? {};
+      outcomes.push({
+        report,
+        verdict: String(payload['verdict']),
+        reason: String(payload['reason']),
+      });
     }
   });
 
@@ -110,7 +115,8 @@ describe('detección de anómalos con el conjunto etiquetado (PR-11, EC-03)', ()
     const anomalies = outcomes.filter(({ report }) => report.anomalo === 'si');
     const detected = anomalies.filter(({ verdict }) => verdict === 'sospechoso');
 
-    if (process.env['PRINT_DETECTION_REPORT'] === '1') {
+    // pnpm reliability:evaluate imprime la tabla (pnpm pone el nombre del script en el entorno).
+    if (process.env['npm_lifecycle_event'] === 'reliability:evaluate') {
       process.stdout.write(detectionReport(outcomes));
     }
     expect(detected.length / anomalies.length).toBeGreaterThanOrEqual(0.8);
@@ -124,7 +130,8 @@ function detectionReport(outcomes: Outcome[]): string {
     const ofType = outcomes.filter(({ report }) => report.tipo === type);
     const count = (verdict: string) =>
       ofType.filter((outcome) => outcome.verdict === verdict).length;
-    return `| ${type} | ${ofType[0]?.report.anomalo ?? ''} | ${String(ofType.length)} | ${String(count('sospechoso'))} | ${String(count('normal'))} | ${String(count('sin_datos'))} |`;
+    const byGroup = ofType.filter((outcome) => outcome.reason === 'coordinacion').length;
+    return `| ${type} | ${ofType[0]?.report.anomalo ?? ''} | ${String(ofType.length)} | ${String(count('sospechoso'))} | ${String(byGroup)} | ${String(count('normal'))} | ${String(count('sin_datos'))} |`;
   });
   const anomalies = outcomes.filter(({ report }) => report.anomalo === 'si');
   const honest = outcomes.filter(({ report }) => report.anomalo === 'no');
@@ -132,8 +139,8 @@ function detectionReport(outcomes: Outcome[]): string {
   const falsePositives = honest.filter(({ verdict }) => verdict === 'sospechoso').length;
   return [
     '',
-    '| Tipo | Anómalo | Reportes | Sospechoso | Normal | Sin datos |',
-    '|---|---|---|---|---|---|',
+    '| Tipo | Anómalo | Reportes | Sospechoso | Por coordinación | Normal | Sin datos |',
+    '|---|---|---|---|---|---|---|',
     ...rows,
     '',
     `Detección: ${String(detected)} de ${String(anomalies.length)} (${String(Math.round((detected / anomalies.length) * 100))} %).`,
