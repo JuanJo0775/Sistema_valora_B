@@ -214,7 +214,7 @@ Aplicación de RF-011, ADR-005 y EC-03. El detalle está en `docs/decisiones/iss
 - **Corroborar y contradecir:** otro reporte a ±5 % del candidato corrobora; más lejos, contradice. Solo cuentan reportes de la ventana de vigencia (edad ≤ TTL), del mismo tipo de precio, de otra cuenta y uno por cuenta (el más reciente).
 - **Fórmula:** `score = factorEdad × limitar(0,5 × reputación + 0,5 × min(C, 3)/3 − 0,5 × min(D, 3)/3)`. `C` y `D` suman corroboraciones y contradicciones con peso `reputación / 0,5` de cada cuenta.
 - **Edad:** `factorEdad = 1 − edad / (2 × TTL)`, contada desde el reporte más reciente entre el candidato y los que lo confirman.
-- **Niveles:** `alta` desde 0,6, `media` desde 0,25 y `baja` por debajo. `en_revision` lo decide la moderación (#32).
+- **Niveles:** `alta` desde 0,6, `media` desde 0,2 y `baja` por debajo (era 0,25; se bajó en la #31 porque un reporte solo caía a `baja` a la hora de llegar). `en_revision` lo decide la moderación (#32).
 - **Reputación:** de 0 a 1, neutra en 0,5; +0,05 cuando otros confirman, −0,20 con un rechazo de moderación (`updateReputation`). Guardarla y usarla le toca a la #31, la #32 y la #33.
 - **Privacidad:** el reportante llega como una clave opaca y la salida no lleva ninguna (RN5, EC-08).
 
@@ -230,6 +230,20 @@ Aplicación de RF-012 (RN1, RN3 y RN4), ADR-005 y EC-03. El detalle está en `do
 - **Salida:** `normal`, `sospechoso` (motivo `rango` o `coordinacion`) o `sin_datos`, con la mediana, la desviación y el número de referencias, sin claves de reportante (EC-08).
 - **No borrar (RN4), regla para la #31:** `sospechoso` cambia el estado a «en revisión» y avisa a moderación (#32); ningún reporte se borra (los reportes son de solo inserción desde la #14).
 - **Límite conocido:** cuentas nuevas que reportan el mismo precio falso espaciadas más de 60 minutos no forman grupo y pueden mover la mediana. Se revisa con el conjunto etiquetado de la #31 (80 % de detección).
+
+## Confiabilidad en la comparación (issue #31, primera parte, decidido el 14 de noviembre de 2026)
+
+Aplicación de RF-010, RF-011, RF-012, ADR-004, ADR-005, ADR-015 y EC-03. El detalle está en `docs/decisiones/issue-31-reliability/`. La segunda parte (conjunto etiquetado y 80 % de detección) es la #67.
+
+- **Flujo:** `pricing` publica `PriceReported` v2; `reliability` lo evalúa, guarda la observación y la reputación, y publica `PriceAssessed` v1; `comparison` actualiza `price_current` con ese veredicto (ya no escucha `PriceReported`).
+- **Clave seudónima:** `PriceReported` v2 lleva `reporterKey` = `HMAC-SHA256(REPORTER_KEY_SECRET, id de la cuenta)` y `reporterSince` (día de creación). `identity` la calcula (`ReporterIdentity`). `REPORTER_KEY_SECRET` es una variable nueva y no debe cambiar una vez en uso. Los `PriceReported` v1 no se evalúan.
+- **`reliability`:** tablas `observations` (copia de cada reporte con su veredicto, solo inserción), `reputations` y `reputation_events` (un punto por reporte). No lee tablas de `pricing`.
+- **Referencias:** primero la tienda; si no hay 3 cuentas, se completa con las tiendas a 1 km (`EstablishmentsAround`, provisional), sin los sospechosos de la zona. La coordinación se mira solo en la tienda. Ajuste al construir: los sospechosos de la misma tienda sí cuentan, para no romper la detección de grupos (la regla de la #20 los saca de la mediana).
+- **Sospechosos:** no reemplazan un precio existente; sin precio previo entran `en_revision` (columna `status` de `price_current`), van al final de la comparación, nunca son `isCheapest` y no salen con `onlyCurrent`. `sin_datos` se trata como normal.
+- **Reputación:** sube (`corroborated`) cuando otra cuenta de la tienda coincide; cada reporte da su punto una vez; los sospechosos no dan ni reciben.
+- **Lectura:** `ReliabilityOfPrices` calcula el nivel y las confirmaciones al consultar. Un precio sin observación (anterior a la #31) cuenta como `baja`.
+- **TTL:** pasó al dominio (`ttlDaysFor` en `freshness.ts`); `catalog` expone `PresentationFreshness`.
+- **Calibración:** el umbral de `media` bajó de 0,25 a 0,2: con 0,25, un reporte solo caía a `baja` a la hora de llegar.
 
 ## Regla de cambio
 

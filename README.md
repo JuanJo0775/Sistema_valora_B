@@ -22,6 +22,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Sesión (#16, #62)                | Módulo `identity`: registro, sesión con cookie, CSRF, roles y límites; `POST /v1/reports` exige sesión de reportante          |
 | Score de confiabilidad (#19)     | Regla del dominio: corroboración, reputación del reportante y decaimiento por edad, con niveles alta, media y baja (RF-011)   |
 | Precios anómalos (#20)           | Regla del dominio: precio fuera del 40 % de la mediana y grupos coordinados de cuentas nuevas (RF-012)                        |
+| Confiabilidad (#31, parte 1)     | Módulo `reliability`: evalúa cada reporte, guarda reputación y la comparación muestra `reliability` y `confirmations`         |
 
 Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
@@ -245,6 +246,7 @@ src/
   modules/establishments/  Tiendas con ubicación y búsqueda por cercanía
   modules/imports/     Semilla: lee seed/ y guarda por catalog y establishments
   modules/pricing/     Reportes de precio (solo inserción) e idempotencia
+  modules/reliability/ Observaciones, reputación y veredicto de anómalos (PriceReported → PriceAssessed)
   modules/comparison/  Precio vigente (price_current), actualizado por PriceReported, y la consulta de comparación
   seed.ts              Entrada de pnpm db:seed
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
