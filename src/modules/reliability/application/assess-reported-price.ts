@@ -41,7 +41,7 @@ export class AssessReportedPrice {
   constructor(private readonly ports: AssessReportedPricePorts) {}
 
   async execute(reported: PriceReportedV2): Promise<void> {
-    const { observations, freshness, events } = this.ports;
+    const { observations, freshness, events, zone } = this.ports;
     const observation: Omit<Observation, 'verdict'> = {
       reportId: reported.reportId,
       presentationId: reported.presentationId,
@@ -56,12 +56,22 @@ export class AssessReportedPrice {
     const inStore = await observations.forPresentation(reported.presentationId, [
       reported.establishmentId,
     ]);
-    const since = new Map(inStore.map((seen) => [seen.reporterKey, seen.reporterSince]));
+    // Pregunta 7: las otras tiendas de la zona, sin los reportes que ya están en revisión.
+    const neighbours = (await zone.around(reported.establishmentId)).filter(
+      (id) => id !== reported.establishmentId,
+    );
+    const inZone = (await observations.forPresentation(reported.presentationId, neighbours)).filter(
+      (seen) => seen.verdict.status !== 'sospechoso',
+    );
+    const since = new Map(
+      [...inStore, ...inZone].map((seen) => [seen.reporterKey, seen.reporterSince]),
+    );
     since.set(observation.reporterKey, observation.reporterSince);
 
     const verdict = assessAnomaly({
       candidate: toScored(observation),
       others: inStore.map(toScored),
+      zone: inZone.map(toScored),
       now: observation.receivedAt,
       ttlDays: ttlDaysFor((await freshness.isFresh(reported.presentationId)) ?? false),
       accountCreatedAt: (key) => since.get(key) ?? observation.reporterSince,
