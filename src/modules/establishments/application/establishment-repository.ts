@@ -27,10 +27,17 @@ export interface WithinRadiusQuery {
   radiusMeters: number;
 }
 
+// Tiendas cerca de otra tienda (la zona de reliability).
+export interface AroundQuery {
+  establishmentId: string;
+  radiusMeters: number;
+}
+
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.
 export interface EstablishmentRepository {
   findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]>;
   findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
+  findAround(query: AroundQuery): Promise<string[]>;
   exists(establishmentId: string): Promise<boolean>;
 }
 
