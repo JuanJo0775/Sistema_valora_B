@@ -1,6 +1,7 @@
 // Interfaz pública del módulo identity. Otros módulos y AppModule importan solo desde aquí.
 export { IdentityModule } from './identity.module';
 export type { Role } from './application/account-repository';
+export { ReporterIdentity, type ReporterPseudonym } from './application/reporter-identity';
 export {
   type AuthenticatedSession,
   CurrentSession,

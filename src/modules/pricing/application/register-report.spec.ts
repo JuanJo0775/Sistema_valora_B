@@ -34,6 +34,9 @@ function setup() {
     reports,
     presentations: { exists: (id) => Promise.resolve(id === presentationId) },
     establishments: { exists: (id) => Promise.resolve(id === establishmentId) },
+    reporters: {
+      of: () => Promise.resolve({ reporterKey: 'clave-seudonima', reporterSince: '2026-11-01' }),
+    },
     clock: { now: () => now },
   });
   return { reports, registerReport };

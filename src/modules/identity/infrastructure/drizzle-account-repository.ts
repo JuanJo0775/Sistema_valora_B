@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { AccountCreation } from '../application/reporter-identity';
 import type {
   Account,
   AccountRepository,
@@ -8,7 +9,7 @@ import type {
 } from '../application/account-repository';
 import { accounts } from './schema';
 
-export class DrizzleAccountRepository implements AccountRepository {
+export class DrizzleAccountRepository implements AccountRepository, AccountCreation {
   constructor(private readonly db: NodePgDatabase) {}
 
   async findByEmail(email: string): Promise<Account | null> {
@@ -23,6 +24,16 @@ export class DrizzleAccountRepository implements AccountRepository {
       .where(eq(accounts.email, email));
     // La restricción CHECK de la tabla garantiza que es uno de los 3 roles.
     return found ? { ...found, role: found.role as Role } : null;
+  }
+
+  // Grill de la #31, pregunta 2: el día de creación de la cuenta, para la identidad seudónima.
+  async createdAtOf(accountId: string): Promise<Date> {
+    const [found] = await this.db
+      .select({ createdAt: accounts.createdAt })
+      .from(accounts)
+      .where(eq(accounts.id, accountId));
+    if (!found) throw new Error('La cuenta de la sesión no existe.');
+    return found.createdAt;
   }
 
   // Dos registros simultáneos con el mismo correo: el índice único deja uno y el otro no falla, así
