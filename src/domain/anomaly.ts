@@ -1,4 +1,9 @@
-import { comparableReports, type ReportWindow } from './report-window';
+import {
+  comparableReports,
+  DAY_IN_MILLISECONDS,
+  type ReportWindow,
+  type ScoredReport,
+} from './report-window';
 
 // Grill de la #20, pregunta 7: valores PROVISIONALES (ADR-005), reemplazables al llamar.
 export const ANOMALY_PARAMS = {
@@ -6,6 +11,8 @@ export const ANOMALY_PARAMS = {
   minReferences: 3,
   // Pregunta 3: desviación máxima frente a la mediana, hacia arriba o hacia abajo.
   maxDeviation: 0.4,
+  // Pregunta 5: cuántas cuentas nuevas, a qué distancia de precio y en qué ventana forman un grupo.
+  coordination: { minAccounts: 3, windowMinutes: 60, newAccountDays: 7, priceTolerance: 0.05 },
 };
 
 export type AnomalyParams = typeof ANOMALY_PARAMS;
@@ -17,7 +24,13 @@ export interface AnomalyInput extends ReportWindow {
 
 export type AnomalyResult =
   | { status: 'normal'; median: number; deviation: number; references: number }
-  | { status: 'sospechoso'; reason: 'rango'; median: number; deviation: number; references: number }
+  | {
+      status: 'sospechoso';
+      reason: 'rango' | 'coordinacion';
+      median: number;
+      deviation: number;
+      references: number;
+    }
   | { status: 'sin_datos'; references: number };
 
 // Pregunta 4: con un número par de valores, el promedio de los dos del medio. Se llama con al menos
@@ -30,6 +43,27 @@ function median(values: number[]): number {
   return ((sorted[middle - 1] ?? upper) + upper) / 2;
 }
 
+// Pregunta 5: reportes de cuentas nuevas con «el mismo precio» del candidato, cerca en el tiempo.
+function coordinatedWith(
+  input: AnomalyInput,
+  references: ScoredReport[],
+  params: AnomalyParams,
+): ScoredReport[] {
+  const { candidate, now, accountCreatedAt } = input;
+  const { newAccountDays, priceTolerance, windowMinutes } = params.coordination;
+  const isNew = (report: ScoredReport) =>
+    now.getTime() - accountCreatedAt(report.reporterKey).getTime() <
+    newAccountDays * DAY_IN_MILLISECONDS;
+  if (!isNew(candidate)) return [];
+  return references.filter(
+    (reference) =>
+      isNew(reference) &&
+      Math.abs(reference.priceCop - candidate.priceCop) / candidate.priceCop <= priceTolerance &&
+      Math.abs(reference.observedAt.getTime() - candidate.observedAt.getTime()) <=
+        windowMinutes * 60 * 1000,
+  );
+}
+
 export function assessAnomaly(
   input: AnomalyInput,
   params: AnomalyParams = ANOMALY_PARAMS,
@@ -38,6 +72,20 @@ export function assessAnomaly(
   // Pregunta 4: con pocas cuentas, un solo reporte falso movería la «mediana»; no se marca.
   if (references.length < params.minReferences) {
     return { status: 'sin_datos', references: references.length };
+  }
+  // La mediana se calcula sin el grupo, para que no la mueva hacia su propio precio.
+  const group = coordinatedWith(input, references, params);
+  if (group.length + 1 >= params.coordination.minAccounts) {
+    const honest = references.filter((reference) => !group.includes(reference));
+    const usualWithoutGroup = median(honest.map((reference) => reference.priceCop));
+    const deviation = Math.abs(input.candidate.priceCop - usualWithoutGroup) / usualWithoutGroup;
+    return {
+      status: 'sospechoso',
+      reason: 'coordinacion',
+      median: usualWithoutGroup,
+      deviation,
+      references: honest.length,
+    };
   }
   const usual = median(references.map((reference) => reference.priceCop));
   const deviation = Math.abs(input.candidate.priceCop - usual) / usual;
