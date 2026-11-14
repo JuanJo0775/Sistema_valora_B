@@ -13,10 +13,16 @@ export interface Clock {
   now(): Date;
 }
 
+// Puerto hacia identity: la clave seudónima del reportante (grill de la #31, pregunta 2).
+export interface ReporterPseudonyms {
+  of(accountId: string): Promise<{ reporterKey: string; reporterSince: string }>;
+}
+
 export interface RegisterReportDependencies {
   reports: ReportRepository;
   presentations: ExistenceCheck;
   establishments: ExistenceCheck;
+  reporters: ReporterPseudonyms;
   clock: Clock;
 }
 
@@ -100,9 +106,11 @@ export class RegisterReport {
       idempotencyKey,
       requestHash,
     };
+    const { reporterKey, reporterSince } = await this.deps.reporters.of(report.reporterId);
     const saved = await this.deps.reports.save(
       newReport,
-      createEvent(PRICE_REPORTED, 1, {
+      // Versión 2 (#31): la clave seudónima y el día de la cuenta; nunca el id ni el correo (EC-08).
+      createEvent(PRICE_REPORTED, 2, {
         reportId: newReport.id,
         presentationId: report.presentationId,
         establishmentId: report.establishmentId,
@@ -110,6 +118,8 @@ export class RegisterReport {
         priceType: report.priceType,
         observedAt: report.observedAt.toISOString(),
         receivedAt: newReport.receivedAt.toISOString(),
+        reporterKey,
+        reporterSince,
       }),
     );
     // Dos reintentos simultáneos: el que no insertó responde como reintento.

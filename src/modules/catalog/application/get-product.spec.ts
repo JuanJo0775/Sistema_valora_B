@@ -40,6 +40,10 @@ class InMemoryProductRepository implements ProductRepository {
   findForComparison(): Promise<null> {
     return Promise.reject(new Error('GetProduct no consulta para la comparación'));
   }
+
+  isFreshPresentation(): Promise<null> {
+    return Promise.reject(new Error('GetProduct no consulta la frescura'));
+  }
 }
 
 describe('consultar un producto del catálogo', () => {

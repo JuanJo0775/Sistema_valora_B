@@ -63,9 +63,27 @@ describe('precios vigentes que lee la comparación', () => {
     expect(found).toHaveLength(3);
     expect(found).toEqual(
       expect.arrayContaining([
-        { presentationId: halfKilo, establishmentId: storeA, priceCop: 2000, observedAt },
-        { presentationId: halfKilo, establishmentId: storeB, priceCop: 2100, observedAt },
-        { presentationId: oneKilo, establishmentId: storeA, priceCop: 3900, observedAt },
+        expect.objectContaining({
+          presentationId: halfKilo,
+          establishmentId: storeA,
+          priceCop: 2000,
+          observedAt,
+          status: 'vigente',
+        }),
+        expect.objectContaining({
+          presentationId: halfKilo,
+          establishmentId: storeB,
+          priceCop: 2100,
+          observedAt,
+          status: 'vigente',
+        }),
+        expect.objectContaining({
+          presentationId: oneKilo,
+          establishmentId: storeA,
+          priceCop: 3900,
+          observedAt,
+          status: 'vigente',
+        }),
       ]),
     );
     await expect(prices.findByPresentations([])).resolves.toEqual([]);

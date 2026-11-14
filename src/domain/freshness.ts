@@ -37,3 +37,11 @@ export function freshnessOf({ observedAt, now, ttlDays }: FreshnessInput): Fresh
   if (age <= 2 * ttl) return 'por_confirmar';
   return 'desactualizado';
 }
+
+// ADR-005: TTL de 7 días para categorías frescas y 14 para el resto. Valores PROVISIONALES, en un
+// solo lugar porque los usan la comparación (#15) y la confiabilidad (#31).
+export const TTL_DAYS = { fresh: 7, other: 14 } as const;
+
+export function ttlDaysFor(isFreshCategory: boolean): number {
+  return isFreshCategory ? TTL_DAYS.fresh : TTL_DAYS.other;
+}

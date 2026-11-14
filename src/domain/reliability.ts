@@ -15,7 +15,7 @@ export const RELIABILITY_PARAMS = {
   // Pregunta 3: cuánto sube con una confirmación y cuánto baja con un rechazo.
   reputationSteps: { corroborated: 0.05, rejected: 0.2 },
   // Pregunta 6: umbrales de los niveles.
-  levels: { high: 0.6, medium: 0.25 },
+  levels: { high: 0.6, medium: 0.2 },
 };
 
 export type ReliabilityParams = typeof RELIABILITY_PARAMS;

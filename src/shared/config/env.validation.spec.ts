@@ -5,6 +5,7 @@ const validEnv = {
   DATABASE_URL: 'postgresql://valora:valora@localhost:5432/valora_dev',
   DATABASE_URL_TEST: 'postgresql://valora:valora@localhost:5432/valora_test',
   SESSION_SECRET: 'secreto-de-ejemplo',
+  REPORTER_KEY_SECRET: 'otro-secreto-de-ejemplo',
   NODE_ENV: 'development',
   OUTBOX_POLL_INTERVAL_MS: '5000',
   OUTBOX_MAX_ATTEMPTS: '5',
@@ -53,5 +54,13 @@ describe('validateEnv con las variables del repartidor de eventos', () => {
 describe('validateEnv con NODE_ENV inválido', () => {
   it('rechaza un entorno que no sea development, test o production', () => {
     expect(() => validateEnv({ ...validEnv, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
+  });
+});
+
+describe('validateEnv con el secreto de la clave del reportante (#31)', () => {
+  it('falla con un mensaje que nombra REPORTER_KEY_SECRET si falta', () => {
+    expect(() => validateEnv({ ...validEnv, REPORTER_KEY_SECRET: undefined })).toThrow(
+      /REPORTER_KEY_SECRET/,
+    );
   });
 });

@@ -78,6 +78,20 @@
       "when": 1794539595200,
       "tag": "0010_pricing-reporter-required",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794697619309,
+      "tag": "0011_reliability",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794697752474,
+      "tag": "0012_comparison-status",
+      "breakpoints": true
     }
   ]
 }

@@ -725,7 +725,7 @@ components:
             comparación.
     ComparisonItem:
       type: object
-      required: [establishment, presentationId, priceCop, unitPrice, source, freshness, isCheapest, observedAt]
+      required: [establishment, presentationId, priceCop, unitPrice, source, freshness, reliability, confirmations, isCheapest, observedAt]
       properties:
         establishment: { $ref: '#/components/schemas/Establishment' }
         presentationId: { type: string, format: uuid }
@@ -753,16 +753,20 @@ components:
         reliability:
           type: string
           enum: [alta, media, baja, en_revision]
-          description: Confiabilidad del precio (desde la issue #31; mientras tanto no se envía).
+          description: >-
+            Confiabilidad del precio al momento de la consulta (score de RF-011, issue #31): alta,
+            media o baja. en_revision si el único precio de esa tienda quedó sospechoso (RF-012) y
+            espera moderación; no compite en el orden. Un precio sin evaluar cuenta como baja.
         isCheapest:
           type: boolean
           description: >-
             Verdadero en el precio por unidad más bajo (valor exacto) entre los resultados vigentes y
-            por confirmar; si varios empatan, en todos. Un precio desactualizado siempre es falso.
+            por confirmar; si varios empatan, en todos. Un precio desactualizado o en_revision siempre
+            es falso.
         confirmations:
           type: integer
           minimum: 0
-          description: Corroboraciones del precio (desde la issue #31).
+          description: Cuántas cuentas distintas confirman el precio (a ±5 %, dentro de su vigencia).
         observedAt: { type: string, format: date-time }
     Promotion:
       type: object
@@ -794,7 +798,8 @@ components:
           type: array
           description: >-
             Primero los precios vigentes y por confirmar, ordenados por el criterio declarado; al final
-            los desactualizados, ordenados entre sí con el mismo criterio (no compiten con los demás).
+            los desactualizados y los que están en revisión (reliability en_revision), ordenados entre
+            sí con el mismo criterio (no compiten con los demás). Con onlyCurrent=true no aparecen.
           items: { $ref: '#/components/schemas/ComparisonItem' }
         promotions:
           type: array

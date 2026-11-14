@@ -4,6 +4,7 @@ import type {
   EstablishmentRepository,
   EstablishmentType,
   NearbyEstablishment,
+  AroundQuery,
   NearbyQuery,
   WithinRadiusQuery,
 } from '../application/establishment-repository';
@@ -36,6 +37,16 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
   // Grill de la #15, pregunta 2: sin tope, para no perder tiendas que tienen precio.
   findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]> {
     return this.searchWithinRadius({ ...query, where: inArray(establishments.id, query.ids) });
+  }
+
+  // Grill de la #31, pregunta 7: las tiendas a radiusMeters o menos de otra tienda, ella incluida.
+  async findAround(query: AroundQuery): Promise<string[]> {
+    const center = sql`(select location from establishments.establishments where id = ${query.establishmentId})`;
+    const rows = await this.db
+      .select({ id: establishments.id })
+      .from(establishments)
+      .where(sql`ST_DWithin(${establishments.location}, ${center}, ${query.radiusMeters})`);
+    return rows.map((row) => row.id);
   }
 
   // La ubicación del usuario solo viaja como parámetro de esta consulta: no se guarda (RF-005 RN5).

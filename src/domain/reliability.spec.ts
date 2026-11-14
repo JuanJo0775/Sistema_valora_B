@@ -144,11 +144,32 @@ describe('nivel de confiabilidad', () => {
     [1, 'alta'],
     [0.6, 'alta'],
     [0.59, 'media'],
-    [0.25, 'media'],
-    [0.24, 'baja'],
+    [0.2, 'media'],
+    [0.19, 'baja'],
     [0, 'baja'],
   ] as const)('un score de %d es %s', (value, level) => {
     expect(reliabilityLevel(value)).toBe(level);
+  });
+
+  // Ajuste de la #31: con el umbral en 0,25, un reporte solo caía a «baja» a la hora de llegar.
+  it('un reporte solo de una cuenta neutra sigue en media durante sus primeros días', () => {
+    const atDays = (days: number) =>
+      reliabilityScore({
+        candidate: {
+          reporterKey: 'ana',
+          priceCop: 4000,
+          priceType: 'normal',
+          observedAt: new Date(now.getTime() - days * 24 * 60 * 60 * 1000),
+        },
+        others: [],
+        reputationOf: () => 0.5,
+        now,
+        ttlDays: 14,
+      }).score;
+
+    expect(reliabilityLevel(atDays(0.04))).toBe('media');
+    expect(reliabilityLevel(atDays(5))).toBe('media');
+    expect(reliabilityLevel(atDays(7))).toBe('baja');
   });
 });
 

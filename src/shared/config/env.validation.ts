@@ -20,6 +20,11 @@ export class Env {
   @IsNotEmpty()
   SESSION_SECRET!: string;
 
+  // Grill de la #31, pregunta 2: firma la clave seudónima del reportante (aparte de la sesión).
+  @IsString()
+  @IsNotEmpty()
+  REPORTER_KEY_SECRET!: string;
+
   @IsIn(['development', 'test', 'production'])
   NODE_ENV!: string;
 

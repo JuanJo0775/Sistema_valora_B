@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Env } from '../../shared/config/env.validation';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/account-repository';
 import type { AttemptLimiter } from './application/attempt-limiter';
@@ -7,6 +9,7 @@ import type { PasswordHasher } from './application/password-hasher';
 import { Login } from './application/login';
 import { Logout } from './application/logout';
 import { RegisterAccount } from './application/register-account';
+import { ReporterIdentity } from './application/reporter-identity';
 import { ResolveSession } from './application/resolve-session';
 import { SESSION_REPOSITORY, type SessionRepository } from './application/session-repository';
 import { AuthController } from './http/auth.controller';
@@ -73,9 +76,18 @@ const CLOCK = Symbol('CLOCK');
       useFactory: (sessions: SessionRepository, clock: Clock): Logout =>
         new Logout({ sessions, clock }),
     },
+    {
+      provide: ReporterIdentity,
+      inject: [DATABASE, ConfigService],
+      useFactory: (db: Database, config: ConfigService<Env, true>): ReporterIdentity =>
+        new ReporterIdentity({
+          accounts: new DrizzleAccountRepository(db),
+          secret: config.get('REPORTER_KEY_SECRET', { infer: true }),
+        }),
+    },
     SessionGuard,
   ],
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
-  exports: [ResolveSession, SessionGuard],
+  exports: [ResolveSession, SessionGuard, ReporterIdentity],
 })
 export class IdentityModule {}

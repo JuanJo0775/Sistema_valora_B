@@ -30,6 +30,16 @@ Los nombres son límites lógicos propuestos para organizar el trabajo. Los deta
 6. Los datos personales del reportante se separan de los datos públicos del reporte.
 7. Los reportes se conservan como historial; la moderación cambia su estado, no los borra.
 
+## Flujo de un precio reportado (issue #31)
+
+```text
+pricing ──PriceReported v2──► reliability ──PriceAssessed v1──► comparison
+(guarda el reporte)            (evalúa anómalos, guarda          (actualiza price_current;
+                               observación y reputación)          un sospechoso no reemplaza)
+```
+
+Los eventos viajan por el outbox (ADR-015). `PriceReported` v2 lleva solo una clave seudónima del reportante (`reporterKey`) y el día de creación de su cuenta. Al consultar, `comparison` pide a `reliability` el nivel de confiabilidad y las confirmaciones de cada precio (`ReliabilityOfPrices`), calculados a la hora actual.
+
 ## API
 
 REST sobre HTTPS, JSON y OpenAPI 3.x, versionada bajo `/v1`. La autorización es por operación y rol. La clave de idempotencia para registrar reportes debe validarse y persistirse en el servidor.
