@@ -1,3 +1,5 @@
+import { comparableReports, DAY_IN_MILLISECONDS, type ScoredReport } from './report-window';
+
 // Grill de la #19, pregunta 7: valores PROVISIONALES (ADR-005). Se calibran con datos y la
 // calibración se documenta; las funciones aceptan otros parámetros.
 export const RELIABILITY_PARAMS = {
@@ -18,13 +20,8 @@ export const RELIABILITY_PARAMS = {
 
 export type ReliabilityParams = typeof RELIABILITY_PARAMS;
 
-// Pregunta 8: el reportante llega como una clave opaca; la regla solo la compara (RN5, EC-08).
-export interface ScoredReport {
-  reporterKey: string;
-  priceCop: number;
-  priceType: 'normal' | 'oferta';
-  observedAt: Date;
-}
+// Pregunta 8: el reportante llega como una clave opaca (ScoredReport, en report-window.ts).
+export type { ScoredReport } from './report-window';
 
 export interface ReliabilityInput {
   candidate: ScoredReport;
@@ -39,25 +36,6 @@ export interface ReliabilityResult {
   score: number;
   corroborations: number;
   contradictions: number;
-}
-
-const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
-
-// Pregunta 2 y RN4: de la ventana de vigencia (edad ≤ TTL), del mismo tipo de precio, sin la cuenta
-// del candidato, y una vez por cuenta con su reporte más reciente.
-function comparableReports({ candidate, others, now, ttlDays }: ReliabilityInput): ScoredReport[] {
-  const windowStart = now.getTime() - ttlDays * DAY_IN_MILLISECONDS;
-  const latest = new Map<string, ScoredReport>();
-  for (const other of others) {
-    const comparable =
-      other.reporterKey !== candidate.reporterKey &&
-      other.priceType === candidate.priceType &&
-      other.observedAt.getTime() >= windowStart;
-    if (!comparable) continue;
-    const kept = latest.get(other.reporterKey);
-    if (!kept || other.observedAt > kept.observedAt) latest.set(other.reporterKey, other);
-  }
-  return [...latest.values()];
 }
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
