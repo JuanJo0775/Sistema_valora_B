@@ -1,4 +1,4 @@
-import { type Freshness, freshnessOf } from '../../../domain/freshness';
+import { type Freshness, freshnessOf, ttlDaysFor } from '../../../domain/freshness';
 import {
   type RankableOffer,
   rankOffers,
@@ -59,10 +59,6 @@ export interface Comparison {
   // ADR-009: siempre aparte; vacío hasta el módulo comercial (grill de la #15, pregunta 6).
   promotions: [];
 }
-
-// ADR-005: TTL de 7 días para categorías frescas y 14 para el resto (valores provisionales, aquí
-// en un solo lugar para calibrarlos).
-const TTL_DAYS = { fresh: 7, other: 14 } as const;
 
 // Lo que rankOffers puede leer, junto al resultado que se devuelve.
 interface Candidate extends RankableOffer {
@@ -145,7 +141,7 @@ export class CompareProduct {
     });
     const storesById = new Map(stores.map((store) => [store.id, store]));
     const now = this.ports.clock.now();
-    const ttlDays = product.isFresh ? TTL_DAYS.fresh : TTL_DAYS.other;
+    const ttlDays = ttlDaysFor(product.isFresh);
 
     const candidates: Candidate[] = [];
     // Un precio sin tienda en el radio (o sin presentación conocida) no entra.
