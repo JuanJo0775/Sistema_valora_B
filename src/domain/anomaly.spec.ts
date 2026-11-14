@@ -32,4 +32,13 @@ describe('detección de precios anómalos', () => {
 
     expect(result).toEqual({ status: 'sin_datos', references: 2 });
   });
+
+  // Tres cuentas de referencia alrededor de 5000.
+  const usual = () => [report('beto', 4900), report('caro', 5000), report('dani', 5100)];
+
+  it('un precio dentro del 40 % de la mediana es normal, con la mediana, la desviación y las referencias', () => {
+    const result = assess(report('ana', 4500), usual());
+
+    expect(result).toEqual({ status: 'normal', median: 5000, deviation: 0.1, references: 3 });
+  });
 });
