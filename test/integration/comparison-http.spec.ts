@@ -94,6 +94,9 @@ describe('GET /v1/products/{productId}/comparison', () => {
           source: 'comunidad',
           freshness: 'vigente',
           isCheapest: true,
+          // Sin observación en reliability (precio cargado a mano): cuenta como baja (#31).
+          reliability: 'baja',
+          confirmations: 0,
           observedAt: observedAt.toISOString(),
         },
       ],
