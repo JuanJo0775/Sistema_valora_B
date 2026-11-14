@@ -20,6 +20,9 @@ export type AnomalyParams = typeof ANOMALY_PARAMS;
 export interface AnomalyInput extends ReportWindow {
   // Pregunta 5: cuándo se creó la cuenta de una clave opaca (para saber si es nueva).
   accountCreatedAt: (reporterKey: string) => Date;
+  // Grill de la #31, pregunta 7: reportes de las otras tiendas de la zona; completan la referencia
+  // cuando la tienda no tiene suficientes cuentas.
+  zone?: ScoredReport[];
 }
 
 export type AnomalyResult =
@@ -83,7 +86,11 @@ export function assessAnomaly(
 ): AnomalyResult {
   // Pregunta 4: con pocas cuentas, un solo reporte falso movería la «mediana»; no se marca.
   const notEnough = (references: ScoredReport[]) => references.length < params.minReferences;
-  const references = comparableReports(input);
+  const inStore = comparableReports(input);
+  const references =
+    notEnough(inStore) && input.zone
+      ? comparableReports({ ...input, others: [...input.others, ...input.zone] })
+      : inStore;
   if (notEnough(references)) return { status: 'sin_datos', references: references.length };
 
   // Pregunta 5: la mediana se mide sin el grupo, para que no la mueva hacia su propio precio. Varias
