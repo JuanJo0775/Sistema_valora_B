@@ -112,5 +112,15 @@ describe('detección de precios anómalos', () => {
         references: 3,
       });
     });
+
+    it('cuentas nuevas que coinciden con el precio habitual no son sospechosas', () => {
+      const honestNewcomers = ['nueva-2', 'nueva-3'].map((key) => report(key, 5000));
+
+      const result = assess(report('nueva-1', 5000), [...usual(), ...honestNewcomers], {
+        accountCreatedAt,
+      });
+
+      expect(result).toMatchObject({ status: 'normal' });
+    });
   });
 });
