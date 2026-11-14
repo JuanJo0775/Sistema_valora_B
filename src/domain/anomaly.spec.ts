@@ -161,6 +161,32 @@ describe('detección de precios anómalos', () => {
   });
 });
 
+describe('referencias de la zona (grill de la #31, pregunta 7)', () => {
+  it('con menos de 3 cuentas en la tienda, completa la referencia con las tiendas de la zona', () => {
+    const store = [report('beto', 5000)];
+    const zone = [report('caro', 4900), report('dani', 5100)];
+
+    expect(assess(report('ana', 2500), store, { zone })).toEqual({
+      status: 'sospechoso',
+      reason: 'rango',
+      median: 5000,
+      deviation: 0.5,
+      references: 3,
+    });
+  });
+
+  it('si la tienda ya tiene 3 cuentas, la zona no cuenta', () => {
+    const store = [report('beto', 2400), report('caro', 2500), report('dani', 2600)];
+    const zone = [report('eli', 5000), report('fer', 5000), report('gabi', 5000)];
+
+    expect(assess(report('ana', 2500), store, { zone })).toMatchObject({
+      status: 'normal',
+      median: 2500,
+      references: 3,
+    });
+  });
+});
+
 describe('garantías de la detección', () => {
   const usual = () => [report('beto', 4900), report('caro', 5000), report('dani', 5100)];
 
