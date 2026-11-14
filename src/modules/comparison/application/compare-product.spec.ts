@@ -10,10 +10,12 @@ interface Fixture {
   isFresh?: boolean;
   prices?: CurrentPrice[];
   stores?: NearbyEstablishment[];
+  // Lo que reliability calcula para cada tienda (#31); por defecto, media sin confirmaciones.
+  reliability?: Record<string, { level: 'alta' | 'media' | 'baja'; confirmations: number }>;
 }
 
-// Dobles de los cuatro puertos: el catálogo, las tiendas, price_current y el reloj.
-function setup({ isFresh = false, prices = [], stores = [] }: Fixture = {}) {
+// Dobles de los puertos: el catálogo, las tiendas, price_current, reliability y el reloj.
+function setup({ isFresh = false, prices = [], stores = [], reliability = {} }: Fixture = {}) {
   return new CompareProduct({
     products: {
       find: (id) =>
@@ -34,6 +36,15 @@ function setup({ isFresh = false, prices = [], stores = [] }: Fixture = {}) {
       findByPresentations: (ids) =>
         Promise.resolve(prices.filter((price) => ids.includes(price.presentationId))),
     },
+    reliability: {
+      of: (refs) =>
+        Promise.resolve(
+          refs.map((ref) => ({
+            ...ref,
+            ...(reliability[ref.establishmentId] ?? { level: 'media' as const, confirmations: 0 }),
+          })),
+        ),
+    },
     clock: { now: () => now },
   });
 }
@@ -50,9 +61,11 @@ const store = (id: string, distanceM = 500): NearbyEstablishment => ({
 
 // Precio de 500 g, por defecto $2.000 visto hace un día.
 const price = (establishmentId: string, priceCop = 2000, daysAgo = 1): CurrentPrice => ({
+  reportId: `reporte-${establishmentId}`,
   presentationId: 'p-500g',
   establishmentId,
   priceCop,
+  status: 'vigente',
   observedAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
 });
 
@@ -199,5 +212,36 @@ describe('comparar los precios de un producto', () => {
 
     expect(comparison?.criteria.sort).toBe('distance');
     expect(idsOf(comparison)).toEqual(['cerca-cara', 'lejos-barata']);
+  });
+
+  // Grill de la #31, preguntas 5 y 6.
+  it('cada resultado muestra la confiabilidad y las confirmaciones que calcula reliability', async () => {
+    const compare = setup({
+      prices: [price('t1')],
+      stores: [store('t1')],
+      reliability: { t1: { level: 'alta', confirmations: 2 } },
+    });
+
+    const comparison = await compare.execute(input());
+
+    expect(comparison?.results[0]).toMatchObject({ reliability: 'alta', confirmations: 2 });
+  });
+
+  it('un precio en revisión va al final con reliability en_revision, nunca es el más barato y onlyCurrent lo quita', async () => {
+    const compare = setup({
+      prices: [price('normal', 2000), { ...price('dudoso', 900), status: 'en_revision' }],
+      stores: [store('normal'), store('dudoso')],
+    });
+
+    const comparison = await compare.execute(input());
+    const onlyCurrent = await compare.execute(input({ onlyCurrent: true }));
+
+    expect(
+      comparison?.results.map((item) => [item.establishment.id, item.reliability, item.isCheapest]),
+    ).toEqual([
+      ['normal', 'media', true],
+      ['dudoso', 'en_revision', false],
+    ]);
+    expect(onlyCurrent?.results.map((item) => item.establishment.id)).toEqual(['normal']);
   });
 });
