@@ -187,4 +187,17 @@ describe('evaluar un precio reportado (reliability)', () => {
     expect(reputations.values.get('ana')).toBeCloseTo(0.55);
     expect(reputations.values.get('beto')).toBeCloseTo(0.55);
   });
+
+  it('un reporte sospechoso no da ni recibe reputación, aunque otro reporte coincida con él', async () => {
+    const { reputations, assess, seedUsual } = setup();
+    await seedUsual();
+    const before = new Map(reputations.values);
+
+    await assess.execute(reported('ana', 2500));
+    await assess.execute(reported('beto-2', 2500));
+
+    expect(reputations.values.has('ana')).toBe(false);
+    expect(reputations.values.has('beto-2')).toBe(false);
+    expect(new Map([...reputations.values].filter(([key]) => before.has(key)))).toEqual(before);
+  });
 });
