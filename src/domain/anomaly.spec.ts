@@ -88,4 +88,29 @@ describe('detección de precios anómalos', () => {
 
     expect(result).toMatchObject({ status: 'sospechoso', median: 5000, references: 3 });
   });
+
+  describe('grupos coordinados (RN3)', () => {
+    const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60 * 1000);
+    // Cuentas «nueva-…» creadas hoy; las demás, hace un año.
+    const accountCreatedAt = (key: string) => (key.startsWith('nueva') ? daysAgo(0.5) : aYearAgo);
+    // Seis cuentas nuevas reportan 1500 en 10 minutos: dentro de la referencia, mueven la mediana.
+    const group = () =>
+      ['nueva-2', 'nueva-3', 'nueva-4', 'nueva-5', 'nueva-6'].map((key, minute) =>
+        report(key, 1500, { observedAt: minutesAgo(minute * 2) }),
+      );
+
+    it('cuentas nuevas que reportan juntas un precio raro son sospechosas por coordinación', () => {
+      const result = assess(report('nueva-1', 1500), [...usual(), ...group()], {
+        accountCreatedAt,
+      });
+
+      expect(result).toEqual({
+        status: 'sospechoso',
+        reason: 'coordinacion',
+        median: 5000,
+        deviation: 0.7,
+        references: 3,
+      });
+    });
+  });
 });
