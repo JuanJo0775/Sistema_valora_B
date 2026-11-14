@@ -64,41 +64,44 @@ function coordinatedWith(
   );
 }
 
+interface Measured {
+  median: number;
+  deviation: number;
+  references: number;
+}
+
+// Pregunta 3: qué tanto se aparta el candidato de la mediana de las referencias.
+function measure(candidate: ScoredReport, references: ScoredReport[]): Measured {
+  const usual = median(references.map((reference) => reference.priceCop));
+  const deviation = Math.abs(candidate.priceCop - usual) / usual;
+  return { median: usual, deviation, references: references.length };
+}
+
 export function assessAnomaly(
   input: AnomalyInput,
   params: AnomalyParams = ANOMALY_PARAMS,
 ): AnomalyResult {
-  const references = comparableReports(input);
   // Pregunta 4: con pocas cuentas, un solo reporte falso movería la «mediana»; no se marca.
-  if (references.length < params.minReferences) {
-    return { status: 'sin_datos', references: references.length };
-  }
-  // La mediana se calcula sin el grupo, para que no la mueva hacia su propio precio.
+  const notEnough = (references: ScoredReport[]) => references.length < params.minReferences;
+  const references = comparableReports(input);
+  if (notEnough(references)) return { status: 'sin_datos', references: references.length };
+
+  // Pregunta 5: la mediana se mide sin el grupo, para que no la mueva hacia su propio precio. Varias
+  // cuentas nuevas de acuerdo no son sospechosas por sí solas: el precio también debe ser raro.
   const group = coordinatedWith(input, references, params);
   if (group.length + 1 >= params.coordination.minAccounts) {
     const honest = references.filter((reference) => !group.includes(reference));
-    // Sin el grupo no hay con qué comparar: no se marca, igual que con pocos datos (pregunta 4).
-    if (honest.length < params.minReferences) {
-      return { status: 'sin_datos', references: honest.length };
-    }
-    const usualWithoutGroup = median(honest.map((reference) => reference.priceCop));
-    const deviation = Math.abs(input.candidate.priceCop - usualWithoutGroup) / usualWithoutGroup;
-    // Varias cuentas nuevas de acuerdo no son sospechosas por sí solas: el precio también debe ser raro.
-    if (deviation > params.maxDeviation) {
-      return {
-        status: 'sospechoso',
-        reason: 'coordinacion',
-        median: usualWithoutGroup,
-        deviation,
-        references: honest.length,
-      };
+    if (notEnough(honest)) return { status: 'sin_datos', references: honest.length };
+    const withoutGroup = measure(input.candidate, honest);
+    if (withoutGroup.deviation > params.maxDeviation) {
+      return { status: 'sospechoso', reason: 'coordinacion', ...withoutGroup };
     }
   }
-  const usual = median(references.map((reference) => reference.priceCop));
-  const deviation = Math.abs(input.candidate.priceCop - usual) / usual;
-  const measured = { median: usual, deviation, references: references.length };
+
   // Pregunta 3: «más de» X %, no «X % o más».
-  if (deviation > params.maxDeviation)
+  const measured = measure(input.candidate, references);
+  if (measured.deviation > params.maxDeviation) {
     return { status: 'sospechoso', reason: 'rango', ...measured };
+  }
   return { status: 'normal', ...measured };
 }
