@@ -3,7 +3,11 @@ import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import { AppModule } from '../../src/app.module';
 import { ImportCatalog, ProductForComparison } from '../../src/modules/catalog';
-import { EstablishmentsWithinRadius, ImportEstablishments } from '../../src/modules/establishments';
+import {
+  EstablishmentsAround,
+  EstablishmentsWithinRadius,
+  ImportEstablishments,
+} from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 
 // Datos de prueba: solo existen dentro de esta prueba.
@@ -85,5 +89,21 @@ describe('consultas públicas que usa la comparación (grill de la #15, pregunta
       },
     ]);
     await expect(withinRadius.find({ ids: [], ...point })).resolves.toEqual([]);
+  });
+
+  // Grill de la #31, pregunta 7: la zona de referencia de reliability.
+  it('establishments entrega las tiendas a 1 km o menos de una tienda, incluida ella misma', async () => {
+    const stores = app.get(ImportEstablishments);
+    await stores.save({ id: nearId, name: 'Centro', type: 'barrio', lat: 4.5339, lng: -75.6811 });
+    // Unos 700 m al norte.
+    await stores.save({ id: otherId, name: 'Vecina', type: 'barrio', lat: 4.5402, lng: -75.6811 });
+    // Unos 2,9 km al norte.
+    await stores.save({ id: farId, name: 'Lejana', type: 'barrio', lat: 4.56, lng: -75.6811 });
+
+    const around = await app
+      .get(EstablishmentsAround)
+      .find({ establishmentId: nearId, radiusMeters: 1000 });
+
+    expect([...around].sort()).toEqual([nearId, otherId].sort());
   });
 });
