@@ -86,6 +86,16 @@ export class DrizzleProductRepository implements ProductRepository {
     };
   }
 
+  async isFreshPresentation(presentationId: string): Promise<boolean | null> {
+    const [found] = await this.db
+      .select({ isFresh: categories.isFresh })
+      .from(presentations)
+      .innerJoin(products, eq(presentations.productId, products.id))
+      .innerJoin(categories, eq(products.categoryCode, categories.code))
+      .where(eq(presentations.id, presentationId));
+    return found ? found.isFresh : null;
+  }
+
   // Grill de la #52: cada palabra en el nombre o la marca, sin tildes ni mayúsculas (pregunta 1);
   // primero lo que más se parece a lo escrito y, en empate, por nombre (pregunta 4).
   async search(query: ProductSearch): Promise<ProductView[]> {

@@ -41,6 +41,7 @@ export interface ProductRepository {
   findByBarcode(barcode: string): Promise<ProductView[]>;
   presentationExists(presentationId: string): Promise<boolean>;
   findForComparison(productId: string): Promise<ProductForComparisonView | null>;
+  isFreshPresentation(presentationId: string): Promise<boolean | null>;
 }
 
 export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');
