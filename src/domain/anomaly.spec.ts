@@ -41,4 +41,27 @@ describe('detección de precios anómalos', () => {
 
     expect(result).toEqual({ status: 'normal', median: 5000, deviation: 0.1, references: 3 });
   });
+
+  it.each([
+    ['hacia abajo', 2500, 0.5],
+    ['hacia arriba', 7500, 0.5],
+  ])(
+    'un precio que se aparta más del 40 %% %s es sospechoso por rango',
+    (_case, priceCop, deviation) => {
+      expect(assess(report('ana', priceCop), usual())).toEqual({
+        status: 'sospechoso',
+        reason: 'rango',
+        median: 5000,
+        deviation,
+        references: 3,
+      });
+    },
+  );
+
+  it('un precio que se aparta justo el 40 % no se marca (RF-012 dice «más de»)', () => {
+    expect(assess(report('ana', 3000), usual())).toMatchObject({
+      status: 'normal',
+      deviation: 0.4,
+    });
+  });
 });
