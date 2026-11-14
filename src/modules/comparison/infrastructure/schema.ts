@@ -1,4 +1,5 @@
-import { integer, pgSchema, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { check, integer, pgSchema, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Esquema propio del módulo (ADR-003, ADR-021). Ningún otro módulo lee estas tablas.
 export const comparisonSchema = pgSchema('comparison');
@@ -15,6 +16,11 @@ export const priceCurrent = comparisonSchema.table(
     priceType: text('price_type').notNull(),
     observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
+    // Grill de la #31, pregunta 5: «en_revision» si el único precio de la tienda es sospechoso.
+    status: text('status').notNull().default('vigente'),
   },
-  (table) => [primaryKey({ columns: [table.presentationId, table.establishmentId] })],
+  (table) => [
+    primaryKey({ columns: [table.presentationId, table.establishmentId] }),
+    check('price_current_status_valid', sql`${table.status} in ('vigente', 'en_revision')`),
+  ],
 );

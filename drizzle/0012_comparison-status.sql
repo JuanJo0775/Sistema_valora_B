@@ -1,0 +1,2 @@
+ALTER TABLE "comparison"."price_current" ADD COLUMN "status" text DEFAULT 'vigente' NOT NULL;--> statement-breakpoint
+ALTER TABLE "comparison"."price_current" ADD CONSTRAINT "price_current_status_valid" CHECK ("comparison"."price_current"."status" in ('vigente', 'en_revision'));
