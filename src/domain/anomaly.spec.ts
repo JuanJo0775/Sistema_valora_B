@@ -1,4 +1,4 @@
-import { type AnomalyInput, assessAnomaly } from './anomaly';
+import { ANOMALY_PARAMS, type AnomalyInput, assessAnomaly } from './anomaly';
 import type { ScoredReport } from './report-window';
 
 const now = new Date('2026-11-14T14:00:00Z');
@@ -157,6 +157,68 @@ describe('detección de precios anómalos', () => {
       });
 
       expect(result).toEqual({ status: 'sin_datos', references: 1 });
+    });
+  });
+});
+
+describe('garantías de la detección', () => {
+  const usual = () => [report('beto', 4900), report('caro', 5000), report('dani', 5100)];
+
+  it('no modifica la lista que recibe: la detección nunca borra reportes (RN4)', () => {
+    const others = usual();
+    const before = structuredClone(others);
+
+    assess(report('ana', 2500), others);
+
+    expect(others).toEqual(before);
+  });
+
+  it('la salida no contiene ninguna clave de reportante (EC-08)', () => {
+    const result = assess(report('cuenta-secreta-ana', 2500), [
+      report('cuenta-secreta-beto', 4900),
+      report('cuenta-secreta-caro', 5000),
+      report('cuenta-secreta-dani', 5100),
+    ]);
+
+    expect(JSON.stringify(result)).not.toContain('cuenta-secreta');
+  });
+
+  it('con otros parámetros el resultado cambia: nada está fijo en el código (RN6)', () => {
+    const strict = { ...ANOMALY_PARAMS, maxDeviation: 0.05 };
+
+    expect(
+      assessAnomaly(
+        {
+          candidate: report('ana', 4500),
+          others: usual(),
+          now,
+          ttlDays: 14,
+          accountCreatedAt: () => aYearAgo,
+        },
+        strict,
+      ),
+    ).toMatchObject({ status: 'sospechoso', reason: 'rango' });
+  });
+
+  describe('escenarios de RF-012 (Notion)', () => {
+    it('precio fuera de rango: con mediana de 5000, un reporte de 2500 queda en revisión', () => {
+      expect(assess(report('ana', 2500), usual())).toMatchObject({ status: 'sospechoso' });
+    });
+
+    it('grupo coordinado: 4 cuentas creadas hoy que reportan 1500 en 10 minutos quedan en revisión', () => {
+      const createdToday = (key: string) => (key.startsWith('hoy') ? daysAgo(0.2) : aYearAgo);
+      const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60 * 1000);
+      const four = ['hoy-1', 'hoy-2', 'hoy-3', 'hoy-4'].map((key, index) =>
+        report(key, 1500, { observedAt: minutesAgo(index * 3) }),
+      );
+
+      for (const candidate of four) {
+        const others = [...usual(), ...four.filter((other) => other !== candidate)];
+        expect(assess(candidate, others, { accountCreatedAt: createdToday })).toMatchObject({
+          status: 'sospechoso',
+          reason: 'coordinacion',
+        });
+      }
     });
   });
 });
