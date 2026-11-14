@@ -4,6 +4,8 @@ import { comparableReports, type ReportWindow } from './report-window';
 export const ANOMALY_PARAMS = {
   // Pregunta 4: cuentas de referencia necesarias para confiar en la mediana.
   minReferences: 3,
+  // Pregunta 3: desviación máxima frente a la mediana, hacia arriba o hacia abajo.
+  maxDeviation: 0.4,
 };
 
 export type AnomalyParams = typeof ANOMALY_PARAMS;
@@ -15,6 +17,7 @@ export interface AnomalyInput extends ReportWindow {
 
 export type AnomalyResult =
   | { status: 'normal'; median: number; deviation: number; references: number }
+  | { status: 'sospechoso'; reason: 'rango'; median: number; deviation: number; references: number }
   | { status: 'sin_datos'; references: number };
 
 function median(values: number[]): number {
@@ -33,5 +36,9 @@ export function assessAnomaly(
   }
   const usual = median(references.map((reference) => reference.priceCop));
   const deviation = Math.abs(input.candidate.priceCop - usual) / usual;
-  return { status: 'normal', median: usual, deviation, references: references.length };
+  const measured = { median: usual, deviation, references: references.length };
+  // Pregunta 3: «más de» X %, no «X % o más».
+  if (deviation > params.maxDeviation)
+    return { status: 'sospechoso', reason: 'rango', ...measured };
+  return { status: 'normal', ...measured };
 }
