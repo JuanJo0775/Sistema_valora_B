@@ -70,6 +70,7 @@
 ### 7. ¿Contra qué precios se compara un reporte nuevo?
 
 - **Decisión:** primero la misma tienda (las `observations` de esa presentación en ese establecimiento); si no hay 3 cuentas, la zona: las tiendas a 1 km o menos (provisional), que `establishments` entrega con una consulta pública nueva, `EstablishmentsAround({ establishmentId, radiusMeters })`. La coordinación se mira siempre en la misma tienda (RF-012). No entran como referencia los reportes ya marcados `sospechoso`. La edad de la cuenta sale de `reporterSince`.
+- **Ajuste durante la construcción (14 de noviembre):** excluir los sospechosos de la tienda rompe la detección de grupos: las primeras cuentas de un grupo ya quedan sospechosas por rango, y si se excluyen, la tercera nunca forma grupo. Por eso, en la misma tienda los sospechosos sí cuentan (la regla de la #20 ya saca al grupo de la mediana); en la zona sí se excluyen. Queda para medir con el conjunto etiquetado de la #67.
 - **Razón:** al principio pocas tiendas tendrán 3 cuentas para un producto en 14 días; con solo la tienda, casi todo sería `sin_datos` y la #31b no llegaría al 80 %. La tienda, cuando tiene datos, es la referencia más fiel, y en 1 km los precios suelen parecerse. Excluir los sospechosos evita que un ataque anterior contamine la mediana (grill de la #20).
 
 ### 8. ¿Cuándo sube la reputación?
