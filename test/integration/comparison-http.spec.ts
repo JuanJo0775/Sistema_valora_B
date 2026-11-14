@@ -40,7 +40,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, catalog.presentations, catalog.products, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,
@@ -196,6 +196,8 @@ describe('GET /v1/products/{productId}/comparison', () => {
       .send({ presentationId, establishmentId: storeId, priceCop: 4500, observedAt })
       .expect(201);
 
+    // Dos pasos del outbox: PriceReported → reliability, y PriceAssessed → comparison (#31).
+    await app.get(OutboxRelay).runOnce();
     await app.get(OutboxRelay).runOnce();
     const response = await compare().expect(200);
 

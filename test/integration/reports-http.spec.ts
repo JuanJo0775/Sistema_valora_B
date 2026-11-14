@@ -50,7 +50,7 @@ describe('POST /v1/reports', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate pricing.reports, comparison.price_current, shared.outbox, shared.processed_events, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate pricing.reports, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, shared.outbox, shared.processed_events, catalog.presentations, catalog.products, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: 'b1111111-1111-4111-8111-111111111111',
@@ -205,6 +205,8 @@ describe('POST /v1/reports', () => {
     const created = await post(body()).expect(201);
     const { id } = created.body as { id: string };
 
+    // Dos pasos del outbox: PriceReported → reliability, y PriceAssessed → comparison (#31).
+    await app.get(OutboxRelay).runOnce();
     await app.get(OutboxRelay).runOnce();
 
     const current = await db.execute<{ report_id: string; price_cop: number }>(
