@@ -2,7 +2,11 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import { AppModule } from '../../src/app.module';
-import { ImportCatalog, ProductForComparison } from '../../src/modules/catalog';
+import {
+  ImportCatalog,
+  PresentationFreshness,
+  ProductForComparison,
+} from '../../src/modules/catalog';
 import {
   EstablishmentsAround,
   EstablishmentsWithinRadius,
@@ -105,5 +109,21 @@ describe('consultas públicas que usa la comparación (grill de la #15, pregunta
       .find({ establishmentId: nearId, radiusMeters: 1000 });
 
     expect([...around].sort()).toEqual([nearId, otherId].sort());
+  });
+
+  // Grill de la #31: reliability necesita el TTL de la categoría de cada presentación.
+  it('catalog dice si una presentación es de una categoría fresca, o null si no existe', async () => {
+    await app.get(ImportCatalog).save({
+      id: productId,
+      name: 'Leche entera',
+      categoryCode: 'dairy-eggs',
+      presentations: [
+        { id: 'f1111111-1111-4111-8111-aaaaaaaaaaaa', quantity: 1.1, unit: 'l', packCount: 1 },
+      ],
+    });
+    const freshness = app.get(PresentationFreshness);
+
+    await expect(freshness.isFresh('f1111111-1111-4111-8111-aaaaaaaaaaaa')).resolves.toBe(true);
+    await expect(freshness.isFresh(missingId)).resolves.toBeNull();
   });
 });
