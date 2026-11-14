@@ -1,9 +1,12 @@
 // Precio vigente de una presentación en una tienda, leído de price_current (ADR-004).
 export interface CurrentPrice {
+  reportId: string;
   presentationId: string;
   establishmentId: string;
   priceCop: number;
   observedAt: Date;
+  // Grill de la #31, pregunta 5: «en_revision» si el único precio de la tienda es sospechoso.
+  status: 'vigente' | 'en_revision';
 }
 
 // Puerto hacia la tabla propia del módulo.

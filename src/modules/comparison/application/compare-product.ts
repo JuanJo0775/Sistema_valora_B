@@ -7,6 +7,7 @@ import {
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import type { ProductForComparisonView } from '../../catalog';
 import type { NearbyEstablishment, WithinRadiusQuery } from '../../establishments';
+import type { PriceRef, PriceReliability } from '../../reliability';
 import type { CurrentPrices } from './current-prices';
 
 // Puertos hacia las consultas públicas de catalog y establishments (grill de la #15, pregunta 2).
@@ -22,10 +23,16 @@ export interface Clock {
   now(): Date;
 }
 
+// Puerto hacia la consulta pública de reliability (grill de la #31, pregunta 6).
+export interface PricesReliability {
+  of(prices: PriceRef[], ttlDays: number): Promise<PriceReliability[]>;
+}
+
 export interface CompareProductPorts {
   products: ProductLookup;
   stores: StoresWithinRadius;
   prices: CurrentPrices;
+  reliability: PricesReliability;
   clock: Clock;
 }
 
@@ -48,6 +55,9 @@ export interface ComparisonItem {
   freshness: Freshness;
   // Grill de la #15, pregunta 6: el precio por unidad más bajo entre los no desactualizados.
   isCheapest: boolean;
+  // Grill de la #31: el nivel que calcula reliability, o en_revision si el precio es sospechoso.
+  reliability: 'alta' | 'media' | 'baja' | 'en_revision';
+  confirmations: number;
   observedAt: Date;
 }
 
@@ -62,7 +72,9 @@ export interface Comparison {
 
 // Lo que rankOffers puede leer, junto al resultado que se devuelve.
 interface Candidate extends RankableOffer {
-  item: Omit<ComparisonItem, 'isCheapest'>;
+  item: Omit<ComparisonItem, 'isCheapest' | 'reliability' | 'confirmations'>;
+  reportId: string;
+  inReview: boolean;
 }
 
 // El precio por unidad más bajo (valor exacto) de la lista, si hay alguno.
@@ -83,14 +95,19 @@ function freshnessAt(observedAt: Date, now: Date, ttlDays: number): Freshness {
   return freshnessOf({ observedAt, now: reference, ttlDays });
 }
 
-const isStale = (candidate: Candidate) => candidate.item.freshness === 'desactualizado';
+// Grill de la #15, pregunta 5, y de la #31, pregunta 5: los desactualizados y los que están en
+// revisión no entran al orden; van al final. Con onlyCurrent solo quedan los vigentes.
+const isStale = (candidate: Candidate) =>
+  candidate.inReview || candidate.item.freshness === 'desactualizado';
 
-// Grill de la #15, pregunta 5: los desactualizados no entran al orden; van al final. Con
-// onlyCurrent solo quedan los vigentes.
 function rankInGroups(candidates: Candidate[], input: CompareProductInput): Candidate[] {
   const rank = (group: Candidate[]) => rankOffers(group, input.sort).offers;
   if (input.onlyCurrent) {
-    return rank(candidates.filter((candidate) => candidate.item.freshness === 'vigente'));
+    return rank(
+      candidates.filter(
+        (candidate) => !candidate.inReview && candidate.item.freshness === 'vigente',
+      ),
+    );
   }
   return [
     ...rank(candidates.filter((candidate) => !isStale(candidate))),
@@ -98,16 +115,27 @@ function rankInGroups(candidates: Candidate[], input: CompareProductInput): Cand
   ];
 }
 
-// isCheapest entre los resultados que se muestran; un desactualizado nunca es el más barato.
-function markCheapest(ranked: Candidate[]): ComparisonItem[] {
+const placeOf = (place: { presentationId: string; establishmentId: string }) =>
+  `${place.presentationId}:${place.establishmentId}`;
+
+// isCheapest entre los resultados que se muestran; un desactualizado o en revisión nunca es el más
+// barato. La confiabilidad sale de reliability; un precio en revisión dice en_revision.
+function toResults(ranked: Candidate[], reliability: PriceReliability[]): ComparisonItem[] {
   const cheapest = lowestUnitPrice(ranked.filter((candidate) => !isStale(candidate)));
-  return ranked.map((candidate) => ({
-    ...candidate.item,
-    isCheapest:
-      !isStale(candidate) &&
-      cheapest !== undefined &&
-      candidate.unitPrice.compareTo(cheapest) === 0,
-  }));
+  const byPlace = new Map(reliability.map((assessed) => [placeOf(assessed), assessed]));
+  return ranked.map((candidate) => {
+    const assessed = byPlace.get(placeOf(candidate));
+    return {
+      ...candidate.item,
+      isCheapest:
+        !isStale(candidate) &&
+        cheapest !== undefined &&
+        candidate.unitPrice.compareTo(cheapest) === 0,
+      // Sin evaluación (precios anteriores a la #31) cuenta como baja.
+      reliability: candidate.inReview ? 'en_revision' : (assessed?.level ?? 'baja'),
+      confirmations: candidate.inReview ? 0 : (assessed?.confirmations ?? 0),
+    };
+  });
 }
 
 export class CompareProduct {
@@ -117,11 +145,21 @@ export class CompareProduct {
     const product = await this.ports.products.find(input.productId);
     if (!product) return null;
 
-    const candidates = await this.candidatesFor(product, input);
+    const ranked = rankInGroups(await this.candidatesFor(product, input), input);
+    const reliability = await this.ports.reliability.of(
+      ranked
+        .filter((candidate) => !candidate.inReview)
+        .map(({ presentationId, establishmentId, reportId }) => ({
+          presentationId,
+          establishmentId,
+          reportId,
+        })),
+      ttlDaysFor(product.isFresh),
+    );
     return {
       productId: product.id,
       criteria: { sort: input.sort, radiusKm: input.radiusKm },
-      results: markCheapest(rankInGroups(candidates, input)),
+      results: toResults(ranked, reliability),
       promotions: [],
     };
   }
@@ -160,6 +198,8 @@ export class CompareProduct {
       };
       candidates.push({
         item,
+        reportId: price.reportId,
+        inReview: price.status === 'en_revision',
         establishmentId: establishment.id,
         presentationId: item.presentationId,
         unitPrice: item.unitPrice,
