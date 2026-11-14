@@ -17,6 +17,8 @@ export interface ComparisonItemResponse {
   source: string;
   freshness: string;
   isCheapest: boolean;
+  reliability: string;
+  confirmations: number;
   observedAt: string;
 }
 
@@ -48,6 +50,8 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
       source: item.source,
       freshness: item.freshness,
       isCheapest: item.isCheapest,
+      reliability: item.reliability,
+      confirmations: item.confirmations,
       observedAt: item.observedAt.toISOString(),
     })),
     promotions: [],
