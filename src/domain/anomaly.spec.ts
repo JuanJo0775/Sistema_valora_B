@@ -3,6 +3,7 @@ import type { ScoredReport } from './report-window';
 
 const now = new Date('2026-11-14T14:00:00Z');
 const aYearAgo = new Date('2025-11-14T14:00:00Z');
+const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
 // Reporte de prueba: por defecto, precio normal recién visto.
 const report = (
@@ -74,5 +75,17 @@ describe('detección de precios anómalos', () => {
     ];
 
     expect(assess(report('ana', 4150), four)).toMatchObject({ median: 4150, deviation: 0 });
+  });
+
+  it('solo cuentan como referencia los reportes de la ventana, del mismo tipo, de otras cuentas y uno por cuenta', () => {
+    const result = assess(report('ana', 2500), [
+      ...usual(),
+      report('ana', 2500, { observedAt: daysAgo(1) }),
+      report('eli', 2400, { priceType: 'oferta' }),
+      report('fer', 2500, { observedAt: daysAgo(20) }),
+      report('beto', 9000, { observedAt: daysAgo(3) }),
+    ]);
+
+    expect(result).toMatchObject({ status: 'sospechoso', median: 5000, references: 3 });
   });
 });
