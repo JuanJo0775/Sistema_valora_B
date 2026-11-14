@@ -77,6 +77,10 @@ export function assessAnomaly(
   const group = coordinatedWith(input, references, params);
   if (group.length + 1 >= params.coordination.minAccounts) {
     const honest = references.filter((reference) => !group.includes(reference));
+    // Sin el grupo no hay con qué comparar: no se marca, igual que con pocos datos (pregunta 4).
+    if (honest.length < params.minReferences) {
+      return { status: 'sin_datos', references: honest.length };
+    }
     const usualWithoutGroup = median(honest.map((reference) => reference.priceCop));
     const deviation = Math.abs(input.candidate.priceCop - usualWithoutGroup) / usualWithoutGroup;
     // Varias cuentas nuevas de acuerdo no son sospechosas por sí solas: el precio también debe ser raro.
