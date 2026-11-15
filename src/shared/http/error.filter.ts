@@ -29,6 +29,11 @@ const HTTP_ERRORS: Partial<Record<number, ErrorBody>> = {
   [HttpStatus.FORBIDDEN]: { code: 'FORBIDDEN', message: 'El rol no tiene permiso.' },
   [HttpStatus.NOT_FOUND]: { code: 'NOT_FOUND', message: 'Recurso no encontrado.' },
   [HttpStatus.CONFLICT]: { code: 'CONFLICT', message: 'Conflicto con el estado actual.' },
+  // ADR-020 (#88): una foto de más de 2 MB.
+  [HttpStatus.PAYLOAD_TOO_LARGE]: {
+    code: 'PAYLOAD_TOO_LARGE',
+    message: 'El archivo supera el tamaño máximo.',
+  },
   [HttpStatus.TOO_MANY_REQUESTS]: {
     code: 'TOO_MANY_REQUESTS',
     message: 'Límite de frecuencia superado.',

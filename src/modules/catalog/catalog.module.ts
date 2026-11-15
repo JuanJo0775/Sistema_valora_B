@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Env } from '../../shared/config/env.validation';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { IdentityModule } from '../identity';
 import { DecideProductRequest } from './application/decide-product-request';
@@ -21,16 +23,41 @@ import {
 import { ProductRequestsQueue } from './application/product-requests-queue';
 import { RequestProduct } from './application/request-product';
 import { SearchProducts } from './application/search-products';
+import { SetProductImage } from './application/set-product-image';
+import { ProductImageController } from './http/product-image.controller';
 import { ProductRequestsController } from './http/product-requests.controller';
 import { ProductsController } from './http/products.controller';
 import { DrizzleProductImportRepository } from './infrastructure/drizzle-product-import-repository';
 import { DrizzleProductRepository } from './infrastructure/drizzle-product-repository';
 import { DrizzleProductRequestRepository } from './infrastructure/drizzle-product-request-repository';
+import { LocalImageStorage } from './infrastructure/local-image-storage';
+import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
 
 @Module({
   imports: [IdentityModule],
-  controllers: [ProductsController, ProductRequestsController],
+  controllers: [ProductsController, ProductRequestsController, ProductImageController],
   providers: [
+    // ADR-020 (#88): el moderador sube la foto de un producto.
+    {
+      provide: SetProductImage,
+      inject: [DATABASE, PRODUCT_REPOSITORY, ConfigService],
+      useFactory: (
+        db: Database,
+        products: ProductRepository,
+        config: ConfigService<Env, true>,
+      ): SetProductImage =>
+        new SetProductImage({
+          products: {
+            exists: async (productId) => (await products.findById(productId)) !== null,
+          },
+          processor: new SharpImageProcessor(),
+          storage: new LocalImageStorage(
+            config.get('MEDIA_DIR', { infer: true }),
+            config.get('MEDIA_PUBLIC_URL', { infer: true }),
+          ),
+          images: new DrizzleProductImportRepository(db),
+        }),
+    },
     {
       provide: PRODUCT_REQUEST_REPOSITORY,
       inject: [DATABASE],

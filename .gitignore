@@ -24,6 +24,9 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Fotos subidas en desarrollo (ADR-020)
+media/
+
 # Test and temporary files
 .nyc_output/
 .tmp/

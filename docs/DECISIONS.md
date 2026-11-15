@@ -18,6 +18,7 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | ADR-014 | Sesiones administradas por servidor, cookie HttpOnly/Secure/SameSite, CSRF y Argon2id | No sustituir por JWT bearer sin una nueva decisión aprobada. |
 | ADR-015 | Eventos de dominio internos con outbox (aceptado el 11 de noviembre de 2026) | El evento se guarda en la tabla outbox del esquema `shared` en la misma transacción que el cambio; un repartidor del mismo proceso lo entrega al menos una vez y los receptores ignoran repetidos. `PrecioOficialPublicado` se procesa en la misma transacción (EC-02). Sin broker externo. |
 | ADR-018 | Backend: NestJS sobre Express (aceptado el 8 de noviembre de 2026) | Las reglas de `domain` se escriben en TypeScript puro; su validación práctica es el esqueleto H2-01. |
+| ADR-020 | Imágenes de productos (aceptado el 15 de noviembre de 2026) | Una imagen por producto: Open Food Facts, foto del equipo o ilustración genérica. En el Corte 2 solo el moderador sube fotos (JPEG, PNG o WebP hasta 2 MB; WebP de 800 px como máximo, sin metadatos). Almacenamiento detrás de un puerto: carpeta del servidor hasta ADR-012. Ver [docs/adr/0020-imagenes-productos.md](adr/0020-imagenes-productos.md). |
 | ADR-021 | Acceso a datos: Drizzle ORM con migraciones SQL versionadas (aceptado el 11 de noviembre de 2026) | Tablas en `infrastructure/schema.ts` con un `pgSchema` por módulo; migraciones generadas con `drizzle-kit`, revisadas y versionadas; driver `pg`; solo `infrastructure/` y `shared/database` importan Drizzle. Ver [docs/adr/0021-acceso-datos-drizzle.md](adr/0021-acceso-datos-drizzle.md). |
 | Proyecto | TypeScript como lenguaje principal | Backend desarrollado en TypeScript sobre NestJS (ADR-018). |
 | Proyecto | Sin Docker en el MVP (registrado dentro de ADR-012, que sigue en discusión) | No añadir Dockerfile, Compose ni Testcontainers; los integrantes no necesitan Docker. **Aclaración del 11 de noviembre de 2026:** la CI de GitHub Actions sí puede usar contenedores de servicio con PostgreSQL + PostGIS para las pruebas. |
@@ -361,7 +362,7 @@ Aplicación de RF-005 (RN1, RN3, RN4, RN7) y EC-08. El detalle está en `docs/de
 
 ## Propuestas de productos, alias e imágenes (issue #26, 15 de noviembre de 2026)
 
-Aplicación de RF-003 (RN2, RN3, RN4), RF-004, ADR-020 (propuesto) y EC-08. El detalle está en `docs/decisiones/issue-26-propuestas-de-productos/`.
+Aplicación de RF-003 (RN2, RN3, RN4), RF-004, ADR-020 (aceptado después, el 15 de noviembre) y EC-08. El detalle está en `docs/decisiones/issue-26-propuestas-de-productos/`.
 
 - **Imágenes:** solo un enlace con su fuente (`open_food_facts` o `equipo`) y su atribución, cargado desde `productos.csv`. Sin imagen, el frontend muestra la ilustración genérica. Subir fotos queda en una issue aparte (depende de ADR-012 y ADR-020).
 - **Alias:** vienen de la columna `alias` de la semilla y de cada fusión (el nombre propuesto queda como alias). La búsqueda también mira los alias.
@@ -389,6 +390,16 @@ Aplicación de RF-008 (RN1, RN3, RN4), EC-02, EC-04 y EC-08. El detalle está en
 - **Fuente:** cada punto dice `reportado`; los oficiales llegan con `commerce` (Corte 3).
 - **Datos anteriores:** `pnpm comparison:rebuild-history` vuelve a entregar los eventos ya entregados solo al receptor del historial (`OutboxRelay.redeliver`); se puede repetir.
 - **Caché:** pública de 5 minutos con ETag.
+
+## Fotos de productos (issue #88, 15 de noviembre de 2026)
+
+Aplicación de ADR-020 (aceptado ese día), RF-003 y EC-08. El detalle está en `docs/adr/0020-imagenes-productos.md` y `docs/decisiones/issue-88-fotos-productos/plan.md`.
+
+- **Ruta:** `PUT /v1/moderation/products/{productId}/image`, solo moderador; `multipart/form-data` con `file`. 400 sin archivo o si no es JPEG, PNG o WebP; 413 `PAYLOAD_TOO_LARGE` con más de 2 MB; 404 si el producto no existe.
+- **Proceso:** `sharp` la reduce a 800 px como máximo, la guarda en WebP y descarta los metadatos (también la ubicación).
+- **Almacenamiento:** puerto `ImageStorage`; hoy una carpeta del servidor (`MEDIA_DIR`) servida en `MEDIA_PUBLIC_URL` con caché de un año (el nombre cambia con la foto). El proveedor llega con ADR-012.
+- **Semilla:** si `productos.csv` no trae imagen, ya no borra la foto subida.
+- **Pendiente:** borrar el archivo anterior al reemplazar una foto; fotos del comercio (Corte 3).
 
 ## Regla de cambio
 

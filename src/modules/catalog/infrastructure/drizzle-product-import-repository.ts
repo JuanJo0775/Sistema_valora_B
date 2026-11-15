@@ -1,6 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { ProductImport, ProductImportRepository } from '../application/import-catalog';
+import type { ProductImage } from '../application/product-repository';
 import { categories, presentations, productAliases, products } from './schema';
 
 export class DrizzleProductImportRepository implements ProductImportRepository {
@@ -27,9 +28,14 @@ export class DrizzleProductImportRepository implements ProductImportRepository {
             name: row.name,
             brand: row.brand,
             categoryCode: row.categoryCode,
-            imageUrl: row.imageUrl,
-            imageSource: row.imageSource,
-            imageAttribution: row.imageAttribution,
+            // ADR-020 (#88): sin imagen en el CSV se conserva la que haya (por ejemplo, la foto subida).
+            ...(product.image
+              ? {
+                  imageUrl: row.imageUrl,
+                  imageSource: row.imageSource,
+                  imageAttribution: row.imageAttribution,
+                }
+              : {}),
           },
         });
 
@@ -80,5 +86,13 @@ export class DrizzleProductImportRepository implements ProductImportRepository {
       .from(categories)
       .orderBy(asc(categories.code));
     return rows.map((row) => row.code);
+  }
+
+  // ADR-020 (#88): la foto que sube el moderador reemplaza la imagen del producto.
+  async setImage(productId: string, image: ProductImage): Promise<void> {
+    await this.db
+      .update(products)
+      .set({ imageUrl: image.url, imageSource: image.source, imageAttribution: image.attribution })
+      .where(eq(products.id, productId));
   }
 }

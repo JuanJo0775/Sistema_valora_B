@@ -226,4 +226,33 @@ describe('búsqueda de productos del catálogo', () => {
       (await repository.search({ text: 'premium', limit: 20 })).map((found) => found.id),
     ).toEqual([rice.id]);
   });
+
+  // ADR-020 (#88): la foto que sube el moderador.
+  it('guarda la foto subida y volver a correr la semilla sin imagen no la borra', async () => {
+    const save = new DrizzleProductImportRepository(db);
+    const product = {
+      id: rice.id,
+      name: rice.name,
+      categoryCode: rice.categoryCode,
+      presentations: [
+        {
+          id: 'b2222222-2222-4222-8222-bbbbbbbbbbbb',
+          quantity: 500,
+          unit: 'g' as const,
+          packCount: 1,
+        },
+      ],
+    };
+    await save.save(product);
+    const image = {
+      url: 'http://localhost:3000/media/products/arroz-abc123.webp',
+      source: 'equipo' as const,
+      attribution: 'Equipo Valora',
+    };
+
+    await save.setImage(rice.id, image);
+    await save.save(product);
+
+    expect((await repository.findById(rice.id))?.image).toEqual(image);
+  });
 });

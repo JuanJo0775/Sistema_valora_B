@@ -9,6 +9,8 @@ const validEnv = {
   NODE_ENV: 'development',
   OUTBOX_POLL_INTERVAL_MS: '5000',
   OUTBOX_MAX_ATTEMPTS: '5',
+  MEDIA_DIR: 'media',
+  MEDIA_PUBLIC_URL: 'http://localhost:3000/media',
 };
 
 describe('validateEnv', () => {
@@ -62,5 +64,11 @@ describe('validateEnv con el secreto de la clave del reportante (#31)', () => {
     expect(() => validateEnv({ ...validEnv, REPORTER_KEY_SECRET: undefined })).toThrow(
       /REPORTER_KEY_SECRET/,
     );
+  });
+});
+
+describe('validateEnv con la carpeta de fotos (ADR-020, #88)', () => {
+  it.each(['MEDIA_DIR', 'MEDIA_PUBLIC_URL'])('falla si %s falta', (variable) => {
+    expect(() => validateEnv({ ...validEnv, [variable]: undefined })).toThrow(variable);
   });
 });
