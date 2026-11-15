@@ -40,14 +40,6 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
     await this.db.update(accounts).set({ reporterKey }).where(eq(accounts.id, accountId));
   }
 
-  async idByReporterKey(reporterKey: string): Promise<string | null> {
-    const [found] = await this.db
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(eq(accounts.reporterKey, reporterKey));
-    return found?.id ?? null;
-  }
-
   async byReporterKey(
     reporterKey: string,
   ): Promise<{ id: string; suspendedUntil: Date | null } | null> {

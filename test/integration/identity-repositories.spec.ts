@@ -97,8 +97,11 @@ describe('repositorios de identity', () => {
     await accounts.rememberReporterKey(ana.id, 'f'.repeat(64));
     await accounts.rememberReporterKey(ana.id, 'f'.repeat(64));
 
-    await expect(accounts.idByReporterKey('f'.repeat(64))).resolves.toBe(ana.id);
-    await expect(accounts.idByReporterKey('e'.repeat(64))).resolves.toBeNull();
+    await expect(accounts.byReporterKey('f'.repeat(64))).resolves.toEqual({
+      id: ana.id,
+      suspendedUntil: null,
+    });
+    await expect(accounts.byReporterKey('e'.repeat(64))).resolves.toBeNull();
   });
 
   // Grill de la #33, pregunta 4.
