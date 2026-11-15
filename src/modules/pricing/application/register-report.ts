@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { assertObservedAtAccepted } from '../../../domain/observation-date';
-import { burstWaitSeconds, completesBurst, REPORT_LIMITS } from '../../../domain/report-limits';
+import { burstAt, REPORT_LIMITS } from '../../../domain/report-limits';
 import { createEvent } from '../../../shared/events';
 import type { NewReport, ReportInput, ReportRepository } from './report-repository';
 
@@ -123,7 +123,7 @@ export class RegisterReport {
     if (!(await this.deps.establishments.exists(report.establishmentId))) {
       throw new UnknownEstablishmentError('El establecimiento no existe en el directorio.');
     }
-    const recentIds = await this.checkLimits(report, receivedAt);
+    const burstWindow = await this.checkLimits(report);
     const newReport = {
       ...report,
       id: randomUUID(),
@@ -149,11 +149,11 @@ export class RegisterReport {
         }),
         // RF-012 RN2: el reporte que deja la cuenta en el límite avisa a moderación, solo con la
         // clave seudónima (EC-08).
-        ...(completesBurst(recentIds.length + 1)
+        ...(burstWindow
           ? [
               createEvent(REPORT_BURST_DETECTED, 1, {
                 reporterKey,
-                reportIds: [...recentIds, newReport.id],
+                reportIds: [...burstWindow, newReport.id],
               }),
             ]
           : []),
@@ -164,27 +164,27 @@ export class RegisterReport {
     return { receipt: { id: newReport.id, status: 'recibido', receivedAt }, created: true };
   }
 
-  // Grill de la #29: los límites de aportes de una cuenta, contados en la base.
-  // Devuelve los reportes de la cuenta en la última hora, para el aviso de ráfaga.
-  private async checkLimits(report: ReportInput, receivedAt: Date): Promise<string[]> {
+  // Grill de la #29: los límites de aportes de una cuenta, contados en la base. Grill de la #30,
+  // pregunta 2: por la hora de observación, para que la cola sin conexión no choque al reconectar.
+  // Devuelve los otros reportes de esa hora si este completa una ráfaga, para avisar a moderación.
+  private async checkLimits(report: ReportInput): Promise<string[] | null> {
+    const observed = report.observedAt.getTime();
+    const margin = Math.max(REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000, HOUR_MS);
+    const around = await this.deps.reports.observedBetween(
+      report.reporterId,
+      new Date(observed - margin),
+      new Date(observed + margin),
+    );
     const duplicateWindowMs = REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000;
-    // La ventana más larga de las dos: la del duplicado o la hora de la ráfaga.
-    const since = new Date(receivedAt.getTime() - Math.max(duplicateWindowMs, HOUR_MS));
-    const recent = await this.deps.reports.recentOf(report.reporterId, since);
-    const duplicateSince = receivedAt.getTime() - duplicateWindowMs;
-    const duplicate = recent.some(
+    const duplicate = around.some(
       (seen) =>
-        seen.receivedAt.getTime() > duplicateSince &&
+        Math.abs(seen.observedAt.getTime() - observed) < duplicateWindowMs &&
         seen.presentationId === report.presentationId &&
         seen.establishmentId === report.establishmentId,
     );
     if (duplicate) throw new DuplicateReportError();
-    const wait = burstWaitSeconds(
-      recent.map((seen) => seen.receivedAt),
-      receivedAt,
-    );
-    if (wait !== null) throw new TooManyReportsError(wait);
-    const hourStart = receivedAt.getTime() - HOUR_MS;
-    return recent.filter((seen) => seen.receivedAt.getTime() > hourStart).map((seen) => seen.id);
+    const burst = burstAt(around, report.observedAt);
+    if (burst.exceeded) throw new TooManyReportsError(burst.waitSeconds ?? 1);
+    return burst.completes ? burst.window : null;
   }
 }

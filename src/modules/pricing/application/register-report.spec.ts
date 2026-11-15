@@ -271,8 +271,9 @@ describe('registrar un reporte de precio', () => {
       });
 
       await expect(attempt).rejects.toThrow(TooManyReportsError);
-      // El primero llegó hace 20 minutos: faltan 40 para que salga de la hora.
-      await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 40 * 60 });
+      // Grill de la #30: cuenta por la hora de observación. Los 20 y el nuevo se vieron a las 13:30:
+      // la próxima observación puede entrar desde las 14:30.
+      await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 60 * 60 });
       expect(reports.reports).toHaveLength(20);
     });
 
