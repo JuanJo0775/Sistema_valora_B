@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { DrizzleProductImportRepository } from '../../src/modules/catalog/infrastructure/drizzle-product-import-repository';
 import { DrizzleProductRepository } from '../../src/modules/catalog/infrastructure/drizzle-product-repository';
 import { presentations, products } from '../../src/modules/catalog/infrastructure/schema';
 import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
@@ -44,7 +45,7 @@ describe('búsqueda de productos del catálogo', () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate catalog.presentations, catalog.products`);
+    await db.execute(sql`truncate catalog.presentations, catalog.products cascade`);
   });
 
   it('«aceite girasól» encuentra «Aceite de girasol»: sin tildes, sin mayúsculas y con palabras no seguidas', async () => {
@@ -169,5 +170,58 @@ describe('búsqueda de productos del catálogo', () => {
     expect(found.map((product) => product.name)).toEqual(['Aceite de girasol']);
     expect(found[0]?.presentations).toHaveLength(2);
     await expect(repository.findByBarcode('7700000000000')).resolves.toEqual([]);
+  });
+
+  // Grill de la #26, preguntas 1 y 2: alias e imagen del producto.
+  it('encuentra un producto por su alias, sin tildes ni mayúsculas, y lo devuelve con su imagen', async () => {
+    await new DrizzleProductImportRepository(db).save({
+      id: sunflowerOil.id,
+      name: 'Bebida gaseosa de cola',
+      categoryCode: 'beverages',
+      aliases: ['Refresco', 'Gaseosa negra'],
+      image: {
+        url: 'https://images.openfoodfacts.org/images/products/770/123/456/7897/front.jpg',
+        source: 'open_food_facts',
+        attribution: 'Open Food Facts, CC BY-SA',
+      },
+      presentations: [
+        { id: 'a1111111-1111-4111-8111-aaaaaaaaaaaa', quantity: 400, unit: 'ml', packCount: 1 },
+      ],
+    });
+
+    const byAlias = await repository.search({ text: 'REFRÉSCO', limit: 20 });
+    const product = await repository.findById(sunflowerOil.id);
+
+    expect(byAlias.map((found) => found.id)).toEqual([sunflowerOil.id]);
+    expect(product?.image).toEqual({
+      url: 'https://images.openfoodfacts.org/images/products/770/123/456/7897/front.jpg',
+      source: 'open_food_facts',
+      attribution: 'Open Food Facts, CC BY-SA',
+    });
+  });
+
+  it('volver a importar un producto reemplaza sus alias', async () => {
+    const save = new DrizzleProductImportRepository(db);
+    const base = {
+      id: rice.id,
+      name: rice.name,
+      categoryCode: rice.categoryCode,
+      presentations: [
+        {
+          id: 'b2222222-2222-4222-8222-aaaaaaaaaaaa',
+          quantity: 500,
+          unit: 'g' as const,
+          packCount: 1,
+        },
+      ],
+    };
+    await save.save({ ...base, aliases: ['Arroz de mesa'] });
+
+    await save.save({ ...base, aliases: ['Arroz blanco premium'] });
+
+    await expect(repository.search({ text: 'mesa', limit: 20 })).resolves.toEqual([]);
+    expect(
+      (await repository.search({ text: 'premium', limit: 20 })).map((found) => found.id),
+    ).toEqual([rice.id]);
   });
 });
