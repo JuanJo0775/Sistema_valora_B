@@ -52,6 +52,8 @@ moderador ──POST /moderation/{id}/decision──► reliability.moderation_l
 
 La decisión, la reputación del autor y el evento se confirman en una sola transacción. La cola y la bitácora solo guardan claves seudónimas (EC-08).
 
+Desde la #33, `observar_cuentas` y el tercer descarte seguido de un autor publican `ReporterSuspensionRequested` v1; `identity` busca la cuenta por su clave seudónima, la suspende 7 días y revoca sus sesiones.
+
 ## API
 
 REST sobre HTTPS, JSON y OpenAPI 3.x, versionada bajo `/v1`. La autorización es por operación y rol. La clave de idempotencia para registrar reportes debe validarse y persistirse en el servidor.

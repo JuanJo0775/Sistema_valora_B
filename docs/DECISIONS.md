@@ -262,6 +262,17 @@ Aplicación de RF-013 (RN1, RN2, RN3), EC-03 y EC-08. El detalle está en `docs/
 - **Comparación:** cada resultado lleva `reportId` para poder marcarlo.
 - **Fuera de alcance:** suspensión por rechazos (RN6) y efecto de `observar_cuentas` (#33), apelación (RN4, #71), conflicto de interés con comercios (RN5, Corte 3).
 
+## Roles y suspensión de cuentas (issue #33, 14 de noviembre de 2026)
+
+Aplicación de RF-002, RF-013 (RN6), RNF-010, PR-14 y EC-08. El detalle está en `docs/decisiones/issue-33-roles-bloqueo/`.
+
+- **Roles:** el consumidor es quien consulta sin sesión; no hay un valor de rol nuevo. Siguen `reportante`, `moderador` y `comercio` (Corte 3).
+- **Suspensión:** sin rutas nuevas. `observar_cuentas` suspende al autor del reporte; un tercer `descartar` seguido sobre reportes del mismo autor también (RN6, regla `suspensionAfter` en `src/domain/suspension.ts`: un `aprobar` corta la racha, y vuelve a suspender en el sexto). Dura 7 días (provisional), revoca todas las sesiones y una nueva la extiende sin acortarla.
+- **Integración:** `reliability` publica `ReporterSuspensionRequested` v1 (clave seudónima, motivo, fecha de fin) en la transacción de la decisión; `identity` lo escucha. `identity.accounts` gana `reporter_key` (la guarda `ReporterIdentity` al calcularla) y `suspended_until`.
+- **Acceso:** el login de una cuenta suspendida responde 403 `ACCOUNT_SUSPENDED` solo con la contraseña correcta; una sesión de una cuenta suspendida responde 401.
+- **Evidencia:** matriz de 30 casos y guardián de rutas (`docs/calidad/matriz-autorizacion.md`).
+- **Fuera de alcance:** cambio de rol auditado y creación de moderadores (issue aparte); comercio limitado a su tienda (Corte 3).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
