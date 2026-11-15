@@ -5,6 +5,7 @@ import {
   integer,
   numeric,
   pgSchema,
+  primaryKey,
   text,
   uniqueIndex,
   uuid,
@@ -21,14 +22,38 @@ export const categories = catalog.table('categories', {
   isFresh: boolean('is_fresh').notNull(),
 });
 
-export const products = catalog.table('products', {
-  id: uuid('id').primaryKey(),
-  name: text('name').notNull(),
-  brand: text('brand'),
-  categoryCode: text('category_code')
-    .notNull()
-    .references(() => categories.code),
-});
+export const products = catalog.table(
+  'products',
+  {
+    id: uuid('id').primaryKey(),
+    name: text('name').notNull(),
+    brand: text('brand'),
+    categoryCode: text('category_code')
+      .notNull()
+      .references(() => categories.code),
+    // Grill de la #26, pregunta 1 (ADR-020): enlace a la imagen, con su fuente y atribución.
+    imageUrl: text('image_url'),
+    imageSource: text('image_source'),
+    imageAttribution: text('image_attribution'),
+  },
+  (table) => [
+    check(
+      'products_image_source_valid',
+      sql`${table.imageSource} is null or ${table.imageSource} in ('open_food_facts', 'equipo')`,
+    ),
+  ],
+);
+
+// Grill de la #26, pregunta 2: otros nombres del producto, para la búsqueda.
+export const productAliases = catalog.table(
+  'product_aliases',
+  {
+    // Sin llave foránea: los productos no se borran (la semilla no borra, grill de la #51).
+    productId: uuid('product_id').notNull(),
+    alias: text('alias').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.productId, table.alias] })],
+);
 
 // Presentación tal como se escribe en el empaque (grill de la #49, pregunta 1).
 export const presentations = catalog.table(

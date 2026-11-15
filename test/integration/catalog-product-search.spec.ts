@@ -45,7 +45,9 @@ describe('búsqueda de productos del catálogo', () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate catalog.presentations, catalog.products cascade`);
+    await db.execute(
+      sql`truncate catalog.presentations, catalog.products, catalog.product_aliases`,
+    );
   });
 
   it('«aceite girasól» encuentra «Aceite de girasol»: sin tildes, sin mayúsculas y con palabras no seguidas', async () => {
