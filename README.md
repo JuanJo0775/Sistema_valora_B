@@ -30,6 +30,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Apelación (#71)                  | El autor apela un descarte una vez, en 7 días, y ve el estado de su reporte; una cuenta suspendida entra con sesión limitada  |
 | Mis aportes (#76)                | `GET /v1/me/reports`: los aportes de la cuenta con su estado, el más reciente primero, paginados con `before`                 |
 | Validaciones y ráfagas (#29)     | Observaciones de hasta 24 h, un reporte por presentación y tienda por hora, y 20 por hora por cuenta (lo demás, a la cola)    |
+| Bases de unidad (#59)            | Un producto no mezcla bases (100 g, 100 ml o unidad): el catálogo lo rechaza y `pnpm db:seed` nombra la fila                  |
 
 Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
