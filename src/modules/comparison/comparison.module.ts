@@ -1,7 +1,12 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { EventBus } from '../../shared/events';
-import { CatalogModule, PresentationsForPricing, ProductForComparison } from '../catalog';
+import {
+  CatalogModule,
+  PresentationLabels,
+  PresentationsForPricing,
+  ProductForComparison,
+} from '../catalog';
 import {
   EstablishmentDetails,
   EstablishmentsModule,
@@ -9,10 +14,13 @@ import {
 } from '../establishments';
 import { ReliabilityModule, ReliabilityOfPrices } from '../reliability';
 import { CompareProduct } from './application/compare-product';
+import { PriceHistory } from './application/price-history';
 import { StorePrices } from './application/store-prices';
 import { ComparisonController } from './http/comparison.controller';
+import { PriceHistoryController } from './http/price-history.controller';
 import { StorePricesController } from './http/store-prices.controller';
 import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
+import { DrizzlePriceHistory } from './infrastructure/drizzle-price-history';
 import { onPriceAssessed } from './infrastructure/price-assessed-handler';
 import {
   onPriceAssessedForHistory,
@@ -22,7 +30,7 @@ import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
-  controllers: [ComparisonController, StorePricesController],
+  controllers: [ComparisonController, StorePricesController, PriceHistoryController],
   providers: [
     {
       provide: CompareProduct,
@@ -55,6 +63,22 @@ import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
           presentations,
           prices: new DrizzleCurrentPrices(db),
           reliability,
+          clock: { now: () => new Date() },
+        }),
+    },
+    // Grill de la #83: historial de precios de un producto.
+    {
+      provide: PriceHistory,
+      inject: [DATABASE, ProductForComparison, PresentationLabels],
+      useFactory: (
+        db: Database,
+        products: ProductForComparison,
+        labels: PresentationLabels,
+      ): PriceHistory =>
+        new PriceHistory({
+          products,
+          labels,
+          history: new DrizzlePriceHistory(db),
           clock: { now: () => new Date() },
         }),
     },
