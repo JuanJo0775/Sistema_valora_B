@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, gte, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type {
@@ -61,20 +61,6 @@ export class DrizzleReportRepository implements ReportRepository {
       if (!stored) throw new Error('El reporte con esta clave no se encontró tras el conflicto.');
       return { report: toNewReport(stored), created: false };
     });
-  }
-
-  async recentOf(reporterId: string, since: Date): Promise<RecentReport[]> {
-    return this.db
-      .select({
-        id: reports.id,
-        presentationId: reports.presentationId,
-        establishmentId: reports.establishmentId,
-        observedAt: reports.observedAt,
-        receivedAt: reports.receivedAt,
-      })
-      .from(reports)
-      .where(and(eq(reports.reporterId, reporterId), gt(reports.receivedAt, since)))
-      .orderBy(asc(reports.receivedAt));
   }
 
   async observedBetween(reporterId: string, from: Date, to: Date): Promise<RecentReport[]> {

@@ -95,43 +95,6 @@ describe('repositorio de reportes de pricing', () => {
     expect(constraint.rows).toEqual([{ convalidated: false }]);
   });
 
-  // Grill de la #29, preguntas 2 y 3: los reportes recientes de una cuenta.
-  it('da los reportes de una cuenta desde una fecha, sin los de otras cuentas', async () => {
-    const at = (minute: number) => new Date(Date.UTC(2026, 10, 15, 14, minute));
-    const of = (id: string, minute: number, reporterId = report.reporterId): NewReport => ({
-      ...report,
-      id: `a1111111-1111-4111-8111-${id.repeat(12)}`,
-      idempotencyKey: `a4444444-4444-4444-8444-${id.repeat(12)}`,
-      receivedAt: at(minute),
-      reporterId,
-    });
-    for (const saved of [
-      of('a', 0),
-      of('b', 20),
-      of('c', 40),
-      of('d', 30, 'a6666666-6666-4666-8666-999999999999'),
-    ]) {
-      await repository.save(saved, []);
-    }
-
-    await expect(repository.recentOf(report.reporterId, at(10))).resolves.toEqual([
-      {
-        id: of('b', 20).id,
-        presentationId: report.presentationId,
-        establishmentId: report.establishmentId,
-        observedAt: report.observedAt,
-        receivedAt: at(20),
-      },
-      {
-        id: of('c', 40).id,
-        presentationId: report.presentationId,
-        establishmentId: report.establishmentId,
-        observedAt: report.observedAt,
-        receivedAt: at(40),
-      },
-    ]);
-  });
-
   it('guarda varios eventos con el reporte, en la misma transacción', async () => {
     const burst = createEvent('ReportBurstDetected', 1, { reportIds: [report.id] });
 

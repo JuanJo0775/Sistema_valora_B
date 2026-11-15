@@ -40,8 +40,6 @@ export interface ReportRepository {
   findByIdempotencyKey(key: string): Promise<NewReport | null>;
   // Guarda el reporte y sus eventos en la misma transacción (ADR-015).
   save(report: NewReport, events: DomainEvent[]): Promise<SavedReport>;
-  // Los reportes de una cuenta que llegaron después de `since`, del más viejo al más nuevo.
-  recentOf(reporterId: string, since: Date): Promise<RecentReport[]>;
   // Grill de la #30: los reportes de una cuenta observados entre `from` y `to` (ambos incluidos).
   observedBetween(reporterId: string, from: Date, to: Date): Promise<RecentReport[]>;
 }
