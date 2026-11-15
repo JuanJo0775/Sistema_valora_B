@@ -10,7 +10,8 @@ class InMemoryAccountRepository implements AccountRepository {
   readonly accounts: NewAccount[] = [];
 
   findByEmail(email: string): Promise<Account | null> {
-    return Promise.resolve(this.accounts.find((account) => account.email === email) ?? null);
+    const found = this.accounts.find((account) => account.email === email);
+    return Promise.resolve(found ? { ...found, suspendedUntil: null } : null);
   }
 
   create(account: NewAccount): Promise<void> {

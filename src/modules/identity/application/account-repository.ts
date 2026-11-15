@@ -6,10 +6,12 @@ export interface Account {
   email: string;
   passwordHash: string;
   role: Role;
+  // Grill de la #33, pregunta 4: hasta cuándo está suspendida, o null.
+  suspendedUntil: Date | null;
 }
 
 // Consentimiento de datos (RF-001, Ley 1581): qué versión aceptó y cuándo.
-export interface NewAccount extends Account {
+export interface NewAccount extends Omit<Account, 'suspendedUntil'> {
   policyVersion: string;
   policyAcceptedAt: Date;
 }
