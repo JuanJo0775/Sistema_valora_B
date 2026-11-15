@@ -14,6 +14,7 @@ import { AppealReport } from './application/appeal-report';
 import { FlagReport } from './application/flag-report';
 import { ModerationQueue } from './application/moderation-queue';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
+import { ReportStatus } from './application/report-status';
 import { FlagsController } from './http/flags.controller';
 import { ModerationController } from './http/moderation.controller';
 import { MyReportsController } from './http/my-reports.controller';
@@ -52,6 +53,16 @@ const ZONE_RADIUS_METERS = 1000;
       inject: [DATABASE],
       useFactory: (db: Database): AppealReport =>
         new AppealReport({
+          observations: new DrizzleObservationStore(db),
+          moderation: new DrizzleModerationStore(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: ReportStatus,
+      inject: [DATABASE],
+      useFactory: (db: Database): ReportStatus =>
+        new ReportStatus({
           observations: new DrizzleObservationStore(db),
           moderation: new DrizzleModerationStore(db),
           clock: { now: () => new Date() },
