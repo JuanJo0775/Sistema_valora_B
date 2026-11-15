@@ -293,6 +293,15 @@ Aplicación de RF-013 RN4 y EC-08. El detalle está en `docs/decisiones/issue-71
 - **Persistencia:** tabla `reliability.appeals` y columna `stage` en `moderation_log` (migración `0016`).
 - **Fuera de alcance:** la lista `GET /v1/me/reports`.
 
+## Lista de mis aportes (issue #76, 14 de noviembre de 2026)
+
+Aplicación de RF-006, RF-013 y EC-08. El detalle está en `docs/decisiones/issue-76-mis-aportes/`.
+
+- **Fuente:** solo `reliability` (sus observaciones por la clave seudónima del autor, con nombres de `catalog` y `establishments`); no toca `pricing`. Un reporte aparece cuando se evalúa; los anteriores a la #31 no aparecen.
+- **Forma:** producto, tienda, precio, tipo, fecha, estado (los 6 de la #71) y `appealableUntil`; el más reciente primero; `limit` (20, máximo 50) y cursor `before` con `nextBefore`.
+- **Regla del estado:** una sola función (`reportStateOf`) para esta lista y para el estado de un reporte.
+- **Acceso:** reportante, también con una cuenta suspendida; sin caché.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
