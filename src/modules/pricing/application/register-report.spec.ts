@@ -309,4 +309,26 @@ describe('registrar un reporte de precio', () => {
     expect(reports.reports).toHaveLength(50);
     expect(reports.events.filter((event) => event.type === 'ReportBurstDetected')).toEqual([]);
   });
+
+  // Grill de la #30: la PWA reintenta el mismo reporte al mismo tiempo porque no vio la respuesta.
+  it('dos envíos simultáneos con la misma clave: el que llega segundo responde como reintento, no como duplicado', async () => {
+    const { reports, registerReport } = setup();
+    const first = await registerReport.execute({ idempotencyKey: 'clave-1', report });
+    // El segundo buscó la clave justo antes de que el primero la guardara: no la vio.
+    const lookup = reports.findByIdempotencyKey.bind(reports);
+    let hidden = true;
+    reports.findByIdempotencyKey = (key) => {
+      if (hidden) {
+        hidden = false;
+        return Promise.resolve(null);
+      }
+      return lookup(key);
+    };
+
+    await expect(registerReport.execute({ idempotencyKey: 'clave-1', report })).resolves.toEqual({
+      receipt: first.receipt,
+      created: false,
+    });
+    expect(reports.reports).toHaveLength(1);
+  });
 });
