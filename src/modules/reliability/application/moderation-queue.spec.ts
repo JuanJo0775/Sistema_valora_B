@@ -95,4 +95,16 @@ describe('cola de moderación (RF-013)', () => {
     await expect(queue.list({ reason: 'desviacion', limit: 3 })).resolves.toHaveLength(3);
     await expect(queue.list({})).resolves.toHaveLength(20);
   });
+
+  it('si catalog o establishments no dan el nombre, la cola dice «Sin nombre»', async () => {
+    const queue = new ModerationQueue({
+      moderation: { pending: () => Promise.resolve([pending(suspicious(0.5))]) },
+      labels: { of: () => Promise.resolve(new Map()) },
+      names: { of: () => Promise.resolve(new Map()) },
+    });
+
+    const [item] = await queue.list({});
+
+    expect(item).toMatchObject({ productName: 'Sin nombre', establishmentName: 'Sin nombre' });
+  });
 });
