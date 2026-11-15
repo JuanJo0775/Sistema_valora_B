@@ -1,6 +1,14 @@
+import { replacesCurrentPrice } from '../../../domain/current-price';
+import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import { PRICE_ASSESSED } from './assess-reported-price';
-import type { Decision, ModerationStore, ObservationStore, ReputationStore } from './stores';
+import type {
+  Decision,
+  ModerationStore,
+  Observation,
+  ObservationStore,
+  ReputationStore,
+} from './stores';
 
 export interface DecideModerationPorts {
   moderation: ModerationStore;
@@ -30,6 +38,20 @@ export class InvalidNoteError extends Error {
     this.name = 'InvalidNoteError';
   }
 }
+
+export const PRICE_WITHDRAWN = 'PriceWithdrawn';
+
+// Confiable: no descartado y, si la detección lo marcó, aprobado por un moderador.
+const isReliable = (seen: Observation): boolean =>
+  seen.moderation === 'aprobado' ||
+  (seen.moderation === undefined && seen.verdict.status !== 'sospechoso');
+
+// El precio que comparison mostraría sin el retirado: el confiable observado más recientemente.
+const latestOf = (candidates: Observation[]): Observation | null =>
+  candidates.reduce<Observation | null>(
+    (latest, seen) => (latest === null || replacesCurrentPrice(seen, latest) ? seen : latest),
+    null,
+  );
 
 // No existe, no está en revisión o ya se decidió: la capa HTTP la traduce a 404 NOT_FOUND.
 export class ReportNotInQueueError extends Error {
@@ -71,5 +93,35 @@ export class DecideModeration {
         }),
       );
     }
+    if (request.decision === 'descartar') await this.discard(reported);
+  }
+
+  // Grill de la #32, pregunta 4: el autor pierde reputación y comparison deja de mostrar el precio.
+  private async discard(reported: Observation): Promise<void> {
+    const { observations, reputations, events } = this.ports;
+    const current = await reputations.valuesOf([reported.reporterKey]);
+    const value = current.get(reported.reporterKey) ?? RELIABILITY_PARAMS.neutralReputation;
+    await reputations.save(reported.reporterKey, updateReputation(value, 'rejected'));
+
+    const inStore = await observations.forPresentation(reported.presentationId, [
+      reported.establishmentId,
+    ]);
+    const replacement = latestOf(
+      inStore.filter((seen) => seen.reportId !== reported.reportId && isReliable(seen)),
+    );
+    await events.publish(
+      createEvent(PRICE_WITHDRAWN, 1, {
+        reportId: reported.reportId,
+        presentationId: reported.presentationId,
+        establishmentId: reported.establishmentId,
+        replacement: replacement && {
+          reportId: replacement.reportId,
+          priceCop: replacement.priceCop,
+          priceType: replacement.priceType,
+          observedAt: replacement.observedAt.toISOString(),
+          receivedAt: replacement.receivedAt.toISOString(),
+        },
+      }),
+    );
   }
 }
