@@ -433,7 +433,8 @@ Aplicación de PR-09 y ADR-002. El detalle está en `docs/decisiones/issue-25-co
 
 Insumo de MC-E3. Proyecto en SonarQube Cloud (organización `juanjo0775`, plan Free, análisis automático apagado), creado por el equipo.
 
-- **Configuración:** `sonar-project.properties` (código en `src/`, pruebas en `*.spec.ts` y `test/`, cobertura de Jest en `coverage/lcov.info`).
+- **Configuración:** `sonar-project.properties` (deja fuera docs, migraciones, semilla e imágenes; las pruebas no cuentan como código por cubrir; cobertura de Jest en `coverage/lcov.info`).
+- **Acciones de terceros fijadas por el SHA completo** (`pnpm/action-setup` v4.4.0 y `sonarqube-scan-action` v8.5.0): SonarQube lo pide y una etiqueta puede cambiar. El primer análisis falló por eso (Security Rating C).
 - **CI:** job **SonarQube** después de **Pruebas**; toma la cobertura como artefacto y espera la regla de calidad (Sonar way). Si no se cumple, el job falla.
 - **Ramas:** la CI corre también al llegar cambios a `dev` y `main`, para que SonarQube tenga con qué comparar cada pull request.
 - **Secreto:** `SONAR_TOKEN` en GitHub; nunca en el repositorio.
