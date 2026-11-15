@@ -88,4 +88,27 @@ describe('precios vigentes que lee la comparación', () => {
     );
     await expect(prices.findByPresentations([])).resolves.toEqual([]);
   });
+
+  // Grill de la #28: los precios de una tienda.
+  it('lee de price_current todos los precios de una tienda y ninguno de otra', async () => {
+    await db
+      .insert(priceCurrent)
+      .values([
+        row(halfKilo, storeA, 2000),
+        row(oneKilo, storeA, 3900),
+        row(halfKilo, storeB, 2100),
+      ]);
+
+    const found = await prices.findByEstablishment(storeA);
+
+    expect(found.map((price) => [price.presentationId, price.priceCop]).sort()).toEqual(
+      [
+        [halfKilo, 2000],
+        [oneKilo, 3900],
+      ].sort(),
+    );
+    await expect(
+      prices.findByEstablishment('d2222222-2222-4222-8222-cccccccccccc'),
+    ).resolves.toEqual([]);
+  });
 });
