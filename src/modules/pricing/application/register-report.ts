@@ -123,7 +123,16 @@ export class RegisterReport {
     if (!(await this.deps.establishments.exists(report.establishmentId))) {
       throw new UnknownEstablishmentError('El establecimiento no existe en el directorio.');
     }
-    const burstWindow = await this.checkLimits(report);
+    let burstWindow: string[] | null;
+    try {
+      burstWindow = await this.checkLimits(report);
+    } catch (error) {
+      // Grill de la #30: un envío simultáneo con la misma clave pudo guardarse entre la búsqueda de
+      // arriba y los límites; entonces es un reintento, no un duplicado ni una ráfaga (EC-07).
+      const stored = await this.deps.reports.findByIdempotencyKey(idempotencyKey);
+      if (stored) return retryResult(stored, requestHash);
+      throw error;
+    }
     const newReport = {
       ...report,
       id: randomUUID(),
