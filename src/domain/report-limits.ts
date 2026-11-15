@@ -36,6 +36,8 @@ export interface BurstCheck {
   exceeded: boolean;
   // Segundos hasta que un reporte observado después pueda entrar (útil para el reporte en vivo).
   waitSeconds: number | null;
+  // Con este reporte, esa hora llega justo al límite: avisa a moderación (una vez por ráfaga).
+  completes: boolean;
   // Los demás reportes de la hora más cargada que incluye a este.
   window: string[];
 }
@@ -63,6 +65,7 @@ export function burstAt(others: ObservedReport[], observedAt: Date): BurstCheck 
   return {
     exceeded,
     waitSeconds: exceeded ? waitFor(others, target) : null,
+    completes: window.length + 1 === REPORT_LIMITS.burstPerHour,
     window: window.map((report) => report.id),
   };
 }
