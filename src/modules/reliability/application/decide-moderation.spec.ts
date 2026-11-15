@@ -1,6 +1,6 @@
 import type { AnomalyResult } from '../../../domain/anomaly';
 import type { DomainEvent } from '../../../shared/events';
-import { DecideModeration, InvalidNoteError } from './decide-moderation';
+import { DecideModeration, InvalidNoteError, ReportNotInQueueError } from './decide-moderation';
 import type {
   LogEntry,
   ModerationStore,
@@ -200,5 +200,19 @@ describe('decisión de moderación (RF-013)', () => {
         },
       }),
     ]);
+  });
+
+  it('solo se decide sobre un reporte de la cola: no uno desconocido, normal sin marcas o ya decidido', async () => {
+    const normal = observation();
+    const decided = observation({ verdict: suspicious, moderation: 'aprobado' });
+    const { moderation, published, decide } = setup([normal, decided]);
+
+    for (const reportId of ['no-existe', normal.reportId, decided.reportId]) {
+      await expect(
+        decide.execute({ reportId, decision: 'descartar', note, moderatorKey: 'moderadora' }),
+      ).rejects.toThrow(ReportNotInQueueError);
+    }
+    expect(moderation.log).toEqual([]);
+    expect(published).toEqual([]);
   });
 });
