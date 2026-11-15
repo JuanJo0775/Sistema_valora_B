@@ -29,14 +29,14 @@ paths:
       description: >-
         Se envía exactamente uno de q o barcode; sin ninguno o con los dos responde 400 VALIDATION_ERROR
         («Envía q o barcode» o «Envía solo q o barcode, no ambos»). Con q, cada palabra debe aparecer en
-        el nombre o en la marca, en cualquier orden y también como pedazo («gira» encuentra «girasol»), sin
+        el nombre, en la marca o en los alias del producto (#26), en cualquier orden y también como pedazo («gira» encuentra «girasol»), sin
         distinguir tildes ni mayúsculas (RF-003 RN4); los resultados se ordenan por parecido con lo escrito
         y, en empate, por nombre. Con barcode responde el producto que tiene esa presentación o la lista
         vacía (no 404). Caché pública de 30 segundos (valor inicial calibrable, EC-04).
       parameters:
         - name: q
           in: query
-          description: Texto libre; cada palabra debe aparecer en el nombre o la marca, sin distinguir tildes.
+          description: Texto libre; cada palabra debe aparecer en el nombre, la marca o un alias, sin distinguir tildes.
           schema: { type: string, minLength: 2 }
         - name: barcode
           in: query
@@ -621,7 +621,11 @@ paths:
     post:
       tags: [Catálogo]
       operationId: requestProduct
-      summary: Solicitar el alta de un producto que no existe en el catálogo (RF-003)
+      summary: Proponer un producto que no existe en el catálogo (RF-003)
+      description: >-
+        Solo el rol reportante. La propuesta queda pendiente y no aparece en la búsqueda hasta que un
+        moderador la aprueba (RN3). Se guarda la clave seudónima de quien propone, nunca su cuenta
+        (EC-08) (#26).
       security:
         - sessionCookie: []
           csrfToken: []
@@ -631,15 +635,42 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required: [name, categoryCode, quantity, unit]
               properties:
-                name: { type: string, maxLength: 120 }
-                barcode: { type: string }
+                name: { type: string, minLength: 2, maxLength: 120 }
+                brand: { type: string, maxLength: 80 }
+                categoryCode: { type: string, description: Código de la lista cerrada de categorías. }
                 quantity: { type: number, exclusiveMinimum: 0 }
                 unit: { $ref: '#/components/schemas/Unit' }
+                packCount: { type: integer, minimum: 1, default: 1 }
+                barcode:
+                  type: string
+                  pattern: '^(\d{8}|\d{12}|\d{13}|\d{14})$'
+                  description: Opcional; EAN/UPC con dígito de control válido.
       responses:
-        '202': { description: Solicitud registrada para revisión }
+        '202':
+          description: Propuesta recibida, pendiente de moderación
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [pendiente] }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: code BARCODE_TAKEN, el código ya es de un producto; message dice cuál (RN2).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code UNKNOWN_CATEGORY, la categoría no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /auth/register:
     post:
       tags: [Autenticación]
@@ -933,6 +964,108 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /moderation/product-requests:
+    get:
+      tags: [Moderación]
+      operationId: listProductRequests
+      summary: Productos propuestos pendientes de decisión (RF-003)
+      description: >-
+        Solo el rol moderador. La más antigua primero. Cada una trae hasta 5 posibles duplicados: los
+        primeros resultados de la búsqueda de productos con su nombre y marca. No dice quién la propuso
+        (EC-08). Sin caché (#26).
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Propuestas pendientes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, categoryCode, quantity, unit, packCount, possibleDuplicates, createdAt]
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+                        brand: { type: string }
+                        categoryCode: { type: string }
+                        quantity: { type: number }
+                        unit: { $ref: '#/components/schemas/Unit' }
+                        packCount: { type: integer, minimum: 1 }
+                        barcode: { type: string }
+                        possibleDuplicates:
+                          type: array
+                          maxItems: 5
+                          items:
+                            type: object
+                            required: [id, name]
+                            properties:
+                              id: { type: string, format: uuid }
+                              name: { type: string }
+                        createdAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /moderation/product-requests/{requestId}/decision:
+    post:
+      tags: [Moderación]
+      operationId: decideProductRequest
+      summary: Aprobar, fusionar o rechazar un producto propuesto (RF-003)
+      description: >-
+        Solo el rol moderador. aprobar crea el producto (aparece en la búsqueda) con el id de la
+        propuesta y su presentación; fusionar agrega el nombre propuesto como alias de un producto
+        existente (mergeInto) y la presentación si es nueva, nunca de forma automática; rechazar no
+        crea nada. Siempre con motivo (#26).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, note]
+              properties:
+                decision: { type: string, enum: [aprobar, fusionar, rechazar] }
+                note: { type: string, minLength: 10, maxLength: 500 }
+                mergeInto:
+                  type: string
+                  format: uuid
+                  description: Obligatorio con fusionar; el producto existente.
+      responses:
+        '204': { description: Decisión registrada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: La propuesta no existe o ya se decidió.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: >-
+            code BARCODE_TAKEN, otro producto tomó el código mientras la propuesta esperaba; solo se
+            puede rechazar (RN2).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            code UNKNOWN_PRODUCT, el producto con el que se quiere fusionar no existe; o
+            MIXED_UNIT_BASES, la presentación no comparte la base de unidad del producto (#59).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /moderation/roles:
     post:
       tags: [Moderación]
@@ -1184,6 +1317,16 @@ components:
         name: { type: string }
         brand: { type: string, description: Opcional; los productos a granel o frescos pueden no tener marca. }
         category: { $ref: '#/components/schemas/Category' }
+        image:
+          type: object
+          description: >-
+            Opcional; enlace a la foto con su fuente y su atribución (ADR-020, #26). Sin image, el
+            frontend muestra la ilustración genérica.
+          required: [url, source, attribution]
+          properties:
+            url: { type: string, format: uri }
+            source: { type: string, enum: [open_food_facts, equipo] }
+            attribution: { type: string }
         presentations:
           type: array
           items: { $ref: '#/components/schemas/Presentation' }

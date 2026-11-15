@@ -3,6 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Unit } from '../../../domain/unit-price';
 import type {
   PresentationForPricing,
+  ProductImage,
   PresentationView,
   ProductForComparisonView,
   ProductRepository,
@@ -15,6 +16,12 @@ type PresentationRow = typeof presentations.$inferSelect;
 
 // Nombre y marca normalizados (función de la migración 0006): sin tildes y en minúsculas.
 const searchText = sql`catalog.search_text(${products.name}, ${products.brand})`;
+// Grill de la #26, pregunta 2: la búsqueda también mira los alias del producto.
+const searchable = sql`(${searchText} || ' ' || coalesce((
+  select string_agg(catalog.search_text(alias, null), ' ')
+  from catalog.product_aliases
+  where product_id = ${products.id}
+), ''))`;
 
 function toPresentationView(presentation: PresentationRow): PresentationView {
   return {
@@ -34,7 +41,7 @@ function wordConditions(text: string): SQL[] {
     .split(/\s+/)
     .filter((word) => word.length > 0)
     .map((word) => word.replace(/[\\%_]/g, (wildcard) => `\\${wildcard}`))
-    .map((word) => sql`${searchText} like '%' || trim(catalog.search_text(${word}, null)) || '%'`);
+    .map((word) => sql`${searchable} like '%' || trim(catalog.search_text(${word}, null)) || '%'`);
 }
 
 export class DrizzleProductRepository implements ProductRepository {
@@ -148,7 +155,7 @@ export class DrizzleProductRepository implements ProductRepository {
     const rows = await this.selectProducts()
       .where(and(...wordConditions(query.text)))
       .orderBy(
-        desc(sql`similarity(${searchText}, trim(catalog.search_text(${query.text}, null)))`),
+        desc(sql`similarity(${searchable}, trim(catalog.search_text(${query.text}, null)))`),
         asc(products.name),
       )
       .limit(query.limit);
@@ -163,6 +170,9 @@ export class DrizzleProductRepository implements ProductRepository {
         brand: products.brand,
         categoryCode: categories.code,
         categoryName: categories.name,
+        imageUrl: products.imageUrl,
+        imageSource: products.imageSource,
+        imageAttribution: products.imageAttribution,
       })
       .from(products)
       .innerJoin(categories, eq(products.categoryCode, categories.code))
@@ -190,6 +200,16 @@ export class DrizzleProductRepository implements ProductRepository {
       name: row.name,
       ...(row.brand === null ? {} : { brand: row.brand }),
       category: { code: row.categoryCode, name: row.categoryName },
+      ...(row.imageUrl && row.imageSource && row.imageAttribution
+        ? {
+            image: {
+              url: row.imageUrl,
+              // La restricción CHECK de la tabla garantiza la fuente.
+              source: row.imageSource as ProductImage['source'],
+              attribution: row.imageAttribution,
+            },
+          }
+        : {}),
       presentations: presentationRows
         .filter((presentation) => presentation.productId === row.id)
         .map(toPresentationView),

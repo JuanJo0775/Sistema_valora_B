@@ -25,7 +25,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Confiabilidad (#31, parte 1)     | Módulo `reliability`: evalúa cada reporte, guarda reputación y la comparación muestra `reliability` y `confirmations`         |
 | Detección medida (#67)           | Conjunto etiquetado de 100 reportes: 93 % de anómalos detectados, 1 falso positivo; `pnpm reliability:evaluate`               |
 | Moderación (#32)                 | Marcar un precio dudoso, cola por gravedad para moderadores y decisiones con motivo en una bitácora que no se puede modificar |
-| Roles y suspensión (#33)         | Suspensión de 7 días por `observar_cuentas` o 3 descartes seguidos; matriz de autorización de 30 casos y guardián de rutas    |
+| Roles y suspensión (#33)         | Suspensión de 7 días por `observar_cuentas` o 3 descartes seguidos; matriz de autorización de 80 casos y guardián de rutas    |
 | Cambio de rol (#73)              | `POST /v1/moderation/roles` y `pnpm identity:set-role`, con bitácora inmutable; un moderador no decide sus propios reportes   |
 | Apelación (#71)                  | El autor apela un descarte una vez, en 7 días, y ve el estado de su reporte; una cuenta suspendida entra con sesión limitada  |
 | Mis aportes (#76)                | `GET /v1/me/reports`: los aportes de la cuenta con su estado, el más reciente primero, paginados con `before`                 |
@@ -35,6 +35,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Privacidad (#36)                 | Pruebas guardianas del esquema y de las respuestas públicas, e informe en `docs/calidad/privacidad-ec08.md` (EC-08)           |
 | Sincronización (#30)             | 50 reportes de la cola sin pérdida ni duplicados (p95 ~1 s); los límites cuentan por la hora de observación                   |
 | Propuestas de tiendas (#27)      | Un reportante propone una tienda; el moderador la aprueba, la fusiona o la rechaza, con duplicados sugeridos a 50 m           |
+| Propuestas de productos (#26)    | Un reportante propone un producto; el moderador lo aprueba, lo fusiona (queda como alias) o lo rechaza; alias e imagen        |
 
 Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 

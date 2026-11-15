@@ -14,11 +14,19 @@ export interface PresentationView {
   packCount: number;
 }
 
+// Grill de la #26, pregunta 1 (ADR-020): sin imagen, el frontend muestra la ilustración genérica.
+export interface ProductImage {
+  url: string;
+  source: 'open_food_facts' | 'equipo';
+  attribution: string;
+}
+
 export interface ProductView {
   id: string;
   name: string;
   brand?: string;
   category: CategoryView;
+  image?: ProductImage;
   presentations: PresentationView[];
 }
 

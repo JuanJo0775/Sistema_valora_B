@@ -1,4 +1,5 @@
 import { assertSameBase, type Unit } from '../../../domain/unit-price';
+import type { ProductImage } from './product-repository';
 
 // Producto completo tal como lo carga la semilla (issue #51), con ids fijos ya calculados.
 export interface ProductImport {
@@ -6,6 +7,9 @@ export interface ProductImport {
   name: string;
   brand?: string;
   categoryCode: string;
+  // Grill de la #26: otros nombres para la búsqueda y la imagen con su fuente (ADR-020).
+  aliases?: string[];
+  image?: ProductImage;
   presentations: {
     id: string;
     barcode?: string;

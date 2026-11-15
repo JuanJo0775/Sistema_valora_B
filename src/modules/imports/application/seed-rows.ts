@@ -8,6 +8,7 @@ export const STORES_FILE = 'tiendas.csv';
 const UNITS: string[] = ['g', 'kg', 'ml', 'l', 'und'] satisfies Unit[];
 const STORE_TYPES = ['barrio', 'minimercado', 'supermercado', 'descuento'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const IMAGE_SOURCES = ['open_food_facts', 'equipo'];
 
 export const text = (row: SeedRow, column: string): string => (row.values[column] ?? '').trim();
 
@@ -129,6 +130,36 @@ export function productErrors(rows: SeedRow[], categoryCodes: string[]): string[
         barcodeLines.set(barcode, row.line);
       }
     }
-    return [...errors, ...traceErrors(PRODUCTS_FILE, row, 'fecha')];
+    return [...errors, ...imageErrors(row), ...traceErrors(PRODUCTS_FILE, row, 'fecha')];
   });
+}
+
+const isHttpsUrl = (value: string): boolean => {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+// Grill de la #26, pregunta 1 (ADR-020): una imagen enlazada trae su fuente y su atribución.
+function imageErrors(row: SeedRow): string[] {
+  const url = text(row, 'imagen_url');
+  const source = text(row, 'imagen_fuente');
+  const attribution = text(row, 'imagen_atribucion');
+  if (url === '' && source === '' && attribution === '') return [];
+  const errors: string[] = [];
+  if (!IMAGE_SOURCES.includes(source)) {
+    errors.push(
+      at(
+        PRODUCTS_FILE,
+        row,
+        `la fuente de la imagen «${source}» no es válida (open_food_facts o equipo)`,
+      ),
+    );
+  }
+  if (!isHttpsUrl(url) || attribution === '') {
+    errors.push(at(PRODUCTS_FILE, row, 'la imagen necesita una URL https y su atribución'));
+  }
+  return errors;
 }

@@ -104,6 +104,20 @@ function groupProducts(rows: SeedRow[]): ProductImport[] {
       categoryCode: text(row, 'categoria'),
       presentations: [],
     };
+    // Grill de la #26: los alias se separan con «|»; la primera imagen del producto es la que vale.
+    const aliases = text(row, 'alias')
+      .split('|')
+      .map((alias) => alias.trim())
+      .filter((alias) => alias !== '' && !(product.aliases ?? []).includes(alias));
+    if (aliases.length > 0) product.aliases = [...(product.aliases ?? []), ...aliases];
+    const imageUrl = text(row, 'imagen_url');
+    if (!product.image && imageUrl !== '') {
+      product.image = {
+        url: imageUrl,
+        source: text(row, 'imagen_fuente') as NonNullable<ProductImport['image']>['source'],
+        attribution: text(row, 'imagen_atribucion'),
+      };
+    }
     const quantity = text(row, 'cantidad');
     const unit = text(row, 'unidad');
     const packCount = text(row, 'unidades_empaque');

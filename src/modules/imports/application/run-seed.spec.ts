@@ -220,6 +220,31 @@ describe('semilla de datos iniciales', () => {
       [],
       'productos.csv, fila 3: «Arroz de prueba» mezcla bases de unidad: 100g en la fila 2 y und aquí',
     ],
+    // Grill de la #26, pregunta 1: la imagen trae su fuente y su atribución (ADR-020).
+    [
+      'imagen con una fuente desconocida',
+      [
+        productRow(2, {
+          imagen_url: 'https://imagenes.ejemplo.com/arroz.webp',
+          imagen_fuente: 'internet',
+          imagen_atribucion: 'Alguien',
+        }),
+      ],
+      [],
+      'productos.csv, fila 2: la fuente de la imagen «internet» no es válida (open_food_facts o equipo)',
+    ],
+    [
+      'imagen sin https o sin atribución',
+      [
+        productRow(2, {
+          imagen_url: 'http://imagenes.ejemplo.com/arroz.webp',
+          imagen_fuente: 'equipo',
+          imagen_atribucion: '',
+        }),
+      ],
+      [],
+      'productos.csv, fila 2: la imagen necesita una URL https y su atribución',
+    ],
     [
       'tienda con tipo desconocido',
       [],
@@ -285,5 +310,39 @@ describe('semilla de datos iniciales', () => {
     const result = await seed.execute();
 
     expect(result).toMatchObject({ ok: true, notInFiles: { stores: 1, products: 2 } });
+  });
+
+  // Grill de la #26, preguntas 1 y 2.
+  it('los alias y la imagen de productos.csv llegan al producto', async () => {
+    const catalog = new InMemoryCatalog();
+    const seed = new RunSeed(
+      new InMemorySource(
+        [
+          productRow(2, {
+            alias: 'Arroz de mesa | Arroz blanco',
+            imagen_url: 'https://images.openfoodfacts.org/arroz.jpg',
+            imagen_fuente: 'open_food_facts',
+            imagen_atribucion: 'Open Food Facts, CC BY-SA',
+          }),
+          productRow(3, { cantidad: '1', unidad: 'kg', alias: 'Arroz de mesa|Arroz grano largo' }),
+        ],
+        [storeRow(20)],
+      ),
+      catalog,
+      new InMemoryStores(),
+    );
+
+    await seed.execute();
+
+    expect(catalog.saved).toMatchObject([
+      {
+        aliases: ['Arroz de mesa', 'Arroz blanco', 'Arroz grano largo'],
+        image: {
+          url: 'https://images.openfoodfacts.org/arroz.jpg',
+          source: 'open_food_facts',
+          attribution: 'Open Food Facts, CC BY-SA',
+        },
+      },
+    ]);
   });
 });
