@@ -13,6 +13,7 @@ import type {
 
 const now = new Date('2026-11-14T14:00:00Z');
 const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000);
+const note = 'El precio coincide con la foto de la góndola';
 
 let sequence = 0;
 // Reporte de prueba del arroz de 500 g en la tienda de don José.
@@ -160,4 +161,44 @@ describe('decisión de moderación (RF-013)', () => {
       expect(reported.moderation).toBeUndefined();
     },
   );
+
+  it('aprobar deja el reporte aprobado, lo anota en la bitácora y lo publica como precio normal', async () => {
+    const reported = observation({ verdict: suspicious, priceCop: 2000 });
+    const { moderation, published, decide } = setup([reported]);
+
+    await decide.execute({
+      reportId: reported.reportId,
+      decision: 'aprobar',
+      note,
+      moderatorKey: 'moderadora',
+    });
+
+    expect(reported.moderation).toBe('aprobado');
+    expect(moderation.log).toEqual([
+      {
+        reportId: reported.reportId,
+        decision: 'aprobar',
+        note,
+        moderatorKey: 'moderadora',
+        decidedAt: now,
+      },
+    ]);
+    expect(published).toEqual([
+      expect.objectContaining({
+        type: 'PriceAssessed',
+        version: 1,
+        payload: {
+          reportId: reported.reportId,
+          presentationId: 'arroz-500g',
+          establishmentId: 'don-jose',
+          priceCop: 2000,
+          priceType: 'normal',
+          observedAt: reported.observedAt.toISOString(),
+          receivedAt: reported.receivedAt.toISOString(),
+          verdict: 'normal',
+          reason: null,
+        },
+      }),
+    ]);
+  });
 });
