@@ -44,6 +44,7 @@ export class InvalidNoteError extends Error {
 
 export const PRICE_WITHDRAWN = 'PriceWithdrawn';
 export const REPORTER_SUSPENSION_REQUESTED = 'ReporterSuspensionRequested';
+export const REPORTER_SUSPENSION_LIFTED = 'ReporterSuspensionLifted';
 
 // El precio que comparison mostraría sin el retirado: el confiable observado más recientemente.
 const latestOf = (candidates: Observation[]): Observation | null =>
@@ -130,7 +131,7 @@ export class DecideModeration {
         }),
       );
       // Grill de la #71, pregunta 4: aceptar la apelación devuelve lo que quitó el descarte.
-      if (stage === 'apelacion') await this.adjustReputation(reported, 'appealAccepted');
+      if (stage === 'apelacion') await this.acceptAppeal(reported);
     }
     if (request.decision === 'descartar') {
       await this.discard(reported);
@@ -145,6 +146,21 @@ export class DecideModeration {
       // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.
       await this.requestSuspension(reported, 'observar_cuentas', suspensionEnd(decidedAt));
     }
+  }
+
+  // Grill de la #71, pregunta 4: el descarte revertido devuelve la reputación y, si suspendió la
+  // cuenta, la suspensión se levanta. identity solo la levanta si su fecha de fin es la de ese
+  // descarte; si el descarte no la causó, la fecha no coincide y no pasa nada.
+  private async acceptAppeal(reported: Observation): Promise<void> {
+    await this.adjustReputation(reported, 'appealAccepted');
+    const discard = await this.ports.moderation.revisionOf(reported.reportId);
+    if (!discard) return;
+    await this.ports.events.publish(
+      createEvent(REPORTER_SUSPENSION_LIFTED, 1, {
+        reporterKey: reported.reporterKey,
+        suspendedUntil: suspensionEnd(discard.decidedAt).toISOString(),
+      }),
+    );
   }
 
   private async checkAppealDecision(request: DecisionRequest): Promise<void> {

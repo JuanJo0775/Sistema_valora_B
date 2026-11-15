@@ -538,7 +538,7 @@ describe('decisión de moderación (RF-013)', () => {
 
       expect(reported.moderation).toBe('aprobado');
       expect(reputations.values.get('autor-dudoso')).toBeCloseTo(0.5);
-      expect(published).toEqual([
+      expect(published.filter((event) => event.type === 'PriceAssessed')).toEqual([
         expect.objectContaining({
           type: 'PriceAssessed',
           payload: expect.objectContaining({
