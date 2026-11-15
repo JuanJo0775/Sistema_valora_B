@@ -330,6 +330,14 @@ Aplicación de RF-008, EC-02 y EC-04. El detalle está en `docs/decisiones/issue
 - **Caché:** `public, max-age=60` y ETag (304), porque la URL no lleva la ubicación del usuario.
 - **Consultas públicas nuevas:** `EstablishmentDetails` (establishments) y `PresentationsForPricing` (catalog); `PresentationLabels` ahora reutiliza la misma consulta.
 
+## Inspección de privacidad (issue #36, 15 de noviembre de 2026)
+
+Aplicación de EC-08, RNF-007, PR-15 y Ley 1581. El detalle está en `docs/decisiones/issue-36-privacidad/` y el informe en `docs/calidad/privacidad-ec08.md`.
+
+- Correo y contraseña solo en `identity`; la única columna geográfica es la ubicación de la tienda; ninguna tabla guarda IP; `reliability` usa claves seudónimas.
+- `pricing.reports.reporter_id` (id de la cuenta) se deja como referencia interna documentada: nunca sale en respuestas ni eventos.
+- Dos pruebas guardianas (esquema y respuestas públicas) impiden que una migración o una ruta nueva rompa la privacidad sin que se note.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
