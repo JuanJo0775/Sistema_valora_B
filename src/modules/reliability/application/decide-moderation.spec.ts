@@ -1,6 +1,11 @@
 import type { AnomalyResult } from '../../../domain/anomaly';
 import type { DomainEvent } from '../../../shared/events';
-import { DecideModeration, InvalidNoteError, ReportNotInQueueError } from './decide-moderation';
+import {
+  DecideModeration,
+  InvalidNoteError,
+  OwnReportError,
+  ReportNotInQueueError,
+} from './decide-moderation';
 import type {
   Decision,
   LogEntry,
@@ -333,6 +338,23 @@ describe('decisión de moderación (RF-013)', () => {
         },
       }),
     ]);
+  });
+
+  // Grill de la #73, pregunta 5: la clave del moderador es la misma que tenía como reportante.
+  it('un moderador no decide sobre un reporte propio', async () => {
+    const own = observation({ verdict: suspicious, reporterKey: 'clave-de-la-moderadora' });
+    const { moderation, published, decide } = setup([own]);
+
+    await expect(
+      decide.execute({
+        reportId: own.reportId,
+        decision: 'aprobar',
+        note,
+        moderatorKey: 'clave-de-la-moderadora',
+      }),
+    ).rejects.toThrow(OwnReportError);
+    expect(moderation.log).toEqual([]);
+    expect(published).toEqual([]);
   });
 
   // RN6 de RF-013 y grill de la #33, pregunta 5.
