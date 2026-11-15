@@ -65,8 +65,16 @@ export class ReportsController {
       response.status(created ? HttpStatus.CREATED : HttpStatus.OK);
       return { ...receipt, receivedAt: receipt.receivedAt.toISOString() };
     } catch (error) {
-      if (error instanceof IdempotencyKeyReusedError || error instanceof DuplicateReportError) {
+      if (error instanceof IdempotencyKeyReusedError) {
         throw new ConflictException({ code: error.code, message: error.message });
+      }
+      // Issue #84: desde qué hora de observación se acepta otro reporte.
+      if (error instanceof DuplicateReportError) {
+        throw new ConflictException({
+          code: error.code,
+          message: error.message,
+          availableFrom: error.availableFrom.toISOString(),
+        });
       }
       // RF-012 RN2: el filtro de errores pone la cabecera Retry-After con estos segundos.
       if (error instanceof TooManyReportsError) {
