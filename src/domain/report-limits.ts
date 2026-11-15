@@ -61,3 +61,14 @@ function waitFor(others: ObservedReport[], target: number): number {
   const blocking = recent[REPORT_LIMITS.burstPerHour - 1] ?? target;
   return Math.max(1, Math.ceil((blocking + HOUR_MS - target) / 1000));
 }
+
+// Issue #84 (RF-006 RN5): la primera hora de observación, desde `observedAt`, que no queda a menos
+// de la ventana de duplicado de ningún reporte de la misma presentación en la misma tienda.
+export function nextAllowedObservation(samePair: Date[], observedAt: Date): Date {
+  const windowMs = REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000;
+  let next = observedAt.getTime();
+  for (const time of samePair.map((seen) => seen.getTime()).sort((a, b) => a - b)) {
+    if (Math.abs(time - next) < windowMs) next = time + windowMs;
+  }
+  return new Date(next);
+}
