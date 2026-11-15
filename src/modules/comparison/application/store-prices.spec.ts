@@ -97,4 +97,50 @@ describe('precios vigentes de una tienda (RF-008, grill de la #28)', () => {
     // La confiabilidad usa el TTL de la categoría de cada presentación.
     expect(asked.map((call) => call.ttlDays).sort((a, b) => a - b)).toEqual([7, 14]);
   });
+
+  it('un precio en revisión dice en_revision, sin confirmaciones ni evaluación', async () => {
+    const presentations = new Map([['arroz-500g', presentation('arroz', 'Arroz Diana · 500 g')]]);
+    const { asked, storePrices } = setup(
+      [price('arroz-500g', 1200, { status: 'en_revision' })],
+      presentations,
+    );
+
+    const result = await storePrices.of(store.id, { onlyCurrent: false });
+
+    expect(result?.prices[0]).toMatchObject({ reliability: 'en_revision', confirmations: 0 });
+    expect(asked).toEqual([]);
+  });
+
+  it('con onlyCurrent quita los desactualizados y los que están en revisión', async () => {
+    const presentations = new Map([
+      ['arroz-500g', presentation('arroz', 'Arroz Diana · 500 g')],
+      ['frijol-500g', presentation('frijol', 'Fríjol · 500 g')],
+      ['lenteja-500g', presentation('lenteja', 'Lenteja · 500 g')],
+    ]);
+    const { storePrices } = setup(
+      [
+        price('arroz-500g', 2500),
+        // 30 días: más de 2 veces el TTL de 14 días.
+        price('frijol-500g', 3000, { observedAt: hoursAgo(30 * 24) }),
+        price('lenteja-500g', 900, { status: 'en_revision' }),
+      ],
+      presentations,
+    );
+
+    const all = await storePrices.of(store.id, { onlyCurrent: false });
+    const current = await storePrices.of(store.id, { onlyCurrent: true });
+
+    expect(all?.prices).toHaveLength(3);
+    expect(current?.prices.map((item) => item.presentationId)).toEqual(['arroz-500g']);
+  });
+
+  it('una tienda que no existe da null; una sin precios, una lista vacía', async () => {
+    const { storePrices } = setup([], new Map());
+
+    await expect(storePrices.of('no-existe', { onlyCurrent: false })).resolves.toBeNull();
+    await expect(storePrices.of(store.id, { onlyCurrent: false })).resolves.toEqual({
+      establishment: store,
+      prices: [],
+    });
+  });
 });
