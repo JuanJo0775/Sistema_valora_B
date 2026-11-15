@@ -35,6 +35,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Privacidad (#36)                 | Pruebas guardianas del esquema y de las respuestas públicas, e informe en `docs/calidad/privacidad-ec08.md` (EC-08)           |
 | Sincronización (#30)             | 50 reportes de la cola sin pérdida ni duplicados (p95 ~1 s); los límites cuentan por la hora de observación                   |
 | Propuestas de tiendas (#27)      | Un reportante propone una tienda; el moderador la aprueba, la fusiona o la rechaza, con duplicados sugeridos a 50 m           |
+| Prueba de contrato (#25)         | `test/contract/`: las rutas y las respuestas reales se validan contra `docs/openapi.yaml` en modo estricto (PR-09)            |
 | Exactitud (#93)                  | `pnpm quality:accuracy`: compara precios observados por el equipo con los publicados y escribe el informe PR-22               |
 | Referencia SIPSA (#34)           | `seed/sipsa.csv`: precio mayorista por kilo, aparte en la comparación y nunca como precio de una tienda (RF-014)              |
 | Fotos de productos (#88)         | El moderador sube la foto (hasta 2 MB); se guarda en WebP de 800 px sin metadatos y se sirve en `/media` (ADR-020)            |
