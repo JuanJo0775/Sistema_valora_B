@@ -1,6 +1,5 @@
 import { replacesCurrentPrice } from '../../../domain/current-price';
-import { DAY_IN_MILLISECONDS } from '../../../domain/report-window';
-import { SUSPENSION_PARAMS, suspensionAfter } from '../../../domain/suspension';
+import { suspensionAfter, suspensionEnd } from '../../../domain/suspension';
 import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import { PRICE_ASSESSED } from './assess-reported-price';
@@ -105,28 +104,27 @@ export class DecideModeration {
         await moderation.decisionsAbout(reported.reporterKey),
         decidedAt,
       );
-      if (until) {
-        await events.publish(
-          createEvent(REPORTER_SUSPENSION_REQUESTED, 1, {
-            reporterKey: reported.reporterKey,
-            reason: 'rechazos_seguidos',
-            suspendedUntil: until.toISOString(),
-          }),
-        );
-      }
+      if (until) await this.requestSuspension(reported, 'rechazos_seguidos', until);
     }
     if (request.decision === 'observar_cuentas') {
       // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.
-      await events.publish(
-        createEvent(REPORTER_SUSPENSION_REQUESTED, 1, {
-          reporterKey: reported.reporterKey,
-          reason: 'observar_cuentas',
-          suspendedUntil: new Date(
-            decidedAt.getTime() + SUSPENSION_PARAMS.days * DAY_IN_MILLISECONDS,
-          ).toISOString(),
-        }),
-      );
+      await this.requestSuspension(reported, 'observar_cuentas', suspensionEnd(decidedAt));
     }
+  }
+
+  // Grill de la #33, pregunta 6: identity suspende la cuenta al recibir el evento.
+  private async requestSuspension(
+    reported: Observation,
+    reason: 'observar_cuentas' | 'rechazos_seguidos',
+    suspendedUntil: Date,
+  ): Promise<void> {
+    await this.ports.events.publish(
+      createEvent(REPORTER_SUSPENSION_REQUESTED, 1, {
+        reporterKey: reported.reporterKey,
+        reason,
+        suspendedUntil: suspendedUntil.toISOString(),
+      }),
+    );
   }
 
   // Grill de la #32, pregunta 4: el autor pierde reputación y comparison deja de mostrar el precio.

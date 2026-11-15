@@ -6,6 +6,10 @@ export const SUSPENSION_PARAMS = {
   days: 7,
 };
 
+// Grill de la #33, pregunta 4: una suspensión dura N días desde la decisión que la causa.
+export const suspensionEnd = (decidedAt: Date): Date =>
+  new Date(decidedAt.getTime() + SUSPENSION_PARAMS.days * DAY_IN_MILLISECONDS);
+
 export type ModerationOutcome = 'aprobar' | 'descartar' | 'observar_cuentas';
 
 // RN6 de RF-013: las decisiones sobre los reportes de una cuenta, en orden; la última es la nueva.
@@ -17,9 +21,7 @@ export function suspensionAfter(decisions: ModerationOutcome[], decidedAt: Date)
     if (decision === 'descartar') streak += 1;
     if (decision === 'aprobar') streak = 0;
   }
-  const { consecutiveRejections, days } = SUSPENSION_PARAMS;
   const completesStreak =
-    decisions.at(-1) === 'descartar' && streak > 0 && streak % consecutiveRejections === 0;
-  if (!completesStreak) return null;
-  return new Date(decidedAt.getTime() + days * DAY_IN_MILLISECONDS);
+    decisions.at(-1) === 'descartar' && streak % SUSPENSION_PARAMS.consecutiveRejections === 0;
+  return completesStreak ? suspensionEnd(decidedAt) : null;
 }
