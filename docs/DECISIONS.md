@@ -411,6 +411,15 @@ Aplicación de RF-014 (RN1 a RN5), ADR-011 y PR-20. El detalle está en `docs/de
 - **Cómo se ve (RN3):** `wholesaleReference` aparte en la comparación; no entra al orden ni a `isCheapest`; no muestra al responsable de la carga.
 - **Fuera:** precios iniciales en la semilla (llegan como reportes) y la muestra de exactitud PR-22 (#93).
 
+## Muestra de exactitud (issue #93, 15 de noviembre de 2026)
+
+Aplicación de PR-22, RNF-014 y RF-014 (ISO/IEC 25012, exactitud). Decidido en el grill de la #34 (pregunta 4). Plan en `docs/decisiones/issue-93-exactitud/plan.md`.
+
+- **Datos:** `seed/muestra-exactitud.csv`, llenado por el equipo; no se carga a la base.
+- **Comando:** `pnpm quality:accuracy` escribe `docs/calidad/exactitud-pr22.md` con cada fila y un resumen (coincidencias, filas sin precio y mediana de la diferencia absoluta). Sin meta mínima (MC-E2).
+- **Límites del monolito:** `imports` lee la muestra con los mismos ids fijos de la semilla (`seed-ids.ts`); `comparison` ofrece la consulta pública `CurrentPriceOf`; el comando solo las une. La cuenta la hace el dominio (`src/domain/price-accuracy.ts`).
+- **Diferencia:** publicado menos observado, sobre el observado; también se informan los días entre las dos observaciones.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

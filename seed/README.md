@@ -2,11 +2,12 @@
 
 Esta carpeta tiene los datos iniciales de Valora (issue #51, RF-014). Los revisa el equipo en Excel y los carga `pnpm db:seed` en la base de `DATABASE_URL`.
 
-| Archivo         | Qué tiene                                                    | De dónde sale                                              |
-| --------------- | ------------------------------------------------------------ | ---------------------------------------------------------- |
-| `tiendas.csv`   | Tiendas de Armenia con nombre, tipo, dirección y coordenadas | OpenStreetMap (una consulta autorizada, 12-nov-2026)       |
-| `productos.csv` | Productos y presentaciones de la canasta                     | Propuesta de Claude Code que el equipo verifica en tienda  |
-| `sipsa.csv`     | Precios mayoristas por kilo de referencia (opcional)         | Boletín SIPSA del DANE, copiado a mano por el equipo (#34) |
+| Archivo                 | Qué tiene                                                                         | De dónde sale                                              |
+| ----------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `tiendas.csv`           | Tiendas de Armenia con nombre, tipo, dirección y coordenadas                      | OpenStreetMap (una consulta autorizada, 12-nov-2026)       |
+| `productos.csv`         | Productos y presentaciones de la canasta                                          | Propuesta de Claude Code que el equipo verifica en tienda  |
+| `muestra-exactitud.csv` | Precios que el equipo vio en la tienda, para medir la exactitud (PR-22, opcional) | Visitas del equipo (#93)                                   |
+| `sipsa.csv`             | Precios mayoristas por kilo de referencia (opcional)                              | Boletín SIPSA del DANE, copiado a mano por el equipo (#34) |
 
 Ninguno trae precios: los precios llegan con los reportes (paso 5).
 
@@ -97,6 +98,21 @@ SIPSA es el sistema del DANE que publica **precios mayoristas** de alimentos en 
 - La comparación solo la muestra si el periodo terminó hace 30 días o menos.
 - Un producto en ml o unidades no es comparable con un precio por kilo: la fila se rechaza.
 - Volver a cargar la misma fila (producto, mercado e inicio del periodo) la actualiza; no la duplica.
+
+## `muestra-exactitud.csv` (PR-22, #93)
+
+No se carga a la base: sirve para medir qué tan exactos son los precios que publica Valora. El equipo anota lo que ve en la tienda y `pnpm quality:accuracy` lo compara con el precio vigente de Valora para esa presentación en esa tienda. El resultado queda en `docs/calidad/exactitud-pr22.md`.
+
+| Columna                                                       | Qué va                                                           | Ejemplo                                               |
+| ------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| `osm_id`                                                      | El `osm_id` de la tienda en `tiendas.csv`.                       | `node/123456`                                         |
+| `producto`, `marca`, `cantidad`, `unidad`, `unidades_empaque` | Igual que en `productos.csv`, para saber de qué presentación es. | `Arroz de prueba`, `Marca de prueba`, `500`, `g`, `1` |
+| `precio`                                                      | El precio que se vio, en pesos, sin puntos.                      | `2500`                                                |
+| `fecha`                                                       | El día que se vio (AAAA-MM-DD).                                  | `2026-11-14`                                          |
+| `responsable`                                                 | Quién lo vio.                                                    | `Nombre`                                              |
+
+- Si una fila tiene un error, no se genera el informe y el comando dice qué fila corregir.
+- Para que haya con qué comparar, alguien debe haber reportado un precio de esa presentación en esa tienda en Valora.
 
 ## `tiendas.csv`
 

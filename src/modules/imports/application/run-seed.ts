@@ -14,6 +14,7 @@ import {
   storeErrors,
   text,
 } from './seed-rows';
+import { presentationId, productId, storeId } from './seed-ids';
 import type { SeedRow, SeedSource } from './seed-source';
 import { stableId } from './stable-id';
 
@@ -95,11 +96,6 @@ export class RunSeed {
   }
 }
 
-// Ids fijos (grill de la #51, pregunta 2): tienda por osm_id; producto por nombre y marca.
-const storeId = (row: SeedRow): string => stableId('establishment', text(row, 'osm_id'));
-const productId = (row: SeedRow): string =>
-  stableId('product', text(row, 'producto').toLowerCase(), text(row, 'marca').toLowerCase());
-
 function toStore(row: SeedRow): EstablishmentImport {
   const address = text(row, 'direccion');
   return {
@@ -175,7 +171,7 @@ function groupProducts(rows: SeedRow[]): ProductImport[] {
     const packCount = text(row, 'unidades_empaque');
     const barcode = text(row, 'codigo_barras');
     product.presentations.push({
-      id: stableId('presentation', id, quantity, unit, packCount),
+      id: presentationId(row),
       ...(barcode === '' ? {} : { barcode }),
       quantity: Number(quantity),
       unit: unit as Unit,

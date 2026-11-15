@@ -16,13 +16,22 @@ export class CsvSeedSource implements SeedSource {
   }
 
   // Grill de la #34: sipsa.csv es opcional.
-  async readReferences(): Promise<SeedRow[]> {
+  readReferences(): Promise<SeedRow[]> {
+    return this.readOptional('sipsa.csv');
+  }
+
+  // PR-22 (#93): la muestra de exactitud también es opcional.
+  readSample(): Promise<SeedRow[]> {
+    return this.readOptional('muestra-exactitud.csv');
+  }
+
+  private async readOptional(file: string): Promise<SeedRow[]> {
     try {
-      await access(join(this.folder, 'sipsa.csv'));
+      await access(join(this.folder, file));
     } catch {
       return [];
     }
-    return this.read('sipsa.csv');
+    return this.read(file);
   }
 
   private async read(file: string): Promise<SeedRow[]> {

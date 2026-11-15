@@ -10,6 +10,8 @@ export interface SeedSource {
   readStores(): Promise<SeedRow[]>;
   // Grill de la #34: referencias SIPSA; sin archivo, ninguna.
   readReferences(): Promise<SeedRow[]>;
+  // PR-22 (#93): precios observados por el equipo; sin archivo, ninguno.
+  readSample(): Promise<SeedRow[]>;
 }
 
 export const SEED_SOURCE = Symbol('SEED_SOURCE');
