@@ -18,6 +18,7 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | ADR-014 | Sesiones administradas por servidor, cookie HttpOnly/Secure/SameSite, CSRF y Argon2id | No sustituir por JWT bearer sin una nueva decisión aprobada. |
 | ADR-015 | Eventos de dominio internos con outbox (aceptado el 11 de noviembre de 2026) | El evento se guarda en la tabla outbox del esquema `shared` en la misma transacción que el cambio; un repartidor del mismo proceso lo entrega al menos una vez y los receptores ignoran repetidos. `PrecioOficialPublicado` se procesa en la misma transacción (EC-02). Sin broker externo. |
 | ADR-018 | Backend: NestJS sobre Express (aceptado el 8 de noviembre de 2026) | Las reglas de `domain` se escriben en TypeScript puro; su validación práctica es el esqueleto H2-01. |
+| ADR-020 | Imágenes de productos (aceptado el 15 de noviembre de 2026) | Una imagen por producto: Open Food Facts, foto del equipo o ilustración genérica. En el Corte 2 solo el moderador sube fotos (JPEG, PNG o WebP hasta 2 MB; WebP de 800 px como máximo, sin metadatos). Almacenamiento detrás de un puerto: carpeta del servidor hasta ADR-012. Ver [docs/adr/0020-imagenes-productos.md](adr/0020-imagenes-productos.md). |
 | ADR-021 | Acceso a datos: Drizzle ORM con migraciones SQL versionadas (aceptado el 11 de noviembre de 2026) | Tablas en `infrastructure/schema.ts` con un `pgSchema` por módulo; migraciones generadas con `drizzle-kit`, revisadas y versionadas; driver `pg`; solo `infrastructure/` y `shared/database` importan Drizzle. Ver [docs/adr/0021-acceso-datos-drizzle.md](adr/0021-acceso-datos-drizzle.md). |
 | Proyecto | TypeScript como lenguaje principal | Backend desarrollado en TypeScript sobre NestJS (ADR-018). |
 | Proyecto | Sin Docker en el MVP (registrado dentro de ADR-012, que sigue en discusión) | No añadir Dockerfile, Compose ni Testcontainers; los integrantes no necesitan Docker. **Aclaración del 11 de noviembre de 2026:** la CI de GitHub Actions sí puede usar contenedores de servicio con PostgreSQL + PostGIS para las pruebas. |
@@ -361,7 +362,7 @@ Aplicación de RF-005 (RN1, RN3, RN4, RN7) y EC-08. El detalle está en `docs/de
 
 ## Propuestas de productos, alias e imágenes (issue #26, 15 de noviembre de 2026)
 
-Aplicación de RF-003 (RN2, RN3, RN4), RF-004, ADR-020 (propuesto) y EC-08. El detalle está en `docs/decisiones/issue-26-propuestas-de-productos/`.
+Aplicación de RF-003 (RN2, RN3, RN4), RF-004, ADR-020 (aceptado después, el 15 de noviembre) y EC-08. El detalle está en `docs/decisiones/issue-26-propuestas-de-productos/`.
 
 - **Imágenes:** solo un enlace con su fuente (`open_food_facts` o `equipo`) y su atribución, cargado desde `productos.csv`. Sin imagen, el frontend muestra la ilustración genérica. Subir fotos queda en una issue aparte (depende de ADR-012 y ADR-020).
 - **Alias:** vienen de la columna `alias` de la semilla y de cada fusión (el nombre propuesto queda como alias). La búsqueda también mira los alias.
