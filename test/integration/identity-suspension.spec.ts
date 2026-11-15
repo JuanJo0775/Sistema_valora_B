@@ -73,4 +73,24 @@ describe('suspensión pedida por reliability (grill de la #33, pregunta 6)', () 
 
     expect(session.status).toBe(200);
   });
+
+  // Grill de la #71, pregunta 4.
+  it('ReporterSuspensionLifted con la misma fecha devuelve el acceso a la cuenta', async () => {
+    const ana = await signIn(server, db, 'ana@correo.com');
+    const { reporterKey } = await app.get(identity.ReporterIdentity).of(ana.accountId);
+    const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await requestSuspension(reporterKey, until);
+
+    const event = events.createEvent('ReporterSuspensionLifted', 1, {
+      reporterKey,
+      suspendedUntil: until.toISOString(),
+    });
+    await db.transaction((tx) => app.get(events.OutboxPublisher).publish(tx, event));
+    await app.get(events.OutboxRelay).runOnce();
+
+    const login = await request(server)
+      .post('/v1/auth/login')
+      .send({ email: 'ana@correo.com', password: 'una-clave-larga' });
+    expect(login.status).toBe(204);
+  });
 });
