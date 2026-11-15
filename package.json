@@ -24,6 +24,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "nest start --entryFile seed",
     "identity:set-role": "nest start --entryFile set-role --",
+    "comparison:rebuild-history": "nest start --entryFile rebuild-history",
     "reliability:evaluate": "jest test/integration/reliability-detection.spec.ts --runInBand"
   },
   "dependencies": {

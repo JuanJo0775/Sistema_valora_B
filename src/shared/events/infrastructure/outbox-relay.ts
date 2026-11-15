@@ -6,7 +6,7 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import type { Env } from '../../config/env.validation';
 import { DATABASE, type Database } from '../../database/database.module';
 import { EventBus } from './event-bus';
@@ -73,6 +73,30 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
         await this.recordFailure(row, error);
       }
     }
+  }
+
+  // Grill de la #83, pregunta 6: vuelve a entregar a un solo receptor los eventos ya entregados de
+  // esos tipos, en orden. Los que ese receptor ya procesó se saltan (processed_events), así que se
+  // puede repetir. Devuelve cuántos eventos revisó.
+  async redeliver(types: string[], consumer: string): Promise<number> {
+    const delivered = await this.db
+      .select()
+      .from(outbox)
+      .where(and(inArray(outbox.type, types), isNotNull(outbox.deliveredAt)))
+      .orderBy(asc(outbox.occurredAt));
+    for (const row of delivered) {
+      await this.bus.deliver(
+        {
+          id: row.id,
+          type: row.type,
+          version: row.version,
+          occurredAt: row.occurredAt,
+          payload: row.payload,
+        },
+        consumer,
+      );
+    }
+    return delivered.length;
   }
 
   // Grill de la #43, pregunta 3: un intento más y su error; al llegar al máximo queda fallido.

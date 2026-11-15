@@ -1,2 +1,6 @@
 // Interfaz pública del módulo comparison. Otros módulos y AppModule importan solo desde aquí.
-export { ComparisonModule } from './comparison.module';
+export {
+  ComparisonModule,
+  PRICE_HISTORY_CONSUMER,
+  PRICE_HISTORY_EVENTS,
+} from './comparison.module';

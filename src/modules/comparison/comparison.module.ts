@@ -28,6 +28,10 @@ import {
 } from './infrastructure/price-history-handlers';
 import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
 
+// Grill de la #83, pregunta 6: el receptor del historial y los eventos que lo llenan, para reconstruirlo.
+export const PRICE_HISTORY_CONSUMER = 'comparison.price_history';
+export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
+
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
   controllers: [ComparisonController, StorePricesController, PriceHistoryController],
@@ -94,7 +98,7 @@ export class ComparisonModule implements OnModuleInit {
     this.bus.subscribe('comparison.price_current', 'PriceAssessed', onPriceAssessed);
     this.bus.subscribe('comparison.price_current', 'PriceWithdrawn', onPriceWithdrawn);
     // Grill de la #83: el historial de precios, con los mismos eventos.
-    this.bus.subscribe('comparison.price_history', 'PriceAssessed', onPriceAssessedForHistory);
-    this.bus.subscribe('comparison.price_history', 'PriceWithdrawn', onPriceWithdrawnForHistory);
+    this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceAssessed', onPriceAssessedForHistory);
+    this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceWithdrawn', onPriceWithdrawnForHistory);
   }
 }
