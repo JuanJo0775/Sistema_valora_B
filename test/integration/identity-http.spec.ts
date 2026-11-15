@@ -100,6 +100,21 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
       expect(unknownEmail.body).toEqual(expected);
     });
 
+    // Grill de la #33, pregunta 4.
+    it('una cuenta suspendida responde 403 ACCOUNT_SUSPENDED; con la contraseña mala, el 401 de siempre', async () => {
+      await register();
+      await db.execute(sql`update identity.accounts set suspended_until = '2099-01-01T00:00:00Z'`);
+
+      const suspended = await login().expect(403);
+      const wrongPassword = await login('otra-clave-larga').expect(401);
+
+      expect(suspended.body).toEqual({
+        code: 'ACCOUNT_SUSPENDED',
+        message: 'La cuenta está suspendida hasta 2099-01-01T00:00:00.000Z.',
+      });
+      expect(wrongPassword.body).toMatchObject({ code: 'UNAUTHORIZED' });
+    });
+
     it('al sexto intento fallido con el mismo correo responde 429 con Retry-After', async () => {
       await register();
       for (let attempt = 0; attempt < 5; attempt += 1) await login('otra-clave-larga').expect(401);
