@@ -1,6 +1,7 @@
 import { replacesCurrentPrice } from '../../../domain/current-price';
 import { suspensionAfter, suspensionEnd } from '../../../domain/suspension';
 import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
+import { DomainError } from '../../../domain/domain-error';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import { PRICE_ASSESSED } from './assess-reported-price';
 import { isReliable } from './standing';
@@ -61,6 +62,25 @@ export class OwnReportError extends Error {
   }
 }
 
+// Grill de la #71, pregunta 3: una apelación la revisa otro moderador; la capa HTTP la traduce a 409.
+export class SameModeratorError extends Error {
+  readonly code = 'SAME_MODERATOR';
+
+  constructor() {
+    super('Quien descartó el reporte no decide su apelación; la decide otro moderador.');
+    this.name = 'SameModeratorError';
+  }
+}
+
+// Grill de la #71, pregunta 3: una apelación se acepta o se rechaza (422).
+export class DecisionNotAllowedError extends DomainError {
+  readonly code = 'DECISION_NOT_ALLOWED';
+
+  constructor() {
+    super('Una apelación solo se aprueba o se descarta.');
+  }
+}
+
 // No existe, no está en revisión o ya se decidió: la capa HTTP la traduce a 404 NOT_FOUND.
 export class ReportNotInQueueError extends Error {
   constructor(readonly reportId: string) {
@@ -90,8 +110,10 @@ export class DecideModeration {
     if (!item) throw new ReportNotInQueueError(request.reportId);
     const reported = item.observation;
     if (reported.reporterKey === request.moderatorKey) throw new OwnReportError();
+    const stage = item.appeal ? 'apelacion' : 'revision';
+    if (stage === 'apelacion') await this.checkAppealDecision(request);
     const decidedAt = clock.now();
-    await moderation.decide({ ...request, note, decidedAt, stage: 'revision' });
+    await moderation.decide({ ...request, note, decidedAt, stage });
     if (request.decision === 'aprobar') {
       // Grill de la #32, pregunta 4: comparison lo vuelve a mostrar como precio normal.
       await events.publish(
@@ -121,6 +143,12 @@ export class DecideModeration {
       // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.
       await this.requestSuspension(reported, 'observar_cuentas', suspensionEnd(decidedAt));
     }
+  }
+
+  private async checkAppealDecision(request: DecisionRequest): Promise<void> {
+    if (request.decision === 'observar_cuentas') throw new DecisionNotAllowedError();
+    const discard = await this.ports.moderation.revisionOf(request.reportId);
+    if (discard?.moderatorKey === request.moderatorKey) throw new SameModeratorError();
   }
 
   // Grill de la #33, pregunta 6: identity suspende la cuenta al recibir el evento.
