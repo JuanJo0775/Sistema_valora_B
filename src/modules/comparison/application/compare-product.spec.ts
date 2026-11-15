@@ -1,3 +1,4 @@
+import type { WholesaleReferenceView } from '../../catalog';
 import type { NearbyEstablishment } from '../../establishments';
 import { CompareProduct, type CompareProductInput } from './compare-product';
 import type { CurrentPrice } from './current-prices';
@@ -12,10 +13,18 @@ interface Fixture {
   stores?: NearbyEstablishment[];
   // Lo que reliability calcula para cada tienda (#31); por defecto, media sin confirmaciones.
   reliability?: Record<string, { level: 'alta' | 'media' | 'baja'; confirmations: number }>;
+  // Grill de la #34: la referencia SIPSA más reciente del producto.
+  reference?: WholesaleReferenceView | null;
 }
 
 // Dobles de los puertos: el catálogo, las tiendas, price_current, reliability y el reloj.
-function setup({ isFresh = false, prices = [], stores = [], reliability = {} }: Fixture = {}) {
+function setup({
+  isFresh = false,
+  prices = [],
+  stores = [],
+  reliability = {},
+  reference = null,
+}: Fixture = {}) {
   return new CompareProduct({
     products: {
       find: (id) =>
@@ -45,6 +54,7 @@ function setup({ isFresh = false, prices = [], stores = [], reliability = {} }: 
           })),
         ),
     },
+    references: { latestFor: () => Promise.resolve(reference) },
     clock: { now: () => now },
   });
 }
@@ -245,5 +255,43 @@ describe('comparar los precios de un producto', () => {
       ['dudoso', 'en_revision', false],
     ]);
     expect(onlyCurrent?.results.map((item) => item.establishment.id)).toEqual(['normal']);
+  });
+
+  // Grill de la #34 (RF-014 RN3): la referencia SIPSA va aparte y nunca es precio de una tienda.
+  describe('referencia mayorista SIPSA', () => {
+    const reference: WholesaleReferenceView = {
+      productId,
+      sipsaName: 'Arroz blanco',
+      market: 'Armenia, Mercar',
+      periodStart: '2026-11-02',
+      periodEnd: '2026-11-08',
+      pricePerKgCop: 3200,
+      sourceUrl: 'https://www.dane.gov.co/sipsa/boletin.xlsx',
+    };
+
+    it('una referencia reciente sale aparte, como fuente pública, sin tocar los resultados', async () => {
+      const withReference = await setup({ reference }).execute(input());
+      const without = await setup().execute(input());
+
+      expect(withReference?.wholesaleReference).toEqual({
+        source: 'SIPSA (DANE)',
+        productName: 'Arroz blanco',
+        market: 'Armenia, Mercar',
+        pricePerKgCop: 3200,
+        periodStart: '2026-11-02',
+        periodEnd: '2026-11-08',
+        url: 'https://www.dane.gov.co/sipsa/boletin.xlsx',
+      });
+      expect(withReference?.results).toEqual(without?.results);
+      expect(without).not.toHaveProperty('wholesaleReference');
+    });
+
+    it('una referencia de hace más de 30 días no se muestra', async () => {
+      const comparison = await setup({
+        reference: { ...reference, periodStart: '2026-10-05', periodEnd: '2026-10-11' },
+      }).execute(input());
+
+      expect(comparison).not.toHaveProperty('wholesaleReference');
+    });
   });
 });
