@@ -261,4 +261,56 @@ describe('repositorios de reliability', () => {
       ]);
     });
   });
+
+  // Grill de la #76: la lista de aportes de una cuenta.
+  it('da las observaciones de un autor, la más reciente primero, con límite, cursor y su estado', async () => {
+    const observations = new DrizzleObservationStore(db);
+    const moderation = new DrizzleModerationStore(db);
+    const at = (hour: number) => new Date(Date.UTC(2026, 10, 14, hour));
+    const mine = (id: string, hour: number): Observation => ({
+      ...observation,
+      reportId: `d7777777-7777-4777-8777-${id.repeat(12)}`,
+      receivedAt: at(hour),
+      observedAt: at(hour),
+    });
+    const oldest = mine('a', 8);
+    const discarded = mine('b', 9);
+    const newest = mine('c', 10);
+    const someoneElse = { ...mine('d', 11), reporterKey: 'b'.repeat(64) };
+    for (const seen of [oldest, discarded, newest, someoneElse]) await observations.save(seen);
+    await moderation.flag({
+      reportId: newest.reportId,
+      flaggerKey: 'e'.repeat(64),
+      reason: 'otro',
+      createdAt: at(10),
+    });
+    await moderation.decide({
+      reportId: discarded.reportId,
+      decision: 'descartar',
+      note: 'Precio imposible para esta tienda.',
+      moderatorKey: 'c'.repeat(64),
+      decidedAt: at(12),
+      stage: 'revision',
+    });
+    await moderation.appeal({
+      reportId: discarded.reportId,
+      note: 'Sí era ese precio.',
+      createdAt: at(13),
+    });
+
+    const firstPage = await moderation.authoredBy(observation.reporterKey, { limit: 2 });
+
+    expect(firstPage).toEqual([
+      { observation: newest, flags: 1, appeal: null, discardedAt: null },
+      {
+        observation: { ...discarded, moderation: 'descartado' },
+        flags: 0,
+        appeal: { note: 'Sí era ese precio.', createdAt: at(13), outcome: null },
+        discardedAt: at(12),
+      },
+    ]);
+    await expect(
+      moderation.authoredBy(observation.reporterKey, { limit: 2, before: at(9) }),
+    ).resolves.toEqual([{ observation: oldest, flags: 0, appeal: null, discardedAt: null }]);
+  });
 });
