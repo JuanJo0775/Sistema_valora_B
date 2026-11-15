@@ -63,6 +63,17 @@ describe('repositorios de reliability', () => {
     ).resolves.toEqual([]);
   });
 
+  // Grill de la #32: marcar y decidir necesitan encontrar el reporte por su id.
+  it('encuentra una observación por su reporte, o null si no existe', async () => {
+    const observations = new DrizzleObservationStore(db);
+    await observations.save(observation);
+
+    await expect(observations.byReportId(observation.reportId)).resolves.toEqual(observation);
+    await expect(
+      observations.byReportId('d7777777-7777-4777-8777-999999999999'),
+    ).resolves.toBeNull();
+  });
+
   it('guarda la reputación de una clave y un reporte da su punto una sola vez', async () => {
     const reputations = new DrizzleReputationStore(db);
 
