@@ -5,7 +5,8 @@ import {
   type SortCriterion,
 } from '../../../domain/neutral-ranking';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
-import type { ProductForComparisonView } from '../../catalog';
+import { isRecentReference } from '../../../domain/wholesale-reference';
+import type { ProductForComparisonView, WholesaleReferenceView } from '../../catalog';
 import type { NearbyEstablishment, WithinRadiusQuery } from '../../establishments';
 import type { PriceRef, PriceReliability } from '../../reliability';
 import type { CurrentPrices } from './current-prices';
@@ -33,7 +34,20 @@ export interface CompareProductPorts {
   stores: StoresWithinRadius;
   prices: Pick<CurrentPrices, 'findByPresentations'>;
   reliability: PricesReliability;
+  // Grill de la #34: la referencia SIPSA más reciente del producto, por la consulta pública de catalog.
+  references: { latestFor(productId: string): Promise<WholesaleReferenceView | null> };
   clock: Clock;
+}
+
+// RF-014 RN3: precio mayorista por kilo de una fuente pública; nunca es precio de una tienda.
+export interface WholesaleReferenceSummary {
+  source: 'SIPSA (DANE)';
+  productName: string;
+  market: string;
+  pricePerKgCop: number;
+  periodStart: string;
+  periodEnd: string;
+  url: string;
 }
 
 export interface CompareProductInput {
@@ -70,6 +84,8 @@ export interface Comparison {
   results: ComparisonItem[];
   // ADR-009: siempre aparte; vacío hasta el módulo comercial (grill de la #15, pregunta 6).
   promotions: [];
+  // Grill de la #34: aparte de los resultados; no entra al orden ni a isCheapest.
+  wholesaleReference?: WholesaleReferenceSummary;
 }
 
 // Lo que rankOffers puede leer, junto al resultado que se devuelve.
@@ -157,11 +173,26 @@ export class CompareProduct {
         })),
       ttlDaysFor(product.isFresh),
     );
+    const reference = await this.ports.references.latestFor(product.id);
     return {
       productId: product.id,
       criteria: { sort: input.sort, radiusKm: input.radiusKm },
       results: toResults(ranked, reliability),
       promotions: [],
+      // Pregunta 3: solo si su periodo terminó hace 30 días o menos.
+      ...(reference && isRecentReference(reference.periodEnd, this.ports.clock.now())
+        ? {
+            wholesaleReference: {
+              source: 'SIPSA (DANE)' as const,
+              productName: reference.sipsaName,
+              market: reference.market,
+              pricePerKgCop: reference.pricePerKgCop,
+              periodStart: reference.periodStart,
+              periodEnd: reference.periodEnd,
+              url: reference.sourceUrl,
+            },
+          }
+        : {}),
     };
   }
 

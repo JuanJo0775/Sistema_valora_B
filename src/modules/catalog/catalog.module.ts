@@ -23,6 +23,7 @@ import {
 import { ProductRequestsQueue } from './application/product-requests-queue';
 import { RequestProduct } from './application/request-product';
 import { SearchProducts } from './application/search-products';
+import { WholesaleReferenceOf } from './application/wholesale-reference-of';
 import { SetProductImage } from './application/set-product-image';
 import { ProductImageController } from './http/product-image.controller';
 import { ProductRequestsController } from './http/product-requests.controller';
@@ -143,6 +144,13 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
       useFactory: (products: ProductRepository): PresentationsForPricing =>
         new PresentationsForPricing(products),
     },
+    // Grill de la #34: la referencia SIPSA para la comparación.
+    {
+      provide: WholesaleReferenceOf,
+      inject: [DATABASE],
+      useFactory: (db: Database): WholesaleReferenceOf =>
+        new WholesaleReferenceOf(new DrizzleWholesaleReferenceRepository(db)),
+    },
     {
       provide: PresentationLabels,
       inject: [PRODUCT_REPOSITORY],
@@ -152,6 +160,7 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
   ],
   exports: [
     ImportCatalog,
+    WholesaleReferenceOf,
     PresentationExists,
     ProductForComparison,
     PresentationFreshness,
