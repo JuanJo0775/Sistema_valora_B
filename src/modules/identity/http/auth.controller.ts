@@ -22,12 +22,18 @@ import { Logout } from '../application/logout';
 import { RegisterAccount } from '../application/register-account';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { clearedSessionCookie, sessionCookie } from './session-cookie';
-import { type AuthenticatedSession, CurrentSession, SessionGuard } from './session.guard';
+import {
+  AllowSuspended,
+  type AuthenticatedSession,
+  CurrentSession,
+  SessionGuard,
+} from './session.guard';
 
 // Sin correo ni id de la cuenta (EC-08): el frontend solo necesita el rol.
 export interface SessionResponse {
   role: Role;
   csrfToken: string;
+  suspendedUntil?: string;
 }
 
 // Lo que estas rutas leen de la petición, sin depender de los tipos de Express.
@@ -102,9 +108,15 @@ export class AuthController {
   // Grill de la #16, pregunta 4: el token CSRF se deriva de la sesión y no se guarda.
   @Get('session')
   @UseGuards(SessionGuard)
+  @AllowSuspended()
   session(@CurrentSession() session: AuthenticatedSession): SessionResponse {
     const secret = this.config.get('SESSION_SECRET', { infer: true });
-    return { role: session.role, csrfToken: csrfTokenFor(session.token, secret) };
+    return {
+      role: session.role,
+      csrfToken: csrfTokenFor(session.token, secret),
+      // Grill de la #71, pregunta 5: el frontend muestra que la sesión está limitada.
+      ...(session.suspendedUntil ? { suspendedUntil: session.suspendedUntil.toISOString() } : {}),
+    };
   }
 
   // Grill de la #16, pregunta 3: revoca la sesión en el servidor y borra la cookie. El guard exige
@@ -112,6 +124,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(SessionGuard)
+  @AllowSuspended()
   async logOut(
     @CurrentSession() session: AuthenticatedSession,
     @Res({ passthrough: true }) response: CookieResponse,

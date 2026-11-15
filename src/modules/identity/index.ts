@@ -5,6 +5,7 @@ export { ReporterIdentity, type ReporterPseudonym } from './application/reporter
 // Grill de la #73, pregunta 4: el comando identity:set-role.
 export { ChangeRole } from './application/change-role';
 export {
+  AllowSuspended,
   type AuthenticatedSession,
   CurrentSession,
   Roles,

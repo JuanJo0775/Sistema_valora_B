@@ -33,6 +33,11 @@ const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 // Roles permitidos en una ruta (pregunta 5). Sin el decorador, basta con tener sesión.
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 
+// Grill de la #71, pregunta 5: las únicas rutas que una cuenta suspendida puede usar (ver sus
+// reportes, apelar, su sesión y cerrarla). Las demás responden 403 ACCOUNT_SUSPENDED.
+const ALLOW_SUSPENDED_KEY = 'identity.allowSuspended';
+export const AllowSuspended = () => SetMetadata(ALLOW_SUSPENDED_KEY, true);
+
 // La sesión que el guard dejó en la petición.
 export const CurrentSession = createParamDecorator(
   (_data: unknown, context: ExecutionContext): AuthenticatedSession | undefined =>
@@ -56,6 +61,14 @@ export class SessionGuard implements CanActivate {
     const token = readSessionToken(header(request, 'cookie'));
     const session = token === undefined ? null : await this.resolveSession.execute(token);
     if (!session || token === undefined) throw new UnauthorizedException();
+
+    const allowSuspended = Reflect.getMetadata(ALLOW_SUSPENDED_KEY, context.getHandler()) === true;
+    if (session.suspendedUntil && !allowSuspended) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_SUSPENDED',
+        message: `La cuenta está suspendida hasta ${session.suspendedUntil.toISOString()}; solo puede ver sus reportes y apelar.`,
+      });
+    }
 
     // SetMetadata guarda los roles en la función de la ruta; se leen sin inyectar Reflector.
     const roles = Reflect.getMetadata(ROLES_KEY, context.getHandler()) as Role[] | undefined;

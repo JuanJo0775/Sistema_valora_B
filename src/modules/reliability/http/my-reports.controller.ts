@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { RequestValidationError } from '../../../shared/http/validation';
 import {
+  AllowSuspended,
   type AuthenticatedSession,
   CurrentSession,
   ReporterIdentity,
@@ -43,6 +44,8 @@ export class MyReportsController {
   @HttpCode(HttpStatus.ACCEPTED)
   @UseGuards(SessionGuard)
   @Roles('reportante')
+  // Grill de la #71, pregunta 5: una cuenta suspendida puede apelar el descarte que la suspendió.
+  @AllowSuspended()
   async appeal(
     @Param(
       'reportId',
@@ -75,6 +78,7 @@ export class MyReportsController {
   @Header('Cache-Control', 'no-store')
   @UseGuards(SessionGuard)
   @Roles('reportante')
+  @AllowSuspended()
   async status(
     @Param(
       'reportId',
