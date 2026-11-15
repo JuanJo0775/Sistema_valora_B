@@ -67,6 +67,24 @@ export class IncompatibleUnitsError extends DomainError {
   readonly code = 'INCOMPATIBLE_UNITS';
 }
 
+// Issue #59: un producto no puede tener presentaciones con bases distintas.
+export class MixedUnitBasesError extends DomainError {
+  readonly code = 'MIXED_UNIT_BASES';
+}
+
+// La base con la que se compara el precio por unidad de cada unidad.
+export const baseOf = (unit: Unit): UnitPricePer => BASE_UNIT[unit].per;
+
+// Issue #59: las presentaciones de un producto comparten la base; si no, la comparación no sirve.
+export function assertSameBase(units: Unit[]): void {
+  const bases = new Set(units.map(baseOf));
+  if (bases.size > 1) {
+    throw new MixedUnitBasesError(
+      `Las presentaciones de un producto deben compartir la base de unidad; hay ${[...bases].join(' y ')}.`,
+    );
+  }
+}
+
 // Lee el decimal tal como se escribió (String(0.1) es "0.1"), sin pasar por aritmética de coma flotante.
 function toFraction(value: number): Fraction {
   const [mantissa = '', exponent = '0'] = String(value).split('e');

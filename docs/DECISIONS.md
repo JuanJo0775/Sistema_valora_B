@@ -313,6 +313,14 @@ Aplicación de RF-006, RF-012 (RN2), RNF-014, PR-06 y EC-07. El detalle está en
 - **Valores provisionales** en `REPORT_LIMITS` (`src/domain/report-limits.ts`).
 - **Límite conocido:** dos reportes simultáneos de la misma cuenta pueden pasar los dos el límite (se cuenta antes de guardar).
 
+## Un producto, una base de unidad (issue #59, 15 de noviembre de 2026)
+
+Aplicación de RF-004 y EC-06.
+
+- `ImportCatalog` rechaza un producto cuyas presentaciones no comparten la base (`g`/`kg` → `100g`; `ml`/`l` → `100ml`; `und` → `und`) con `MixedUnitBasesError` (`MIXED_UNIT_BASES`). La regla vive en `src/domain/unit-price.ts` (`baseOf`, `assertSameBase`) y reutiliza su tabla de unidades.
+- `pnpm db:seed` nombra la fila que mezcla bases y no guarda nada (todo o nada, como las demás validaciones de la semilla).
+- Así la comparación (#15, #21) nunca recibe bases mezcladas. La semilla actual no tiene ningún producto mezclado.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

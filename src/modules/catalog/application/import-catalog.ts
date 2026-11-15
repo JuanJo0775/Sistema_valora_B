@@ -1,4 +1,4 @@
-import type { Unit } from '../../../domain/unit-price';
+import { assertSameBase, type Unit } from '../../../domain/unit-price';
 
 // Producto completo tal como lo carga la semilla (issue #51), con ids fijos ya calculados.
 export interface ProductImport {
@@ -28,8 +28,10 @@ export const PRODUCT_IMPORT_REPOSITORY = Symbol('PRODUCT_IMPORT_REPOSITORY');
 export class ImportCatalog {
   constructor(private readonly products: ProductImportRepository) {}
 
-  save(product: ProductImport): Promise<void> {
-    return this.products.save(product);
+  // Issue #59: la comparación (#15, #21) nunca recibe un producto con bases mezcladas.
+  async save(product: ProductImport): Promise<void> {
+    assertSameBase(product.presentations.map((presentation) => presentation.unit));
+    await this.products.save(product);
   }
 
   listProductIds(): Promise<string[]> {

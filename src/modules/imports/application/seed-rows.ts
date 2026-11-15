@@ -1,10 +1,11 @@
 import { isValidGtin } from '../../../domain/gtin';
+import { baseOf, type Unit, type UnitPricePer } from '../../../domain/unit-price';
 import type { SeedRow } from './seed-source';
 
 export const PRODUCTS_FILE = 'productos.csv';
 export const STORES_FILE = 'tiendas.csv';
 
-const UNITS = ['g', 'kg', 'ml', 'l', 'und'];
+const UNITS: string[] = ['g', 'kg', 'ml', 'l', 'und'] satisfies Unit[];
 const STORE_TYPES = ['barrio', 'minimercado', 'supermercado', 'descuento'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -60,6 +61,7 @@ export function storeErrors(rows: SeedRow[]): string[] {
 export function productErrors(rows: SeedRow[], categoryCodes: string[]): string[] {
   const barcodeLines = new Map<string, number>();
   const categoryByProduct = new Map<string, { code: string; line: number }>();
+  const baseByProduct = new Map<string, { base: UnitPricePer; line: number }>();
 
   return rows.flatMap((row) => {
     const errors: string[] = [];
@@ -90,6 +92,20 @@ export function productErrors(rows: SeedRow[], categoryCodes: string[]): string[
     const unit = text(row, 'unidad');
     if (!UNITS.includes(unit)) {
       errors.push(at(PRODUCTS_FILE, row, `la unidad «${unit}» no es válida (g, kg, ml, l o und)`));
+    } else {
+      // Issue #59: la misma regla del dominio que aplica ImportCatalog, con la fila que falla.
+      const base = baseOf(unit as Unit);
+      const firstBase = baseByProduct.get(productKey);
+      if (firstBase && firstBase.base !== base) {
+        errors.push(
+          at(
+            PRODUCTS_FILE,
+            row,
+            `«${name}» mezcla bases de unidad: ${firstBase.base} en la fila ${String(firstBase.line)} y ${base} aquí`,
+          ),
+        );
+      }
+      if (!firstBase) baseByProduct.set(productKey, { base, line: row.line });
     }
     const packCount = Number(text(row, 'unidades_empaque'));
     if (!Number.isInteger(packCount) || packCount < 1) {
