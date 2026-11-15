@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { Account, AccountRepository } from './account-repository';
 import type { AttemptLimiter } from './attempt-limiter';
-import { InvalidCredentialsError, Login, type LoginInput, TooManyAttemptsError } from './login';
+import {
+  AccountSuspendedError,
+  InvalidCredentialsError,
+  Login,
+  type LoginInput,
+  TooManyAttemptsError,
+} from './login';
 import type { PasswordHasher } from './password-hasher';
 import type { NewSession, SessionRepository, StoredSession } from './session-repository';
 
@@ -11,6 +17,7 @@ const ana: Account = {
   email: 'ana@correo.com',
   passwordHash: 'hash:la-clave-de-ana',
   role: 'reportante',
+  suspendedUntil: null,
 };
 
 class FakeHasher implements PasswordHasher {
@@ -67,9 +74,9 @@ class FakeLimiter implements AttemptLimiter {
   }
 }
 
-function setup(blocked: Record<string, number> = {}) {
+function setup(blocked: Record<string, number> = {}, account: Account = ana) {
   const accounts: AccountRepository = {
-    findByEmail: (email) => Promise.resolve(email === ana.email ? ana : null),
+    findByEmail: (email) => Promise.resolve(email === account.email ? account : null),
     create: () => Promise.reject(new Error('Login no crea cuentas')),
   };
   const hasher = new FakeHasher();
@@ -145,5 +152,36 @@ describe('iniciar sesión', () => {
     await login.execute(input());
 
     expect(limiter.recorded).toEqual(['login-ip:203.0.113.7']);
+  });
+
+  // Grill de la #33, pregunta 4.
+  it('una cuenta suspendida no inicia sesión hasta la fecha de fin', async () => {
+    const suspendedUntil = new Date('2026-11-19T14:00:00Z');
+    const { sessions, login } = setup({}, { ...ana, suspendedUntil });
+
+    const attempt = login.execute(input());
+
+    await expect(attempt).rejects.toThrow(AccountSuspendedError);
+    await expect(attempt).rejects.toMatchObject({ suspendedUntil });
+    expect(sessions.sessions).toHaveLength(0);
+  });
+
+  it('cuando la suspensión ya terminó, la cuenta inicia sesión', async () => {
+    const { sessions, login } = setup(
+      {},
+      { ...ana, suspendedUntil: new Date('2026-11-12T13:59:59Z') },
+    );
+
+    await login.execute(input());
+
+    expect(sessions.sessions).toHaveLength(1);
+  });
+
+  it('con la contraseña incorrecta, una cuenta suspendida da el error de siempre', async () => {
+    const { login } = setup({}, { ...ana, suspendedUntil: new Date('2026-11-19T14:00:00Z') });
+
+    await expect(login.execute(input({ password: 'otra-clave' }))).rejects.toThrow(
+      InvalidCredentialsError,
+    );
   });
 });

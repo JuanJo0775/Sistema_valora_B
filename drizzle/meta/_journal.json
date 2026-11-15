@@ -99,6 +99,13 @@
       "when": 1794702875331,
       "tag": "0013_reliability-moderation",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794708972688,
+      "tag": "0014_identity-suspension",
+      "breakpoints": true
     }
   ]
 }

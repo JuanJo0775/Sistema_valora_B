@@ -1,5 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { Transaction } from '../../../shared/database/database.module';
 import type { Role } from '../application/account-repository';
 import type {
   NewSession,
@@ -9,7 +10,8 @@ import type {
 import { accounts, sessions } from './schema';
 
 export class DrizzleSessionRepository implements SessionRepository {
-  constructor(private readonly db: NodePgDatabase) {}
+  // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
+  constructor(private readonly db: NodePgDatabase | Transaction) {}
 
   async create(session: NewSession): Promise<void> {
     await this.db.insert(sessions).values(session);
@@ -26,6 +28,7 @@ export class DrizzleSessionRepository implements SessionRepository {
         expiresAt: sessions.expiresAt,
         revokedAt: sessions.revokedAt,
         role: accounts.role,
+        accountSuspendedUntil: accounts.suspendedUntil,
       })
       .from(sessions)
       .innerJoin(accounts, eq(sessions.accountId, accounts.id))
@@ -40,5 +43,13 @@ export class DrizzleSessionRepository implements SessionRepository {
 
   async revoke(sessionId: string, at: Date): Promise<void> {
     await this.db.update(sessions).set({ revokedAt: at }).where(eq(sessions.id, sessionId));
+  }
+
+  // Grill de la #33, pregunta 4: al suspender una cuenta se cierran todas sus sesiones abiertas.
+  async revokeAllOf(accountId: string, at: Date): Promise<void> {
+    await this.db
+      .update(sessions)
+      .set({ revokedAt: at })
+      .where(and(eq(sessions.accountId, accountId), isNull(sessions.revokedAt)));
   }
 }

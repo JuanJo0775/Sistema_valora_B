@@ -13,6 +13,8 @@ export interface NewSession {
 export interface StoredSession extends NewSession {
   revokedAt: Date | null;
   role: Role;
+  // Grill de la #33, pregunta 4: la suspensión de la cuenta dueña de la sesión.
+  accountSuspendedUntil: Date | null;
 }
 
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.

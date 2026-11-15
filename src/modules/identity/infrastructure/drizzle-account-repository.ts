@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { Transaction } from '../../../shared/database/database.module';
 import type { AccountCreation } from '../application/reporter-identity';
 import type {
   Account,
@@ -10,7 +11,8 @@ import type {
 import { accounts } from './schema';
 
 export class DrizzleAccountRepository implements AccountRepository, AccountCreation {
-  constructor(private readonly db: NodePgDatabase) {}
+  // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
+  constructor(private readonly db: NodePgDatabase | Transaction) {}
 
   async findByEmail(email: string): Promise<Account | null> {
     const [found] = await this.db
@@ -19,6 +21,7 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
         email: accounts.email,
         passwordHash: accounts.passwordHash,
         role: accounts.role,
+        suspendedUntil: accounts.suspendedUntil,
       })
       .from(accounts)
       .where(eq(accounts.email, email));
@@ -34,6 +37,24 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
       .where(eq(accounts.id, accountId));
     if (!found) throw new Error('La cuenta de la sesión no existe.');
     return found.createdAt;
+  }
+
+  async rememberReporterKey(accountId: string, reporterKey: string): Promise<void> {
+    await this.db.update(accounts).set({ reporterKey }).where(eq(accounts.id, accountId));
+  }
+
+  async byReporterKey(
+    reporterKey: string,
+  ): Promise<{ id: string; suspendedUntil: Date | null } | null> {
+    const [found] = await this.db
+      .select({ id: accounts.id, suspendedUntil: accounts.suspendedUntil })
+      .from(accounts)
+      .where(eq(accounts.reporterKey, reporterKey));
+    return found ?? null;
+  }
+
+  async suspend(accountId: string, until: Date): Promise<void> {
+    await this.db.update(accounts).set({ suspendedUntil: until }).where(eq(accounts.id, accountId));
   }
 
   // Dos registros simultáneos con el mismo correo: el índice único deja uno y el otro no falla, así

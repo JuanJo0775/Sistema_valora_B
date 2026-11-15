@@ -136,4 +136,33 @@ describe('repositorios de reliability', () => {
     ).rejects.toThrow();
     await expect(db.execute(sql`delete from reliability.moderation_log`)).rejects.toThrow();
   });
+
+  // Grill de la #33, pregunta 5: la racha de RN6 se calcula con las decisiones sobre un autor.
+  it('da las decisiones sobre los reportes de un autor, en el orden en que se tomaron', async () => {
+    const observations = new DrizzleObservationStore(db);
+    const moderation = new DrizzleModerationStore(db);
+    const second = { ...observation, reportId: 'd7777777-7777-4777-8777-222222222222' };
+    const other = {
+      ...observation,
+      reportId: 'd7777777-7777-4777-8777-333333333333',
+      reporterKey: 'b'.repeat(64),
+    };
+    for (const seen of [observation, second, other]) await observations.save(seen);
+    const entry = (reportId: string, decision: 'aprobar' | 'descartar', minute: number) => ({
+      reportId,
+      decision,
+      note: 'Motivo de la prueba',
+      moderatorKey: 'c'.repeat(64),
+      decidedAt: new Date(Date.UTC(2026, 10, 14, 14, minute)),
+    });
+
+    await moderation.decide(entry(second.reportId, 'descartar', 2));
+    await moderation.decide(entry(other.reportId, 'descartar', 3));
+    await moderation.decide(entry(observation.reportId, 'aprobar', 1));
+
+    await expect(moderation.decisionsAbout(observation.reporterKey)).resolves.toEqual([
+      'aprobar',
+      'descartar',
+    ]);
+  });
 });

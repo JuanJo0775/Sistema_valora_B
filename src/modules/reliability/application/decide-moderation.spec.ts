@@ -2,6 +2,7 @@ import type { AnomalyResult } from '../../../domain/anomaly';
 import type { DomainEvent } from '../../../shared/events';
 import { DecideModeration, InvalidNoteError, ReportNotInQueueError } from './decide-moderation';
 import type {
+  Decision,
   LogEntry,
   ModerationStore,
   NewFlag,
@@ -97,6 +98,18 @@ class InMemoryModeration implements ModerationStore {
       seen.moderation = entry.decision === 'aprobar' ? 'aprobado' : 'descartado';
     }
     return Promise.resolve();
+  }
+
+  // Las decisiones sobre los reportes de una clave, en el orden en que se tomaron.
+  decisionsAbout(reporterKey: string): Promise<Decision[]> {
+    const authored = new Set(
+      this.observations.saved
+        .filter((seen) => seen.reporterKey === reporterKey)
+        .map((seen) => seen.reportId),
+    );
+    return Promise.resolve(
+      this.log.filter((entry) => authored.has(entry.reportId)).map((entry) => entry.decision),
+    );
   }
 }
 
@@ -294,8 +307,8 @@ describe('decisión de moderación (RF-013)', () => {
     ]);
   });
 
-  // Grill de la #32, pregunta 1: su efecto sobre las cuentas llega con la #33.
-  it('observar las cuentas solo queda en la bitácora: el reporte sigue en la cola', async () => {
+  // Grill de la #33, pregunta 2: observar las cuentas suspende 7 días al autor del reporte.
+  it('observar las cuentas pide suspender al autor 7 días; el reporte sigue en la cola', async () => {
     const reported = observation({ verdict: suspicious, reporterKey: 'autor-dudoso' });
     const { moderation, reputations, published, decide } = setup([reported]);
 
@@ -309,6 +322,71 @@ describe('decisión de moderación (RF-013)', () => {
     expect(moderation.log.map((entry) => entry.decision)).toEqual(['observar_cuentas']);
     expect(reported.moderation).toBeUndefined();
     expect(reputations.values.size).toBe(0);
-    expect(published).toEqual([]);
+    expect(published).toEqual([
+      expect.objectContaining({
+        type: 'ReporterSuspensionRequested',
+        version: 1,
+        payload: {
+          reporterKey: 'autor-dudoso',
+          reason: 'observar_cuentas',
+          suspendedUntil: '2026-11-21T14:00:00.000Z',
+        },
+      }),
+    ]);
+  });
+
+  // RN6 de RF-013 y grill de la #33, pregunta 5.
+  describe('suspensión por descartes seguidos', () => {
+    const discardAll = async (decide: DecideModeration, reports: Observation[]) => {
+      for (const report of reports) {
+        await decide.execute({
+          reportId: report.reportId,
+          decision: report.priceCop === 4000 ? 'aprobar' : 'descartar',
+          note,
+          moderatorKey: 'moderadora',
+        });
+      }
+    };
+    const fromAuthor = (priceCop = 2000) =>
+      observation({ verdict: suspicious, reporterKey: 'autor-dudoso', priceCop });
+    const suspensions = (published: DomainEvent[]) =>
+      published.filter((event) => event.type === 'ReporterSuspensionRequested');
+
+    it('el tercer descarte seguido del mismo autor pide suspenderlo 7 días', async () => {
+      const reports = [fromAuthor(), fromAuthor(), fromAuthor()];
+      const { published, decide } = setup(reports);
+
+      await discardAll(decide, reports);
+
+      expect(suspensions(published)).toEqual([
+        expect.objectContaining({
+          version: 1,
+          payload: {
+            reporterKey: 'autor-dudoso',
+            reason: 'rechazos_seguidos',
+            suspendedUntil: '2026-11-21T14:00:00.000Z',
+          },
+        }),
+      ]);
+    });
+
+    it('con un aprobar en medio no se pide la suspensión', async () => {
+      // El reporte de 4000 se aprueba (ver discardAll).
+      const reports = [fromAuthor(), fromAuthor(4000), fromAuthor(), fromAuthor()];
+      const { published, decide } = setup(reports);
+
+      await discardAll(decide, reports);
+
+      expect(suspensions(published)).toEqual([]);
+    });
+
+    it('los descartes de otros autores no cuentan para la racha', async () => {
+      const reports = [fromAuthor(), fromAuthor(), observation({ verdict: suspicious })];
+      const { published, decide } = setup(reports);
+
+      await discardAll(decide, reports);
+
+      expect(suspensions(published)).toEqual([]);
+    });
   });
 });

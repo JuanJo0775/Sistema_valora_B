@@ -35,6 +35,10 @@ class InMemoryModeration implements ModerationStore {
   decide(): Promise<void> {
     return Promise.resolve();
   }
+
+  decisionsAbout(): Promise<[]> {
+    return Promise.resolve([]);
+  }
 }
 
 function setup(known: Observation[] = [observation('reporte-1')]) {

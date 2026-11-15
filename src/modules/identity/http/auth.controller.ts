@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   Res,
+  ForbiddenException,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
@@ -17,7 +18,7 @@ import type { Env } from '../../../shared/config/env.validation';
 import type { Role } from '../application/account-repository';
 import { TooManyAttemptsError } from '../application/attempt-limiter';
 import { csrfTokenFor } from '../application/csrf';
-import { InvalidCredentialsError, Login } from '../application/login';
+import { AccountSuspendedError, InvalidCredentialsError, Login } from '../application/login';
 import { Logout } from '../application/logout';
 import { RegisterAccount } from '../application/register-account';
 import { LoginDto, RegisterDto } from './auth.dto';
@@ -94,6 +95,10 @@ export class AuthController {
       if (error instanceof TooManyAttemptsError) throw tooManyRequests(error);
       if (error instanceof InvalidCredentialsError) {
         throw new UnauthorizedException({ code: 'UNAUTHORIZED', message: error.message });
+      }
+      // Grill de la #33, pregunta 4: solo llega aquí con la contraseña correcta.
+      if (error instanceof AccountSuspendedError) {
+        throw new ForbiddenException({ code: error.code, message: error.message });
       }
       throw error;
     }

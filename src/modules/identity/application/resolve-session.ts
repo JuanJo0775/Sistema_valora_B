@@ -24,6 +24,8 @@ export class ResolveSession {
     const now = this.ports.clock.now();
     // Grill de la #16, pregunta 3: vencida por inactividad o por el máximo, o cerrada, no sirve.
     if (!session || !isSessionActive({ ...session, now })) return null;
+    // Grill de la #33, pregunta 4: una cuenta suspendida no entra, aunque la sesión siga abierta.
+    if (session.accountSuspendedUntil && session.accountSuspendedUntil > now) return null;
     if (needsTouch(session.lastSeenAt, now)) await this.ports.sessions.touch(session.id, now);
     return { sessionId: session.id, accountId: session.accountId, role: session.role };
   }

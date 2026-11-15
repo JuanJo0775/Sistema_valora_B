@@ -60,6 +60,7 @@ describe('repositorios de identity', () => {
       email: ana.email,
       passwordHash: ana.passwordHash,
       role: 'reportante',
+      suspendedUntil: null,
     });
     await expect(accounts.findByEmail('nadie@correo.com')).resolves.toBeNull();
     // Dos registros simultáneos con el mismo correo: el segundo no crea nada ni falla.
@@ -79,6 +80,7 @@ describe('repositorios de identity', () => {
       ...session,
       revokedAt: null,
       role: 'reportante',
+      accountSuspendedUntil: null,
     });
     await sessions.touch(session.id, later);
     await sessions.revoke(session.id, later);
@@ -88,5 +90,45 @@ describe('repositorios de identity', () => {
       revokedAt: later,
     });
     await expect(sessions.findByTokenHash('b'.repeat(64))).resolves.toBeNull();
+  });
+
+  // Grill de la #33, pregunta 3.
+  it('guarda la clave seudónima de una cuenta y la encuentra por esa clave', async () => {
+    await accounts.create(ana);
+
+    await accounts.rememberReporterKey(ana.id, 'f'.repeat(64));
+    await accounts.rememberReporterKey(ana.id, 'f'.repeat(64));
+
+    await expect(accounts.byReporterKey('f'.repeat(64))).resolves.toEqual({
+      id: ana.id,
+      suspendedUntil: null,
+    });
+    await expect(accounts.byReporterKey('e'.repeat(64))).resolves.toBeNull();
+  });
+
+  // Grill de la #33, pregunta 4.
+  it('suspende una cuenta hasta una fecha y revoca todas sus sesiones abiertas', async () => {
+    await accounts.create(ana);
+    await accounts.rememberReporterKey(ana.id, 'f'.repeat(64));
+    await sessions.create(session);
+    await sessions.create({
+      ...session,
+      id: 'c6666666-6666-4666-8666-222222222222',
+      tokenHash: 'c'.repeat(64),
+    });
+    const until = new Date('2026-11-21T14:00:00Z');
+    const at = new Date('2026-11-14T14:00:00Z');
+
+    await accounts.suspend(ana.id, until);
+    await sessions.revokeAllOf(ana.id, at);
+
+    await expect(accounts.byReporterKey('f'.repeat(64))).resolves.toEqual({
+      id: ana.id,
+      suspendedUntil: until,
+    });
+    await expect(accounts.byReporterKey('e'.repeat(64))).resolves.toBeNull();
+    for (const tokenHash of [session.tokenHash, 'c'.repeat(64)]) {
+      await expect(sessions.findByTokenHash(tokenHash)).resolves.toMatchObject({ revokedAt: at });
+    }
   });
 });

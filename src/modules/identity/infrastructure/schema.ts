@@ -16,9 +16,14 @@ export const accounts = identitySchema.table(
     policyVersion: text('policy_version').notNull(),
     policyAcceptedAt: timestamp('policy_accepted_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    // Grill de la #33, pregunta 3: la clave seudónima, para encontrar la cuenta que reliability
+    // solo conoce por ella. Pregunta 4: hasta cuándo está suspendida.
+    reporterKey: text('reporter_key'),
+    suspendedUntil: timestamp('suspended_until', { withTimezone: true }),
   },
   (table) => [
     uniqueIndex('accounts_email_idx').on(table.email),
+    uniqueIndex('accounts_reporter_key_idx').on(table.reporterKey),
     check('accounts_role_valid', sql`${table.role} in ('reportante', 'comercio', 'moderador')`),
   ],
 );

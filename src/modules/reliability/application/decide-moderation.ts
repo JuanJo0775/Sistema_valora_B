@@ -1,4 +1,5 @@
 import { replacesCurrentPrice } from '../../../domain/current-price';
+import { suspensionAfter, suspensionEnd } from '../../../domain/suspension';
 import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import { PRICE_ASSESSED } from './assess-reported-price';
@@ -41,6 +42,7 @@ export class InvalidNoteError extends Error {
 }
 
 export const PRICE_WITHDRAWN = 'PriceWithdrawn';
+export const REPORTER_SUSPENSION_REQUESTED = 'ReporterSuspensionRequested';
 
 // El precio que comparison mostraría sin el retirado: el confiable observado más recientemente.
 const latestOf = (candidates: Observation[]): Observation | null =>
@@ -77,7 +79,8 @@ export class DecideModeration {
     );
     if (!item) throw new ReportNotInQueueError(request.reportId);
     const reported = item.observation;
-    await moderation.decide({ ...request, note, decidedAt: clock.now() });
+    const decidedAt = clock.now();
+    await moderation.decide({ ...request, note, decidedAt });
     if (request.decision === 'aprobar') {
       // Grill de la #32, pregunta 4: comparison lo vuelve a mostrar como precio normal.
       await events.publish(
@@ -94,7 +97,34 @@ export class DecideModeration {
         }),
       );
     }
-    if (request.decision === 'descartar') await this.discard(reported);
+    if (request.decision === 'descartar') {
+      await this.discard(reported);
+      // RN6 de RF-013: la decisión recién guardada ya está en la lista.
+      const until = suspensionAfter(
+        await moderation.decisionsAbout(reported.reporterKey),
+        decidedAt,
+      );
+      if (until) await this.requestSuspension(reported, 'rechazos_seguidos', until);
+    }
+    if (request.decision === 'observar_cuentas') {
+      // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.
+      await this.requestSuspension(reported, 'observar_cuentas', suspensionEnd(decidedAt));
+    }
+  }
+
+  // Grill de la #33, pregunta 6: identity suspende la cuenta al recibir el evento.
+  private async requestSuspension(
+    reported: Observation,
+    reason: 'observar_cuentas' | 'rechazos_seguidos',
+    suspendedUntil: Date,
+  ): Promise<void> {
+    await this.ports.events.publish(
+      createEvent(REPORTER_SUSPENSION_REQUESTED, 1, {
+        reporterKey: reported.reporterKey,
+        reason,
+        suspendedUntil: suspendedUntil.toISOString(),
+      }),
+    );
   }
 
   // Grill de la #32, pregunta 4: el autor pierde reputación y comparison deja de mostrar el precio.
