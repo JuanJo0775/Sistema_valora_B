@@ -293,4 +293,22 @@ describe('decisión de moderación (RF-013)', () => {
       }),
     ]);
   });
+
+  // Grill de la #32, pregunta 1: su efecto sobre las cuentas llega con la #33.
+  it('observar las cuentas solo queda en la bitácora: el reporte sigue en la cola', async () => {
+    const reported = observation({ verdict: suspicious, reporterKey: 'autor-dudoso' });
+    const { moderation, reputations, published, decide } = setup([reported]);
+
+    await decide.execute({
+      reportId: reported.reportId,
+      decision: 'observar_cuentas',
+      note,
+      moderatorKey: 'moderadora',
+    });
+
+    expect(moderation.log.map((entry) => entry.decision)).toEqual(['observar_cuentas']);
+    expect(reported.moderation).toBeUndefined();
+    expect(reputations.values.size).toBe(0);
+    expect(published).toEqual([]);
+  });
 });
