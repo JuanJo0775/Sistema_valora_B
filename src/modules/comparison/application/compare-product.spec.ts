@@ -93,7 +93,7 @@ describe('comparar los precios de un producto', () => {
     });
   });
 
-  it('un precio se muestra con su tienda, precio total, precio por unidad, fuente, fecha y vigencia', async () => {
+  it('un precio se muestra con su tienda, su reporte, precio total, precio por unidad, fuente, fecha y vigencia', async () => {
     const reported = price('t1', 2000, 1);
     const compare = setup({ prices: [reported], stores: [store('t1', 420)] });
 
@@ -102,6 +102,8 @@ describe('comparar los precios de un producto', () => {
     const [item] = comparison?.results ?? [];
     expect(item).toMatchObject({
       establishment: store('t1', 420),
+      // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo.
+      reportId: 'reporte-t1',
       presentationId: 'p-500g',
       priceCop: 2000,
       source: 'comunidad',

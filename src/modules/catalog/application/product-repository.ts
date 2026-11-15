@@ -42,6 +42,7 @@ export interface ProductRepository {
   presentationExists(presentationId: string): Promise<boolean>;
   findForComparison(productId: string): Promise<ProductForComparisonView | null>;
   isFreshPresentation(presentationId: string): Promise<boolean | null>;
+  labelsOf(presentationIds: string[]): Promise<Map<string, string>>;
 }
 
 export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');

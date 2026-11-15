@@ -24,6 +24,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Precios anómalos (#20)           | Regla del dominio: precio fuera del 40 % de la mediana y grupos coordinados de cuentas nuevas (RF-012)                        |
 | Confiabilidad (#31, parte 1)     | Módulo `reliability`: evalúa cada reporte, guarda reputación y la comparación muestra `reliability` y `confirmations`         |
 | Detección medida (#67)           | Conjunto etiquetado de 100 reportes: 93 % de anómalos detectados, 1 falso positivo; `pnpm reliability:evaluate`               |
+| Moderación (#32)                 | Marcar un precio dudoso, cola por gravedad para moderadores y decisiones con motivo en una bitácora que no se puede modificar |
 
 Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
@@ -137,6 +138,16 @@ Con la API en marcha:
 
 Si la API no arranca, el mensaje dice qué falta: una variable de entorno o la conexión a la base (base, host y puerto).
 
+### Crear un moderador en desarrollo
+
+La API no crea moderadores (grill de la #32, pregunta 7). Registra la cuenta con `POST /v1/auth/register` y cambia su rol en `valora_dev`:
+
+```sql
+UPDATE identity.accounts SET role = 'moderador' WHERE email = 'tu-correo@ejemplo.com';
+```
+
+Con esa cuenta, `GET /v1/moderation/queue` muestra los reportes pendientes.
+
 ## Día a día
 
 ### Al empezar una tarea
@@ -247,8 +258,8 @@ src/
   modules/establishments/  Tiendas con ubicación y búsqueda por cercanía
   modules/imports/     Semilla: lee seed/ y guarda por catalog y establishments
   modules/pricing/     Reportes de precio (solo inserción) e idempotencia
-  modules/reliability/ Observaciones, reputación y veredicto de anómalos (PriceReported → PriceAssessed)
-  modules/comparison/  Precio vigente (price_current), actualizado por PriceReported, y la consulta de comparación
+  modules/reliability/ Observaciones, reputación, veredicto de anómalos (PriceReported → PriceAssessed) y moderación
+  modules/comparison/  Precio vigente (price_current), actualizado por PriceAssessed y PriceWithdrawn, y la consulta de comparación
   seed.ts              Entrada de pnpm db:seed
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```

@@ -1,17 +1,29 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
 import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
-import { CatalogModule, PresentationFreshness } from '../catalog';
-import { EstablishmentsAround, EstablishmentsModule } from '../establishments';
+import { CatalogModule, PresentationFreshness, PresentationLabels } from '../catalog';
+import { EstablishmentNames, EstablishmentsAround, EstablishmentsModule } from '../establishments';
+import { IdentityModule } from '../identity';
 import { AssessReportedPrice, type PriceReportedV2 } from './application/assess-reported-price';
+import {
+  DecideModeration,
+  MODERATION_DECIDER,
+  type ModerationDecider,
+} from './application/decide-moderation';
+import { FlagReport } from './application/flag-report';
+import { ModerationQueue } from './application/moderation-queue';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
+import { FlagsController } from './http/flags.controller';
+import { ModerationController } from './http/moderation.controller';
+import { DrizzleModerationStore } from './infrastructure/drizzle-moderation-store';
 import { DrizzleObservationStore, DrizzleReputationStore } from './infrastructure/drizzle-stores';
 
 // Grill de la #31, pregunta 7: radio de la zona de referencia (provisional).
 const ZONE_RADIUS_METERS = 1000;
 
 @Module({
-  imports: [CatalogModule, EstablishmentsModule],
+  imports: [CatalogModule, EstablishmentsModule, IdentityModule],
+  controllers: [FlagsController, ModerationController],
   providers: [
     {
       provide: ReliabilityOfPrices,
@@ -22,6 +34,42 @@ const ZONE_RADIUS_METERS = 1000;
           reputations: new DrizzleReputationStore(db),
           clock: { now: () => new Date() },
         }),
+    },
+    {
+      provide: FlagReport,
+      inject: [DATABASE],
+      useFactory: (db: Database): FlagReport =>
+        new FlagReport({
+          moderation: new DrizzleModerationStore(db),
+          observations: new DrizzleObservationStore(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: ModerationQueue,
+      inject: [DATABASE, PresentationLabels, EstablishmentNames],
+      useFactory: (
+        db: Database,
+        labels: PresentationLabels,
+        names: EstablishmentNames,
+      ): ModerationQueue =>
+        new ModerationQueue({ moderation: new DrizzleModerationStore(db), labels, names }),
+    },
+    {
+      provide: MODERATION_DECIDER,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ModerationDecider => ({
+        execute: (request) =>
+          db.transaction((tx) =>
+            new DecideModeration({
+              moderation: new DrizzleModerationStore(tx),
+              observations: new DrizzleObservationStore(tx),
+              reputations: new DrizzleReputationStore(tx),
+              events: { publish: (event) => outbox.publish(tx, event) },
+              clock: { now: () => new Date() },
+            }).execute(request),
+          ),
+      }),
     },
   ],
   exports: [ReliabilityOfPrices],

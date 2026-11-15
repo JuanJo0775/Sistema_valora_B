@@ -5,9 +5,11 @@ import { AppModule } from '../../src/app.module';
 import {
   ImportCatalog,
   PresentationFreshness,
+  PresentationLabels,
   ProductForComparison,
 } from '../../src/modules/catalog';
 import {
+  EstablishmentNames,
   EstablishmentsAround,
   EstablishmentsWithinRadius,
   ImportEstablishments,
@@ -125,5 +127,40 @@ describe('consultas públicas que usa la comparación (grill de la #15, pregunta
 
     await expect(freshness.isFresh('f1111111-1111-4111-8111-aaaaaaaaaaaa')).resolves.toBe(true);
     await expect(freshness.isFresh(missingId)).resolves.toBeNull();
+  });
+
+  // Grill de la #32, pregunta 6: la cola de moderación muestra nombres, no ids.
+  it('catalog y establishments dan los nombres de presentaciones y tiendas por id', async () => {
+    await app.get(ImportCatalog).save({
+      id: productId,
+      name: 'Arroz blanco',
+      brand: 'Diana',
+      categoryCode: 'grains-groceries',
+      presentations: [
+        { id: 'f1111111-1111-4111-8111-aaaaaaaaaaaa', quantity: 500, unit: 'g', packCount: 1 },
+        { id: 'f1111111-1111-4111-8111-bbbbbbbbbbbb', quantity: 1, unit: 'kg', packCount: 6 },
+      ],
+    });
+    await app
+      .get(ImportEstablishments)
+      .save({ id: nearId, name: 'Don José', type: 'barrio', lat: 4.5339, lng: -75.6811 });
+
+    await expect(
+      app
+        .get(PresentationLabels)
+        .of([
+          'f1111111-1111-4111-8111-aaaaaaaaaaaa',
+          'f1111111-1111-4111-8111-bbbbbbbbbbbb',
+          missingId,
+        ]),
+    ).resolves.toEqual(
+      new Map([
+        ['f1111111-1111-4111-8111-aaaaaaaaaaaa', 'Arroz blanco Diana · 500 g'],
+        ['f1111111-1111-4111-8111-bbbbbbbbbbbb', 'Arroz blanco Diana · 6 × 1 kg'],
+      ]),
+    );
+    await expect(app.get(EstablishmentNames).of([nearId, missingId])).resolves.toEqual(
+      new Map([[nearId, 'Don José']]),
+    );
   });
 });

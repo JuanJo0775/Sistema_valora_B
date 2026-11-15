@@ -44,6 +44,10 @@ class InMemoryProductRepository implements ProductRepository {
   isFreshPresentation(): Promise<null> {
     return Promise.reject(new Error('GetProduct no consulta la frescura'));
   }
+
+  labelsOf(): Promise<Map<string, string>> {
+    return Promise.reject(new Error('GetProduct no consulta nombres'));
+  }
 }
 
 describe('consultar un producto del catálogo', () => {

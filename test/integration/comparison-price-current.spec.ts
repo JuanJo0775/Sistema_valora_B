@@ -59,6 +59,24 @@ describe('precio vigente en comparison, actualizado por PriceAssessed (ADR-004, 
     await app.get(events.OutboxRelay).runOnce();
   };
 
+  // Grill de la #32, pregunta 4: reliability retira un precio descartado y propone su reemplazo.
+  const withdraw = async (reportId: string, replacement: Reported | null): Promise<void> => {
+    const event = events.createEvent('PriceWithdrawn', 1, {
+      reportId,
+      presentationId,
+      establishmentId,
+      replacement: replacement && {
+        reportId: replacement.reportId,
+        priceCop: replacement.priceCop,
+        priceType: 'normal',
+        observedAt: replacement.observedAt,
+        receivedAt: replacement.receivedAt,
+      },
+    });
+    await db.transaction((tx) => app.get(events.OutboxPublisher).publish(tx, event));
+    await app.get(events.OutboxRelay).runOnce();
+  };
+
   const currentPrice = async () => {
     const result = await db.execute<{ report_id: string; price_cop: number }>(
       sql`select report_id, price_cop from comparison.price_current`,
@@ -157,5 +175,45 @@ describe('precio vigente en comparison, actualizado por PriceAssessed (ADR-004, 
     expect(await currentStatus()).toEqual([
       { report_id: 'c8888888-8888-4888-8888-222222222222', status: 'vigente' },
     ]);
+  });
+
+  describe('PriceWithdrawn (#32)', () => {
+    const honest: Reported = {
+      reportId: 'c3333333-3333-4333-8333-aaaaaaaaaaaa',
+      priceCop: 4000,
+      observedAt: '2026-11-12T12:00:00.000Z',
+      receivedAt: '2026-11-12T12:01:00.000Z',
+    };
+    const fake: Reported = {
+      reportId: 'c3333333-3333-4333-8333-bbbbbbbbbbbb',
+      priceCop: 3900,
+      observedAt: '2026-11-13T12:00:00.000Z',
+      receivedAt: '2026-11-13T12:01:00.000Z',
+    };
+
+    it('si el precio que se muestra es el retirado, lo reemplaza el que propone reliability', async () => {
+      await report(honest);
+      await report(fake);
+
+      await withdraw(fake.reportId, honest);
+
+      expect(await currentStatus()).toEqual([{ report_id: honest.reportId, status: 'vigente' }]);
+    });
+
+    it('sin reemplazo, la tienda deja de mostrar precio para esa presentación', async () => {
+      await report({ ...fake, verdict: 'sospechoso' });
+
+      await withdraw(fake.reportId, null);
+
+      expect(await currentPrice()).toEqual([]);
+    });
+
+    it('si el precio que se muestra es otro, no cambia nada', async () => {
+      await report(honest);
+
+      await withdraw(fake.reportId, null);
+
+      expect(await currentPrice()).toEqual([{ report_id: honest.reportId, price_cop: 4000 }]);
+    });
   });
 });

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { Observation } from '../../src/modules/reliability/application/stores';
+import { DrizzleModerationStore } from '../../src/modules/reliability/infrastructure/drizzle-moderation-store';
 import {
   DrizzleObservationStore,
   DrizzleReputationStore,
@@ -43,7 +44,7 @@ describe('repositorios de reliability', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate reliability.observations, reliability.reputations, reliability.reputation_events`,
+      sql`truncate reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log`,
     );
   });
 
@@ -62,6 +63,17 @@ describe('repositorios de reliability', () => {
     ).resolves.toEqual([]);
   });
 
+  // Grill de la #32: marcar y decidir necesitan encontrar el reporte por su id.
+  it('encuentra una observación por su reporte, o null si no existe', async () => {
+    const observations = new DrizzleObservationStore(db);
+    await observations.save(observation);
+
+    await expect(observations.byReportId(observation.reportId)).resolves.toEqual(observation);
+    await expect(
+      observations.byReportId('d7777777-7777-4777-8777-999999999999'),
+    ).resolves.toBeNull();
+  });
+
   it('guarda la reputación de una clave y un reporte da su punto una sola vez', async () => {
     const reputations = new DrizzleReputationStore(db);
 
@@ -77,5 +89,51 @@ describe('repositorios de reliability', () => {
     await expect(
       reputations.claimPoint(observation.reportId, observation.reporterKey),
     ).resolves.toBe(false);
+  });
+
+  // Grill de la #32, preguntas 3 y 5.
+  it('una cuenta marca un reporte una sola vez y el marcado queda pendiente en la cola', async () => {
+    const observations = new DrizzleObservationStore(db);
+    const moderation = new DrizzleModerationStore(db);
+    const normal = {
+      ...observation,
+      verdict: { status: 'normal' as const, median: 4500, deviation: 0, references: 3 },
+    };
+    await observations.save(normal);
+    const flag = {
+      reportId: normal.reportId,
+      flaggerKey: 'b'.repeat(64),
+      reason: 'precio_falso' as const,
+      createdAt: new Date(),
+    };
+
+    await expect(moderation.flag(flag)).resolves.toBe(true);
+    await expect(moderation.flag(flag)).resolves.toBe(false);
+
+    await expect(moderation.pending()).resolves.toEqual([{ observation: normal, flags: 1 }]);
+  });
+
+  it('una decisión cambia el estado de la observación, sale de la cola y la bitácora no se puede modificar', async () => {
+    const observations = new DrizzleObservationStore(db);
+    const moderation = new DrizzleModerationStore(db);
+    await observations.save(observation);
+    expect(await moderation.pending()).toEqual([{ observation, flags: 0 }]);
+
+    await moderation.decide({
+      reportId: observation.reportId,
+      decision: 'descartar',
+      note: 'Precio imposible para esta tienda.',
+      moderatorKey: 'c'.repeat(64),
+      decidedAt: new Date('2026-11-15T10:00:00Z'),
+    });
+
+    await expect(moderation.pending()).resolves.toEqual([]);
+    await expect(
+      observations.forPresentation(observation.presentationId, [observation.establishmentId]),
+    ).resolves.toEqual([{ ...observation, moderation: 'descartado' }]);
+    await expect(
+      db.execute(sql`update reliability.moderation_log set note = 'otro'`),
+    ).rejects.toThrow();
+    await expect(db.execute(sql`delete from reliability.moderation_log`)).rejects.toThrow();
   });
 });

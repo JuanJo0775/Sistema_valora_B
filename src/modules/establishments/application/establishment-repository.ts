@@ -38,6 +38,7 @@ export interface EstablishmentRepository {
   findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]>;
   findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
   findAround(query: AroundQuery): Promise<string[]>;
+  namesOf(establishmentIds: string[]): Promise<Map<string, string>>;
   exists(establishmentId: string): Promise<boolean>;
 }
 

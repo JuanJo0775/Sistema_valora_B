@@ -41,6 +41,12 @@ class InMemoryObservations implements ObservationStore {
     );
   }
 
+  byReportId(reportId: string): Promise<Observation | null> {
+    return Promise.resolve(
+      this.saved.find((observation) => observation.reportId === reportId) ?? null,
+    );
+  }
+
   save(observation: Observation): Promise<void> {
     this.saved.push(observation);
     return Promise.resolve();
@@ -211,5 +217,26 @@ describe('evaluar un precio reportado (reliability)', () => {
     await assess.execute(reported('eli', 5000));
 
     expect(published.at(-1)?.payload).toMatchObject({ verdict: 'normal' });
+  });
+
+  // Grill de la #32, pregunta 4: lo que decide el moderador cambia las referencias.
+  it('un reporte descartado no es referencia y uno sospechoso aprobado cuenta como normal', async () => {
+    const { observations, assess, seedUsual } = setup();
+    await seedUsual();
+    // Dos precios raros de la tienda: uno resultó cierto (aprobado) y otro falso (descartado).
+    await assess.execute(reported('eli', 9000));
+    await assess.execute(reported('fer', 1000));
+    const [approved, discarded] = observations.saved.slice(-2);
+    if (approved) approved.moderation = 'aprobado';
+    if (discarded) discarded.moderation = 'descartado';
+
+    await assess.execute(reported('ana', 5000));
+
+    // Referencias: 4900, 5000, 5100 y el aprobado de 9000; el descartado no cuenta.
+    expect(observations.saved.at(-1)?.verdict).toMatchObject({
+      status: 'normal',
+      median: 5050,
+      references: 4,
+    });
   });
 });

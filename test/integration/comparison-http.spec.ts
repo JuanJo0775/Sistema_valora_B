@@ -40,7 +40,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, catalog.presentations, catalog.products, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,
@@ -88,6 +88,8 @@ describe('GET /v1/products/{productId}/comparison', () => {
             lng: -75.6811,
             distanceM: expect.closeTo(122, -1) as unknown,
           },
+          // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo.
+          reportId: 'a9999999-9999-4999-8999-999999999999',
           presentationId,
           priceCop: 2000,
           unitPrice: { valueCop: 400, per: '100g' },
@@ -261,7 +263,77 @@ describe('GET /v1/products/{productId}/comparison', () => {
     }
     expect(everything).not.toContain('@correo.com');
   });
+
+  // Grill de la #32: marcar → cola → descartar → la comparación vuelve al precio confiable.
+  it('de punta a punta con moderación: un precio marcado y descartado deja de mostrarse, y la cola no expone a nadie', async () => {
+    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    const relay = app.get(OutboxRelay);
+    const reportAs = async (email: string, priceCop: number, minutesAgo: number) => {
+      const reporter = await signIn(server, db, email);
+      await request(server)
+        .post('/v1/reports')
+        .set('Cookie', reporter.cookie)
+        .set('X-CSRF-Token', reporter.csrfToken)
+        .set('Idempotency-Key', crypto.randomUUID())
+        .send({
+          presentationId,
+          establishmentId: storeId,
+          priceCop,
+          observedAt: new Date(Date.now() - minutesAgo * 60 * 1000).toISOString(),
+        })
+        .expect(201);
+      await relay.runOnce();
+      await relay.runOnce();
+      return reporter;
+    };
+    const ana = await reportAs('ana@correo.com', 4000, 120);
+    // Sin referencias suficientes no se detecta: el precio falso se muestra.
+    const beto = await reportAs('beto@correo.com', 2500, 60);
+    const shown = await compare().expect(200);
+    const [fake] = (shown.body as { results: { reportId: string; priceCop: number }[] }).results;
+    expect(fake?.priceCop).toBe(2500);
+
+    await request(server)
+      .post(`/v1/reports/${fake?.reportId ?? ''}/flag`)
+      .set('Cookie', ana.cookie)
+      .set('X-CSRF-Token', ana.csrfToken)
+      .send({ reason: 'precio_falso', comment: 'En la tienda está a $4.000' })
+      .expect(202);
+    const moderator = await signIn(server, db, 'moderadora@correo.com', 'moderador');
+    const queue = await request(server)
+      .get('/v1/moderation/queue')
+      .set('Cookie', moderator.cookie)
+      .expect(200);
+    expect(queue.body).toMatchObject({
+      items: [
+        {
+          id: fake?.reportId,
+          reason: 'marcado',
+          productName: 'Arroz de prueba · 500 g',
+          establishmentName: 'Tienda de prueba',
+          reportedPriceCop: 2500,
+          reportersCount: 1,
+        },
+      ],
+    });
+    // EC-08: la cola no dice quién reportó ni quién marcó.
+    const listed = JSON.stringify(queue.body);
+    for (const account of [ana, beto]) expect(listed).not.toContain(account.accountId);
+    expect(listed).not.toContain('@correo.com');
+
+    await request(server)
+      .post(`/v1/moderation/${fake?.reportId ?? ''}/decision`)
+      .set('Cookie', moderator.cookie)
+      .set('X-CSRF-Token', moderator.csrfToken)
+      .send({ decision: 'descartar', note: 'Precio falso: otra cuenta lo vio a $4.000' })
+      .expect(204);
+    await relay.runOnce();
+
+    const afterDecision = await compare().expect(200);
+    expect(afterDecision.body).toMatchObject({ results: [{ priceCop: 4000 }] });
+  });
 });
+
 // Total de filas en todas las tablas de la aplicación (sin las de PostgreSQL y PostGIS).
 async function countAllRows(db: Database): Promise<number> {
   const tables = await db.execute<{ name: string }>(

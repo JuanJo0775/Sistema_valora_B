@@ -3,6 +3,7 @@ import { ttlDaysFor } from '../../../domain/freshness';
 import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
 import { comparableReports, type ScoredReport } from '../../../domain/report-window';
 import { createEvent, type DomainEvent } from '../../../shared/events';
+import { isDiscarded, isReliable, isUnderReview } from './standing';
 import type { Observation, ObservationStore, ReputationStore } from './stores';
 
 // Datos de PriceReported versión 2 (grill de la #31, pregunta 2).
@@ -29,8 +30,6 @@ export interface AssessReportedPricePorts {
 
 export const PRICE_ASSESSED = 'PriceAssessed';
 
-const isFlagged = (observation: Observation) => observation.verdict.status === 'sospechoso';
-
 const toScored = (observation: Omit<Observation, 'verdict'>): ScoredReport => ({
   reporterKey: observation.reporterKey,
   priceCop: observation.priceCop,
@@ -56,15 +55,15 @@ export class AssessReportedPrice {
       observedAt: new Date(reported.observedAt),
       receivedAt: new Date(reported.receivedAt),
     };
-    const inStore = await observations.forPresentation(reported.presentationId, [
-      reported.establishmentId,
-    ]);
+    const inStore = (
+      await observations.forPresentation(reported.presentationId, [reported.establishmentId])
+    ).filter((seen) => !isDiscarded(seen));
     // Pregunta 7: las otras tiendas de la zona, sin los reportes que ya están en revisión.
     const neighbours = (await zone.around(reported.establishmentId)).filter(
       (id) => id !== reported.establishmentId,
     );
     const inZone = (await observations.forPresentation(reported.presentationId, neighbours)).filter(
-      (seen) => !isFlagged(seen),
+      isReliable,
     );
     const since = new Map(
       [...inStore, ...inZone].map((seen) => [seen.reporterKey, seen.reporterSince]),
@@ -76,8 +75,8 @@ export class AssessReportedPrice {
       candidate: toScored(observation),
       // Calibración de la #67: en la tienda, los que ya están en revisión forman grupo pero no
       // entran a la mediana; en la zona no cuentan.
-      others: inStore.filter((seen) => !isFlagged(seen)).map(toScored),
-      flagged: inStore.filter(isFlagged).map(toScored),
+      others: inStore.filter(isReliable).map(toScored),
+      flagged: inStore.filter(isUnderReview).map(toScored),
       zone: inZone.map(toScored),
       now: observation.receivedAt,
       ttlDays,
@@ -86,7 +85,7 @@ export class AssessReportedPrice {
     await observations.save({ ...observation, verdict });
     // Un sospechoso no da ni recibe reputación: un grupo coordinado no se infla entre sus cuentas.
     if (verdict.status !== 'sospechoso') {
-      const trusted = inStore.filter((seen) => !isFlagged(seen));
+      const trusted = inStore.filter(isReliable);
       await this.rewardCorroboration(observation, trusted, ttlDays);
     }
 

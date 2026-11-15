@@ -7,6 +7,19 @@ import { observations, reputationEvents, reputations } from './schema';
 // Se usan con la conexión o con la transacción del suscriptor del evento (ADR-015).
 type Executor = NodePgDatabase | Transaction;
 
+// Quien escribe la fila garantiza el tipo de precio y el estado de moderación; sin decisión, la
+// observación no lleva el campo.
+export function toObservation(row: typeof observations.$inferSelect): Observation {
+  const { moderation, ...rest } = row;
+  return {
+    ...rest,
+    priceType: row.priceType as Observation['priceType'],
+    ...(moderation === null
+      ? {}
+      : { moderation: moderation as NonNullable<Observation['moderation']> }),
+  };
+}
+
 export class DrizzleObservationStore implements ObservationStore {
   constructor(private readonly db: Executor) {}
 
@@ -24,8 +37,15 @@ export class DrizzleObservationStore implements ObservationStore {
           inArray(observations.establishmentId, establishmentIds),
         ),
       );
-    // La restricción de la columna y quien la escribe garantizan el tipo de precio.
-    return rows.map((row) => ({ ...row, priceType: row.priceType as Observation['priceType'] }));
+    return rows.map(toObservation);
+  }
+
+  async byReportId(reportId: string): Promise<Observation | null> {
+    const [row] = await this.db
+      .select()
+      .from(observations)
+      .where(eq(observations.reportId, reportId));
+    return row ? toObservation(row) : null;
   }
 
   async save(observation: Observation): Promise<void> {

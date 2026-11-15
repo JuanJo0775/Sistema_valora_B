@@ -8,6 +8,7 @@ import { CompareProduct } from './application/compare-product';
 import { ComparisonController } from './http/comparison.controller';
 import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
 import { onPriceAssessed } from './infrastructure/price-assessed-handler';
+import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
@@ -36,8 +37,10 @@ export class ComparisonModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}
 
   // Grill de la #31, pregunta 4: price_current se actualiza con el veredicto de reliability
-  // (PriceAssessed), ya no directamente con PriceReported.
+  // (PriceAssessed), ya no directamente con PriceReported. Grill de la #32: y deja de mostrar un
+  // precio que el moderador descartó (PriceWithdrawn).
   onModuleInit(): void {
     this.bus.subscribe('comparison.price_current', 'PriceAssessed', onPriceAssessed);
+    this.bus.subscribe('comparison.price_current', 'PriceWithdrawn', onPriceWithdrawn);
   }
 }

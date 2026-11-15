@@ -251,6 +251,17 @@ Aplicación de RF-010, RF-011, RF-012, ADR-004, ADR-005, ADR-015 y EC-03. El det
 - Resultado: **28 de 30 detectados (93 %)** y **1 falso positivo de 70** (una promoción real de −43 % reportada como normal). Informe: `docs/calidad/deteccion-anomalos.md`.
 - Calibración: los reportes en revisión ya no entran a la mediana (un ataque anterior movía la mediana y hacía ver anómalo un precio honesto). Los valores provisionales no cambiaron.
 
+## Moderación (issue #32, 14 de noviembre de 2026)
+
+Aplicación de RF-013 (RN1, RN2, RN3), EC-03 y EC-08. El detalle está en `docs/decisiones/issue-32-moderacion/`.
+
+- **Dónde vive:** en `reliability`, no en un módulo `moderation` aparte (se corrigió `ARCHITECTURE.md`).
+- **Marcar:** solo el rol `reportante`, una vez por cuenta y reporte (llave `report_id`, `flagger_key`); repetir responde 409 `ALREADY_FLAGGED`. Se guarda la clave seudónima de quien marca, nunca su cuenta.
+- **Cola:** cada elemento es un reporte sin decisión, por `desviacion` (sospechoso) o `marcado`. Orden: desviación de mayor a menor, luego más marcas, y en empate el más antiguo. Muestra nombres de producto y tienda (`PresentationLabels` y `EstablishmentNames`), nunca quién reportó ni quién marcó.
+- **Decisiones:** motivo obligatorio de 10 a 500 caracteres, en `moderation_log` (un trigger rechaza `UPDATE` y `DELETE`) con la clave seudónima del moderador. `aprobar` → el reporte cuenta como normal y se vuelve a publicar `PriceAssessed`. `descartar` → deja de contar, la reputación del autor baja 0,20 y `PriceWithdrawn` v1 lleva el precio confiable más reciente de la tienda (o `null`). `observar_cuentas` solo queda en la bitácora hasta la #33.
+- **Comparación:** cada resultado lleva `reportId` para poder marcarlo.
+- **Fuera de alcance:** suspensión por rechazos (RN6) y efecto de `observar_cuentas` (#33), apelación (RN4, #71), conflicto de interés con comercios (RN5, Corte 3).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

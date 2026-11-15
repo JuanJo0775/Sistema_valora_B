@@ -96,6 +96,31 @@ export class DrizzleProductRepository implements ProductRepository {
     return found ? found.isFresh : null;
   }
 
+  // Grill de la #32: «Arroz blanco Diana · 500 g» o «… · 6 × 1 kg».
+  async labelsOf(presentationIds: string[]): Promise<Map<string, string>> {
+    if (presentationIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({
+        id: presentations.id,
+        name: products.name,
+        brand: products.brand,
+        quantity: presentations.quantity,
+        unit: presentations.unit,
+        packCount: presentations.packCount,
+      })
+      .from(presentations)
+      .innerJoin(products, eq(presentations.productId, products.id))
+      .where(inArray(presentations.id, presentationIds));
+    return new Map(
+      rows.map((row) => {
+        const product = row.brand === null ? row.name : `${row.name} ${row.brand}`;
+        const size = `${String(Number(row.quantity))} ${row.unit}`;
+        const pack = row.packCount > 1 ? `${String(row.packCount)} × ${size}` : size;
+        return [row.id, `${product} · ${pack}`];
+      }),
+    );
+  }
+
   // Grill de la #52: cada palabra en el nombre o la marca, sin tildes ni mayúsculas (pregunta 1);
   // primero lo que más se parece a lo escrito y, en empate, por nombre (pregunta 4).
   async search(query: ProductSearch): Promise<ProductView[]> {

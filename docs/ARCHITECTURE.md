@@ -12,11 +12,12 @@ El backend implementará un **monolito modular**. Los módulos se organizan por 
 | catalog | Productos canónicos, categorías, presentaciones, alias y solicitudes | Catálogo y equivalencia de productos |
 | establishments | Directorio, tipo, dirección, ubicación y sugerencias/duplicados | RF-005 |
 | pricing | Reportes de precios, hora de observación, historial e idempotencia | Registro de precios y offline |
-| reliability | Vigencia, reputación, corroboración y detección de anomalías | EC-02, EC-03 |
-| moderation | Cola, revisión, decisiones y auditoría | Reportes dudosos y gestión |
+| reliability | Vigencia, reputación, corroboración, detección de anomalías y moderación (marcas, cola, decisiones y bitácora) | EC-02, EC-03, RF-011 a RF-013 |
 | comparison | Consulta, normalización por unidad, estado de confianza y orden neutral | Comparación |
 | imports | Carga semilla manual y tratamiento de referencias SIPSA | RF-014 |
 | commerce | Perfiles, precios oficiales, promociones e integración con reportes | Corte 3; RF-015 a RF-018 |
+
+La moderación no es un módulo aparte: vive en `reliability`, porque decide sobre sus observaciones y cambia la reputación (grill de la #32, pregunta 2).
 
 Los nombres son límites lógicos propuestos para organizar el trabajo. Los detalles internos, la persistencia y las dependencias se validan al cerrar ADR-003/004 y el stack.
 
@@ -39,6 +40,17 @@ pricing ──PriceReported v2──► reliability ──PriceAssessed v1──
 ```
 
 Los eventos viajan por el outbox (ADR-015). `PriceReported` v2 lleva solo una clave seudónima del reportante (`reporterKey`) y el día de creación de su cuenta. Al consultar, `comparison` pide a `reliability` el nivel de confiabilidad y las confirmaciones de cada precio (`ReliabilityOfPrices`), calculados a la hora actual.
+
+## Moderación (issue #32)
+
+```text
+reportante ──POST /reports/{id}/flag──► reliability.flags ──► cola (GET /moderation/queue)
+moderador ──POST /moderation/{id}/decision──► reliability.moderation_log (inmutable)
+  aprobar   ──PriceAssessed v1 (normal)──────────────► comparison (vuelve a mostrarlo)
+  descartar ──PriceWithdrawn v1 (con reemplazo o null)─► comparison (muestra el reemplazo o nada)
+```
+
+La decisión, la reputación del autor y el evento se confirman en una sola transacción. La cola y la bitácora solo guardan claves seudónimas (EC-08).
 
 ## API
 
