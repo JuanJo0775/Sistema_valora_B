@@ -6,6 +6,7 @@ export interface ProductResponse {
   name: string;
   brand?: string;
   category: { code: string; name: string };
+  image?: { url: string; source: string; attribution: string };
   presentations: {
     id: string;
     barcode?: string;
@@ -21,6 +22,15 @@ export function toProductResponse(product: ProductView): ProductResponse {
     name: product.name,
     ...(product.brand === undefined ? {} : { brand: product.brand }),
     category: { code: product.category.code, name: product.category.name },
+    ...(product.image === undefined
+      ? {}
+      : {
+          image: {
+            url: product.image.url,
+            source: product.image.source,
+            attribution: product.image.attribution,
+          },
+        }),
     presentations: product.presentations.map((presentation) => ({
       id: presentation.id,
       ...(presentation.barcode === undefined ? {} : { barcode: presentation.barcode }),

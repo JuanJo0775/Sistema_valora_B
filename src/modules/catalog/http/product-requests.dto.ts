@@ -5,15 +5,21 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  IsUUID,
   Length,
   MaxLength,
   Min,
   ValidateBy,
+  ValidateIf,
 } from 'class-validator';
 import { isValidGtin } from '../../../domain/gtin';
 import type { Unit } from '../../../domain/unit-price';
+import { REQUEST_NOTE_LENGTH } from '../application/decide-product-request';
+import type { ProductRequestDecision } from '../application/product-requests';
 
 const UNITS: Unit[] = ['g', 'kg', 'ml', 'l', 'und'];
+const DECISIONS: ProductRequestDecision[] = ['aprobar', 'fusionar', 'rechazar'];
+const NOTE_MESSAGE = `debe tener de ${String(REQUEST_NOTE_LENGTH.min)} a ${String(REQUEST_NOTE_LENGTH.max)} caracteres`;
 
 // Cuerpo de POST /v1/product-requests (contrato de la #26).
 export class ProductRequestDto {
@@ -51,4 +57,19 @@ export class ProductRequestDto {
     { message: 'no es un código de barras válido' },
   )
   barcode?: string;
+}
+
+// Cuerpo de POST /v1/moderation/product-requests/{requestId}/decision.
+export class ProductRequestDecisionDto {
+  @IsIn(DECISIONS, { message: 'debe ser aprobar, fusionar o rechazar' })
+  decision!: ProductRequestDecision;
+
+  @IsString({ message: NOTE_MESSAGE })
+  @Length(REQUEST_NOTE_LENGTH.min, REQUEST_NOTE_LENGTH.max, { message: NOTE_MESSAGE })
+  note!: string;
+
+  // Solo y siempre con fusionar.
+  @ValidateIf((dto: ProductRequestDecisionDto) => dto.decision === 'fusionar')
+  @IsUUID('all', { message: 'debe ser un UUID; es obligatorio al fusionar' })
+  mergeInto?: string;
 }

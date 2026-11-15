@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { IdentityModule } from '../identity';
+import { DecideProductRequest } from './application/decide-product-request';
 import { GetProduct } from './application/get-product';
 import {
   ImportCatalog,
@@ -17,6 +18,7 @@ import {
   PRODUCT_REQUEST_REPOSITORY,
   type ProductRequestRepository,
 } from './application/product-requests';
+import { ProductRequestsQueue } from './application/product-requests-queue';
 import { RequestProduct } from './application/request-product';
 import { SearchProducts } from './application/search-products';
 import { ProductRequestsController } from './http/product-requests.controller';
@@ -45,6 +47,23 @@ import { DrizzleProductRequestRepository } from './infrastructure/drizzle-produc
         categories: ProductImportRepository,
       ): RequestProduct =>
         new RequestProduct({ requests, products, categories, clock: { now: () => new Date() } }),
+    },
+    {
+      provide: ProductRequestsQueue,
+      inject: [PRODUCT_REQUEST_REPOSITORY, PRODUCT_REPOSITORY],
+      useFactory: (
+        requests: ProductRequestRepository,
+        products: ProductRepository,
+      ): ProductRequestsQueue => new ProductRequestsQueue({ requests, products }),
+    },
+    {
+      provide: DecideProductRequest,
+      inject: [PRODUCT_REQUEST_REPOSITORY, PRODUCT_REPOSITORY],
+      useFactory: (
+        requests: ProductRequestRepository,
+        products: ProductRepository,
+      ): DecideProductRequest =>
+        new DecideProductRequest({ requests, products, clock: { now: () => new Date() } }),
     },
     {
       provide: PRODUCT_REPOSITORY,
