@@ -33,12 +33,33 @@ export interface QueueRequest {
 const reasonOf = ({ observation }: PendingItem): QueueReason =>
   observation.verdict.status === 'sospechoso' ? 'desviacion' : 'marcado';
 
+// Grill de la #32, pregunta 6.
+export const DEFAULT_QUEUE_LIMIT = 20;
+
+const deviationOf = ({ observation }: PendingItem): number =>
+  'deviation' in observation.verdict ? observation.verdict.deviation : 0;
+
+// RN2 de RF-013: primero las desviaciones (la mayor primero), luego las marcas (más marcas
+// primero); en empate, el que llegó antes.
+const bySeverity = (a: PendingItem, b: PendingItem): number => {
+  const rank = (item: PendingItem) => (reasonOf(item) === 'desviacion' ? 0 : 1);
+  return (
+    rank(a) - rank(b) ||
+    deviationOf(b) - deviationOf(a) ||
+    b.flags - a.flags ||
+    a.observation.receivedAt.getTime() - b.observation.receivedAt.getTime()
+  );
+};
+
 // RF-013: la cola de reportes pendientes de decisión, solo para moderadores.
 export class ModerationQueue {
   constructor(private readonly ports: ModerationQueuePorts) {}
 
-  async list(_request: QueueRequest): Promise<QueueItem[]> {
-    const pending = await this.ports.moderation.pending();
+  async list(request: QueueRequest): Promise<QueueItem[]> {
+    const pending = (await this.ports.moderation.pending())
+      .filter((item) => request.reason === undefined || reasonOf(item) === request.reason)
+      .sort(bySeverity)
+      .slice(0, request.limit ?? DEFAULT_QUEUE_LIMIT);
     const [labels, names] = await Promise.all([
       this.ports.labels.of([...new Set(pending.map((item) => item.observation.presentationId))]),
       this.ports.names.of([...new Set(pending.map((item) => item.observation.establishmentId))]),
