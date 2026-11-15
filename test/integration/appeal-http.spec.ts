@@ -182,4 +182,51 @@ describe('apelación por HTTP (RF-013 RN4, #71)', () => {
       expect(response.body).toEqual({ reportId, status: 'apelacion_aceptada' });
     });
   });
+
+  // Grill de la #76: la lista de mis aportes.
+  describe('GET /v1/me/reports', () => {
+    const list = (as: SignedIn | null, query: Record<string, string> = {}) => {
+      const call = request(server).get('/v1/me/reports').query(query);
+      return as ? call.set('Cookie', as.cookie) : call;
+    };
+
+    it('la autora ve sus aportes con su estado, sin caché y sin datos de quién decidió', async () => {
+      const response = await list(author).expect(200);
+
+      expect(response.headers['cache-control']).toBe('no-store');
+      const items = (response.body as { items: { reportId: string; status: string }[] }).items;
+      expect(items.map((item) => [item.reportId, item.status]).sort()).toEqual(
+        [
+          [reportId, 'descartado'],
+          [otherReportId, 'en_revision'],
+        ].sort(),
+      );
+      expect(items[0]).toEqual(
+        expect.objectContaining({
+          productName: 'Sin nombre',
+          establishmentName: 'Sin nombre',
+          priceCop: 2000,
+          priceType: 'normal',
+        }),
+      );
+      expect(JSON.stringify(response.body)).not.toContain(authorKey);
+    });
+
+    it('otra cuenta no ve los aportes de la autora', async () => {
+      const response = await list(stranger).expect(200);
+
+      expect(response.body).toEqual({ items: [] });
+    });
+
+    it('400 con un límite fuera de rango o un before que no es fecha; 403 moderador; 401 sin sesión', async () => {
+      const responses = await Promise.all([
+        list(author, { limit: '51' }),
+        list(author, { before: 'ayer' }),
+        list(moderatorB),
+        list(null),
+      ]);
+
+      expect(responses.map((response) => response.status)).toEqual([400, 400, 403, 401]);
+    });
+  });
 });
