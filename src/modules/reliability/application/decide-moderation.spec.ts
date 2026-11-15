@@ -215,4 +215,82 @@ describe('decisión de moderación (RF-013)', () => {
     expect(moderation.log).toEqual([]);
     expect(published).toEqual([]);
   });
+
+  it('descartar deja el reporte descartado y baja 0,20 la reputación de su autor', async () => {
+    const reported = observation({ verdict: suspicious, reporterKey: 'autor-dudoso' });
+    const { reputations, decide } = setup([reported]);
+    reputations.values.set('autor-dudoso', 0.6);
+
+    await decide.execute({
+      reportId: reported.reportId,
+      decision: 'descartar',
+      note,
+      moderatorKey: 'moderadora',
+    });
+
+    expect(reported.moderation).toBe('descartado');
+    expect(reputations.values.get('autor-dudoso')).toBeCloseTo(0.4);
+  });
+
+  it('descartar retira el precio y propone el confiable más reciente de la misma tienda', async () => {
+    const older = observation({ priceCop: 3900, observedAt: hoursAgo(30) });
+    const latest = observation({ priceCop: 4100, observedAt: hoursAgo(5) });
+    const otherSuspicious = observation({ verdict: suspicious, observedAt: hoursAgo(4) });
+    const discarded = observation({ moderation: 'descartado', observedAt: hoursAgo(3) });
+    const elsewhere = observation({ establishmentId: 'otra-tienda', observedAt: hoursAgo(2) });
+    const reported = observation({ verdict: suspicious, priceCop: 2000, observedAt: hoursAgo(1) });
+    const { published, decide } = setup([
+      older,
+      latest,
+      otherSuspicious,
+      discarded,
+      elsewhere,
+      reported,
+    ]);
+
+    await decide.execute({
+      reportId: reported.reportId,
+      decision: 'descartar',
+      note,
+      moderatorKey: 'moderadora',
+    });
+
+    expect(published).toEqual([
+      expect.objectContaining({
+        type: 'PriceWithdrawn',
+        version: 1,
+        payload: {
+          reportId: reported.reportId,
+          presentationId: 'arroz-500g',
+          establishmentId: 'don-jose',
+          replacement: {
+            reportId: latest.reportId,
+            priceCop: 4100,
+            priceType: 'normal',
+            observedAt: latest.observedAt.toISOString(),
+            receivedAt: latest.receivedAt.toISOString(),
+          },
+        },
+      }),
+    ]);
+  });
+
+  it('descartar el único precio de la tienda lo retira sin reemplazo', async () => {
+    const reported = observation({ verdict: suspicious });
+    const { published, decide } = setup([reported]);
+
+    await decide.execute({
+      reportId: reported.reportId,
+      decision: 'descartar',
+      note,
+      moderatorKey: 'moderadora',
+    });
+
+    expect(published).toEqual([
+      expect.objectContaining({
+        type: 'PriceWithdrawn',
+        payload: expect.objectContaining({ replacement: null }) as unknown,
+      }),
+    ]);
+  });
 });
