@@ -5,6 +5,7 @@ import {
   type EstablishmentRepository,
 } from './application/establishment-repository';
 import { EstablishmentExists } from './application/establishment-exists';
+import { EstablishmentNames } from './application/establishment-names';
 import { EstablishmentsAround } from './application/establishments-around';
 import { EstablishmentsWithinRadius } from './application/establishments-within-radius';
 import {
@@ -61,8 +62,15 @@ import { DrizzleEstablishmentRepository } from './infrastructure/drizzle-establi
       useFactory: (repository: EstablishmentRepository): EstablishmentsAround =>
         new EstablishmentsAround(repository),
     },
+    {
+      provide: EstablishmentNames,
+      inject: [ESTABLISHMENT_REPOSITORY],
+      useFactory: (repository: EstablishmentRepository): EstablishmentNames =>
+        new EstablishmentNames(repository),
+    },
   ],
   exports: [
+    EstablishmentNames,
     ImportEstablishments,
     EstablishmentExists,
     EstablishmentsWithinRadius,

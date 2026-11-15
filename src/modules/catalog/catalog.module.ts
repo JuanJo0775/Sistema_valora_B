@@ -8,6 +8,7 @@ import {
 } from './application/import-catalog';
 import { PresentationExists } from './application/presentation-exists';
 import { PresentationFreshness } from './application/presentation-freshness';
+import { PresentationLabels } from './application/presentation-labels';
 import { ProductForComparison } from './application/product-for-comparison';
 import { PRODUCT_REPOSITORY, type ProductRepository } from './application/product-repository';
 import { SearchProducts } from './application/search-products';
@@ -62,7 +63,19 @@ import { DrizzleProductRepository } from './infrastructure/drizzle-product-repos
       useFactory: (products: ProductRepository): PresentationFreshness =>
         new PresentationFreshness(products),
     },
+    {
+      provide: PresentationLabels,
+      inject: [PRODUCT_REPOSITORY],
+      useFactory: (products: ProductRepository): PresentationLabels =>
+        new PresentationLabels(products),
+    },
   ],
-  exports: [ImportCatalog, PresentationExists, ProductForComparison, PresentationFreshness],
+  exports: [
+    ImportCatalog,
+    PresentationExists,
+    ProductForComparison,
+    PresentationFreshness,
+    PresentationLabels,
+  ],
 })
 export class CatalogModule {}

@@ -49,6 +49,15 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     return rows.map((row) => row.id);
   }
 
+  async namesOf(establishmentIds: string[]): Promise<Map<string, string>> {
+    if (establishmentIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({ id: establishments.id, name: establishments.name })
+      .from(establishments)
+      .where(inArray(establishments.id, establishmentIds));
+    return new Map(rows.map((row) => [row.id, row.name]));
+  }
+
   // La ubicación del usuario solo viaja como parámetro de esta consulta: no se guarda (RF-005 RN5).
   private async searchWithinRadius(search: RadiusSearch): Promise<NearbyEstablishment[]> {
     const point = sql`ST_SetSRID(ST_MakePoint(${search.lng}, ${search.lat}), 4326)::geography`;
