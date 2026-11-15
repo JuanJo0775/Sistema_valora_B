@@ -74,6 +74,16 @@ describe('cambiar el rol de una cuenta (RF-002 RN1 y RN4)', () => {
     ]);
   });
 
+  // Grill de la #73, pregunta 4: el administrador del sistema, por el comando identity:set-role.
+  it('el sistema también cambia roles, y queda anotado sin autor', async () => {
+    const ana = account('ana@correo.com', 'reportante');
+    const { changes, changeRole } = setup([ana]);
+
+    await changeRole.execute({ email: ana.email, role: 'moderador', note, changedBy: null });
+
+    expect(changes).toMatchObject([{ accountId: ana.id, changedBy: null, toRole: 'moderador' }]);
+  });
+
   describe('lo que no se permite (grill de la #73, pregunta 1)', () => {
     it('un moderador no cambia su propio rol', async () => {
       const own = { ...account('mod@correo.com', 'moderador'), id: moderatorId };
