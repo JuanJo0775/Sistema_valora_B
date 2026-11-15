@@ -142,5 +142,14 @@ export class ReliabilityModule implements OnModuleInit {
         }).execute(event.payload as unknown as PriceReportedV2);
       },
     );
+    // Grill de la #29, pregunta 3 (RF-012 RN2): pricing avisa una ráfaga y sus reportes van a la cola.
+    this.bus.subscribe(
+      'reliability.bursts',
+      'ReportBurstDetected',
+      async (event: DomainEvent, tx: Transaction) => {
+        const { reportIds } = event.payload as { reportIds: string[] };
+        await new DrizzleModerationStore(tx).markBurst(reportIds);
+      },
+    );
   }
 }
