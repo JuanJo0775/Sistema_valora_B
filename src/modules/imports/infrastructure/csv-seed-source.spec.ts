@@ -29,4 +29,16 @@ describe('lector de los CSV de la semilla', () => {
     ]);
     await expect(source.readProducts()).resolves.toEqual([]);
   });
+
+  // Grill de la #34: sipsa.csv es opcional; sin el archivo no hay referencias.
+  it('lee las referencias de sipsa.csv y, si el archivo no está, no hay ninguna', async () => {
+    const source = new CsvSeedSource(folder);
+    await expect(source.readReferences()).resolves.toEqual([]);
+
+    writeFileSync(join(folder, 'sipsa.csv'), 'producto;precio_kg\nArroz;3200\n');
+
+    await expect(source.readReferences()).resolves.toEqual([
+      { line: 2, values: { producto: 'Arroz', precio_kg: '3200' } },
+    ]);
+  });
 });

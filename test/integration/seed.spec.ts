@@ -82,6 +82,7 @@ describe('pnpm db:seed', () => {
       ok: true,
       stores: { saved: 2, skipped: 1 },
       products: { saved: 1, presentations: 2, skipped: 0 },
+      references: { saved: 0, skipped: 0 },
       notInFiles: { stores: 0, products: 0 },
     });
     expect(third).toMatchObject({ ok: true });

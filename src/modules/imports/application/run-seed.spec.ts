@@ -1,4 +1,4 @@
-import type { ProductImport } from '../../catalog';
+import type { ProductImport, WholesaleReference } from '../../catalog';
 import type { EstablishmentImport } from '../../establishments';
 import { RunSeed, type SeedCatalog, type SeedStores } from './run-seed';
 import type { SeedRow, SeedSource } from './seed-source';
@@ -8,7 +8,12 @@ class InMemorySource implements SeedSource {
   constructor(
     private readonly products: SeedRow[] = [],
     private readonly stores: SeedRow[] = [],
+    private readonly references: SeedRow[] = [],
   ) {}
+
+  readReferences(): Promise<SeedRow[]> {
+    return Promise.resolve(this.references);
+  }
 
   readProducts(): Promise<SeedRow[]> {
     return Promise.resolve(this.products);
@@ -35,6 +40,13 @@ class InMemoryStores implements SeedStores {
 
 class InMemoryCatalog implements SeedCatalog {
   readonly saved: ProductImport[] = [];
+  readonly savedReferences: WholesaleReference[] = [];
+
+  saveReference(reference: WholesaleReference): Promise<void> {
+    this.savedReferences.push(reference);
+    return Promise.resolve();
+  }
+
   constructor(private readonly existingIds: string[] = []) {}
 
   save(product: ProductImport): Promise<void> {
@@ -344,5 +356,116 @@ describe('semilla de datos iniciales', () => {
         },
       },
     ]);
+  });
+
+  // Grill de la #34 (RF-014): referencias SIPSA cargadas a mano desde el boletín.
+  describe('sipsa.csv', () => {
+    const referenceRow = (line: number, values: Partial<Record<string, string>> = {}): SeedRow => ({
+      line,
+      values: {
+        producto: 'Arroz de prueba',
+        marca: 'Marca de prueba',
+        producto_sipsa: 'Arroz blanco',
+        mercado: 'Armenia, Mercar',
+        inicio_periodo: '2026-11-09',
+        fin_periodo: '2026-11-15',
+        precio_kg: '3200',
+        url_fuente: 'https://www.dane.gov.co/sipsa/boletin.xlsx',
+        verificar: 'no',
+        responsable: 'Integrante de prueba',
+        fecha_consulta: '2026-11-15',
+        ...values,
+      },
+    });
+    const run = (products: SeedRow[], references: SeedRow[]) => {
+      const catalog = new InMemoryCatalog();
+      const seed = new RunSeed(
+        new InMemorySource(products, [], references),
+        catalog,
+        new InMemoryStores(),
+      );
+      return { catalog, result: seed.execute() };
+    };
+
+    it('guarda la referencia verificada como precio por kilo del producto y salta la pendiente', async () => {
+      const { catalog, result } = run(
+        [productRow(2)],
+        [referenceRow(2), referenceRow(3, { verificar: 'sí' })],
+      );
+
+      await expect(result).resolves.toMatchObject({
+        ok: true,
+        references: { saved: 1, skipped: 1 },
+      });
+      const productId = stableId('product', 'arroz de prueba', 'marca de prueba');
+      expect(catalog.savedReferences).toEqual([
+        {
+          id: stableId('wholesale-reference', productId, 'armenia, mercar', '2026-11-09'),
+          productId,
+          sipsaName: 'Arroz blanco',
+          market: 'Armenia, Mercar',
+          periodStart: '2026-11-09',
+          periodEnd: '2026-11-15',
+          pricePerKgCop: 3200,
+          sourceUrl: 'https://www.dane.gov.co/sipsa/boletin.xlsx',
+          responsible: 'Integrante de prueba',
+          consultedAt: '2026-11-15',
+        },
+      ]);
+    });
+
+    it.each([
+      [
+        'un producto que no está verificado en productos.csv',
+        [productRow(2)],
+        referenceRow(2, { marca: 'Otra marca' }),
+        'sipsa.csv, fila 2: el producto «Arroz de prueba» de «Otra marca» no está verificado en productos.csv',
+      ],
+      [
+        'un producto que no se vende por peso',
+        [productRow(2, { cantidad: '400', unidad: 'ml' })],
+        referenceRow(2),
+        'sipsa.csv, fila 2: «Arroz de prueba» no se vende por peso; SIPSA da precios por kilo',
+      ],
+      [
+        'un precio que no es un entero mayor que 0',
+        [productRow(2)],
+        referenceRow(2, { precio_kg: '0' }),
+        'sipsa.csv, fila 2: precio_kg debe ser un entero mayor que 0',
+      ],
+      [
+        'un periodo al revés',
+        [productRow(2)],
+        referenceRow(2, { inicio_periodo: '2026-11-16' }),
+        'sipsa.csv, fila 2: el periodo debe tener fechas AAAA-MM-DD y no puede empezar después de terminar',
+      ],
+      [
+        'una fuente sin https',
+        [productRow(2)],
+        referenceRow(2, { url_fuente: 'http://www.dane.gov.co/sipsa.xlsx' }),
+        'sipsa.csv, fila 2: url_fuente debe ser una URL https',
+      ],
+      [
+        'sin el nombre de SIPSA o sin mercado',
+        [productRow(2)],
+        referenceRow(2, { mercado: '' }),
+        'sipsa.csv, fila 2: faltan producto_sipsa o mercado',
+      ],
+      [
+        'una fecha de consulta inválida',
+        [productRow(2)],
+        referenceRow(2, { fecha_consulta: '15/11/2026' }),
+        'sipsa.csv, fila 2: la fecha debe tener el formato AAAA-MM-DD',
+      ],
+    ])(
+      'rechaza %s, nombrando la fila, y no guarda nada',
+      async (_case, products, reference, error) => {
+        const { catalog, result } = run(products, [reference]);
+
+        await expect(result).resolves.toEqual({ ok: false, errors: [error] });
+        expect(catalog.saved).toEqual([]);
+        expect(catalog.savedReferences).toEqual([]);
+      },
+    );
   });
 });

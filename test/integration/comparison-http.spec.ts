@@ -38,7 +38,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, catalog.presentations, catalog.products, catalog.wholesale_references, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,
@@ -129,6 +129,36 @@ describe('GET /v1/products/{productId}/comparison', () => {
     const response = await compare(query, id).expect(400);
 
     expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
+  });
+
+  // Grill de la #34 (RF-014 RN3): la referencia SIPSA sale aparte, nunca como precio de una tienda.
+  it('la referencia SIPSA reciente sale en wholesaleReference, sin el responsable de la carga', async () => {
+    const today = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await app.get(ImportCatalog).saveReference({
+      id: 'a8888888-8888-4888-8888-000000000001',
+      productId,
+      sipsaName: 'Arroz blanco',
+      market: 'Armenia, Mercar',
+      periodStart: today,
+      periodEnd: today,
+      pricePerKgCop: 3200,
+      sourceUrl: 'https://www.dane.gov.co/sipsa/boletin.xlsx',
+      responsible: 'Integrante del equipo',
+      consultedAt: today,
+    });
+
+    const response = await compare().expect(200);
+
+    expect((response.body as { wholesaleReference: unknown }).wholesaleReference).toEqual({
+      source: 'SIPSA (DANE)',
+      productName: 'Arroz blanco',
+      market: 'Armenia, Mercar',
+      pricePerKgCop: 3200,
+      periodStart: today,
+      periodEnd: today,
+      url: 'https://www.dane.gov.co/sipsa/boletin.xlsx',
+    });
+    expect(JSON.stringify(response.body)).not.toContain('Integrante del equipo');
   });
 
   it('un producto que no existe responde 404', async () => {

@@ -23,6 +23,7 @@ import {
 import { ProductRequestsQueue } from './application/product-requests-queue';
 import { RequestProduct } from './application/request-product';
 import { SearchProducts } from './application/search-products';
+import { WholesaleReferenceOf } from './application/wholesale-reference-of';
 import { SetProductImage } from './application/set-product-image';
 import { ProductImageController } from './http/product-image.controller';
 import { ProductRequestsController } from './http/product-requests.controller';
@@ -30,6 +31,7 @@ import { ProductsController } from './http/products.controller';
 import { DrizzleProductImportRepository } from './infrastructure/drizzle-product-import-repository';
 import { DrizzleProductRepository } from './infrastructure/drizzle-product-repository';
 import { DrizzleProductRequestRepository } from './infrastructure/drizzle-product-request-repository';
+import { DrizzleWholesaleReferenceRepository } from './infrastructure/drizzle-wholesale-reference-repository';
 import { LocalImageStorage } from './infrastructure/local-image-storage';
 import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
 
@@ -114,9 +116,9 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
     },
     {
       provide: ImportCatalog,
-      inject: [PRODUCT_IMPORT_REPOSITORY],
-      useFactory: (repository: ProductImportRepository): ImportCatalog =>
-        new ImportCatalog(repository),
+      inject: [PRODUCT_IMPORT_REPOSITORY, DATABASE],
+      useFactory: (repository: ProductImportRepository, db: Database): ImportCatalog =>
+        new ImportCatalog(repository, new DrizzleWholesaleReferenceRepository(db)),
     },
     {
       provide: PresentationExists,
@@ -142,6 +144,13 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
       useFactory: (products: ProductRepository): PresentationsForPricing =>
         new PresentationsForPricing(products),
     },
+    // Grill de la #34: la referencia SIPSA para la comparación.
+    {
+      provide: WholesaleReferenceOf,
+      inject: [DATABASE],
+      useFactory: (db: Database): WholesaleReferenceOf =>
+        new WholesaleReferenceOf(new DrizzleWholesaleReferenceRepository(db)),
+    },
     {
       provide: PresentationLabels,
       inject: [PRODUCT_REPOSITORY],
@@ -151,6 +160,7 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
   ],
   exports: [
     ImportCatalog,
+    WholesaleReferenceOf,
     PresentationExists,
     ProductForComparison,
     PresentationFreshness,

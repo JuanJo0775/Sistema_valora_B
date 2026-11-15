@@ -6,6 +6,7 @@ import {
   PresentationLabels,
   PresentationsForPricing,
   ProductForComparison,
+  WholesaleReferenceOf,
 } from '../catalog';
 import {
   EstablishmentDetails,
@@ -38,18 +39,26 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
   providers: [
     {
       provide: CompareProduct,
-      inject: [DATABASE, ProductForComparison, EstablishmentsWithinRadius, ReliabilityOfPrices],
+      inject: [
+        DATABASE,
+        ProductForComparison,
+        EstablishmentsWithinRadius,
+        ReliabilityOfPrices,
+        WholesaleReferenceOf,
+      ],
       useFactory: (
         db: Database,
         products: ProductForComparison,
         stores: EstablishmentsWithinRadius,
         reliability: ReliabilityOfPrices,
+        references: WholesaleReferenceOf,
       ): CompareProduct =>
         new CompareProduct({
           products,
           stores,
           prices: new DrizzleCurrentPrices(db),
           reliability,
+          references,
           clock: { now: () => new Date() },
         }),
     },

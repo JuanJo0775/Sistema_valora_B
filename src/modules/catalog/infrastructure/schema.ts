@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
+  date,
   integer,
   numeric,
   pgSchema,
@@ -109,5 +110,28 @@ export const productRequests = catalog.table(
       'product_requests_status_valid',
       sql`${table.status} in ('pendiente', 'aprobada', 'fusionada', 'rechazada')`,
     ),
+  ],
+);
+
+// Grill de la #34 (RF-014): precio mayorista de SIPSA por kilo, como referencia pública (RN3). Lo carga
+// la semilla a mano (RN1, ADR-011). Sin llave foránea, como los alias: los productos no se borran.
+export const wholesaleReferences = catalog.table(
+  'wholesale_references',
+  {
+    id: uuid('id').primaryKey(),
+    productId: uuid('product_id').notNull(),
+    sipsaName: text('sipsa_name').notNull(),
+    market: text('market').notNull(),
+    periodStart: date('period_start', { mode: 'string' }).notNull(),
+    periodEnd: date('period_end', { mode: 'string' }).notNull(),
+    pricePerKgCop: integer('price_per_kg_cop').notNull(),
+    sourceUrl: text('source_url').notNull(),
+    // RF-014 RN5: trazabilidad de la carga.
+    responsible: text('responsible').notNull(),
+    consultedAt: date('consulted_at', { mode: 'string' }).notNull(),
+  },
+  (table) => [
+    check('wholesale_references_price_positive', sql`${table.pricePerKgCop} > 0`),
+    check('wholesale_references_period_valid', sql`${table.periodStart} <= ${table.periodEnd}`),
   ],
 );

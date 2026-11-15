@@ -401,6 +401,16 @@ Aplicación de ADR-020 (aceptado ese día), RF-003 y EC-08. El detalle está en 
 - **Semilla:** si `productos.csv` no trae imagen, ya no borra la foto subida.
 - **Pendiente:** borrar el archivo anterior al reemplazar una foto; fotos del comercio (Corte 3).
 
+## Referencia SIPSA (issue #34, 15 de noviembre de 2026)
+
+Aplicación de RF-014 (RN1 a RN5), ADR-011 y PR-20. El detalle está en `docs/decisiones/issue-34-sipsa/`.
+
+- **Carga:** `seed/sipsa.csv`, llenado a mano desde el boletín del DANE y cargado por `pnpm db:seed` (solo filas verificadas, todo o nada, sin duplicar). Sin descarga automática.
+- **Dónde vive:** `catalog.wholesale_references` (migración `0022`); `imports` no puede depender del núcleo, así que la referencia es un dato del producto. `comparison` la lee con `WholesaleReferenceOf`.
+- **Comparable (RN2):** solo productos de peso (regla `acceptsWholesaleReference`); se muestra si su periodo terminó hace 30 días o menos (`isRecentReference`).
+- **Cómo se ve (RN3):** `wholesaleReference` aparte en la comparación; no entra al orden ni a `isCheapest`; no muestra al responsable de la carga.
+- **Fuera:** precios iniciales en la semilla (llegan como reportes) y la muestra de exactitud PR-22 (#93).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

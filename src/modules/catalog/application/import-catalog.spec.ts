@@ -24,7 +24,7 @@ function setup() {
     listProductIds: () => Promise.resolve([]),
     listCategoryCodes: () => Promise.resolve([]),
   };
-  return { saved, importCatalog: new ImportCatalog(repository) };
+  return { saved, importCatalog: new ImportCatalog(repository, { save: () => Promise.resolve() }) };
 }
 
 describe('importar un producto al catálogo (issue #59)', () => {

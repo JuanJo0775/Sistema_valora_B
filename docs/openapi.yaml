@@ -1533,6 +1533,22 @@ components:
             Siempre separadas del resultado; no alteran el orden. Vacío hasta el módulo comercial
             (corte 3).
           items: { $ref: '#/components/schemas/Promotion' }
+        wholesaleReference:
+          type: object
+          description: >-
+            Opcional. Precio mayorista por kilo publicado por SIPSA (DANE), cargado a mano por el equipo
+            (RF-014, ADR-011). Es una referencia pública: nunca es precio de una tienda, no entra al orden
+            ni a isCheapest. Solo para productos que se venden por peso, y solo si su periodo terminó hace
+            30 días o menos (#34).
+          required: [source, productName, market, pricePerKgCop, periodStart, periodEnd, url]
+          properties:
+            source: { type: string, enum: ['SIPSA (DANE)'] }
+            productName: { type: string, description: Nombre del producto en el boletín SIPSA. }
+            market: { type: string, example: 'Armenia, Mercar' }
+            pricePerKgCop: { type: integer, minimum: 1 }
+            periodStart: { type: string, format: date }
+            periodEnd: { type: string, format: date }
+            url: { type: string, format: uri, description: Boletín de donde salió el dato. }
     ReportCreate:
       type: object
       required: [presentationId, establishmentId, priceCop, observedAt]

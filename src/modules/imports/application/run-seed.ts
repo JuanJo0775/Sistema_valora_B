@@ -1,16 +1,27 @@
 import type { Unit } from '../../../domain/unit-price';
-import type { ImportCatalog, ProductImport } from '../../catalog';
+import type { ImportCatalog, ProductImport, WholesaleReference } from '../../catalog';
 import type {
   EstablishmentImport,
   EstablishmentType,
   ImportEstablishments,
 } from '../../establishments';
-import { isVerifiedProduct, isVerifiedStore, productErrors, storeErrors, text } from './seed-rows';
+import {
+  isVerifiedProduct,
+  isVerifiedReference,
+  isVerifiedStore,
+  productErrors,
+  referenceErrors,
+  storeErrors,
+  text,
+} from './seed-rows';
 import type { SeedRow, SeedSource } from './seed-source';
 import { stableId } from './stable-id';
 
 // Lo que la semilla usa de catalog y establishments, a través de su interfaz pública.
-export type SeedCatalog = Pick<ImportCatalog, 'save' | 'listProductIds' | 'listCategoryCodes'>;
+export type SeedCatalog = Pick<
+  ImportCatalog,
+  'save' | 'saveReference' | 'listProductIds' | 'listCategoryCodes'
+>;
 export type SeedStores = Pick<ImportEstablishments, 'save' | 'listIds'>;
 
 export interface SeedFailure {
@@ -22,6 +33,8 @@ export interface SeedSummary {
   ok: true;
   stores: { saved: number; skipped: number };
   products: { saved: number; presentations: number; skipped: number };
+  // Grill de la #34: referencias SIPSA.
+  references: { saved: number; skipped: number };
   // Grill de la #51, pregunta 4: se informan, nunca se borran.
   notInFiles: { stores: number; products: number };
 }
@@ -38,11 +51,14 @@ export class RunSeed {
     const productRows = await this.source.readProducts();
     const verifiedStores = storeRows.filter(isVerifiedStore);
     const verifiedProducts = productRows.filter(isVerifiedProduct);
+    const referenceRows = await this.source.readReferences();
+    const verifiedReferences = referenceRows.filter(isVerifiedReference);
 
     // Todo o nada: con una sola fila inválida no se guarda nada y se listan todos los errores.
     const errors = [
       ...productErrors(verifiedProducts, await this.catalog.listCategoryCodes()),
       ...storeErrors(verifiedStores),
+      ...referenceErrors(verifiedReferences, productUnits(verifiedProducts), productId),
     ];
     if (errors.length > 0) return { ok: false, errors };
 
@@ -51,6 +67,8 @@ export class RunSeed {
 
     for (const store of stores) await this.stores.save(store);
     for (const product of products) await this.catalog.save(product);
+    const references = verifiedReferences.map(toReference);
+    for (const reference of references) await this.catalog.saveReference(reference);
 
     const storeIdsInFile = new Set(storeRows.map(storeId));
     const productIdsInFile = new Set(productRows.map(productId));
@@ -64,6 +82,10 @@ export class RunSeed {
         saved: products.length,
         presentations: verifiedProducts.length,
         skipped: productRows.length - verifiedProducts.length,
+      },
+      references: {
+        saved: references.length,
+        skipped: referenceRows.length - verifiedReferences.length,
       },
       notInFiles: {
         stores: missing(await this.stores.listIds(), storeIdsInFile),
@@ -87,6 +109,36 @@ function toStore(row: SeedRow): EstablishmentImport {
     ...(address === '' ? {} : { address }),
     lat: Number(text(row, 'lat')),
     lng: Number(text(row, 'lng')),
+  };
+}
+
+// El nombre y la unidad de cada producto verificado, para validar sus referencias SIPSA.
+function productUnits(rows: SeedRow[]): Map<string, { name: string; unit: Unit }> {
+  const units = new Map<string, { name: string; unit: Unit }>();
+  for (const row of rows) {
+    if (!units.has(productId(row))) {
+      units.set(productId(row), { name: text(row, 'producto'), unit: text(row, 'unidad') as Unit });
+    }
+  }
+  return units;
+}
+
+// Id fijo de la referencia: producto, mercado e inicio del periodo (repetir la semilla no duplica).
+function toReference(row: SeedRow): WholesaleReference {
+  const product = productId(row);
+  const market = text(row, 'mercado');
+  const periodStart = text(row, 'inicio_periodo');
+  return {
+    id: stableId('wholesale-reference', product, market.toLowerCase(), periodStart),
+    productId: product,
+    sipsaName: text(row, 'producto_sipsa'),
+    market,
+    periodStart,
+    periodEnd: text(row, 'fin_periodo'),
+    pricePerKgCop: Number(text(row, 'precio_kg')),
+    sourceUrl: text(row, 'url_fuente'),
+    responsible: text(row, 'responsable'),
+    consultedAt: text(row, 'fecha_consulta'),
   };
 }
 
