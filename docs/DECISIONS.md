@@ -270,7 +270,7 @@ Aplicación de RF-002, RF-013 (RN6), RNF-010, PR-14 y EC-08. El detalle está en
 - **Suspensión:** sin rutas nuevas. `observar_cuentas` suspende al autor del reporte; un tercer `descartar` seguido sobre reportes del mismo autor también (RN6, regla `suspensionAfter` en `src/domain/suspension.ts`: un `aprobar` corta la racha, y vuelve a suspender en el sexto). Dura 7 días (provisional), revoca todas las sesiones y una nueva la extiende sin acortarla.
 - **Integración:** `reliability` publica `ReporterSuspensionRequested` v1 (clave seudónima, motivo, fecha de fin) en la transacción de la decisión; `identity` lo escucha. `identity.accounts` gana `reporter_key` (la guarda `ReporterIdentity` al calcularla) y `suspended_until`.
 - **Acceso:** el login de una cuenta suspendida responde 403 `ACCOUNT_SUSPENDED` solo con la contraseña correcta; una sesión de una cuenta suspendida responde 401. **Cambiado en la #71:** ahora la cuenta suspendida entra con una sesión limitada.
-- **Evidencia:** matriz de 30 casos y guardián de rutas (`docs/calidad/matriz-autorizacion.md`).
+- **Evidencia:** matriz de 30 casos (80 desde la #26) y guardián de rutas (`docs/calidad/matriz-autorizacion.md`).
 - **Fuera de alcance:** cambio de rol auditado y creación de moderadores (issue aparte); comercio limitado a su tienda (Corte 3).
 
 ## Cambio de rol auditado (issue #73, 14 de noviembre de 2026)
@@ -358,6 +358,17 @@ Aplicación de RF-005 (RN1, RN3, RN4, RN7) y EC-08. El detalle está en `docs/de
 - **Ciclo:** `POST /v1/establishment-proposals` (reportante, pendiente, no aparece en el mapa); `GET /v1/moderation/store-proposals` con posibles duplicados y marca de zona; decisión `aprobar` (crea la tienda con el id de la propuesta), `fusionar` (con una tienda existente) o `rechazar`, con motivo.
 - **Duplicados:** nombre equivalente (sin tildes, mayúsculas ni palabras comunes; las palabras de uno contenidas en el otro) a menos de 50 m. **Zona:** rectángulo aproximado del Quindío; fuera, la propuesta llega marcada. Valores provisionales, reglas en `src/domain/store-proposal.ts`.
 - **Persistencia:** `establishments.store_proposals` (migración `0018`), con la clave seudónima de quien propone y del moderador. La prueba de privacidad del esquema ahora acepta también la ubicación de una tienda propuesta.
+
+## Propuestas de productos, alias e imágenes (issue #26, 15 de noviembre de 2026)
+
+Aplicación de RF-003 (RN2, RN3, RN4), RF-004, ADR-020 (propuesto) y EC-08. El detalle está en `docs/decisiones/issue-26-propuestas-de-productos/`.
+
+- **Imágenes:** solo un enlace con su fuente (`open_food_facts` o `equipo`) y su atribución, cargado desde `productos.csv`. Sin imagen, el frontend muestra la ilustración genérica. Subir fotos queda en una issue aparte (depende de ADR-012 y ADR-020).
+- **Alias:** vienen de la columna `alias` de la semilla y de cada fusión (el nombre propuesto queda como alias). La búsqueda también mira los alias.
+- **Ciclo:** `POST /v1/product-requests` (reportante, pendiente, no aparece en la búsqueda; 409 `BARCODE_TAKEN` si el código ya es de un producto); `GET /v1/moderation/product-requests` con hasta 5 posibles duplicados; decisión `aprobar` (crea el producto con el id de la propuesta), `fusionar` (respeta la base de unidad de la #59) o `rechazar`, con motivo.
+- **Duplicados:** los primeros 5 resultados de la búsqueda con el nombre y la marca. Como la búsqueda exige todas las palabras, solo sugiere los casi idénticos; el moderador busca los demás.
+- **Código tomado mientras esperaba:** aprobar o fusionar responde 409 `BARCODE_TAKEN`; la propuesta solo se puede rechazar.
+- **Persistencia:** `catalog.product_aliases` y las columnas de imagen (migración `0019`), y `catalog.product_requests` (migración `0020`), con la clave seudónima de quien propone y del moderador.
 
 ## Regla de cambio
 

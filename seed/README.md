@@ -37,19 +37,23 @@ pnpm db:seed
 
 Si un producto se vende en varios tamaños, se repite el producto en varias filas, una por tamaño. Por ejemplo, «Arroz blanco Diana» de 500 g y de 1 kg son dos filas.
 
-| Columna            | Qué va                                                                                                                                                | Ejemplo                         |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `producto`         | Nombre del producto, sin la marca.                                                                                                                    | `Arroz blanco`                  |
-| `marca`            | Marca tal como aparece en el empaque. Vacía para productos a granel o frescos.                                                                        | `Diana`                         |
-| `categoria`        | Código de una de las 8 categorías (tabla de abajo).                                                                                                   | `grains-groceries`              |
-| `cantidad`         | Número que dice el empaque, por unidad.                                                                                                               | `500`                           |
-| `unidad`           | `g`, `kg`, `ml`, `l` o `und`. Todas las filas de un producto deben compartir la base: peso (`g`, `kg`), volumen (`ml`, `l`) o unidades (`und`) (#59). | `g`                             |
-| `unidades_empaque` | Cuántas unidades trae el paquete. 1 si se vende suelto.                                                                                               | `6` (en «6 × 400 ml»)           |
-| `codigo_barras`    | Los dígitos debajo de las barras del empaque. **Vacío si no lo tienes a la vista.**                                                                   | `7702001023456`                 |
-| `verificar`        | `sí` si el tamaño o la marca son dudosos y hay que confirmarlos en tienda.                                                                            | `sí`                            |
-| `fuente`           | De dónde salió el dato. Al verificarlo, cámbiala, por ejemplo a «Visita a tienda».                                                                    | `Visita al D1 de la Carrera 14` |
-| `responsable`      | Quién verificó la fila (RF-014 RN5).                                                                                                                  | `Nombre de quien revisó`        |
-| `fecha`            | Fecha de la verificación (AAAA-MM-DD).                                                                                                                | `2026-11-12`                    |
+| Columna             | Qué va                                                                                                                                                | Ejemplo                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `producto`          | Nombre del producto, sin la marca.                                                                                                                    | `Arroz blanco`                       |
+| `marca`             | Marca tal como aparece en el empaque. Vacía para productos a granel o frescos.                                                                        | `Diana`                              |
+| `categoria`         | Código de una de las 8 categorías (tabla de abajo).                                                                                                   | `grains-groceries`                   |
+| `cantidad`          | Número que dice el empaque, por unidad.                                                                                                               | `500`                                |
+| `unidad`            | `g`, `kg`, `ml`, `l` o `und`. Todas las filas de un producto deben compartir la base: peso (`g`, `kg`), volumen (`ml`, `l`) o unidades (`und`) (#59). | `g`                                  |
+| `unidades_empaque`  | Cuántas unidades trae el paquete. 1 si se vende suelto.                                                                                               | `6` (en «6 × 400 ml»)                |
+| `codigo_barras`     | Los dígitos debajo de las barras del empaque. **Vacío si no lo tienes a la vista.**                                                                   | `7702001023456`                      |
+| `alias`             | Opcional. Otros nombres con los que la gente busca el producto, separados por `\|`. Se juntan los de todas las filas del producto (#26).              | `Arroz de mesa\|Arroz blanco`        |
+| `imagen_url`        | Opcional. Enlace `https` a la foto del producto (ADR-020, #26). Solo cuenta la primera fila del producto que la trae.                                 | `https://images.openfoodfacts.org/…` |
+| `imagen_fuente`     | Con imagen: `open_food_facts` o `equipo`.                                                                                                             | `open_food_facts`                    |
+| `imagen_atribucion` | Con imagen: a quién se le reconoce la foto y su licencia.                                                                                             | `Open Food Facts, CC BY-SA`          |
+| `verificar`         | `sí` si el tamaño o la marca son dudosos y hay que confirmarlos en tienda.                                                                            | `sí`                                 |
+| `fuente`            | De dónde salió el dato. Al verificarlo, cámbiala, por ejemplo a «Visita a tienda».                                                                    | `Visita al D1 de la Carrera 14`      |
+| `responsable`       | Quién verificó la fila (RF-014 RN5).                                                                                                                  | `Nombre de quien revisó`             |
+| `fecha`             | Fecha de la verificación (AAAA-MM-DD).                                                                                                                | `2026-11-12`                         |
 
 ### Categorías
 

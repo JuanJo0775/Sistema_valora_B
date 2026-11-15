@@ -26,4 +26,4 @@ Moderador; `no-store`. `{ "items": [ { "id", "name", "brand", "categoryCode", "q
 
 ## `POST /v1/moderation/product-requests/{requestId}/decision` (nueva)
 
-Moderador y CSRF. `{ "decision": "aprobar" | "fusionar" | "rechazar", "note": "…", "mergeInto": "uuid" }` (`mergeInto` solo y siempre con `fusionar`). 204; 400; 404 (no existe o ya se decidió); 422 `UNKNOWN_PRODUCT` o `MIXED_UNIT_BASES`.
+Moderador y CSRF. `{ "decision": "aprobar" | "fusionar" | "rechazar", "note": "…", "mergeInto": "uuid" }` (`mergeInto` solo y siempre con `fusionar`). 204; 400; 404 (no existe o ya se decidió); 409 `BARCODE_TAKEN` (otro producto tomó el código mientras esperaba; agregado al construir); 422 `UNKNOWN_PRODUCT` o `MIXED_UNIT_BASES`.

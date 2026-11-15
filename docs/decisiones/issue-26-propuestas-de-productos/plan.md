@@ -3,7 +3,7 @@
 - **Rama:** `feat/catalog-propuestas` (ya creada desde `dev`). Pull request hacia `dev` con `Closes #26`.
 - **Relación:** Corte 2, épica #2. RF-003 (RN2, RN3, RN4), RF-004, PR-21, ADR-020 (propuesto), EC-08.
 - **Decisiones:** `grill.md` (4 preguntas). Contrato: `contrato-api.md`.
-- **Dependencias nuevas:** ninguna. **Migración:** `0019_catalog-proposals` (alias, imagen y propuestas).
+- **Dependencias nuevas:** ninguna. **Migraciones:** `0019_catalog-proposals` (alias e imagen) y `0020_catalog-product-requests` (propuestas).
 - **Fuera de alcance:** subir fotos y su almacenamiento (issue nueva, depende de ADR-012 y ADR-020).
 
 ## Ciclos TDD
