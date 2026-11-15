@@ -51,4 +51,20 @@ describe('cambiar el rol de una cuenta (RF-002 RN1 y RN4)', () => {
       },
     ]);
   });
+
+  it('un moderador devuelve a reportante a otro moderador', async () => {
+    const beto = account('beto@correo.com', 'moderador');
+    const { changes, changeRole } = setup([beto]);
+
+    await changeRole.execute({
+      email: beto.email,
+      role: 'reportante',
+      note: 'Deja el equipo de moderación',
+      changedBy: moderatorId,
+    });
+
+    expect(changes).toMatchObject([
+      { accountId: beto.id, fromRole: 'moderador', toRole: 'reportante' },
+    ]);
+  });
 });
