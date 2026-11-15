@@ -48,6 +48,20 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
     return found?.id ?? null;
   }
 
+  async byReporterKey(
+    reporterKey: string,
+  ): Promise<{ id: string; suspendedUntil: Date | null } | null> {
+    const [found] = await this.db
+      .select({ id: accounts.id, suspendedUntil: accounts.suspendedUntil })
+      .from(accounts)
+      .where(eq(accounts.reporterKey, reporterKey));
+    return found ?? null;
+  }
+
+  async suspend(accountId: string, until: Date): Promise<void> {
+    await this.db.update(accounts).set({ suspendedUntil: until }).where(eq(accounts.id, accountId));
+  }
+
   // Dos registros simultáneos con el mismo correo: el índice único deja uno y el otro no falla, así
   // el resultado sigue sin revelar que la cuenta existe (grill de la #16, pregunta 6).
   async create(account: NewAccount): Promise<void> {

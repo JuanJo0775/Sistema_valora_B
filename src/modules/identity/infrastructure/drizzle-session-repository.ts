@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Role } from '../application/account-repository';
 import type {
@@ -40,5 +40,13 @@ export class DrizzleSessionRepository implements SessionRepository {
 
   async revoke(sessionId: string, at: Date): Promise<void> {
     await this.db.update(sessions).set({ revokedAt: at }).where(eq(sessions.id, sessionId));
+  }
+
+  // Grill de la #33, pregunta 4: al suspender una cuenta se cierran todas sus sesiones abiertas.
+  async revokeAllOf(accountId: string, at: Date): Promise<void> {
+    await this.db
+      .update(sessions)
+      .set({ revokedAt: at })
+      .where(and(eq(sessions.accountId, accountId), isNull(sessions.revokedAt)));
   }
 }
