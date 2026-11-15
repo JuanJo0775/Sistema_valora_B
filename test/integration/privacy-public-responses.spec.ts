@@ -33,7 +33,7 @@ describe('privacidad de las respuestas públicas (EC-08, #36)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals, reliability.bursts, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals, reliability.bursts, catalog.presentations, catalog.products, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,
@@ -100,11 +100,12 @@ describe('privacidad de las respuestas públicas (EC-08, #36)', () => {
       request(server).get(`/v1/products/${productId}/comparison`).query(userLocation),
       request(server).get('/v1/establishments/nearby').query(userLocation),
       request(server).get(`/v1/establishments/${storeId}/prices`),
+      request(server).get(`/v1/products/${productId}/history`),
     ];
     const responses = await Promise.all(publicRoutes);
 
     expect(responses.map((response) => response.status)).toEqual([
-      200, 200, 200, 200, 200, 200, 200,
+      200, 200, 200, 200, 200, 200, 200, 200,
     ]);
     const everything = JSON.stringify(
       responses.map((response): unknown[] => [response.headers, response.body]),

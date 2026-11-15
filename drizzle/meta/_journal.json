@@ -148,6 +148,13 @@
       "when": 1794756119916,
       "tag": "0020_catalog-product-requests",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794759590260,
+      "tag": "0021_comparison-price-history",
+      "breakpoints": true
     }
   ]
 }

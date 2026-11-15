@@ -146,28 +146,62 @@ paths:
       tags: [Comparación]
       operationId: getPriceHistory
       summary: Historial de precios de los últimos 30 días (RF-008)
+      description: >-
+        Pública, sin cuenta (RN3). Una serie por presentación con el precio mínimo, el promedio
+        (redondeado al peso) y la cantidad de reportes de cada día, en hora de Colombia. Los días sin
+        precios no salen. No cuentan los precios descartados por moderación ni los sospechosos que
+        nadie ha aprobado. Sin datos de quién reportó (EC-08). Caché pública de 5 minutos con ETag
+        (EC-04) (#83).
       parameters:
         - $ref: '#/components/parameters/ProductId'
         - name: establishmentId
           in: query
+          description: Opcional; solo los precios de esa tienda.
           schema: { type: string, format: uuid }
       responses:
         '200':
-          description: Serie diaria
+          description: Serie diaria por presentación
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=300' }
+            ETag:
+              schema: { type: string }
           content:
             application/json:
               schema:
                 type: object
+                required: [from, to, presentations]
                 properties:
-                  points:
+                  from: { type: string, format: date, description: Primer día de la ventana (hora de Colombia). }
+                  to: { type: string, format: date, description: Hoy, en hora de Colombia. }
+                  presentations:
                     type: array
                     items:
                       type: object
-                      required: [date, minPriceCop]
+                      required: [presentationId, label, points]
                       properties:
-                        date: { type: string, format: date }
-                        minPriceCop: { type: integer, minimum: 1 }
-                        avgPriceCop: { type: integer, minimum: 1 }
+                        presentationId: { type: string, format: uuid }
+                        label: { type: string }
+                        points:
+                          type: array
+                          items:
+                            type: object
+                            required: [date, minPriceCop, avgPriceCop, reports, source]
+                            properties:
+                              date: { type: string, format: date }
+                              minPriceCop: { type: integer, minimum: 1 }
+                              avgPriceCop: { type: integer, minimum: 1 }
+                              reports: { type: integer, minimum: 1 }
+                              source:
+                                type: string
+                                enum: [reportado]
+                                description: RN1; los precios oficiales llegan con commerce (Corte 3).
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404':
+          description: El producto no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /establishments/nearby:
     get:
       tags: [Establecimientos]

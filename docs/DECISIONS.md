@@ -379,6 +379,17 @@ Aplicación de RF-006 (RN5) y PR-06. El detalle está en `docs/decisiones/issue-
 - **Regla:** `nextAllowedObservation` en `src/domain/report-limits.ts`.
 - **Formato de error:** `ConflictError` en el contrato, solo para este código; el esquema `Error` sigue igual.
 
+## Historial de precios (issue #83, 15 de noviembre de 2026)
+
+Aplicación de RF-008 (RN1, RN3, RN4), EC-02, EC-04 y EC-08. El detalle está en `docs/decisiones/issue-83-historial/`.
+
+- **Datos:** tabla propia `comparison.price_history` (migración `0021`), llenada con `PriceAssessed` y `PriceWithdrawn`; ningún módulo lee tablas de otro.
+- **Serie:** una por presentación, por día en hora de Colombia, de los últimos 30 días, con mínimo, promedio y cantidad. Regla `dailyHistory` en `src/domain/price-history.ts`.
+- **Qué cuenta:** no cuentan los descartados ni los sospechosos sin aprobar.
+- **Fuente:** cada punto dice `reportado`; los oficiales llegan con `commerce` (Corte 3).
+- **Datos anteriores:** `pnpm comparison:rebuild-history` vuelve a entregar los eventos ya entregados solo al receptor del historial (`OutboxRelay.redeliver`); se puede repetir.
+- **Caché:** pública de 5 minutos con ETag.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

@@ -24,8 +24,10 @@ export class EventBus {
 
   // Grill de la #43, pregunta 4: el registro en processed_events y el trabajo del suscriptor van en
   // la misma transacción; si el par (receptor, evento) ya existe, el suscriptor no se vuelve a llamar.
-  async deliver(event: DomainEvent): Promise<void> {
+  async deliver(event: DomainEvent, onlyConsumer?: string): Promise<void> {
     for (const { consumer, handler } of this.subscriptions.get(event.type) ?? []) {
+      // Grill de la #83, pregunta 6: al reconstruir, solo el receptor que se está llenando.
+      if (onlyConsumer !== undefined && consumer !== onlyConsumer) continue;
       await this.db.transaction(async (tx) => {
         const registered = await tx
           .insert(processedEvents)
