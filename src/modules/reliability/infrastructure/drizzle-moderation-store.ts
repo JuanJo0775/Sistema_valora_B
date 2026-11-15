@@ -1,7 +1,13 @@
-import { and, count, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, isNull, or, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Transaction } from '../../../shared/database/database.module';
-import type { LogEntry, ModerationStore, NewFlag, PendingItem } from '../application/stores';
+import type {
+  Decision,
+  LogEntry,
+  ModerationStore,
+  NewFlag,
+  PendingItem,
+} from '../application/stores';
 import { toObservation } from './drizzle-stores';
 import { flags, moderationLog, observations } from './schema';
 
@@ -54,5 +60,16 @@ export class DrizzleModerationStore implements ModerationStore {
       .update(observations)
       .set({ moderation: STATE_AFTER[entry.decision] })
       .where(eq(observations.reportId, entry.reportId));
+  }
+
+  async decisionsAbout(reporterKey: string): Promise<Decision[]> {
+    const rows = await this.db
+      .select({ decision: moderationLog.decision })
+      .from(moderationLog)
+      .innerJoin(observations, eq(observations.reportId, moderationLog.reportId))
+      .where(eq(observations.reporterKey, reporterKey))
+      .orderBy(asc(moderationLog.decidedAt));
+    // La restricción CHECK de moderation_log garantiza que es una de las 3 decisiones.
+    return rows.map((row) => row.decision as Decision);
   }
 }

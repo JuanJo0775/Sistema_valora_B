@@ -59,6 +59,8 @@ export interface ModerationStore {
   pending(): Promise<PendingItem[]>;
   // Registra la decisión en la bitácora y, si aprueba o descarta, cambia el estado de la observación.
   decide(entry: LogEntry): Promise<void>;
+  // Grill de la #33, pregunta 5: las decisiones sobre los reportes de una clave, en orden.
+  decisionsAbout(reporterKey: string): Promise<Decision[]>;
 }
 
 export interface ReputationStore {

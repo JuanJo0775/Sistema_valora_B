@@ -1,6 +1,6 @@
 import { replacesCurrentPrice } from '../../../domain/current-price';
 import { DAY_IN_MILLISECONDS } from '../../../domain/report-window';
-import { SUSPENSION_PARAMS } from '../../../domain/suspension';
+import { SUSPENSION_PARAMS, suspensionAfter } from '../../../domain/suspension';
 import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import { PRICE_ASSESSED } from './assess-reported-price';
@@ -98,7 +98,23 @@ export class DecideModeration {
         }),
       );
     }
-    if (request.decision === 'descartar') await this.discard(reported);
+    if (request.decision === 'descartar') {
+      await this.discard(reported);
+      // RN6 de RF-013: la decisión recién guardada ya está en la lista.
+      const until = suspensionAfter(
+        await moderation.decisionsAbout(reported.reporterKey),
+        decidedAt,
+      );
+      if (until) {
+        await events.publish(
+          createEvent(REPORTER_SUSPENSION_REQUESTED, 1, {
+            reporterKey: reported.reporterKey,
+            reason: 'rechazos_seguidos',
+            suspendedUntil: until.toISOString(),
+          }),
+        );
+      }
+    }
     if (request.decision === 'observar_cuentas') {
       // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.
       await events.publish(
