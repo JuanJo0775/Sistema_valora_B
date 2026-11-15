@@ -2,10 +2,11 @@
 
 Esta carpeta tiene los datos iniciales de Valora (issue #51, RF-014). Los revisa el equipo en Excel y los carga `pnpm db:seed` en la base de `DATABASE_URL`.
 
-| Archivo         | Qué tiene                                                    | De dónde sale                                             |
-| --------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
-| `tiendas.csv`   | Tiendas de Armenia con nombre, tipo, dirección y coordenadas | OpenStreetMap (una consulta autorizada, 12-nov-2026)      |
-| `productos.csv` | Productos y presentaciones de la canasta                     | Propuesta de Claude Code que el equipo verifica en tienda |
+| Archivo         | Qué tiene                                                    | De dónde sale                                              |
+| --------------- | ------------------------------------------------------------ | ---------------------------------------------------------- |
+| `tiendas.csv`   | Tiendas de Armenia con nombre, tipo, dirección y coordenadas | OpenStreetMap (una consulta autorizada, 12-nov-2026)       |
+| `productos.csv` | Productos y presentaciones de la canasta                     | Propuesta de Claude Code que el equipo verifica en tienda  |
+| `sipsa.csv`     | Precios mayoristas por kilo de referencia (opcional)         | Boletín SIPSA del DANE, copiado a mano por el equipo (#34) |
 
 Ninguno trae precios: los precios llegan con los reportes (paso 5).
 
@@ -77,6 +78,25 @@ No se inventan: un código falso podría coincidir con otro producto real. Se co
 1. Las filas con `verificar = sí`: el tamaño exacto (por ejemplo, si la leche en bolsa trae 1100 ml) y que la marca exista con ese producto.
 2. Agregar o quitar productos: la canasta debe ser la que el equipo use en las pruebas con usuarios.
 3. Llenar `codigo_barras`, `responsable` y `fecha`, y cambiar `fuente`.
+
+## `sipsa.csv` (referencia mayorista, #34)
+
+SIPSA es el sistema del DANE que publica **precios mayoristas** de alimentos en las centrales de abasto, en pesos por kilo. En Valora es **solo una referencia**: se muestra aparte en la comparación y **nunca** como precio de una tienda (RF-014 RN3). Se copia a mano desde el boletín; no se descarga de forma automática (ADR-011).
+
+| Columna                          | Qué va                                                                                                                       | Ejemplo                               |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `producto` y `marca`             | Igual que en `productos.csv`, para saber de qué producto es. El producto debe estar verificado y venderse por peso (g o kg). | `Arroz de prueba` y `Marca de prueba` |
+| `producto_sipsa`                 | El nombre tal como aparece en el boletín.                                                                                    | `Arroz blanco importado`              |
+| `mercado`                        | La central de abasto del boletín.                                                                                            | `Armenia, Mercar`                     |
+| `inicio_periodo` y `fin_periodo` | Las fechas del boletín (AAAA-MM-DD).                                                                                         | `2026-11-09` y `2026-11-15`           |
+| `precio_kg`                      | El precio medio por kilo, en pesos, sin puntos.                                                                              | `3200`                                |
+| `url_fuente`                     | El enlace `https` del boletín.                                                                                               | `https://www.dane.gov.co/…`           |
+| `verificar`                      | `no` cuando alguien del equipo revisó la fila.                                                                               | `no`                                  |
+| `responsable` y `fecha_consulta` | Quién la copió y cuándo (RF-014 RN5).                                                                                        | `Nombre` y `2026-11-15`               |
+
+- La comparación solo la muestra si el periodo terminó hace 30 días o menos.
+- Un producto en ml o unidades no es comparable con un precio por kilo: la fila se rechaza.
+- Volver a cargar la misma fila (producto, mercado e inicio del periodo) la actualiza; no la duplica.
 
 ## `tiendas.csv`
 
