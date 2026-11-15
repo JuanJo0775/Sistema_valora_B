@@ -100,4 +100,30 @@ describe('repositorios de identity', () => {
     await expect(accounts.idByReporterKey('f'.repeat(64))).resolves.toBe(ana.id);
     await expect(accounts.idByReporterKey('e'.repeat(64))).resolves.toBeNull();
   });
+
+  // Grill de la #33, pregunta 4.
+  it('suspende una cuenta hasta una fecha y revoca todas sus sesiones abiertas', async () => {
+    await accounts.create(ana);
+    await accounts.rememberReporterKey(ana.id, 'f'.repeat(64));
+    await sessions.create(session);
+    await sessions.create({
+      ...session,
+      id: 'c6666666-6666-4666-8666-222222222222',
+      tokenHash: 'c'.repeat(64),
+    });
+    const until = new Date('2026-11-21T14:00:00Z');
+    const at = new Date('2026-11-14T14:00:00Z');
+
+    await accounts.suspend(ana.id, until);
+    await sessions.revokeAllOf(ana.id, at);
+
+    await expect(accounts.byReporterKey('f'.repeat(64))).resolves.toEqual({
+      id: ana.id,
+      suspendedUntil: until,
+    });
+    await expect(accounts.byReporterKey('e'.repeat(64))).resolves.toBeNull();
+    for (const tokenHash of [session.tokenHash, 'c'.repeat(64)]) {
+      await expect(sessions.findByTokenHash(tokenHash)).resolves.toMatchObject({ revokedAt: at });
+    }
+  });
 });
