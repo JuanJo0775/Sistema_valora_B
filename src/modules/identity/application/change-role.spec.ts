@@ -1,10 +1,12 @@
 import type { Account, RoleChange } from './account-repository';
+import type { AttemptLimiter } from './attempt-limiter';
 import {
   AccountNotFoundError,
   ChangeRole,
   InvalidRoleNoteError,
   OwnRoleError,
   RoleUnchangedError,
+  TooManyAttemptsError,
 } from './change-role';
 
 const now = new Date('2026-11-14T14:00:00Z');
@@ -19,7 +21,26 @@ const account = (email: string, role: Account['role']): Account => ({
   suspendedUntil: null,
 });
 
-function setup(stored: Account[]) {
+// Doble del límite: registra las claves y bloquea las indicadas.
+class FakeLimiter implements AttemptLimiter {
+  readonly recorded: string[] = [];
+
+  constructor(private readonly blocked: Record<string, number> = {}) {}
+
+  retryAfterSeconds(key: string): number | null {
+    return this.blocked[key] ?? null;
+  }
+
+  record(key: string): void {
+    this.recorded.push(key);
+  }
+
+  reset(): void {
+    return;
+  }
+}
+
+function setup(stored: Account[], limiter = new FakeLimiter()) {
   const changes: RoleChange[] = [];
   const changeRole = new ChangeRole({
     accounts: {
@@ -29,6 +50,7 @@ function setup(stored: Account[]) {
         return Promise.resolve();
       },
     },
+    limiter,
     clock: { now: () => now },
   });
   return { changes, changeRole };
@@ -125,6 +147,58 @@ describe('cambiar el rol de una cuenta (RF-002 RN1 y RN4)', () => {
         changeRole.execute({ email: 'nadie@correo.com', role: 'moderador', note, changedBy: null }),
       ).rejects.toThrow(AccountNotFoundError);
       expect(changes).toEqual([]);
+    });
+  });
+
+  // Grill de la #73, pregunta 2: que la ruta no sirva para averiguar correos.
+  describe('límite por moderador', () => {
+    it('cada intento de un moderador cuenta para su límite', async () => {
+      const limiter = new FakeLimiter();
+      const { changeRole } = setup([], limiter);
+
+      await expect(
+        changeRole.execute({
+          email: 'nadie@correo.com',
+          role: 'moderador',
+          note,
+          changedBy: moderatorId,
+        }),
+      ).rejects.toThrow(AccountNotFoundError);
+
+      expect(limiter.recorded).toEqual([`cambio-de-rol:${moderatorId}`]);
+    });
+
+    it('al pasar el límite responde con los segundos que faltan, sin buscar la cuenta', async () => {
+      const ana = account('ana@correo.com', 'reportante');
+      const { changes, changeRole } = setup(
+        [ana],
+        new FakeLimiter({ [`cambio-de-rol:${moderatorId}`]: 300 }),
+      );
+
+      const attempt = changeRole.execute({
+        email: ana.email,
+        role: 'moderador',
+        note,
+        changedBy: moderatorId,
+      });
+
+      await expect(attempt).rejects.toThrow(TooManyAttemptsError);
+      await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 300 });
+      expect(changes).toEqual([]);
+    });
+
+    it('el sistema no tiene límite', async () => {
+      const limiter = new FakeLimiter();
+      const { changeRole } = setup([account('ana@correo.com', 'reportante')], limiter);
+
+      await changeRole.execute({
+        email: 'ana@correo.com',
+        role: 'moderador',
+        note,
+        changedBy: null,
+      });
+
+      expect(limiter.recorded).toEqual([]);
     });
   });
 });
