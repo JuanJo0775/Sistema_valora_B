@@ -34,10 +34,30 @@ class InMemoryReportRepository implements ReportRepository {
     return Promise.resolve(
       this.reports
         .filter((report) => report.reporterId === reporterId && report.receivedAt > since)
-        .map(({ id, presentationId, establishmentId, receivedAt }) => ({
+        .map(({ id, presentationId, establishmentId, observedAt, receivedAt }) => ({
           id,
           presentationId,
           establishmentId,
+          observedAt,
+          receivedAt,
+        })),
+    );
+  }
+
+  observedBetween(reporterId: string, from: Date, to: Date): Promise<RecentReport[]> {
+    return Promise.resolve(
+      this.reports
+        .filter(
+          (report) =>
+            report.reporterId === reporterId &&
+            report.observedAt >= from &&
+            report.observedAt <= to,
+        )
+        .map(({ id, presentationId, establishmentId, observedAt, receivedAt }) => ({
+          id,
+          presentationId,
+          establishmentId,
+          observedAt,
           receivedAt,
         })),
     );

@@ -119,12 +119,14 @@ describe('repositorio de reportes de pricing', () => {
         id: of('b', 20).id,
         presentationId: report.presentationId,
         establishmentId: report.establishmentId,
+        observedAt: report.observedAt,
         receivedAt: at(20),
       },
       {
         id: of('c', 40).id,
         presentationId: report.presentationId,
         establishmentId: report.establishmentId,
+        observedAt: report.observedAt,
         receivedAt: at(40),
       },
     ]);

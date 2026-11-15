@@ -31,6 +31,7 @@ export interface RecentReport {
   id: string;
   presentationId: string;
   establishmentId: string;
+  observedAt: Date;
   receivedAt: Date;
 }
 
@@ -41,6 +42,8 @@ export interface ReportRepository {
   save(report: NewReport, events: DomainEvent[]): Promise<SavedReport>;
   // Los reportes de una cuenta que llegaron después de `since`, del más viejo al más nuevo.
   recentOf(reporterId: string, since: Date): Promise<RecentReport[]>;
+  // Grill de la #30: los reportes de una cuenta observados entre `from` y `to` (ambos incluidos).
+  observedBetween(reporterId: string, from: Date, to: Date): Promise<RecentReport[]>;
 }
 
 export const REPORT_REPOSITORY = Symbol('REPORT_REPOSITORY');
