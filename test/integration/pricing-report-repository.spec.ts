@@ -140,4 +140,43 @@ describe('repositorio de reportes de pricing', () => {
     );
     expect(outbox.rows).toEqual([{ type: 'PriceReported' }, { type: 'ReportBurstDetected' }]);
   });
+
+  // Grill de la #30, pregunta 2: los límites cuentan por la hora de observación.
+  it('da los reportes de una cuenta observados entre dos fechas, con su hora de observación', async () => {
+    const at = (hour: number) => new Date(Date.UTC(2026, 10, 15, hour));
+    const of = (id: string, hour: number, reporterId = report.reporterId): NewReport => ({
+      ...report,
+      id: `a1111111-1111-4111-8111-${id.repeat(12)}`,
+      idempotencyKey: `a4444444-4444-4444-8444-${id.repeat(12)}`,
+      observedAt: at(hour),
+      // Todos llegan juntos: la consulta no depende de la llegada.
+      receivedAt: at(20),
+      reporterId,
+    });
+    for (const saved of [
+      of('a', 8),
+      of('b', 10),
+      of('c', 12),
+      of('d', 10, 'a6666666-6666-4666-8666-999999999999'),
+    ]) {
+      await repository.save(saved, []);
+    }
+
+    await expect(repository.observedBetween(report.reporterId, at(9), at(12))).resolves.toEqual([
+      {
+        id: of('b', 10).id,
+        presentationId: report.presentationId,
+        establishmentId: report.establishmentId,
+        observedAt: at(10),
+        receivedAt: at(20),
+      },
+      {
+        id: of('c', 12).id,
+        presentationId: report.presentationId,
+        establishmentId: report.establishmentId,
+        observedAt: at(12),
+        receivedAt: at(20),
+      },
+    ]);
+  });
 });
