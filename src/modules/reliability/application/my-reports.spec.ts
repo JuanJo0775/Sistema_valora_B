@@ -77,4 +77,34 @@ describe('mis aportes con su estado (RF-006, grill de la #76)', () => {
   it('sin aportes, la lista está vacía', async () => {
     await expect(setup([]).myReports.list('autora', {})).resolves.toEqual({ items: [] });
   });
+
+  describe('paginación', () => {
+    // 25 aportes, uno por hora: el primero es el más reciente.
+    const many = Array.from({ length: 25 }, (_, index) => authored({}, hoursAgo(index + 1)));
+
+    it('trae 20 por defecto y dice desde dónde pedir los siguientes', async () => {
+      const { pages, myReports } = setup(many);
+
+      const page = await myReports.list('autora', {});
+
+      expect(page.items).toHaveLength(20);
+      expect(page.nextBefore).toEqual(many[19]?.observation.receivedAt);
+      expect(pages).toEqual([{ limit: 20 }]);
+    });
+
+    it('con before trae los anteriores; la última página no dice nextBefore', async () => {
+      const { myReports } = setup(many);
+      const first = await myReports.list('autora', { limit: 20 });
+
+      const second = await myReports.list('autora', {
+        limit: 20,
+        ...(first.nextBefore ? { before: first.nextBefore } : {}),
+      });
+
+      expect(second.items.map((item) => item.reportId)).toEqual(
+        many.slice(20).map((report) => report.observation.reportId),
+      );
+      expect(second).not.toHaveProperty('nextBefore');
+    });
+  });
 });
