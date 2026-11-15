@@ -75,7 +75,6 @@ export interface Comparison {
 // Lo que rankOffers puede leer, junto al resultado que se devuelve.
 interface Candidate extends RankableOffer {
   item: Omit<ComparisonItem, 'isCheapest' | 'reliability' | 'confirmations'>;
-  reportId: string;
   inReview: boolean;
 }
 
@@ -151,10 +150,10 @@ export class CompareProduct {
     const reliability = await this.ports.reliability.of(
       ranked
         .filter((candidate) => !candidate.inReview)
-        .map(({ presentationId, establishmentId, reportId }) => ({
+        .map(({ presentationId, establishmentId, item }) => ({
           presentationId,
           establishmentId,
-          reportId,
+          reportId: item.reportId,
         })),
       ttlDaysFor(product.isFresh),
     );
@@ -201,7 +200,6 @@ export class CompareProduct {
       };
       candidates.push({
         item,
-        reportId: price.reportId,
         inReview: price.status === 'en_revision',
         establishmentId: establishment.id,
         presentationId: item.presentationId,
