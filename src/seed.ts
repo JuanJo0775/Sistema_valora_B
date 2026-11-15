@@ -5,16 +5,19 @@ import { NestFactory } from '@nestjs/core';
 import { ImportsModule, RunSeed } from './modules/imports';
 import { validateEnv } from './shared/config/env.validation';
 import { DatabaseModule } from './shared/database/database.module';
+import { EventsModule } from './shared/events';
 
 // pnpm db:seed: carga las filas verificadas de seed/ en la base de DATABASE_URL (issue #51).
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     DatabaseModule,
+    // Desde la #26, catalog depende de identity, que publica eventos.
+    EventsModule,
     ImportsModule,
   ],
 })
-class SeedModule {}
+export class SeedModule {}
 
 async function seed(): Promise<void> {
   const logger = new Logger('Semilla');
@@ -49,4 +52,5 @@ async function seed(): Promise<void> {
   }
 }
 
-void seed();
+// Solo al ejecutarlo como comando; las pruebas importan SeedModule.
+if (require.main === module) void seed();
