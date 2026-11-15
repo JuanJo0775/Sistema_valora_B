@@ -14,6 +14,8 @@ import { RequestValidationError } from './validation';
 interface ErrorBody {
   code: string;
   message: string;
+  // Solo en el 409 DUPLICATE_REPORT (issue #84).
+  availableFrom?: string;
 }
 
 interface ErrorResponse {
@@ -73,12 +75,24 @@ function ownCode(exception: HttpException): string | undefined {
   return typeof body.code === 'string' ? body.code : undefined;
 }
 
+// Fecha desde la que se acepta otro reporte, si la trae (409 DUPLICATE_REPORT, #84).
+function ownAvailableFrom(exception: HttpException): string | undefined {
+  const body = exception.getResponse();
+  if (typeof body !== 'object' || !('availableFrom' in body)) return undefined;
+  return typeof body.availableFrom === 'string' ? body.availableFrom : undefined;
+}
+
 // Un 409, 403 o 401 pueden traer su propio código y mensaje; los demás usan los fijos.
 function withOwnMessage(exception: HttpException, status: number, known: ErrorBody): ErrorBody {
   if (!OWN_CODE_STATUSES.has(status)) return known;
   const code = ownCode(exception) ?? known.code;
   const hasOwnMessage = !DEFAULT_MESSAGES.has(exception.message);
-  return { code, message: hasOwnMessage ? exception.message : known.message };
+  const availableFrom = ownAvailableFrom(exception);
+  return {
+    code,
+    message: hasOwnMessage ? exception.message : known.message,
+    ...(availableFrom === undefined ? {} : { availableFrom }),
+  };
 }
 
 // Segundos de espera de un 429, si los trae (grill de la #16, pregunta 10).

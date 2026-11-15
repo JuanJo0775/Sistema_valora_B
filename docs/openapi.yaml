@@ -388,10 +388,11 @@ paths:
             Conflicto. code IDEMPOTENCY_KEY_REUSED: la misma Idempotency-Key ya se usó con otro cuerpo o por otra cuenta.
             code DUPLICATE_REPORT: la cuenta ya tiene un reporte de esa presentación en ese
             establecimiento observado a menos de 60 minutos de este (por la hora de observación, no de
-            llegada; valor provisional, #29, #30).
+            llegada; valor provisional, #29, #30). Solo este código trae availableFrom: la hora de
+            observación desde la que se acepta otro reporte; reintentar el mismo nunca pasa (#84).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: '#/components/schemas/ConflictError' }
         '422':
           description: >-
             Regla de negocio incumplida. code INVALID_OBSERVATION_DATE: observedAt está más de 5 minutos
@@ -1274,10 +1275,23 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
   schemas:
+    ConflictError:
+      description: Error con availableFrom, solo en el 409 DUPLICATE_REPORT de POST /reports (#84).
+      type: object
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code: { type: string, example: DUPLICATE_REPORT }
+        message: { type: string }
+        availableFrom:
+          type: string
+          format: date-time
+          description: Hora de observación desde la que se acepta otro reporte de esa presentación en esa tienda.
     Error:
       type: object
       description: >-
-        Única forma de error de la API (issue #41). Solo tiene code y message. Valores de code:
+        Única forma de error de la API (issue #41). Solo tiene code y message; la única excepción es
+        availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84). Valores de code:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), NOT_FOUND (404),
         CONFLICT (409), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,

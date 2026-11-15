@@ -1,4 +1,4 @@
-import { burstAt, REPORT_LIMITS } from './report-limits';
+import { burstAt, nextAllowedObservation, REPORT_LIMITS } from './report-limits';
 
 // Grill de la #30, pregunta 2: la ráfaga cuenta por la hora de observación, no por la de llegada.
 describe('ráfaga por hora de observación (grill de la #30)', () => {
@@ -49,5 +49,22 @@ describe('ráfaga por hora de observación (grill de la #30)', () => {
     expect(check).toMatchObject({ exceeded: false, completes: true });
     expect(check.window).toEqual(hour.map((report) => report.id));
     expect(burstAt(observed(18, at(10, 10), 2), at(10, 50)).completes).toBe(false);
+  });
+});
+
+// Issue #84 (RF-006 RN5): el duplicado dice desde qué hora de observación se acepta un reporte nuevo.
+describe('próxima observación aceptada de una presentación en una tienda (#84)', () => {
+  const at = (hour: number, minute = 0) => new Date(Date.UTC(2026, 10, 15, hour, minute));
+
+  it('un reporte observado a las 10:00 deja reportar de nuevo desde las 11:00', () => {
+    expect(nextAllowedObservation([at(10)], at(10, 20))).toEqual(at(11));
+  });
+
+  it('si la hora siguiente también choca con otro reporte, salta hasta después de ese', () => {
+    expect(nextAllowedObservation([at(11, 30), at(10)], at(10, 20))).toEqual(at(12, 30));
+  });
+
+  it('los reportes lejanos no cuentan', () => {
+    expect(nextAllowedObservation([at(7), at(10)], at(10, 20))).toEqual(at(11));
   });
 });

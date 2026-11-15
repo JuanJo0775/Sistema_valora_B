@@ -220,6 +220,24 @@ describe('registrar un reporte de precio', () => {
       expect(reports.reports).toHaveLength(1);
     });
 
+    // Issue #84 (RF-006 RN5): dice desde qué hora de observación se acepta un reporte nuevo.
+    it('el duplicado dice desde cuándo se puede reportar de nuevo, con la hora de Colombia', async () => {
+      const { registerReport } = setup();
+      await registerReport.execute({ idempotencyKey: 'clave-1', report });
+
+      const attempt = registerReport.execute({
+        idempotencyKey: 'clave-2',
+        report: { ...report, priceCop: 4600 },
+      });
+
+      // Observado a las 13:30 UTC (8:30 en Colombia): se acepta otro desde las 9:30.
+      await expect(attempt).rejects.toMatchObject({
+        availableFrom: new Date('2026-11-12T14:30:00Z'),
+        message:
+          'Ya reportaste esta presentación en esta tienda. Puedes reportarla de nuevo con una observación desde las 09:30.',
+      });
+    });
+
     it('el reintento con la misma clave sigue devolviendo su recibo', async () => {
       const { registerReport } = setup();
       const first = await registerReport.execute({ idempotencyKey: 'clave-1', report });

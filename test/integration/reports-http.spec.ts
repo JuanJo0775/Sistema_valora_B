@@ -243,11 +243,17 @@ describe('POST /v1/reports', () => {
   // Grill de la #29, preguntas 2 y 3.
   describe('límites de aportes (#29)', () => {
     it('la misma presentación en la misma tienda en la misma hora responde 409 DUPLICATE_REPORT', async () => {
-      await post(body()).expect(201);
+      const first = body();
+      await post(first).expect(201);
 
-      const response = await post({ ...body(), priceCop: 4600 }, crypto.randomUUID()).expect(409);
+      const response = await post({ ...first, priceCop: 4600 }, crypto.randomUUID()).expect(409);
 
-      expect(response.body).toMatchObject({ code: 'DUPLICATE_REPORT' });
+      // Issue #84: dice desde qué hora de observación se acepta otro reporte (una hora después).
+      expect(response.body).toEqual({
+        code: 'DUPLICATE_REPORT',
+        message: expect.stringMatching(/con una observación desde las \d{2}:\d{2}\.$/) as unknown,
+        availableFrom: new Date(Date.parse(first.observedAt) + 60 * 60 * 1000).toISOString(),
+      });
     });
 
     it('con 20 reportes en la última hora responde 429 con Retry-After y no guarda el nuevo', async () => {
