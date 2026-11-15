@@ -23,6 +23,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "nest start --entryFile seed",
+    "identity:set-role": "nest start --entryFile set-role --",
     "reliability:evaluate": "jest test/integration/reliability-detection.spec.ts --runInBand"
   },
   "dependencies": {

@@ -78,6 +78,7 @@ function setup(blocked: Record<string, number> = {}, account: Account = ana) {
   const accounts: AccountRepository = {
     findByEmail: (email) => Promise.resolve(email === account.email ? account : null),
     create: () => Promise.reject(new Error('Login no crea cuentas')),
+    applyRoleChange: () => Promise.reject(new Error('Login no cambia roles')),
   };
   const hasher = new FakeHasher();
   const sessions = new InMemorySessions();

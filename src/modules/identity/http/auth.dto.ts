@@ -1,5 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsEmail, IsIn, IsString, Length, MaxLength } from 'class-validator';
+import type { Role } from '../application/account-repository';
+import { ROLE_NOTE_LENGTH } from '../application/change-role';
 import { CURRENT_POLICY_VERSION } from '../application/policy';
 import { normalizeEmail } from '../application/register-account';
 
@@ -33,4 +35,23 @@ export class LoginDto {
   @IsString({ message: 'debe ser texto' })
   @MaxLength(128, { message: 'debe tener como máximo 128 caracteres' })
   password!: string;
+}
+
+// Grill de la #73, pregunta 1: comercio no se asigna hasta el Corte 3.
+const ASSIGNABLE_ROLES: Role[] = ['reportante', 'moderador'];
+const ROLE_NOTE_MESSAGE = `debe tener de ${String(ROLE_NOTE_LENGTH.min)} a ${String(ROLE_NOTE_LENGTH.max)} caracteres`;
+
+// Cuerpo de POST /v1/moderation/roles (contrato de la #73).
+export class ChangeRoleDto {
+  @Transform(toNormalizedEmail)
+  @MaxLength(254, { message: 'debe tener como máximo 254 caracteres' })
+  @IsEmail({}, { message: 'debe ser un correo válido' })
+  email!: string;
+
+  @IsIn(ASSIGNABLE_ROLES, { message: 'debe ser reportante o moderador' })
+  role!: Role;
+
+  @IsString({ message: ROLE_NOTE_MESSAGE })
+  @Length(ROLE_NOTE_LENGTH.min, ROLE_NOTE_LENGTH.max, { message: ROLE_NOTE_MESSAGE })
+  note!: string;
 }

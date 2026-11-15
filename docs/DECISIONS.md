@@ -273,6 +273,15 @@ Aplicación de RF-002, RF-013 (RN6), RNF-010, PR-14 y EC-08. El detalle está en
 - **Evidencia:** matriz de 30 casos y guardián de rutas (`docs/calidad/matriz-autorizacion.md`).
 - **Fuera de alcance:** cambio de rol auditado y creación de moderadores (issue aparte); comercio limitado a su tienda (Corte 3).
 
+## Cambio de rol auditado (issue #73, 14 de noviembre de 2026)
+
+Aplicación de RF-002 (RN1, RN4). El detalle está en `docs/decisiones/issue-73-cambio-de-rol/`.
+
+- **Ruta:** `POST /v1/moderation/roles` (solo moderador, con CSRF): correo, rol (`reportante` o `moderador`) y motivo de 10 a 500 caracteres. Un moderador no cambia su propio rol (409 `OWN_ROLE`); pedir el rol que ya tiene responde 409 `ROLE_UNCHANGED`; un correo desconocido, 404. Límite provisional de 20 cambios por moderador en 15 minutos.
+- **Bitácora:** `identity.role_changes`, inmutable con un trigger, con ids de cuenta (sin correos) y sin llave foránea, para sobrevivir al borrado de una cuenta. Sin autor significa «sistema».
+- **Primer moderador:** comando `pnpm identity:set-role <correo> <rol> "<motivo>"`, con el mismo caso de uso.
+- **Conflicto de interés:** un moderador no decide sobre un reporte cuya clave seudónima es la suya (409 `OWN_REPORT`).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

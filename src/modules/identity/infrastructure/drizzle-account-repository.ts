@@ -7,8 +7,9 @@ import type {
   AccountRepository,
   NewAccount,
   Role,
+  RoleChange,
 } from '../application/account-repository';
-import { accounts } from './schema';
+import { accounts, roleChanges } from './schema';
 
 export class DrizzleAccountRepository implements AccountRepository, AccountCreation {
   // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
@@ -55,6 +56,16 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
 
   async suspend(accountId: string, until: Date): Promise<void> {
     await this.db.update(accounts).set({ suspendedUntil: until }).where(eq(accounts.id, accountId));
+  }
+
+  async applyRoleChange(change: RoleChange): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(accounts)
+        .set({ role: change.toRole })
+        .where(eq(accounts.id, change.accountId));
+      await tx.insert(roleChanges).values(change);
+    });
   }
 
   // Dos registros simultáneos con el mismo correo: el índice único deja uno y el otro no falla, así

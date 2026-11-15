@@ -49,7 +49,7 @@ describe('repositorios de identity', () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    await db.execute(sql`truncate identity.sessions, identity.accounts, identity.role_changes`);
   });
 
   it('guarda una cuenta, la encuentra por correo y no deja repetir el correo', async () => {
@@ -130,5 +130,36 @@ describe('repositorios de identity', () => {
     for (const tokenHash of [session.tokenHash, 'c'.repeat(64)]) {
       await expect(sessions.findByTokenHash(tokenHash)).resolves.toMatchObject({ revokedAt: at });
     }
+  });
+
+  // Grill de la #73, pregunta 3: RF-002 RN4.
+  it('cambia el rol de una cuenta y lo anota en una bitácora que no se puede modificar', async () => {
+    await accounts.create(ana);
+    const moderatorId = 'c5555555-5555-4555-8555-999999999999';
+
+    await accounts.applyRoleChange({
+      accountId: ana.id,
+      fromRole: 'reportante',
+      toRole: 'moderador',
+      changedBy: moderatorId,
+      note: 'Se une al equipo de moderación',
+      changedAt: new Date('2026-11-14T14:00:00Z'),
+    });
+
+    await expect(accounts.findByEmail(ana.email)).resolves.toMatchObject({ role: 'moderador' });
+    const log = await db.execute<{ account_id: string; changed_by: string | null }>(
+      sql`select account_id, from_role, to_role, changed_by, note from identity.role_changes`,
+    );
+    expect(log.rows).toEqual([
+      {
+        account_id: ana.id,
+        from_role: 'reportante',
+        to_role: 'moderador',
+        changed_by: moderatorId,
+        note: 'Se une al equipo de moderación',
+      },
+    ]);
+    await expect(db.execute(sql`update identity.role_changes set note = 'otro'`)).rejects.toThrow();
+    await expect(db.execute(sql`delete from identity.role_changes`)).rejects.toThrow();
   });
 });

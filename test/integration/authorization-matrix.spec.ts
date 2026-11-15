@@ -41,6 +41,17 @@ const routes: Record<string, Route> = {
     path: `/v1/moderation/${someReport}/decision`,
     body: { decision: 'aprobar', note: 'Motivo suficiente para la prueba' },
   },
+  // Grill de la #73: un correo que no existe responde 404 a quien sí tiene permiso.
+  roles: {
+    name: 'POST /v1/moderation/roles',
+    method: 'post',
+    path: '/v1/moderation/roles',
+    body: {
+      email: 'nadie@correo.com',
+      role: 'moderador',
+      note: 'Motivo suficiente para la prueba',
+    },
+  },
   session: { name: 'GET /v1/auth/session', method: 'get', path: '/v1/auth/session' },
   logout: { name: 'POST /v1/auth/logout', method: 'post', path: '/v1/auth/logout' },
 };
@@ -67,6 +78,11 @@ const matrix: [keyof typeof routes, Actor, Expected][] = [
   ['decision', 'moderador', 'permitido'],
   ['decision', 'comercio', 403],
   ['decision', 'suspendida', 401],
+  ['roles', 'sin_sesion', 401],
+  ['roles', 'reportante', 403],
+  ['roles', 'moderador', 'permitido'],
+  ['roles', 'comercio', 403],
+  ['roles', 'suspendida', 401],
   ['session', 'sin_sesion', 401],
   ['session', 'reportante', 'permitido'],
   ['session', 'moderador', 'permitido'],

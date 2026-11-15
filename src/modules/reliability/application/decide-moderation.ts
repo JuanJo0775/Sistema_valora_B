@@ -51,6 +51,16 @@ const latestOf = (candidates: Observation[]): Observation | null =>
     null,
   );
 
+// Grill de la #73, pregunta 5: conflicto de interés; la capa HTTP lo traduce a 409 OWN_REPORT.
+export class OwnReportError extends Error {
+  readonly code = 'OWN_REPORT';
+
+  constructor() {
+    super('Un moderador no decide sobre sus propios reportes; lo decide otro moderador.');
+    this.name = 'OwnReportError';
+  }
+}
+
 // No existe, no está en revisión o ya se decidió: la capa HTTP la traduce a 404 NOT_FOUND.
 export class ReportNotInQueueError extends Error {
   constructor(readonly reportId: string) {
@@ -79,6 +89,7 @@ export class DecideModeration {
     );
     if (!item) throw new ReportNotInQueueError(request.reportId);
     const reported = item.observation;
+    if (reported.reporterKey === request.moderatorKey) throw new OwnReportError();
     const decidedAt = clock.now();
     await moderation.decide({ ...request, note, decidedAt });
     if (request.decision === 'aprobar') {

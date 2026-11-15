@@ -5,6 +5,7 @@ import { DATABASE, type Database, type Transaction } from '../../shared/database
 import { type DomainEvent, EventBus } from '../../shared/events';
 import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/account-repository';
 import type { AttemptLimiter } from './application/attempt-limiter';
+import { ChangeRole } from './application/change-role';
 import type { Clock } from './application/clock';
 import type { PasswordHasher } from './application/password-hasher';
 import { Login } from './application/login';
@@ -15,6 +16,7 @@ import { ResolveSession } from './application/resolve-session';
 import { SESSION_REPOSITORY, type SessionRepository } from './application/session-repository';
 import { SuspendReporter } from './application/suspend-reporter';
 import { AuthController } from './http/auth.controller';
+import { RolesController } from './http/roles.controller';
 import { SessionGuard } from './http/session.guard';
 import { Argon2PasswordHasher } from './infrastructure/argon2-password-hasher';
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository';
@@ -26,7 +28,7 @@ const ATTEMPT_LIMITER = Symbol('ATTEMPT_LIMITER');
 const CLOCK = Symbol('CLOCK');
 
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, RolesController],
   providers: [
     { provide: CLOCK, useValue: { now: () => new Date() } satisfies Clock },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
@@ -87,10 +89,19 @@ const CLOCK = Symbol('CLOCK');
           secret: config.get('REPORTER_KEY_SECRET', { infer: true }),
         }),
     },
+    {
+      provide: ChangeRole,
+      inject: [ACCOUNT_REPOSITORY, ATTEMPT_LIMITER, CLOCK],
+      useFactory: (
+        accounts: AccountRepository,
+        limiter: AttemptLimiter,
+        clock: Clock,
+      ): ChangeRole => new ChangeRole({ accounts, limiter, clock }),
+    },
     SessionGuard,
   ],
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
-  exports: [ResolveSession, SessionGuard, ReporterIdentity],
+  exports: [ResolveSession, SessionGuard, ReporterIdentity, ChangeRole],
 })
 export class IdentityModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}

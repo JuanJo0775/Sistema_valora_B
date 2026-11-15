@@ -18,6 +18,10 @@ class InMemoryAccountRepository implements AccountRepository {
     this.accounts.push(account);
     return Promise.resolve();
   }
+
+  applyRoleChange(): Promise<void> {
+    return Promise.reject(new Error('RegisterAccount no cambia roles'));
+  }
 }
 
 // Doble rápido de Argon2id: cuenta cuántas veces se calculó un hash.
