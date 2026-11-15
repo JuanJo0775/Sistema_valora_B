@@ -38,18 +38,38 @@ export interface NewFlag {
 
 export type Decision = 'aprobar' | 'descartar' | 'observar_cuentas';
 
+// Grill de la #71: la revisión de la #32 o la apelación del autor.
+export type Stage = 'revision' | 'apelacion';
+
 export interface LogEntry {
   reportId: string;
   decision: Decision;
   note: string;
   moderatorKey: string;
   decidedAt: Date;
+  stage: Stage;
+}
+
+// Grill de la #71, pregunta 1: el autor apela una vez, con motivo.
+export interface NewAppeal {
+  reportId: string;
+  note: string;
+  createdAt: Date;
+}
+
+export interface AppealRecord {
+  note: string;
+  createdAt: Date;
+  // null mientras nadie la decide.
+  outcome: 'aceptada' | 'rechazada' | null;
 }
 
 export interface PendingItem {
   observation: Observation;
   // Cuántas cuentas lo marcaron como dudoso.
   flags: number;
+  // Grill de la #71, pregunta 3: si es una apelación pendiente, el motivo del autor.
+  appeal?: { note: string; createdAt: Date };
 }
 
 export interface ModerationStore {
@@ -59,8 +79,14 @@ export interface ModerationStore {
   pending(): Promise<PendingItem[]>;
   // Registra la decisión en la bitácora y, si aprueba o descarta, cambia el estado de la observación.
   decide(entry: LogEntry): Promise<void>;
-  // Grill de la #33, pregunta 5: las decisiones sobre los reportes de una clave, en orden.
+  // Grill de la #33, pregunta 5: las decisiones de revisión sobre los reportes de una clave, en
+  // orden. Grill de la #71, pregunta 4: un descarte revertido por una apelación cuenta como aprobar.
   decisionsAbout(reporterKey: string): Promise<Decision[]>;
+  // Grill de la #71: false si el reporte ya tenía apelación.
+  appeal(appeal: NewAppeal): Promise<boolean>;
+  appealOf(reportId: string): Promise<AppealRecord | null>;
+  // La última decisión de revisión sobre un reporte.
+  revisionOf(reportId: string): Promise<LogEntry | null>;
 }
 
 export interface ReputationStore {

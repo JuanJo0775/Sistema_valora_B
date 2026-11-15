@@ -91,7 +91,7 @@ export class DecideModeration {
     const reported = item.observation;
     if (reported.reporterKey === request.moderatorKey) throw new OwnReportError();
     const decidedAt = clock.now();
-    await moderation.decide({ ...request, note, decidedAt });
+    await moderation.decide({ ...request, note, decidedAt, stage: 'revision' });
     if (request.decision === 'aprobar') {
       // Grill de la #32, pregunta 4: comparison lo vuelve a mostrar como precio normal.
       await events.publish(

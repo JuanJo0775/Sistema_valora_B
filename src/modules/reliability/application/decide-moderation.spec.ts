@@ -7,9 +7,11 @@ import {
   ReportNotInQueueError,
 } from './decide-moderation';
 import type {
+  AppealRecord,
   Decision,
   LogEntry,
   ModerationStore,
+  NewAppeal,
   NewFlag,
   Observation,
   ObservationStore,
@@ -69,10 +71,12 @@ class InMemoryObservations implements ObservationStore {
   }
 }
 
-// Como DrizzleModerationStore: la decisión cambia el estado de la observación.
+// Como DrizzleModerationStore: la decisión cambia el estado de la observación, y las apelaciones
+// pendientes también están en la cola (grill de la #71).
 class InMemoryModeration implements ModerationStore {
   readonly log: LogEntry[] = [];
   readonly flags: NewFlag[] = [];
+  readonly appeals: NewAppeal[] = [];
 
   constructor(private readonly observations: InMemoryObservations) {}
 
@@ -82,30 +86,46 @@ class InMemoryModeration implements ModerationStore {
   }
 
   pending(): Promise<PendingItem[]> {
-    return Promise.resolve(
-      this.observations.saved
-        .map((seen) => ({
-          observation: seen,
-          flags: this.flags.filter((flag) => flag.reportId === seen.reportId).length,
-        }))
-        .filter(
-          (item) =>
-            item.observation.moderation === undefined &&
-            (item.observation.verdict.status === 'sospechoso' || item.flags > 0),
-        ),
-    );
+    const flagsOf = (reportId: string) =>
+      this.flags.filter((flag) => flag.reportId === reportId).length;
+    const inReview = this.observations.saved
+      .map((seen) => ({ observation: seen, flags: flagsOf(seen.reportId) }))
+      .filter(
+        (item) =>
+          item.observation.moderation === undefined &&
+          (item.observation.verdict.status === 'sospechoso' || item.flags > 0),
+      );
+    const appealed = this.appeals
+      .filter((appeal) => !this.appealDecision(appeal.reportId))
+      .flatMap((appeal) => {
+        const seen = this.observations.saved.find((saved) => saved.reportId === appeal.reportId);
+        return seen
+          ? [
+              {
+                observation: seen,
+                flags: flagsOf(seen.reportId),
+                appeal: { note: appeal.note, createdAt: appeal.createdAt },
+              },
+            ]
+          : [];
+      });
+    return Promise.resolve([...inReview, ...appealed]);
   }
 
   decide(entry: LogEntry): Promise<void> {
     this.log.push(entry);
     const seen = this.observations.saved.find((saved) => saved.reportId === entry.reportId);
-    if (seen && entry.decision !== 'observar_cuentas') {
+    const keepsState =
+      entry.decision === 'observar_cuentas' ||
+      (entry.stage === 'apelacion' && entry.decision === 'descartar');
+    if (seen && !keepsState) {
       seen.moderation = entry.decision === 'aprobar' ? 'aprobado' : 'descartado';
     }
     return Promise.resolve();
   }
 
-  // Las decisiones sobre los reportes de una clave, en el orden en que se tomaron.
+  // Las decisiones de revisión sobre los reportes de una clave, en orden; un descarte revertido
+  // por una apelación aceptada cuenta como aprobar.
   decisionsAbout(reporterKey: string): Promise<Decision[]> {
     const authored = new Set(
       this.observations.saved
@@ -113,8 +133,40 @@ class InMemoryModeration implements ModerationStore {
         .map((seen) => seen.reportId),
     );
     return Promise.resolve(
-      this.log.filter((entry) => authored.has(entry.reportId)).map((entry) => entry.decision),
+      this.log
+        .filter((entry) => entry.stage === 'revision' && authored.has(entry.reportId))
+        .map((entry) =>
+          entry.decision === 'descartar' &&
+          this.appealDecision(entry.reportId)?.decision === 'aprobar'
+            ? 'aprobar'
+            : entry.decision,
+        ),
     );
+  }
+
+  appeal(appeal: NewAppeal): Promise<boolean> {
+    const repeated = this.appeals.some((seen) => seen.reportId === appeal.reportId);
+    if (!repeated) this.appeals.push(appeal);
+    return Promise.resolve(!repeated);
+  }
+
+  appealOf(reportId: string): Promise<AppealRecord | null> {
+    const found = this.appeals.find((appeal) => appeal.reportId === reportId);
+    if (!found) return Promise.resolve(null);
+    const decided = this.appealDecision(reportId);
+    const outcome = decided ? (decided.decision === 'aprobar' ? 'aceptada' : 'rechazada') : null;
+    return Promise.resolve({ note: found.note, createdAt: found.createdAt, outcome });
+  }
+
+  revisionOf(reportId: string): Promise<LogEntry | null> {
+    const revisions = this.log.filter(
+      (entry) => entry.reportId === reportId && entry.stage === 'revision',
+    );
+    return Promise.resolve(revisions.at(-1) ?? null);
+  }
+
+  private appealDecision(reportId: string): LogEntry | undefined {
+    return this.log.find((entry) => entry.reportId === reportId && entry.stage === 'apelacion');
   }
 }
 
@@ -199,6 +251,7 @@ describe('decisión de moderación (RF-013)', () => {
         note,
         moderatorKey: 'moderadora',
         decidedAt: now,
+        stage: 'revision',
       },
     ]);
     expect(published).toEqual([
