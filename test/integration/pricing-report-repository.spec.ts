@@ -47,7 +47,7 @@ describe('repositorio de reportes de pricing', () => {
   });
 
   it('guarda el reporte y su evento juntos, y lo encuentra por su clave', async () => {
-    await expect(repository.save(report, event)).resolves.toEqual({ report, created: true });
+    await expect(repository.save(report, [event])).resolves.toEqual({ report, created: true });
 
     await expect(repository.findByIdempotencyKey(report.idempotencyKey)).resolves.toEqual(report);
     const outbox = await db.execute<{ id: string; type: string }>(
@@ -61,8 +61,8 @@ describe('repositorio de reportes de pricing', () => {
     const retryEvent = createEvent('PriceReported', 1, { reportId: retry.id });
 
     const results = await Promise.all([
-      repository.save(report, event),
-      repository.save(retry, retryEvent),
+      repository.save(report, [event]),
+      repository.save(retry, [retryEvent]),
     ]);
 
     // El que no insertó recibe el reporte guardado por el otro.
@@ -93,5 +93,51 @@ describe('repositorio de reportes de pricing', () => {
       sql`select convalidated from pg_constraint where conname = 'reports_reporter_required'`,
     );
     expect(constraint.rows).toEqual([{ convalidated: false }]);
+  });
+
+  // Grill de la #29, preguntas 2 y 3: los reportes recientes de una cuenta.
+  it('da los reportes de una cuenta desde una fecha, sin los de otras cuentas', async () => {
+    const at = (minute: number) => new Date(Date.UTC(2026, 10, 15, 14, minute));
+    const of = (id: string, minute: number, reporterId = report.reporterId): NewReport => ({
+      ...report,
+      id: `a1111111-1111-4111-8111-${id.repeat(12)}`,
+      idempotencyKey: `a4444444-4444-4444-8444-${id.repeat(12)}`,
+      receivedAt: at(minute),
+      reporterId,
+    });
+    for (const saved of [
+      of('a', 0),
+      of('b', 20),
+      of('c', 40),
+      of('d', 30, 'a6666666-6666-4666-8666-999999999999'),
+    ]) {
+      await repository.save(saved, []);
+    }
+
+    await expect(repository.recentOf(report.reporterId, at(10))).resolves.toEqual([
+      {
+        id: of('b', 20).id,
+        presentationId: report.presentationId,
+        establishmentId: report.establishmentId,
+        receivedAt: at(20),
+      },
+      {
+        id: of('c', 40).id,
+        presentationId: report.presentationId,
+        establishmentId: report.establishmentId,
+        receivedAt: at(40),
+      },
+    ]);
+  });
+
+  it('guarda varios eventos con el reporte, en la misma transacción', async () => {
+    const burst = createEvent('ReportBurstDetected', 1, { reportIds: [report.id] });
+
+    await repository.save(report, [event, burst]);
+
+    const outbox = await db.execute<{ type: string }>(
+      sql`select type from shared.outbox order by type`,
+    );
+    expect(outbox.rows).toEqual([{ type: 'PriceReported' }, { type: 'ReportBurstDetected' }]);
   });
 });
