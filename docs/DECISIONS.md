@@ -429,6 +429,16 @@ Aplicación de PR-09 y ADR-002. El detalle está en `docs/decisiones/issue-25-co
 - **Respuestas:** las rutas públicas, el registro de precios con sus errores, la sesión y mis aportes se validan en **modo estricto**: un campo que el contrato no nombra hace fallar la CI (EC-08).
 - **Hallazgo:** `GET /v1/health` no estaba en el contrato; se documentó.
 
+## Análisis estático con SonarQube (issue #24, 15 de noviembre de 2026)
+
+Insumo de MC-E3. Proyecto en SonarQube Cloud (organización `juanjo0775`, plan Free, análisis automático apagado), creado por el equipo.
+
+- **Configuración:** `sonar-project.properties` (código en `src/`, pruebas en `*.spec.ts` y `test/`, cobertura de Jest en `coverage/lcov.info`).
+- **CI:** job **SonarQube** después de **Pruebas**; toma la cobertura como artefacto y espera la regla de calidad (Sonar way). Si no se cumple, el job falla.
+- **Ramas:** la CI corre también al llegar cambios a `dev` y `main`, para que SonarQube tenga con qué comparar cada pull request.
+- **Secreto:** `SONAR_TOKEN` en GitHub; nunca en el repositorio.
+- **Pendiente:** marcar SonarQube como verificación obligatoria en «Proteger dev y main» después del primer análisis en verde.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

@@ -3,6 +3,9 @@ name: CI
 on:
   pull_request:
     branches: [dev, main]
+  # Issue #24: SonarQube necesita analizar dev y main para comparar cada pull request.
+  push:
+    branches: [dev, main]
 
 permissions:
   contents: read
@@ -76,3 +79,38 @@ jobs:
 
       - name: Todas las pruebas con cobertura
         run: pnpm test:cov --ci
+
+      # Issue #24: la cobertura pasa al job SonarQube.
+      - name: Guardar la cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: coverage/lcov.info
+          retention-days: 7
+
+  sonarqube:
+    name: SonarQube
+    needs: pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Historia completa: SonarQube la usa para saber qué código es nuevo.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Traer la cobertura
+        uses: actions/download-artifact@v4
+        with:
+          name: cobertura
+          path: coverage
+
+      # Configuración en sonar-project.properties. Espera la regla de calidad: si no se cumple, el job
+      # falla y el pull request no se puede mezclar cuando la verificación sea obligatoria.
+      - name: Análisis de SonarQube
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
