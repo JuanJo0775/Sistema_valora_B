@@ -28,6 +28,16 @@ export interface ComparisonResponse {
   criteria: { sort: string; radiusKm: number };
   results: ComparisonItemResponse[];
   promotions: [];
+  // Grill de la #34: referencia SIPSA aparte, nunca precio de una tienda.
+  wholesaleReference?: {
+    source: string;
+    productName: string;
+    market: string;
+    pricePerKgCop: number;
+    periodStart: string;
+    periodEnd: string;
+    url: string;
+  };
 }
 
 export function toComparisonResponse(comparison: Comparison): ComparisonResponse {
@@ -57,5 +67,8 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
       observedAt: item.observedAt.toISOString(),
     })),
     promotions: [],
+    ...(comparison.wholesaleReference === undefined
+      ? {}
+      : { wholesaleReference: { ...comparison.wholesaleReference } }),
   };
 }
