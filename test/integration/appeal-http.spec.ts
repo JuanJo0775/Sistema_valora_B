@@ -125,4 +125,37 @@ describe('apelación por HTTP (RF-013 RN4, #71)', () => {
       expect(responses.map((response) => response.status)).toEqual([401, 403, 403]);
     });
   });
+
+  describe('GET /v1/me/reports/{reportId}/status', () => {
+    const status = (as: SignedIn | null, id = reportId) => {
+      const call = request(server).get(`/v1/me/reports/${id}/status`);
+      return as ? call.set('Cookie', as.cookie) : call;
+    };
+
+    it('la autora ve que su reporte fue descartado y hasta cuándo puede apelar, sin caché', async () => {
+      const response = await status(author).expect(200);
+
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body).toEqual({
+        reportId,
+        status: 'descartado',
+        appealableUntil: expect.any(String) as unknown,
+      });
+      expect(JSON.stringify(response.body)).not.toContain('moderadora');
+    });
+
+    it('después de apelar ve la apelación pendiente', async () => {
+      await appeal(author).expect(202);
+
+      const response = await status(author).expect(200);
+
+      expect(response.body).toEqual({ reportId, status: 'apelacion_pendiente' });
+    });
+
+    it('otra cuenta 404; un moderador 403; sin sesión 401', async () => {
+      const responses = await Promise.all([status(stranger), status(moderatorB), status(null)]);
+
+      expect(responses.map((response) => response.status)).toEqual([404, 403, 401]);
+    });
+  });
 });
