@@ -6,9 +6,11 @@ import {
   ImportCatalog,
   PresentationFreshness,
   PresentationLabels,
+  PresentationsForPricing,
   ProductForComparison,
 } from '../../src/modules/catalog';
 import {
+  EstablishmentDetails,
   EstablishmentNames,
   EstablishmentsAround,
   EstablishmentsWithinRadius,
@@ -161,6 +163,58 @@ describe('consultas públicas que usa la comparación (grill de la #15, pregunta
     );
     await expect(app.get(EstablishmentNames).of([nearId, missingId])).resolves.toEqual(
       new Map([[nearId, 'Don José']]),
+    );
+  });
+
+  // Grill de la #28, pregunta 1: los precios de una tienda.
+  it('establishments da el detalle de una tienda por id, o null si no existe', async () => {
+    await app.get(ImportEstablishments).save({
+      id: nearId,
+      name: 'Don José',
+      type: 'barrio',
+      address: 'Cra. 14 # 20-10',
+      lat: 4.535,
+      lng: -75.6811,
+    });
+
+    await expect(app.get(EstablishmentDetails).find(nearId)).resolves.toEqual({
+      id: nearId,
+      name: 'Don José',
+      type: 'barrio',
+      address: 'Cra. 14 # 20-10',
+      lat: 4.535,
+      lng: -75.6811,
+    });
+    await expect(app.get(EstablishmentDetails).find(missingId)).resolves.toBeNull();
+  });
+
+  it('catalog da las presentaciones por id con su producto, su nombre y si la categoría es fresca', async () => {
+    await app.get(ImportCatalog).save({
+      id: productId,
+      name: 'Leche entera',
+      brand: 'Colanta',
+      categoryCode: 'dairy-eggs',
+      presentations: [
+        { id: 'f1111111-1111-4111-8111-aaaaaaaaaaaa', quantity: 1.1, unit: 'l', packCount: 1 },
+      ],
+    });
+
+    await expect(
+      app.get(PresentationsForPricing).of(['f1111111-1111-4111-8111-aaaaaaaaaaaa', missingId]),
+    ).resolves.toEqual(
+      new Map([
+        [
+          'f1111111-1111-4111-8111-aaaaaaaaaaaa',
+          {
+            productId,
+            label: 'Leche entera Colanta · 1.1 l',
+            quantity: 1.1,
+            unit: 'l',
+            packCount: 1,
+            isFresh: true,
+          },
+        ],
+      ]),
     );
   });
 });
