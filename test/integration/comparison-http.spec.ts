@@ -88,6 +88,8 @@ describe('GET /v1/products/{productId}/comparison', () => {
             lng: -75.6811,
             distanceM: expect.closeTo(122, -1) as unknown,
           },
+          // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo.
+          reportId: 'a9999999-9999-4999-8999-999999999999',
           presentationId,
           priceCop: 2000,
           unitPrice: { valueCop: 400, per: '100g' },
