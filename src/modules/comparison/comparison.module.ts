@@ -1,18 +1,24 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { EventBus } from '../../shared/events';
-import { CatalogModule, ProductForComparison } from '../catalog';
-import { EstablishmentsModule, EstablishmentsWithinRadius } from '../establishments';
+import { CatalogModule, PresentationsForPricing, ProductForComparison } from '../catalog';
+import {
+  EstablishmentDetails,
+  EstablishmentsModule,
+  EstablishmentsWithinRadius,
+} from '../establishments';
 import { ReliabilityModule, ReliabilityOfPrices } from '../reliability';
 import { CompareProduct } from './application/compare-product';
+import { StorePrices } from './application/store-prices';
 import { ComparisonController } from './http/comparison.controller';
+import { StorePricesController } from './http/store-prices.controller';
 import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
 import { onPriceAssessed } from './infrastructure/price-assessed-handler';
 import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
-  controllers: [ComparisonController],
+  controllers: [ComparisonController, StorePricesController],
   providers: [
     {
       provide: CompareProduct,
@@ -26,6 +32,23 @@ import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
         new CompareProduct({
           products,
           stores,
+          prices: new DrizzleCurrentPrices(db),
+          reliability,
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: StorePrices,
+      inject: [DATABASE, EstablishmentDetails, PresentationsForPricing, ReliabilityOfPrices],
+      useFactory: (
+        db: Database,
+        stores: EstablishmentDetails,
+        presentations: PresentationsForPricing,
+        reliability: ReliabilityOfPrices,
+      ): StorePrices =>
+        new StorePrices({
+          stores,
+          presentations,
           prices: new DrizzleCurrentPrices(db),
           reliability,
           clock: { now: () => new Date() },
