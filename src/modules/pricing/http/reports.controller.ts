@@ -3,6 +3,7 @@ import {
   ConflictException,
   Controller,
   Headers,
+  HttpException,
   HttpStatus,
   Post,
   Res,
@@ -11,7 +12,12 @@ import {
 import { isUUID } from 'class-validator';
 import { RequestValidationError } from '../../../shared/http/validation';
 import { type AuthenticatedSession, CurrentSession, Roles, SessionGuard } from '../../identity';
-import { IdempotencyKeyReusedError, RegisterReport } from '../application/register-report';
+import {
+  DuplicateReportError,
+  IdempotencyKeyReusedError,
+  RegisterReport,
+  TooManyReportsError,
+} from '../application/register-report';
 import { ReportCreateDto } from './report-create.dto';
 
 // Lo único que se usa de la respuesta de Express: fijar el estado HTTP.
@@ -59,8 +65,15 @@ export class ReportsController {
       response.status(created ? HttpStatus.CREATED : HttpStatus.OK);
       return { ...receipt, receivedAt: receipt.receivedAt.toISOString() };
     } catch (error) {
-      if (error instanceof IdempotencyKeyReusedError) {
+      if (error instanceof IdempotencyKeyReusedError || error instanceof DuplicateReportError) {
         throw new ConflictException({ code: error.code, message: error.message });
+      }
+      // RF-012 RN2: el filtro de errores pone la cabecera Retry-After con estos segundos.
+      if (error instanceof TooManyReportsError) {
+        throw new HttpException(
+          { retryAfterSeconds: error.retryAfterSeconds },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
       }
       throw error;
     }
