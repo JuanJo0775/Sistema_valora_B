@@ -36,6 +36,15 @@ export class Env {
   @IsInt()
   @Min(1)
   OUTBOX_MAX_ATTEMPTS!: number;
+
+  // ADR-020 (#88): carpeta de las fotos subidas (fuera de Git) y su dirección pública, hasta ADR-012.
+  @IsString()
+  @IsNotEmpty()
+  MEDIA_DIR!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  MEDIA_PUBLIC_URL!: string;
 }
 
 export function validateEnv(raw: Record<string, unknown>): Env {
