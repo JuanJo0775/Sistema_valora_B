@@ -13,12 +13,51 @@ export interface Observation {
   observedAt: Date;
   receivedAt: Date;
   verdict: AnomalyResult;
+  // Grill de la #32, pregunta 4: la decisión de moderación, si ya la hubo.
+  moderation?: 'aprobado' | 'descartado';
 }
 
 // Puertos hacia las tablas propias de reliability.
 export interface ObservationStore {
   forPresentation(presentationId: string, establishmentIds: string[]): Promise<Observation[]>;
   save(observation: Observation): Promise<void>;
+}
+
+// Grill de la #32: marcas, cola y bitácora.
+export type FlagReason =
+  'precio_falso' | 'producto_equivocado' | 'establecimiento_equivocado' | 'otro';
+
+export interface NewFlag {
+  reportId: string;
+  flaggerKey: string;
+  reason: FlagReason;
+  comment?: string;
+  createdAt: Date;
+}
+
+export type Decision = 'aprobar' | 'descartar' | 'observar_cuentas';
+
+export interface LogEntry {
+  reportId: string;
+  decision: Decision;
+  note: string;
+  moderatorKey: string;
+  decidedAt: Date;
+}
+
+export interface PendingItem {
+  observation: Observation;
+  // Cuántas cuentas lo marcaron como dudoso.
+  flags: number;
+}
+
+export interface ModerationStore {
+  // false si esa cuenta ya había marcado ese reporte (RN1 de RF-013).
+  flag(flag: NewFlag): Promise<boolean>;
+  // Sospechosos o marcados que todavía no tienen decisión.
+  pending(): Promise<PendingItem[]>;
+  // Registra la decisión en la bitácora y, si aprueba o descarta, cambia el estado de la observación.
+  decide(entry: LogEntry): Promise<void>;
 }
 
 export interface ReputationStore {
