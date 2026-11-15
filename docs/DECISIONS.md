@@ -438,6 +438,8 @@ Insumo de MC-E3. Proyecto en SonarQube Cloud (organización `juanjo0775`, plan F
 - **CI:** job **SonarQube** después de **Pruebas**; toma la cobertura como artefacto y espera la regla de calidad (Sonar way). Si no se cumple, el job falla.
 - **Ramas:** la CI corre también al llegar cambios a `dev` y `main`, para que SonarQube tenga con qué comparar cada pull request.
 - **Secreto:** `SONAR_TOKEN` en GitHub; nunca en el repositorio.
+- **Detalle en la CI:** el paso «Detalle de SonarQube» imprime la regla de calidad, los hallazgos por severidad, los bloqueantes y críticos y los puntos de seguridad por revisar (`.github/scripts/sonar-detalle.sh`).
+- **Hallazgos graves del primer análisis de `dev` y su acción:** `secrets:S6698` (BLOCKER), contraseña de la base de la CI escrita en `ci.yml` → ahora cambia en cada corrida y no queda en el código. `typescript:S4790` (CRITICAL), SHA-1 en `stable-id.ts` → falso positivo: lo exige el UUID versión 5 y no protege datos; se excluye solo en ese archivo, con la razón en `sonar-project.properties`.
 - **Pendiente:** marcar SonarQube como verificación obligatoria en «Proteger dev y main» después del primer análisis en verde.
 
 ## Regla de cambio
