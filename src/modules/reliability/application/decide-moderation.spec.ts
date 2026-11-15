@@ -2,9 +2,11 @@ import type { AnomalyResult } from '../../../domain/anomaly';
 import type { DomainEvent } from '../../../shared/events';
 import {
   DecideModeration,
+  DecisionNotAllowedError,
   InvalidNoteError,
   OwnReportError,
   ReportNotInQueueError,
+  SameModeratorError,
 } from './decide-moderation';
 import type {
   AppealRecord,
@@ -462,6 +464,65 @@ describe('decisión de moderación (RF-013)', () => {
       await discardAll(decide, reports);
 
       expect(suspensions(published)).toEqual([]);
+    });
+  });
+
+  // Grill de la #71: la apelación de un reporte descartado.
+  describe('apelaciones', () => {
+    // Un reporte que la moderadora A descartó y su autor apeló.
+    const appealedSetup = async (extra: Observation[] = []) => {
+      const reported = observation({
+        verdict: suspicious,
+        reporterKey: 'autor-dudoso',
+        priceCop: 2000,
+      });
+      const context = setup([reported, ...extra]);
+      await context.decide.execute({
+        reportId: reported.reportId,
+        decision: 'descartar',
+        note,
+        moderatorKey: 'moderadora-a',
+      });
+      await context.moderation.appeal({
+        reportId: reported.reportId,
+        note: 'El precio sí era ese, está en la etiqueta',
+        createdAt: now,
+      });
+      context.published.length = 0;
+      return { ...context, reported };
+    };
+
+    it('quien descartó no decide la apelación; otra moderadora sí', async () => {
+      const { reported, decide } = await appealedSetup();
+
+      await expect(
+        decide.execute({
+          reportId: reported.reportId,
+          decision: 'aprobar',
+          note,
+          moderatorKey: 'moderadora-a',
+        }),
+      ).rejects.toThrow(SameModeratorError);
+      await decide.execute({
+        reportId: reported.reportId,
+        decision: 'aprobar',
+        note,
+        moderatorKey: 'moderadora-b',
+      });
+    });
+
+    it('observar las cuentas no aplica a una apelación', async () => {
+      const { reported, moderation, decide } = await appealedSetup();
+
+      await expect(
+        decide.execute({
+          reportId: reported.reportId,
+          decision: 'observar_cuentas',
+          note,
+          moderatorKey: 'moderadora-b',
+        }),
+      ).rejects.toThrow(DecisionNotAllowedError);
+      expect(moderation.log.filter((entry) => entry.stage === 'apelacion')).toEqual([]);
     });
   });
 });
