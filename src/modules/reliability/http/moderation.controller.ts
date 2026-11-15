@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Get,
   Header,
@@ -25,6 +26,7 @@ import {
   InvalidNoteError,
   MODERATION_DECIDER,
   type ModerationDecider,
+  OwnReportError,
   ReportNotInQueueError,
 } from '../application/decide-moderation';
 import { ModerationQueue } from '../application/moderation-queue';
@@ -91,6 +93,9 @@ export class ModerationController {
       });
     } catch (error) {
       if (error instanceof ReportNotInQueueError) throw new NotFoundException();
+      if (error instanceof OwnReportError) {
+        throw new ConflictException({ code: error.code, message: error.message });
+      }
       // El DTO mide el texto tal cual; el caso de uso, sin los espacios de los extremos.
       if (error instanceof InvalidNoteError) {
         throw new RequestValidationError(`note: ${error.message}`);
