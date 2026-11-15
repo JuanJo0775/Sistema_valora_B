@@ -1,13 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Account, AccountRepository } from './account-repository';
 import type { AttemptLimiter } from './attempt-limiter';
-import {
-  AccountSuspendedError,
-  InvalidCredentialsError,
-  Login,
-  type LoginInput,
-  TooManyAttemptsError,
-} from './login';
+import { InvalidCredentialsError, Login, type LoginInput, TooManyAttemptsError } from './login';
 import type { PasswordHasher } from './password-hasher';
 import type { NewSession, SessionRepository, StoredSession } from './session-repository';
 
@@ -155,16 +149,17 @@ describe('iniciar sesión', () => {
     expect(limiter.recorded).toEqual(['login-ip:203.0.113.7']);
   });
 
-  // Grill de la #33, pregunta 4.
-  it('una cuenta suspendida no inicia sesión hasta la fecha de fin', async () => {
-    const suspendedUntil = new Date('2026-11-19T14:00:00Z');
-    const { sessions, login } = setup({}, { ...ana, suspendedUntil });
+  // Grill de la #71, pregunta 5 (cambia la pregunta 4 de la #33): una cuenta suspendida inicia
+  // sesión para poder apelar; el guard limita las rutas que puede usar.
+  it('una cuenta suspendida también inicia sesión', async () => {
+    const { sessions, login } = setup(
+      {},
+      { ...ana, suspendedUntil: new Date('2026-11-19T14:00:00Z') },
+    );
 
-    const attempt = login.execute(input());
+    await login.execute(input());
 
-    await expect(attempt).rejects.toThrow(AccountSuspendedError);
-    await expect(attempt).rejects.toMatchObject({ suspendedUntil });
-    expect(sessions.sessions).toHaveLength(0);
+    expect(sessions.sessions).toHaveLength(1);
   });
 
   it('cuando la suspensión ya terminó, la cuenta inicia sesión', async () => {
