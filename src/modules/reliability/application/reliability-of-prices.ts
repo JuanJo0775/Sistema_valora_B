@@ -4,6 +4,7 @@ import {
   reliabilityScore,
 } from '../../../domain/reliability';
 import type { ScoredReport } from '../../../domain/report-window';
+import { isReliable } from './standing';
 import type { ObservationStore, ReputationStore } from './stores';
 
 export interface PriceRef {
@@ -45,10 +46,8 @@ export class ReliabilityOfPrices {
       ]);
       const candidate = inStore.find((seen) => seen.reportId === price.reportId);
       if (!candidate) continue;
-      // Los sospechosos no confirman ni contradicen un precio.
-      const others = inStore.filter(
-        (seen) => seen !== candidate && seen.verdict.status !== 'sospechoso',
-      );
+      // Los que están en revisión o descartados no confirman ni contradicen un precio.
+      const others = inStore.filter((seen) => seen !== candidate && isReliable(seen));
       const reputations = await this.ports.reputations.valuesOf(
         [candidate, ...others].map((seen) => seen.reporterKey),
       );
