@@ -115,3 +115,11 @@ jobs:
         with:
           args: >
             -Dsonar.qualitygate.wait=true
+
+      # Issue #24 (MC-E3): el detalle queda en el registro aunque la regla de calidad falle.
+      - name: Detalle de SonarQube
+        if: always()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash .github/scripts/sonar-detalle.sh
