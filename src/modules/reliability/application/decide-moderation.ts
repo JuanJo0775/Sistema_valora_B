@@ -129,6 +129,8 @@ export class DecideModeration {
           reason: null,
         }),
       );
+      // Grill de la #71, pregunta 4: aceptar la apelación devuelve lo que quitó el descarte.
+      if (stage === 'apelacion') await this.adjustReputation(reported, 'appealAccepted');
     }
     if (request.decision === 'descartar') {
       await this.discard(reported);
@@ -167,11 +169,19 @@ export class DecideModeration {
   }
 
   // Grill de la #32, pregunta 4: el autor pierde reputación y comparison deja de mostrar el precio.
-  private async discard(reported: Observation): Promise<void> {
-    const { observations, reputations, events } = this.ports;
+  private async adjustReputation(
+    reported: Observation,
+    event: 'rejected' | 'appealAccepted',
+  ): Promise<void> {
+    const { reputations } = this.ports;
     const current = await reputations.valuesOf([reported.reporterKey]);
     const value = current.get(reported.reporterKey) ?? RELIABILITY_PARAMS.neutralReputation;
-    await reputations.save(reported.reporterKey, updateReputation(value, 'rejected'));
+    await reputations.save(reported.reporterKey, updateReputation(value, event));
+  }
+
+  private async discard(reported: Observation): Promise<void> {
+    const { observations, events } = this.ports;
+    await this.adjustReputation(reported, 'rejected');
 
     const inStore = await observations.forPresentation(reported.presentationId, [
       reported.establishmentId,
