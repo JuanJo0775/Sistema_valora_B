@@ -33,3 +33,12 @@ export function equivalentStoreNames(a: string, b: string): boolean {
   const [smaller, larger] = first.size <= second.size ? [first, second] : [second, first];
   return [...smaller].every((word) => larger.has(word));
 }
+
+// Grill de la #27, pregunta 3: rectángulo aproximado del Quindío, PROVISIONAL.
+export const SERVICE_AREA = { minLat: 4.05, maxLat: 4.75, minLng: -75.95, maxLng: -75.35 };
+
+// RF-005 RN1: fuera de la zona, la propuesta llega marcada al moderador.
+export function isInServiceArea(point: { lat: number; lng: number }): boolean {
+  const { minLat, maxLat, minLng, maxLng } = SERVICE_AREA;
+  return point.lat >= minLat && point.lat <= maxLat && point.lng >= minLng && point.lng <= maxLng;
+}
