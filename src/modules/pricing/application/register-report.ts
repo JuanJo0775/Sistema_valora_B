@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { assertObservedAtAccepted } from '../../../domain/observation-date';
-import { burstWaitSeconds, REPORT_LIMITS } from '../../../domain/report-limits';
+import { burstWaitSeconds, completesBurst, REPORT_LIMITS } from '../../../domain/report-limits';
 import { createEvent } from '../../../shared/events';
 import type { NewReport, ReportInput, ReportRepository } from './report-repository';
 
@@ -61,6 +61,7 @@ export class IdempotencyKeyReusedError extends Error {
 }
 
 const HOUR_MS = 60 * 60 * 1000;
+export const REPORT_BURST_DETECTED = 'ReportBurstDetected';
 
 // Grill de la #29, pregunta 2: la capa HTTP lo traduce a 409.
 export class DuplicateReportError extends Error {
@@ -122,7 +123,7 @@ export class RegisterReport {
     if (!(await this.deps.establishments.exists(report.establishmentId))) {
       throw new UnknownEstablishmentError('El establecimiento no existe en el directorio.');
     }
-    await this.checkLimits(report, receivedAt);
+    const recentIds = await this.checkLimits(report, receivedAt);
     const newReport = {
       ...report,
       id: randomUUID(),
@@ -146,6 +147,16 @@ export class RegisterReport {
           reporterKey,
           reporterSince,
         }),
+        // RF-012 RN2: el reporte que deja la cuenta en el límite avisa a moderación, solo con la
+        // clave seudónima (EC-08).
+        ...(completesBurst(recentIds.length + 1)
+          ? [
+              createEvent(REPORT_BURST_DETECTED, 1, {
+                reporterKey,
+                reportIds: [...recentIds, newReport.id],
+              }),
+            ]
+          : []),
       ],
     );
     // Dos reintentos simultáneos: el que no insertó responde como reintento.
@@ -154,7 +165,8 @@ export class RegisterReport {
   }
 
   // Grill de la #29: los límites de aportes de una cuenta, contados en la base.
-  private async checkLimits(report: ReportInput, receivedAt: Date): Promise<void> {
+  // Devuelve los reportes de la cuenta en la última hora, para el aviso de ráfaga.
+  private async checkLimits(report: ReportInput, receivedAt: Date): Promise<string[]> {
     const duplicateWindowMs = REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000;
     // La ventana más larga de las dos: la del duplicado o la hora de la ráfaga.
     const since = new Date(receivedAt.getTime() - Math.max(duplicateWindowMs, HOUR_MS));
@@ -172,5 +184,7 @@ export class RegisterReport {
       receivedAt,
     );
     if (wait !== null) throw new TooManyReportsError(wait);
+    const hourStart = receivedAt.getTime() - HOUR_MS;
+    return recent.filter((seen) => seen.receivedAt.getTime() > hourStart).map((seen) => seen.id);
   }
 }
