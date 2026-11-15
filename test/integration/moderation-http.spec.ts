@@ -159,4 +159,77 @@ describe('moderación por HTTP (RF-013)', () => {
       expect(responses.map((response) => response.status)).toEqual([401, 403]);
     });
   });
+
+  describe('POST /v1/moderation/{itemId}/decision', () => {
+    const note = 'El precio no coincide con la foto de la góndola';
+    const decide = (
+      as: SignedIn | null,
+      id = reportId,
+      body: object = { decision: 'aprobar', note },
+    ) => {
+      const call = request(server).post(`/v1/moderation/${id}/decision`).send(body);
+      return as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call;
+    };
+    const flagged = () =>
+      request(server)
+        .post(`/v1/reports/${reportId}/flag`)
+        .set('Cookie', reporter.cookie)
+        .set('X-CSRF-Token', reporter.csrfToken)
+        .send({ reason: 'precio_falso' })
+        .expect(202);
+
+    it('un moderador descarta un reporte de la cola: 204, queda en la bitácora y sale de la cola', async () => {
+      await flagged();
+
+      await decide(moderator, reportId, { decision: 'descartar', note }).expect(204);
+
+      const log = await db.execute(
+        sql`select decision, note, moderator_key from reliability.moderation_log`,
+      );
+      expect(log.rows).toEqual([
+        {
+          decision: 'descartar',
+          note,
+          moderator_key: expect.stringMatching(/^[0-9a-f]{64}$/) as unknown,
+        },
+      ]);
+      const queue = await request(server)
+        .get('/v1/moderation/queue')
+        .set('Cookie', moderator.cookie)
+        .expect(200);
+      expect(queue.body).toEqual({ items: [] });
+    });
+
+    it('sin motivo o con uno corto responde 400 y no se registra', async () => {
+      await flagged();
+
+      const responses = await Promise.all([
+        decide(moderator, reportId, { decision: 'aprobar' }),
+        decide(moderator, reportId, { decision: 'aprobar', note: 'corto' }),
+        decide(moderator, reportId, { decision: 'borrar', note }),
+      ]);
+
+      expect(responses.map((response) => response.status)).toEqual([400, 400, 400]);
+      const log = await db.execute(sql`select 1 from reliability.moderation_log`);
+      expect(log.rows).toEqual([]);
+    });
+
+    it('un reporte que no está en la cola responde 404', async () => {
+      const response = await decide(moderator).expect(404);
+
+      expect(response.body).toMatchObject({ code: 'NOT_FOUND' });
+    });
+
+    it('sin sesión 401; un reportante o sin CSRF 403', async () => {
+      await flagged();
+      const withoutCsrf = request(server)
+        .post(`/v1/moderation/${reportId}/decision`)
+        .set('Cookie', moderator.cookie)
+        .send({ decision: 'aprobar', note });
+
+      const responses = await Promise.all([decide(null), decide(reporter), withoutCsrf]);
+
+      expect(responses.map((response) => response.status)).toEqual([401, 403, 403]);
+    });
+  });
 });
