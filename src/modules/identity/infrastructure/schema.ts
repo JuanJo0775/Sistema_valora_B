@@ -44,3 +44,25 @@ export const sessions = identitySchema.table(
   },
   (table) => [uniqueIndex('sessions_token_hash_idx').on(table.tokenHash)],
 );
+
+// Grill de la #73, pregunta 3 (RF-002 RN4): quién cambió qué rol, cuándo y por qué. Un trigger de la
+// migración rechaza UPDATE y DELETE. Sin llave foránea: la bitácora debe sobrevivir aunque una cuenta
+// se borre (derecho de supresión, Ley 1581). changed_by vacío significa «sistema».
+export const roleChanges = identitySchema.table(
+  'role_changes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    accountId: uuid('account_id').notNull(),
+    fromRole: text('from_role').notNull(),
+    toRole: text('to_role').notNull(),
+    changedBy: uuid('changed_by'),
+    note: text('note').notNull(),
+    changedAt: timestamp('changed_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    check(
+      'role_changes_roles_valid',
+      sql`${table.fromRole} in ('reportante', 'comercio', 'moderador') and ${table.toRole} in ('reportante', 'comercio', 'moderador')`,
+    ),
+  ],
+);
