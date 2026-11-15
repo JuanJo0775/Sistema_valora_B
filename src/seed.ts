@@ -14,7 +14,7 @@ import { DatabaseModule } from './shared/database/database.module';
     ImportsModule,
   ],
 })
-class SeedModule {}
+export class SeedModule {}
 
 async function seed(): Promise<void> {
   const logger = new Logger('Semilla');
@@ -49,4 +49,5 @@ async function seed(): Promise<void> {
   }
 }
 
-void seed();
+// Solo al ejecutarlo como comando; las pruebas importan SeedModule.
+if (require.main === module) void seed();
