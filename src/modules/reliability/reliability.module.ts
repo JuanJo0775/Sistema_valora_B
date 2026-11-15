@@ -5,6 +5,11 @@ import { CatalogModule, PresentationFreshness, PresentationLabels } from '../cat
 import { EstablishmentNames, EstablishmentsAround, EstablishmentsModule } from '../establishments';
 import { IdentityModule } from '../identity';
 import { AssessReportedPrice, type PriceReportedV2 } from './application/assess-reported-price';
+import {
+  DecideModeration,
+  MODERATION_DECIDER,
+  type ModerationDecider,
+} from './application/decide-moderation';
 import { FlagReport } from './application/flag-report';
 import { ModerationQueue } from './application/moderation-queue';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
@@ -49,6 +54,22 @@ const ZONE_RADIUS_METERS = 1000;
         names: EstablishmentNames,
       ): ModerationQueue =>
         new ModerationQueue({ moderation: new DrizzleModerationStore(db), labels, names }),
+    },
+    {
+      provide: MODERATION_DECIDER,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ModerationDecider => ({
+        execute: (request) =>
+          db.transaction((tx) =>
+            new DecideModeration({
+              moderation: new DrizzleModerationStore(tx),
+              observations: new DrizzleObservationStore(tx),
+              reputations: new DrizzleReputationStore(tx),
+              events: { publish: (event) => outbox.publish(tx, event) },
+              clock: { now: () => new Date() },
+            }).execute(request),
+          ),
+      }),
     },
   ],
   exports: [ReliabilityOfPrices],

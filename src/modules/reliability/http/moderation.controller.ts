@@ -1,6 +1,33 @@
-import { Controller, Get, Header, Query, UseGuards } from '@nestjs/common';
-import { Roles, SessionGuard } from '../../identity';
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { RequestValidationError } from '../../../shared/http/validation';
+import {
+  type AuthenticatedSession,
+  CurrentSession,
+  ReporterIdentity,
+  Roles,
+  SessionGuard,
+} from '../../identity';
+import {
+  MODERATION_DECIDER,
+  type ModerationDecider,
+  ReportNotInQueueError,
+} from '../application/decide-moderation';
 import { ModerationQueue } from '../application/moderation-queue';
+import { DecisionDto } from './decision.dto';
 import { QueueQueryDto } from './queue.query';
 
 // Esquema ModerationItem del contrato: nunca quién reportó ni quién marcó (EC-08).
@@ -18,7 +45,11 @@ interface ModerationItemResponse {
 
 @Controller('moderation')
 export class ModerationController {
-  constructor(private readonly queue: ModerationQueue) {}
+  constructor(
+    private readonly queue: ModerationQueue,
+    @Inject(MODERATION_DECIDER) private readonly decider: ModerationDecider,
+    private readonly identities: ReporterIdentity,
+  ) {}
 
   @Get('queue')
   @Header('Cache-Control', 'no-store')
@@ -31,5 +62,35 @@ export class ModerationController {
       limit: query.limit,
     });
     return { items: items.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })) };
+  }
+
+  @Post(':itemId/decision')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionGuard)
+  @Roles('moderador')
+  async decide(
+    @Param(
+      'itemId',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new RequestValidationError('itemId: debe ser un UUID'),
+      }),
+    )
+    itemId: string,
+    @Body() body: DecisionDto,
+    @CurrentSession() session: AuthenticatedSession,
+  ): Promise<void> {
+    // Grill de la #32, pregunta 5: la bitácora guarda la clave seudónima de quien decide.
+    const { reporterKey } = await this.identities.of(session.accountId);
+    try {
+      await this.decider.execute({
+        reportId: itemId,
+        decision: body.decision,
+        note: body.note,
+        moderatorKey: reporterKey,
+      });
+    } catch (error) {
+      if (error instanceof ReportNotInQueueError) throw new NotFoundException();
+      throw error;
+    }
   }
 }

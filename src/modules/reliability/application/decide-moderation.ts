@@ -57,6 +57,11 @@ export class ReportNotInQueueError extends Error {
   }
 }
 
+// La decisión, la reputación y el evento se confirman juntos: el módulo arma DecideModeration dentro
+// de una transacción y la capa HTTP solo ve esto.
+export type ModerationDecider = Pick<DecideModeration, 'execute'>;
+export const MODERATION_DECIDER = Symbol('ModerationDecider');
+
 // RF-013: el moderador decide sobre un reporte de la cola y la decisión queda en la bitácora.
 export class DecideModeration {
   constructor(private readonly ports: DecideModerationPorts) {}
