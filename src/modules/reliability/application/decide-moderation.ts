@@ -1,4 +1,5 @@
-import type { DomainEvent } from '../../../shared/events';
+import { createEvent, type DomainEvent } from '../../../shared/events';
+import { PRICE_ASSESSED } from './assess-reported-price';
 import type { Decision, ModerationStore, ObservationStore, ReputationStore } from './stores';
 
 export interface DecideModerationPorts {
@@ -39,6 +40,24 @@ export class DecideModeration {
     if (note.length < NOTE_LENGTH.min || note.length > NOTE_LENGTH.max) {
       throw new InvalidNoteError();
     }
-    await this.ports.moderation.decide({ ...request, note, decidedAt: this.ports.clock.now() });
+    const { moderation, observations, events, clock } = this.ports;
+    const reported = await observations.byReportId(request.reportId);
+    await moderation.decide({ ...request, note, decidedAt: clock.now() });
+    if (reported && request.decision === 'aprobar') {
+      // Grill de la #32, pregunta 4: comparison lo vuelve a mostrar como precio normal.
+      await events.publish(
+        createEvent(PRICE_ASSESSED, 1, {
+          reportId: reported.reportId,
+          presentationId: reported.presentationId,
+          establishmentId: reported.establishmentId,
+          priceCop: reported.priceCop,
+          priceType: reported.priceType,
+          observedAt: reported.observedAt.toISOString(),
+          receivedAt: reported.receivedAt.toISOString(),
+          verdict: 'normal',
+          reason: null,
+        }),
+      );
+    }
   }
 }
