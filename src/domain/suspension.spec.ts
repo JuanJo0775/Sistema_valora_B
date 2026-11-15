@@ -25,4 +25,27 @@ describe('suspensión preventiva por descartes seguidos (RF-013, RN6)', () => {
       ),
     ).not.toBeNull();
   });
+
+  it.each([4, 5])(
+    'el descarte número %i no suspende otra vez: la racha volvió a empezar',
+    (count) => {
+      expect(suspensionAfter(Array<'descartar'>(count).fill('descartar'), decidedAt)).toBeNull();
+    },
+  );
+
+  it('el sexto descarte seguido suspende de nuevo', () => {
+    expect(suspensionAfter(Array<'descartar'>(6).fill('descartar'), decidedAt)).not.toBeNull();
+  });
+
+  it('la suspensión termina 7 días después de la decisión', () => {
+    expect(suspensionAfter(['descartar', 'descartar', 'descartar'], decidedAt)).toEqual(
+      new Date('2026-11-21T14:00:00Z'),
+    );
+  });
+
+  it('si la última decisión no es un descarte, no suspende por la racha', () => {
+    expect(
+      suspensionAfter(['descartar', 'descartar', 'descartar', 'observar_cuentas'], decidedAt),
+    ).toBeNull();
+  });
 });
