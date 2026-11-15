@@ -91,7 +91,7 @@ function lowestUnitPrice(candidates: Candidate[]): UnitPrice | undefined {
 
 // La #14 acepta precios vistos hasta 5 minutos «en el futuro» por la diferencia de relojes: para la
 // vigencia, esa edad negativa cuenta como cero.
-function freshnessAt(observedAt: Date, now: Date, ttlDays: number): Freshness {
+export function freshnessAt(observedAt: Date, now: Date, ttlDays: number): Freshness {
   const reference = observedAt > now ? observedAt : now;
   return freshnessOf({ observedAt, now: reference, ttlDays });
 }

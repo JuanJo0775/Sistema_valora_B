@@ -11,6 +11,7 @@ export { EstablishmentsAround } from './application/establishments-around';
 export { EstablishmentsWithinRadius } from './application/establishments-within-radius';
 export type {
   AroundQuery,
+  EstablishmentDetail,
   EstablishmentType,
   NearbyEstablishment,
   WithinRadiusQuery,
