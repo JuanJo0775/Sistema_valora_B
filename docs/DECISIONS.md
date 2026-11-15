@@ -346,6 +346,7 @@ Aplicación de RF-007, EC-07, RNF-013, PR-07, PR-08 y ADR-010. El detalle está 
 - **Cambia la #29:** el duplicado y la ráfaga cuentan por la hora de observación, no de llegada (`burstAt` en `src/domain/report-limits.ts`). Al reconectar, la cola ya no choca con el límite.
 - **Medición:** 50 reportes, 150 envíos (repetidos, simultáneos y en desorden): 50 recibidos, 0 duplicados, el precio vigente correcto en cada tienda y p95 de confirmación de alrededor de 1 s en el servidor local.
 - **Regla de reintentos de la cola**, documentada en el contrato de `POST /v1/reports`.
+- **Error corregido:** dos envíos simultáneos con la misma clave hacían que el segundo respondiera 409 `DUPLICATE_REPORT`; ahora responde como reintento.
 - **Límite conocido:** se pueden repartir horas de observación falsas dentro de las 24 h para evitar la ráfaga.
 
 ## Regla de cambio

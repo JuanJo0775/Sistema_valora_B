@@ -11,7 +11,7 @@
 |---|---|---|
 | Reportes recibidos tras reconectar | 100 % | 50 de 50 |
 | Duplicados | 0 | 0 (50 reportes y 50 eventos `PriceReported` para 150 envíos) |
-| p95 de confirmación tras reconectar | 60 s o menos | Alrededor de 1 s (762 ms y 1142 ms en dos corridas locales) |
+| p95 de confirmación tras reconectar | 60 s o menos | Entre 0,8 y 1,8 s en cinco corridas locales |
 | Un reporte tardío no reemplaza uno más reciente | Sí | Cada tienda muestra el reporte observado más tarde |
 
 ## Cómo se midió
@@ -27,6 +27,10 @@ Los límites de la #29 (duplicado y ráfaga) contaban por la hora de **llegada**
 
 - Duplicado: misma cuenta, presentación y tienda con observaciones a menos de 60 minutos.
 - Ráfaga: más de 20 reportes de la cuenta observados dentro de una misma hora, en cualquier orden de llegada.
+
+## Error que encontró la medición
+
+En la primera corrida de la CI, alguna respuesta no fue 200 ni 201 (en local no pasó). La causa, reproducida con una prueba unitaria: con dos envíos **simultáneos** del mismo reporte (misma clave), el segundo buscaba la clave antes de que el primero la guardara, y luego el límite de duplicados veía el reporte recién guardado y respondía 409 `DUPLICATE_REPORT`. Se corrigió en `RegisterReport`: si un límite rechaza el reporte, vuelve a buscar la clave y, si ya existe, responde como reintento (200 con el recibo original). Tiene su prueba unitaria.
 
 ## Qué hace la cola con cada respuesta
 
