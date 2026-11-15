@@ -15,6 +15,7 @@ const session = (change: Partial<StoredSession> = {}): StoredSession => ({
   lastSeenAt: minutesAgo(10),
   expiresAt: new Date('2026-12-11T14:00:00Z'),
   revokedAt: null,
+  accountSuspendedUntil: null,
   ...change,
 });
 
@@ -73,5 +74,14 @@ describe('resolver la sesión de una petición', () => {
 
     await expect(resolve.execute(presented)).resolves.toBeNull();
     expect(sessions.touched).toEqual([]);
+  });
+
+  // Grill de la #33, pregunta 4: aunque la sesión siga abierta, la cuenta suspendida no entra.
+  it('la sesión de una cuenta suspendida no sirve; terminada la suspensión, sí', async () => {
+    const suspended = setup(session({ accountSuspendedUntil: new Date('2026-11-19T14:00:00Z') }));
+    const finished = setup(session({ accountSuspendedUntil: minutesAgo(1) }));
+
+    await expect(suspended.resolve.execute(token)).resolves.toBeNull();
+    await expect(finished.resolve.execute(token)).resolves.not.toBeNull();
   });
 });
