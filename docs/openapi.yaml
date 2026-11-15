@@ -19,8 +19,27 @@ tags:
   - name: Autenticación
   - name: Moderación
   - name: Comercios
+  - name: Operación
 security: []
 paths:
+  /health:
+    get:
+      tags: [Operación]
+      operationId: getHealth
+      summary: La API está en marcha
+      description: >-
+        Pública y sin cuenta. Sirve para comprobar que el proceso responde (despliegue y monitoreo,
+        RNF-011). No revisa la base de datos (#25).
+      responses:
+        '200':
+          description: La API responde
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
   /products:
     get:
       tags: [Catálogo]

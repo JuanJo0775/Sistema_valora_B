@@ -420,6 +420,15 @@ Aplicación de PR-22, RNF-014 y RF-014 (ISO/IEC 25012, exactitud). Decidido en e
 - **Límites del monolito:** `imports` lee la muestra con los mismos ids fijos de la semilla (`seed-ids.ts`); `comparison` ofrece la consulta pública `CurrentPriceOf`; el comando solo las une. La cuenta la hace el dominio (`src/domain/price-accuracy.ts`).
 - **Diferencia:** publicado menos observado, sobre el observado; también se informan los días entre las dos observaciones.
 
+## Prueba de contrato (issue #25, 15 de noviembre de 2026)
+
+Aplicación de PR-09 y ADR-002. El detalle está en `docs/decisiones/issue-25-contrato/grill.md`.
+
+- **Herramienta:** `ajv` 2020 con `ajv-formats` y `yaml` (desarrollo). Ayudante en `test/support/contract.ts`.
+- **Inventario:** toda ruta del código está en el contrato y al revés (salvo `/commerce`, corte 3).
+- **Respuestas:** las rutas públicas, el registro de precios con sus errores, la sesión y mis aportes se validan en **modo estricto**: un campo que el contrato no nombra hace fallar la CI (EC-08).
+- **Hallazgo:** `GET /v1/health` no estaba en el contrato; se documentó.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
