@@ -1,7 +1,7 @@
 # Matriz de autorización por rol
 
 - **Requisitos:** RF-002 (RN3: un reportante no modera), RF-013, RNF-010 (100 % de rutas sensibles con control de rol), PR-14 (20 casos de autorización), EC-08.
-- **Issues:** #33, #73 (cambio de rol), #71 (apelación) y #76 (mis aportes). Fecha: 14 de noviembre de 2026.
+- **Issues:** #33, #73 (cambio de rol), #71 (apelación), #76 (mis aportes) y #27 (propuestas de tiendas). Fecha: 14 de noviembre de 2026.
 - **Cómo se reproduce:** `corepack pnpm exec jest test/integration/authorization-matrix.spec.ts test/integration/route-guardian.spec.ts --runInBand`.
 
 ## Actores
@@ -25,13 +25,16 @@
 | `POST /v1/reports/{reportId}/appeal` | 401 | Permitido | 403 | 403 | Permitido |
 | `GET /v1/me/reports/{reportId}/status` | 401 | Permitido | 403 | 403 | Permitido |
 | `GET /v1/me/reports` | 401 | Permitido | 403 | 403 | Permitido |
+| `POST /v1/establishment-proposals` | 401 | Permitido | 403 | 403 | 403 |
+| `GET /v1/moderation/store-proposals` | 401 | 403 | Permitido | 403 | 403 |
+| `POST /v1/moderation/store-proposals/{proposalId}/decision` | 401 | 403 | Permitido | 403 | 403 |
 | `GET /v1/moderation/queue` | 401 | 403 | Permitido | 403 | 403 |
 | `POST /v1/moderation/{itemId}/decision` | 401 | 403 | Permitido | 403 | 403 |
 | `POST /v1/moderation/roles` | 401 | 403 | Permitido | 403 | 403 |
 | `GET /v1/auth/session` | 401 | Permitido | Permitido | Permitido | Permitido |
 | `POST /v1/auth/logout` | 401 | Permitido | Permitido | Permitido | Permitido |
 
-**50 casos**, todos en verde (`authorization-matrix.spec.ts`). Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
+**65 casos**, todos en verde (`authorization-matrix.spec.ts`). Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
 
 ## Rutas públicas
 
@@ -45,7 +48,7 @@
 - una ruta con sesión no declara `@Roles`, salvo `GET /auth/session` y `POST /auth/logout`, que sirven a cualquier rol;
 - la lista pública nombra una ruta que ya no existe.
 
-Se comprobó que falla al quitar `@Roles` de `POST /reports/{reportId}/flag`. Resultado: **10 de 10 rutas con sesión tienen control** (100 %).
+Se comprobó que falla al quitar `@Roles` de `POST /reports/{reportId}/flag`. Resultado: **13 de 13 rutas con sesión tienen control** (100 %).
 
 ## Fuera de esta matriz
 
