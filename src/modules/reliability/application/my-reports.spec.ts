@@ -19,7 +19,7 @@ const authored = (change: Partial<AuthoredReport> = {}, at = hoursAgo(1)): Autho
     receivedAt: at,
     verdict: { status: 'normal', median: 2500, deviation: 0, references: 3 },
   };
-  return { observation, flags: 0, appeal: null, discardedAt: null, ...change };
+  return { observation, flags: 0, appeal: null, discardedAt: null, burst: false, ...change };
 };
 
 function setup(stored: AuthoredReport[]) {
@@ -72,6 +72,15 @@ describe('mis aportes con su estado (RF-006, grill de la #76)', () => {
         appealableUntil: new Date(hoursAgo(2).getTime() + 7 * 24 * 3_600_000),
       },
     ]);
+  });
+
+  // Grill de la #29, pregunta 3: un reporte de una ráfaga espera la decisión del moderador.
+  it('un aporte que llegó en una ráfaga está en revisión', async () => {
+    const { myReports } = setup([authored({ burst: true })]);
+
+    const page = await myReports.list('autora', {});
+
+    expect(page.items.map((item) => item.status)).toEqual(['en_revision']);
   });
 
   it('sin aportes, la lista está vacía', async () => {

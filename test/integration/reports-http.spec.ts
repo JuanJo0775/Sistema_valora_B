@@ -7,7 +7,8 @@ import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
-import { OutboxRelay } from '../../src/shared/events';
+import { DrizzleReportRepository } from '../../src/modules/pricing/infrastructure/drizzle-report-repository';
+import { OutboxPublisher, OutboxRelay } from '../../src/shared/events';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Presentación y tienda de prueba: solo existen dentro de esta prueba.
@@ -191,6 +192,12 @@ describe('POST /v1/reports', () => {
       { observedAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
       'INVALID_OBSERVATION_DATE',
     ],
+    // Grill de la #29, pregunta 1.
+    [
+      'un precio visto hace más de 24 horas',
+      { observedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString() },
+      'INVALID_OBSERVATION_DATE',
+    ],
   ])('%s responde 422 con su código y no guarda nada', async (_case, change, code) => {
     const response = await post({ ...body(), ...change }).expect(422);
 
@@ -231,5 +238,43 @@ describe('POST /v1/reports', () => {
     ]);
     expect(reported?.payload['reporterKey']).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.stringify(reported?.payload)).not.toContain(reporter.accountId);
+  });
+
+  // Grill de la #29, preguntas 2 y 3.
+  describe('límites de aportes (#29)', () => {
+    it('la misma presentación en la misma tienda en la misma hora responde 409 DUPLICATE_REPORT', async () => {
+      await post(body()).expect(201);
+
+      const response = await post({ ...body(), priceCop: 4600 }, crypto.randomUUID()).expect(409);
+
+      expect(response.body).toMatchObject({ code: 'DUPLICATE_REPORT' });
+    });
+
+    it('con 20 reportes en la última hora responde 429 con Retry-After y no guarda el nuevo', async () => {
+      const repository = new DrizzleReportRepository(db, app.get(OutboxPublisher));
+      for (let index = 0; index < 20; index += 1) {
+        await repository.save(
+          {
+            id: crypto.randomUUID(),
+            reporterId: reporter.accountId,
+            presentationId,
+            establishmentId: crypto.randomUUID(),
+            priceCop: 4500,
+            priceType: 'normal',
+            observedAt: new Date(Date.now() - 40 * 60 * 1000),
+            receivedAt: new Date(Date.now() - (40 - index) * 60 * 1000),
+            idempotencyKey: crypto.randomUUID(),
+            requestHash: 'huella-de-prueba',
+          },
+          [],
+        );
+      }
+
+      const response = await post(body()).expect(429);
+
+      expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+      const saved = await db.execute(sql`select id from pricing.reports`);
+      expect(saved.rows).toHaveLength(20);
+    });
   });
 });

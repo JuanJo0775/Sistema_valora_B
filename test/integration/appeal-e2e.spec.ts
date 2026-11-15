@@ -14,6 +14,9 @@ import { type SignedIn, signIn } from '../support/sign-in';
 const productId = 'a7777777-7777-4777-8777-222222222222';
 const presentationId = 'a7777777-7777-4777-8777-bbbbbbbbbbbb';
 const storeId = 'a8888888-8888-4888-8888-222222222222';
+// Grill de la #29: una cuenta no reporta la misma presentación en la misma tienda dos veces en una
+// hora. Los primeros reportes de Beto van a tiendas a unos 5 km, fuera del radio de la comparación.
+const farStores = ['a8888888-8888-4888-8888-333333333333', 'a8888888-8888-4888-8888-444444444444'];
 const userLocation = { lat: '4.5339', lng: '-75.6811' };
 
 // Archivo propio: los límites de registro e inicio de sesión cuentan por IP y viven en memoria.
@@ -38,6 +41,15 @@ describe('apelación de punta a punta (RF-013 RN4, #71)', () => {
       categoryCode: 'grains-groceries',
       presentations: [{ id: presentationId, quantity: 500, unit: 'g', packCount: 1 }],
     });
+    for (const [index, id] of farStores.entries()) {
+      await app.get(ImportEstablishments).save({
+        id,
+        name: `Tienda lejana ${String(index)}`,
+        type: 'barrio',
+        lat: 4.58 + index * 0.001,
+        lng: -75.6811,
+      });
+    }
     await app.get(ImportEstablishments).save({
       id: storeId,
       name: 'Tienda de prueba',
@@ -68,13 +80,18 @@ describe('apelación de punta a punta (RF-013 RN4, #71)', () => {
         .set('X-CSRF-Token', as.csrfToken)
         .set(headers)
         .send(body);
-    const reportAs = async (as: SignedIn, priceCop: number, minutesAgo: number) => {
+    const reportAs = async (
+      as: SignedIn,
+      priceCop: number,
+      minutesAgo: number,
+      establishmentId = storeId,
+    ) => {
       const receipt = await post(
         as,
         '/v1/reports',
         {
           presentationId,
-          establishmentId: storeId,
+          establishmentId,
           priceCop,
           observedAt: new Date(Date.now() - minutesAgo * 60 * 1000).toISOString(),
         },
@@ -90,8 +107,8 @@ describe('apelación de punta a punta (RF-013 RN4, #71)', () => {
 
     await reportAs(ana, 4000, 120);
     const betoReports = [
-      await reportAs(beto, 2600, 50),
-      await reportAs(beto, 2550, 40),
+      await reportAs(beto, 2600, 50, farStores[0]),
+      await reportAs(beto, 2550, 40, farStores[1]),
       await reportAs(beto, 2500, 30),
     ];
     expect(await shownPrice()).toBe(2500);

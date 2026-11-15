@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { assertObservedAtAccepted } from '../../../domain/observation-date';
+import { burstWaitSeconds, completesBurst, REPORT_LIMITS } from '../../../domain/report-limits';
 import { createEvent } from '../../../shared/events';
 import type { NewReport, ReportInput, ReportRepository } from './report-repository';
 
@@ -59,6 +60,29 @@ export class IdempotencyKeyReusedError extends Error {
   readonly code = 'IDEMPOTENCY_KEY_REUSED';
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+export const REPORT_BURST_DETECTED = 'ReportBurstDetected';
+
+// Grill de la #29, pregunta 2: la capa HTTP lo traduce a 409.
+export class DuplicateReportError extends Error {
+  readonly code = 'DUPLICATE_REPORT';
+
+  constructor() {
+    super(
+      `Ya reportaste esta presentación en esta tienda en los últimos ${String(REPORT_LIMITS.duplicateWindowMinutes)} minutos.`,
+    );
+    this.name = 'DuplicateReportError';
+  }
+}
+
+// RF-012 RN2 (grill de la #29, pregunta 3): bloqueo temporal; la capa HTTP responde 429.
+export class TooManyReportsError extends Error {
+  constructor(readonly retryAfterSeconds: number) {
+    super('Demasiados reportes en la última hora.');
+    this.name = 'TooManyReportsError';
+  }
+}
+
 // Huella del reporte (grill de la #14, pregunta 6): distingue un reintento de un reporte distinto.
 function hashOf(report: ReportInput): string {
   // Con la cuenta: la misma clave usada por otra cuenta es un conflicto, no un reintento.
@@ -99,6 +123,7 @@ export class RegisterReport {
     if (!(await this.deps.establishments.exists(report.establishmentId))) {
       throw new UnknownEstablishmentError('El establecimiento no existe en el directorio.');
     }
+    const recentIds = await this.checkLimits(report, receivedAt);
     const newReport = {
       ...report,
       id: randomUUID(),
@@ -110,20 +135,56 @@ export class RegisterReport {
     const saved = await this.deps.reports.save(
       newReport,
       // Versión 2 (#31): la clave seudónima y el día de la cuenta; nunca el id ni el correo (EC-08).
-      createEvent(PRICE_REPORTED, 2, {
-        reportId: newReport.id,
-        presentationId: report.presentationId,
-        establishmentId: report.establishmentId,
-        priceCop: report.priceCop,
-        priceType: report.priceType,
-        observedAt: report.observedAt.toISOString(),
-        receivedAt: newReport.receivedAt.toISOString(),
-        reporterKey,
-        reporterSince,
-      }),
+      [
+        createEvent(PRICE_REPORTED, 2, {
+          reportId: newReport.id,
+          presentationId: report.presentationId,
+          establishmentId: report.establishmentId,
+          priceCop: report.priceCop,
+          priceType: report.priceType,
+          observedAt: report.observedAt.toISOString(),
+          receivedAt: newReport.receivedAt.toISOString(),
+          reporterKey,
+          reporterSince,
+        }),
+        // RF-012 RN2: el reporte que deja la cuenta en el límite avisa a moderación, solo con la
+        // clave seudónima (EC-08).
+        ...(completesBurst(recentIds.length + 1)
+          ? [
+              createEvent(REPORT_BURST_DETECTED, 1, {
+                reporterKey,
+                reportIds: [...recentIds, newReport.id],
+              }),
+            ]
+          : []),
+      ],
     );
     // Dos reintentos simultáneos: el que no insertó responde como reintento.
     if (!saved.created) return retryResult(saved.report, requestHash);
     return { receipt: { id: newReport.id, status: 'recibido', receivedAt }, created: true };
+  }
+
+  // Grill de la #29: los límites de aportes de una cuenta, contados en la base.
+  // Devuelve los reportes de la cuenta en la última hora, para el aviso de ráfaga.
+  private async checkLimits(report: ReportInput, receivedAt: Date): Promise<string[]> {
+    const duplicateWindowMs = REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000;
+    // La ventana más larga de las dos: la del duplicado o la hora de la ráfaga.
+    const since = new Date(receivedAt.getTime() - Math.max(duplicateWindowMs, HOUR_MS));
+    const recent = await this.deps.reports.recentOf(report.reporterId, since);
+    const duplicateSince = receivedAt.getTime() - duplicateWindowMs;
+    const duplicate = recent.some(
+      (seen) =>
+        seen.receivedAt.getTime() > duplicateSince &&
+        seen.presentationId === report.presentationId &&
+        seen.establishmentId === report.establishmentId,
+    );
+    if (duplicate) throw new DuplicateReportError();
+    const wait = burstWaitSeconds(
+      recent.map((seen) => seen.receivedAt),
+      receivedAt,
+    );
+    if (wait !== null) throw new TooManyReportsError(wait);
+    const hourStart = receivedAt.getTime() - HOUR_MS;
+    return recent.filter((seen) => seen.receivedAt.getTime() > hourStart).map((seen) => seen.id);
   }
 }

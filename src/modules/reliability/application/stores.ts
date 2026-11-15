@@ -70,6 +70,8 @@ export interface PendingItem {
   flags: number;
   // Grill de la #71, pregunta 3: si es una apelación pendiente, el motivo del autor.
   appeal?: { note: string; createdAt: Date };
+  // Grill de la #29, pregunta 3: llegó en una ráfaga de su cuenta (RF-012 RN2).
+  burst?: true;
 }
 
 // Grill de la #76: un aporte de la cuenta con lo necesario para saber su estado.
@@ -79,6 +81,8 @@ export interface AuthoredReport {
   appeal: AppealRecord | null;
   // Cuándo se descartó en la revisión, si se descartó.
   discardedAt: Date | null;
+  // Grill de la #29: llegó en una ráfaga de su cuenta.
+  burst: boolean;
 }
 
 export interface AuthoredPage {
@@ -104,6 +108,8 @@ export interface ModerationStore {
   revisionOf(reportId: string): Promise<LogEntry | null>;
   // Grill de la #76: los aportes de una clave, el que llegó más tarde primero.
   authoredBy(reporterKey: string, page: AuthoredPage): Promise<AuthoredReport[]>;
+  // Grill de la #29, pregunta 3: los reportes de una ráfaga van a la cola (una vez cada uno).
+  markBurst(reportIds: string[]): Promise<void>;
 }
 
 export interface ReputationStore {

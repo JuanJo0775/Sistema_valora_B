@@ -129,4 +129,16 @@ describe('cola de moderación (RF-013)', () => {
       1,
     );
   });
+
+  // Grill de la #29, pregunta 3 (RF-012 RN2).
+  it('una ráfaga aparece con su motivo, después de las desviaciones y antes de las marcas', async () => {
+    const flagged = pending({ status: 'sin_datos', references: 0 }, 2);
+    const burst: PendingItem = { ...pending({ status: 'sin_datos', references: 0 }), burst: true };
+    const detected = pending(suspicious(0.6));
+
+    const queue = await setup([flagged, burst, detected]).list({});
+
+    expect(queue.map((item) => item.reason)).toEqual(['desviacion', 'rafaga', 'marcado']);
+    await expect(setup([flagged, burst]).list({ reason: 'rafaga' })).resolves.toHaveLength(1);
+  });
 });

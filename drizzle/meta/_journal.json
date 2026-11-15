@@ -120,6 +120,13 @@
       "when": 1794715562944,
       "tag": "0016_reliability-appeals",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794719202585,
+      "tag": "0017_reliability-bursts",
+      "breakpoints": true
     }
   ]
 }

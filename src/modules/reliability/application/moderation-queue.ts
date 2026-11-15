@@ -7,7 +7,7 @@ export interface ModerationQueuePorts {
   names: { of(establishmentIds: string[]): Promise<Map<string, string>> };
 }
 
-export type QueueReason = 'apelacion' | 'desviacion' | 'marcado';
+export type QueueReason = 'apelacion' | 'desviacion' | 'rafaga' | 'marcado';
 
 // Grill de la #32, pregunta 6: lo que el moderador necesita para decidir, nunca quién reportó ni
 // quién marcó (EC-08).
@@ -32,16 +32,18 @@ export interface QueueRequest {
 
 // Pregunta 3: si la detección lo marcó sospechoso, el motivo es la desviación aunque también
 // tenga marcas.
-const reasonOf = ({ observation, appeal }: PendingItem): QueueReason => {
+const reasonOf = ({ observation, appeal, burst }: PendingItem): QueueReason => {
   // Grill de la #71, pregunta 3: una apelación es un caso ya revisado que espera respuesta.
   if (appeal) return 'apelacion';
-  return observation.verdict.status === 'sospechoso' ? 'desviacion' : 'marcado';
+  if (observation.verdict.status === 'sospechoso') return 'desviacion';
+  return burst ? 'rafaga' : 'marcado';
 };
 
 // Grill de la #32, pregunta 6.
 export const DEFAULT_QUEUE_LIMIT = 20;
 // Grill de la #71, pregunta 3: las apelaciones van antes que todo.
-const QUEUE_ORDER: QueueReason[] = ['apelacion', 'desviacion', 'marcado'];
+// Grill de la #29: la ráfaga va después de las desviaciones y antes de las marcas.
+const QUEUE_ORDER: QueueReason[] = ['apelacion', 'desviacion', 'rafaga', 'marcado'];
 const UNNAMED = 'Sin nombre';
 
 const deviationOf = ({ observation }: PendingItem): number =>

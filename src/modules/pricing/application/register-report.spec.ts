@@ -1,7 +1,9 @@
 import { InvalidObservationDateError } from '../../../domain/freshness';
 import type { DomainEvent } from '../../../shared/events';
-import type { NewReport, ReportRepository, SavedReport } from './report-repository';
+import type { NewReport, RecentReport, ReportRepository, SavedReport } from './report-repository';
 import {
+  DuplicateReportError,
+  TooManyReportsError,
   IdempotencyKeyReusedError,
   RegisterReport,
   UnknownEstablishmentError,
@@ -10,6 +12,7 @@ import {
 
 const presentationId = '11111111-1111-4111-8111-111111111111';
 const establishmentId = '22222222-2222-4222-8222-222222222222';
+const missing = '99999999-9999-4999-8999-999999999999';
 const now = new Date('2026-11-12T14:00:00Z');
 
 // Repositorio en memoria: doble del puerto, sin base de datos.
@@ -21,23 +24,37 @@ class InMemoryReportRepository implements ReportRepository {
     return Promise.resolve(this.reports.find((report) => report.idempotencyKey === key) ?? null);
   }
 
-  save(report: NewReport, event: DomainEvent): Promise<SavedReport> {
+  save(report: NewReport, events: DomainEvent[]): Promise<SavedReport> {
     this.reports.push(report);
-    this.events.push(event);
+    this.events.push(...events);
     return Promise.resolve({ report, created: true });
+  }
+
+  recentOf(reporterId: string, since: Date): Promise<RecentReport[]> {
+    return Promise.resolve(
+      this.reports
+        .filter((report) => report.reporterId === reporterId && report.receivedAt > since)
+        .map(({ id, presentationId, establishmentId, receivedAt }) => ({
+          id,
+          presentationId,
+          establishmentId,
+          receivedAt,
+        })),
+    );
   }
 }
 
-function setup() {
+function setup(clock = { now: () => now }) {
   const reports = new InMemoryReportRepository();
   const registerReport = new RegisterReport({
     reports,
-    presentations: { exists: (id) => Promise.resolve(id === presentationId) },
-    establishments: { exists: (id) => Promise.resolve(id === establishmentId) },
+    // Existe todo salvo `missing`: así una cuenta puede reportar en muchas tiendas.
+    presentations: { exists: (id) => Promise.resolve(id !== missing) },
+    establishments: { exists: (id) => Promise.resolve(id !== missing) },
     reporters: {
       of: () => Promise.resolve({ reporterKey: 'clave-seudonima', reporterSince: '2026-11-01' }),
     },
-    clock: { now: () => now },
+    clock,
   });
   return { reports, registerReport };
 }
@@ -71,7 +88,6 @@ describe('registrar un reporte de precio', () => {
 
   it('rechaza una presentación o una tienda que no existen, sin guardar nada', async () => {
     const { reports, registerReport } = setup();
-    const missing = '99999999-9999-4999-8999-999999999999';
 
     await expect(
       registerReport.execute({
@@ -137,5 +153,109 @@ describe('registrar un reporte de precio', () => {
         report: { ...report, reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
       }),
     ).rejects.toThrow(IdempotencyKeyReusedError);
+  });
+
+  // Grill de la #29, pregunta 2: una cuenta no infla sus propias confirmaciones.
+  describe('duplicados', () => {
+    const minutesLater = (minutes: number) => new Date(now.getTime() + minutes * 60 * 1000);
+
+    it('la misma cuenta, presentación y tienda en 60 minutos con otra clave es un duplicado', async () => {
+      let current = now;
+      const { reports, registerReport } = setup({ now: () => current });
+      await registerReport.execute({ idempotencyKey: 'clave-1', report });
+
+      current = minutesLater(59);
+      await expect(
+        registerReport.execute({
+          idempotencyKey: 'clave-2',
+          report: { ...report, priceCop: 4600 },
+        }),
+      ).rejects.toThrow(DuplicateReportError);
+      expect(reports.reports).toHaveLength(1);
+    });
+
+    it('pasados 60 minutos, o desde otra cuenta, no es duplicado', async () => {
+      let current = now;
+      const { reports, registerReport } = setup({ now: () => current });
+      await registerReport.execute({ idempotencyKey: 'clave-1', report });
+
+      await registerReport.execute({
+        idempotencyKey: 'clave-2',
+        report: { ...report, reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
+      });
+      current = minutesLater(61);
+      await registerReport.execute({ idempotencyKey: 'clave-3', report });
+
+      expect(reports.reports).toHaveLength(3);
+    });
+
+    it('el reintento con la misma clave sigue devolviendo su recibo', async () => {
+      const { registerReport } = setup();
+      const first = await registerReport.execute({ idempotencyKey: 'clave-1', report });
+
+      await expect(registerReport.execute({ idempotencyKey: 'clave-1', report })).resolves.toEqual({
+        receipt: first.receipt,
+        created: false,
+      });
+    });
+  });
+
+  // RF-012 RN2 y grill de la #29, pregunta 3.
+  describe('ráfagas', () => {
+    // n reportes de la misma cuenta, uno por minuto y cada uno en una tienda distinta.
+    const reportMany = async (registerReport: RegisterReport, n: number, advance: () => void) => {
+      for (let index = 0; index < n; index += 1) {
+        await registerReport.execute({
+          idempotencyKey: `clave-${String(index)}`,
+          report: { ...report, establishmentId: `tienda-${String(index)}` },
+        });
+        advance();
+      }
+    };
+
+    it('el reporte 21 de la hora se rechaza con los segundos de espera y no se guarda', async () => {
+      let current = now;
+      const { reports, registerReport } = setup({ now: () => current });
+      await reportMany(registerReport, 20, () => {
+        current = new Date(current.getTime() + 60 * 1000);
+      });
+
+      const attempt = registerReport.execute({
+        idempotencyKey: 'clave-21',
+        report: { ...report, establishmentId: 'tienda-21' },
+      });
+
+      await expect(attempt).rejects.toThrow(TooManyReportsError);
+      // El primero llegó hace 20 minutos: faltan 40 para que salga de la hora.
+      await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 40 * 60 });
+      expect(reports.reports).toHaveLength(20);
+    });
+
+    it('al aceptar el reporte 20 avisa a moderación con la clave seudónima y los reportes de esa hora', async () => {
+      let current = now;
+      const { reports, registerReport } = setup({ now: () => current });
+      const advance = () => {
+        current = new Date(current.getTime() + 60 * 1000);
+      };
+      const bursts = () => reports.events.filter((event) => event.type === 'ReportBurstDetected');
+
+      await reportMany(registerReport, 19, advance);
+      expect(bursts()).toEqual([]);
+      await registerReport.execute({
+        idempotencyKey: 'clave-20',
+        report: { ...report, establishmentId: 'tienda-20' },
+      });
+
+      expect(bursts()).toEqual([
+        expect.objectContaining({
+          version: 1,
+          payload: {
+            reporterKey: 'clave-seudonima',
+            reportIds: reports.reports.map((saved) => saved.id),
+          },
+        }),
+      ]);
+      expect(JSON.stringify(bursts())).not.toContain(reporterId);
+    });
   });
 });
