@@ -133,7 +133,9 @@ export class DecideModeration {
       // Grill de la #71, pregunta 4: aceptar la apelación devuelve lo que quitó el descarte.
       if (stage === 'apelacion') await this.acceptAppeal(reported);
     }
-    if (request.decision === 'descartar') {
+    // Grill de la #71, pregunta 4: rechazar la apelación deja el descarte como estaba, sin castigar
+    // dos veces.
+    if (request.decision === 'descartar' && stage === 'revision') {
       await this.discard(reported);
       // RN6 de RF-013: la decisión recién guardada ya está en la lista.
       const until = suspensionAfter(
