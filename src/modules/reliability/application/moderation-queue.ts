@@ -14,8 +14,8 @@ export type QueueReason = 'desviacion' | 'marcado';
 export interface QueueItem {
   id: string;
   reason: QueueReason;
-  productName?: string;
-  establishmentName?: string;
+  productName: string;
+  establishmentName: string;
   reportedPriceCop: number;
   medianPriceCop?: number;
   deviationPercent?: number;
@@ -35,6 +35,7 @@ const reasonOf = ({ observation }: PendingItem): QueueReason =>
 
 // Grill de la #32, pregunta 6.
 export const DEFAULT_QUEUE_LIMIT = 20;
+const UNNAMED = 'Sin nombre';
 
 const deviationOf = ({ observation }: PendingItem): number =>
   'deviation' in observation.verdict ? observation.verdict.deviation : 0;
@@ -67,13 +68,11 @@ export class ModerationQueue {
     return pending.map((item) => {
       const { observation } = item;
       const { verdict } = observation;
-      const productName = labels.get(observation.presentationId);
-      const establishmentName = names.get(observation.establishmentId);
       return {
         id: observation.reportId,
         reason: reasonOf(item),
-        ...(productName === undefined ? {} : { productName }),
-        ...(establishmentName === undefined ? {} : { establishmentName }),
+        productName: labels.get(observation.presentationId) ?? UNNAMED,
+        establishmentName: names.get(observation.establishmentId) ?? UNNAMED,
         reportedPriceCop: observation.priceCop,
         ...('median' in verdict
           ? {
