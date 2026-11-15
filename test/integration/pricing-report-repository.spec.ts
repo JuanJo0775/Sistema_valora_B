@@ -95,41 +95,6 @@ describe('repositorio de reportes de pricing', () => {
     expect(constraint.rows).toEqual([{ convalidated: false }]);
   });
 
-  // Grill de la #29, preguntas 2 y 3: los reportes recientes de una cuenta.
-  it('da los reportes de una cuenta desde una fecha, sin los de otras cuentas', async () => {
-    const at = (minute: number) => new Date(Date.UTC(2026, 10, 15, 14, minute));
-    const of = (id: string, minute: number, reporterId = report.reporterId): NewReport => ({
-      ...report,
-      id: `a1111111-1111-4111-8111-${id.repeat(12)}`,
-      idempotencyKey: `a4444444-4444-4444-8444-${id.repeat(12)}`,
-      receivedAt: at(minute),
-      reporterId,
-    });
-    for (const saved of [
-      of('a', 0),
-      of('b', 20),
-      of('c', 40),
-      of('d', 30, 'a6666666-6666-4666-8666-999999999999'),
-    ]) {
-      await repository.save(saved, []);
-    }
-
-    await expect(repository.recentOf(report.reporterId, at(10))).resolves.toEqual([
-      {
-        id: of('b', 20).id,
-        presentationId: report.presentationId,
-        establishmentId: report.establishmentId,
-        receivedAt: at(20),
-      },
-      {
-        id: of('c', 40).id,
-        presentationId: report.presentationId,
-        establishmentId: report.establishmentId,
-        receivedAt: at(40),
-      },
-    ]);
-  });
-
   it('guarda varios eventos con el reporte, en la misma transacción', async () => {
     const burst = createEvent('ReportBurstDetected', 1, { reportIds: [report.id] });
 
@@ -139,5 +104,44 @@ describe('repositorio de reportes de pricing', () => {
       sql`select type from shared.outbox order by type`,
     );
     expect(outbox.rows).toEqual([{ type: 'PriceReported' }, { type: 'ReportBurstDetected' }]);
+  });
+
+  // Grill de la #30, pregunta 2: los límites cuentan por la hora de observación.
+  it('da los reportes de una cuenta observados entre dos fechas, con su hora de observación', async () => {
+    const at = (hour: number) => new Date(Date.UTC(2026, 10, 15, hour));
+    const of = (id: string, hour: number, reporterId = report.reporterId): NewReport => ({
+      ...report,
+      id: `a1111111-1111-4111-8111-${id.repeat(12)}`,
+      idempotencyKey: `a4444444-4444-4444-8444-${id.repeat(12)}`,
+      observedAt: at(hour),
+      // Todos llegan juntos: la consulta no depende de la llegada.
+      receivedAt: at(20),
+      reporterId,
+    });
+    for (const saved of [
+      of('a', 8),
+      of('b', 10),
+      of('c', 12),
+      of('d', 10, 'a6666666-6666-4666-8666-999999999999'),
+    ]) {
+      await repository.save(saved, []);
+    }
+
+    await expect(repository.observedBetween(report.reporterId, at(9), at(12))).resolves.toEqual([
+      {
+        id: of('b', 10).id,
+        presentationId: report.presentationId,
+        establishmentId: report.establishmentId,
+        observedAt: at(10),
+        receivedAt: at(20),
+      },
+      {
+        id: of('c', 12).id,
+        presentationId: report.presentationId,
+        establishmentId: report.establishmentId,
+        observedAt: at(12),
+        receivedAt: at(20),
+      },
+    ]);
   });
 });

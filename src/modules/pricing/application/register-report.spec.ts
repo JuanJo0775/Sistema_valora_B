@@ -30,14 +30,20 @@ class InMemoryReportRepository implements ReportRepository {
     return Promise.resolve({ report, created: true });
   }
 
-  recentOf(reporterId: string, since: Date): Promise<RecentReport[]> {
+  observedBetween(reporterId: string, from: Date, to: Date): Promise<RecentReport[]> {
     return Promise.resolve(
       this.reports
-        .filter((report) => report.reporterId === reporterId && report.receivedAt > since)
-        .map(({ id, presentationId, establishmentId, receivedAt }) => ({
+        .filter(
+          (report) =>
+            report.reporterId === reporterId &&
+            report.observedAt >= from &&
+            report.observedAt <= to,
+        )
+        .map(({ id, presentationId, establishmentId, observedAt, receivedAt }) => ({
           id,
           presentationId,
           establishmentId,
+          observedAt,
           receivedAt,
         })),
     );
@@ -174,19 +180,44 @@ describe('registrar un reporte de precio', () => {
       expect(reports.reports).toHaveLength(1);
     });
 
-    it('pasados 60 minutos, o desde otra cuenta, no es duplicado', async () => {
+    // Grill de la #30, pregunta 2: el duplicado compara horas de observación, no de llegada.
+    it('observaciones a más de 60 minutos, o de otra cuenta, no son duplicado aunque lleguen juntas', async () => {
+      const { reports, registerReport } = setup();
+      const seenAt = (minutesBefore: number) => new Date(now.getTime() - minutesBefore * 60 * 1000);
+
+      await registerReport.execute({
+        idempotencyKey: 'clave-1',
+        report: { ...report, observedAt: seenAt(180) },
+      });
+      await registerReport.execute({
+        idempotencyKey: 'clave-2',
+        report: { ...report, observedAt: seenAt(110) },
+      });
+      await registerReport.execute({
+        idempotencyKey: 'clave-3',
+        report: {
+          ...report,
+          observedAt: seenAt(110),
+          reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        },
+      });
+
+      expect(reports.reports).toHaveLength(3);
+    });
+
+    it('una observación a menos de 60 minutos de otra es duplicado, aunque llegue mucho después', async () => {
       let current = now;
       const { reports, registerReport } = setup({ now: () => current });
       await registerReport.execute({ idempotencyKey: 'clave-1', report });
 
-      await registerReport.execute({
-        idempotencyKey: 'clave-2',
-        report: { ...report, reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
-      });
-      current = minutesLater(61);
-      await registerReport.execute({ idempotencyKey: 'clave-3', report });
-
-      expect(reports.reports).toHaveLength(3);
+      current = minutesLater(300);
+      await expect(
+        registerReport.execute({
+          idempotencyKey: 'clave-2',
+          report: { ...report, observedAt: new Date(report.observedAt.getTime() + 50 * 60 * 1000) },
+        }),
+      ).rejects.toThrow(DuplicateReportError);
+      expect(reports.reports).toHaveLength(1);
     });
 
     it('el reintento con la misma clave sigue devolviendo su recibo', async () => {
@@ -226,8 +257,9 @@ describe('registrar un reporte de precio', () => {
       });
 
       await expect(attempt).rejects.toThrow(TooManyReportsError);
-      // El primero llegó hace 20 minutos: faltan 40 para que salga de la hora.
-      await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 40 * 60 });
+      // Grill de la #30: cuenta por la hora de observación. Los 20 y el nuevo se vieron a las 13:30:
+      // la próxima observación puede entrar desde las 14:30.
+      await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 60 * 60 });
       expect(reports.reports).toHaveLength(20);
     });
 
@@ -257,5 +289,46 @@ describe('registrar un reporte de precio', () => {
       ]);
       expect(JSON.stringify(bursts())).not.toContain(reporterId);
     });
+  });
+
+  // Grill de la #30 (PR-08): la cola sin conexión manda todo junto al reconectar.
+  it('50 reportes de la cola observados a lo largo del día y enviados a la vez se aceptan todos', async () => {
+    const { reports, registerReport } = setup();
+    const queue = Array.from({ length: 50 }, (_, index) => ({
+      idempotencyKey: `cola-${String(index)}`,
+      report: {
+        ...report,
+        // Diez tiendas; un reporte cada 20 minutos durante unas 16 horas.
+        establishmentId: `tienda-${String(index % 10)}`,
+        observedAt: new Date(now.getTime() - (index + 1) * 20 * 60 * 1000),
+      },
+    }));
+
+    for (const queued of queue) await registerReport.execute(queued);
+
+    expect(reports.reports).toHaveLength(50);
+    expect(reports.events.filter((event) => event.type === 'ReportBurstDetected')).toEqual([]);
+  });
+
+  // Grill de la #30: la PWA reintenta el mismo reporte al mismo tiempo porque no vio la respuesta.
+  it('dos envíos simultáneos con la misma clave: el que llega segundo responde como reintento, no como duplicado', async () => {
+    const { reports, registerReport } = setup();
+    const first = await registerReport.execute({ idempotencyKey: 'clave-1', report });
+    // El segundo buscó la clave justo antes de que el primero la guardara: no la vio.
+    const lookup = reports.findByIdempotencyKey.bind(reports);
+    let hidden = true;
+    reports.findByIdempotencyKey = (key) => {
+      if (hidden) {
+        hidden = false;
+        return Promise.resolve(null);
+      }
+      return lookup(key);
+    };
+
+    await expect(registerReport.execute({ idempotencyKey: 'clave-1', report })).resolves.toEqual({
+      receipt: first.receipt,
+      created: false,
+    });
+    expect(reports.reports).toHaveLength(1);
   });
 });
