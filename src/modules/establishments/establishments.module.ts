@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DATABASE, type Database } from '../../shared/database/database.module';
+import { IdentityModule } from '../identity';
 import {
   ESTABLISHMENT_REPOSITORY,
   type EstablishmentRepository,
@@ -14,14 +15,46 @@ import {
   type EstablishmentImportRepository,
   ImportEstablishments,
 } from './application/import-establishments';
+import { DecideStoreProposal } from './application/decide-store-proposal';
 import { ListNearbyEstablishments } from './application/list-nearby-establishments';
+import { ProposeStore } from './application/propose-store';
+import { StoreProposalsQueue } from './application/store-proposals-queue';
 import { EstablishmentsController } from './http/establishments.controller';
+import { StoreProposalsController } from './http/store-proposals.controller';
 import { DrizzleEstablishmentImportRepository } from './infrastructure/drizzle-establishment-import-repository';
 import { DrizzleEstablishmentRepository } from './infrastructure/drizzle-establishment-repository';
+import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-proposal-repository';
 
 @Module({
-  controllers: [EstablishmentsController],
+  imports: [IdentityModule],
+  controllers: [EstablishmentsController, StoreProposalsController],
   providers: [
+    // Grill de la #27: propuestas de tiendas.
+    {
+      provide: ProposeStore,
+      inject: [DATABASE],
+      useFactory: (db: Database): ProposeStore =>
+        new ProposeStore({
+          proposals: new DrizzleStoreProposalRepository(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: StoreProposalsQueue,
+      inject: [DATABASE, ESTABLISHMENT_REPOSITORY],
+      useFactory: (db: Database, stores: EstablishmentRepository): StoreProposalsQueue =>
+        new StoreProposalsQueue({ proposals: new DrizzleStoreProposalRepository(db), stores }),
+    },
+    {
+      provide: DecideStoreProposal,
+      inject: [DATABASE, ESTABLISHMENT_REPOSITORY],
+      useFactory: (db: Database, stores: EstablishmentRepository): DecideStoreProposal =>
+        new DecideStoreProposal({
+          proposals: new DrizzleStoreProposalRepository(db),
+          stores,
+          clock: { now: () => new Date() },
+        }),
+    },
     {
       provide: ESTABLISHMENT_REPOSITORY,
       inject: [DATABASE],

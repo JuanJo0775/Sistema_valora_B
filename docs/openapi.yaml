@@ -298,6 +298,45 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /establishment-proposals:
+    post:
+      tags: [Establecimientos]
+      operationId: proposeEstablishment
+      summary: Proponer una tienda nueva (RF-005)
+      description: >-
+        Solo el rol reportante. La propuesta queda pendiente y no aparece en el mapa hasta que un
+        moderador la aprueba (RN7). Se guarda la clave seudónima de quien propone, nunca su cuenta;
+        la ubicación es la de la tienda, no la de quien propone (RN4, EC-08) (#27).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, lat, lng]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 120 }
+                type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+                lat: { type: number, minimum: -90, maximum: 90 }
+                lng: { type: number, minimum: -180, maximum: 180 }
+                address: { type: string, maxLength: 200 }
+      responses:
+        '202':
+          description: Propuesta recibida, pendiente de moderación
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [pendiente] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /reports:
     post:
       tags: [Reportes]
@@ -799,6 +838,98 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '422':
           description: code DECISION_NOT_ALLOWED, observar_cuentas sobre una apelación (#71).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /moderation/store-proposals:
+    get:
+      tags: [Moderación]
+      operationId: listStoreProposals
+      summary: Tiendas propuestas pendientes de decisión (RF-005)
+      description: >-
+        Solo el rol moderador. La más antigua primero. Cada una dice si está fuera de la zona de
+        servicio (rectángulo aproximado del Quindío, RN1) y trae sus posibles duplicados: tiendas a
+        menos de 50 m con un nombre equivalente (RN3; valores provisionales). No dice quién la propuso
+        (EC-08). Sin caché (#27).
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Propuestas pendientes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, type, lat, lng, outOfZone, possibleDuplicates, createdAt]
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+                        type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+                        address: { type: string }
+                        lat: { type: number }
+                        lng: { type: number }
+                        outOfZone: { type: boolean }
+                        possibleDuplicates:
+                          type: array
+                          items:
+                            type: object
+                            required: [id, name, distanceM]
+                            properties:
+                              id: { type: string, format: uuid }
+                              name: { type: string }
+                              distanceM: { type: integer, minimum: 0 }
+                        createdAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /moderation/store-proposals/{proposalId}/decision:
+    post:
+      tags: [Moderación]
+      operationId: decideStoreProposal
+      summary: Aprobar, fusionar o rechazar una tienda propuesta (RF-005)
+      description: >-
+        Solo el rol moderador. aprobar crea la tienda (aparece en el mapa) con el id de la propuesta;
+        fusionar la une a una tienda existente (mergeInto) sin crear nada, nunca de forma automática
+        (RN3); rechazar no crea nada. Siempre con motivo (#27).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: proposalId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, note]
+              properties:
+                decision: { type: string, enum: [aprobar, fusionar, rechazar] }
+                note: { type: string, minLength: 10, maxLength: 500 }
+                mergeInto:
+                  type: string
+                  format: uuid
+                  description: Obligatorio con fusionar; la tienda existente.
+      responses:
+        '204': { description: Decisión registrada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: La propuesta no existe o ya se decidió.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code UNKNOWN_ESTABLISHMENT, la tienda con la que se quiere fusionar no existe.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

@@ -43,6 +43,11 @@ export interface EstablishmentRepository {
   findAround(query: AroundQuery): Promise<string[]>;
   namesOf(establishmentIds: string[]): Promise<Map<string, string>>;
   findById(establishmentId: string): Promise<EstablishmentDetail | null>;
+  // Grill de la #27: las tiendas a menos de `meters` de un punto, para sugerir duplicados.
+  findWithinMeters(
+    point: { lat: number; lng: number },
+    meters: number,
+  ): Promise<{ id: string; name: string; distanceM: number }[]>;
   exists(establishmentId: string): Promise<boolean>;
 }
 

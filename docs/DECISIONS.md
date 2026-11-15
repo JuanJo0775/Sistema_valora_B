@@ -349,6 +349,16 @@ Aplicación de RF-007, EC-07, RNF-013, PR-07, PR-08 y ADR-010. El detalle está 
 - **Error corregido:** dos envíos simultáneos con la misma clave hacían que el segundo respondiera 409 `DUPLICATE_REPORT`; ahora responde como reintento.
 - **Límite conocido:** se pueden repartir horas de observación falsas dentro de las 24 h para evitar la ráfaga.
 
+## Propuestas de tiendas (issue #27, 15 de noviembre de 2026)
+
+Aplicación de RF-005 (RN1, RN3, RN4, RN7) y EC-08. El detalle está en `docs/decisiones/issue-27-propuestas-de-tiendas/`.
+
+- **Ya cumplido desde la #50:** consulta por radio ordenada por distancia, ubicación del usuario no guardada y lat/lng de la tienda.
+- **Revisión por módulo (común con la #26):** `establishments` guarda sus propuestas y tiene sus rutas de moderador; el moderador tiene tres listas (precios, tiendas, productos).
+- **Ciclo:** `POST /v1/establishment-proposals` (reportante, pendiente, no aparece en el mapa); `GET /v1/moderation/store-proposals` con posibles duplicados y marca de zona; decisión `aprobar` (crea la tienda con el id de la propuesta), `fusionar` (con una tienda existente) o `rechazar`, con motivo.
+- **Duplicados:** nombre equivalente (sin tildes, mayúsculas ni palabras comunes; las palabras de uno contenidas en el otro) a menos de 50 m. **Zona:** rectángulo aproximado del Quindío; fuera, la propuesta llega marcada. Valores provisionales, reglas en `src/domain/store-proposal.ts`.
+- **Persistencia:** `establishments.store_proposals` (migración `0018`), con la clave seudónima de quien propone y del moderador. La prueba de privacidad del esquema ahora acepta también la ubicación de una tienda propuesta.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
