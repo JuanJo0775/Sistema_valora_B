@@ -26,11 +26,21 @@ export interface SavedReport {
   created: boolean;
 }
 
+// Grill de la #29: lo que hace falta de los reportes recientes de una cuenta para los límites.
+export interface RecentReport {
+  id: string;
+  presentationId: string;
+  establishmentId: string;
+  receivedAt: Date;
+}
+
 // Puerto del repositorio: solo los métodos que el caso de uso usa hoy.
 export interface ReportRepository {
   findByIdempotencyKey(key: string): Promise<NewReport | null>;
-  // Guarda el reporte y su evento en la misma transacción (ADR-015).
-  save(report: NewReport, event: DomainEvent): Promise<SavedReport>;
+  // Guarda el reporte y sus eventos en la misma transacción (ADR-015).
+  save(report: NewReport, events: DomainEvent[]): Promise<SavedReport>;
+  // Los reportes de una cuenta que llegaron después de `since`, del más viejo al más nuevo.
+  recentOf(reporterId: string, since: Date): Promise<RecentReport[]>;
 }
 
 export const REPORT_REPOSITORY = Symbol('REPORT_REPOSITORY');

@@ -110,17 +110,19 @@ export class RegisterReport {
     const saved = await this.deps.reports.save(
       newReport,
       // Versión 2 (#31): la clave seudónima y el día de la cuenta; nunca el id ni el correo (EC-08).
-      createEvent(PRICE_REPORTED, 2, {
-        reportId: newReport.id,
-        presentationId: report.presentationId,
-        establishmentId: report.establishmentId,
-        priceCop: report.priceCop,
-        priceType: report.priceType,
-        observedAt: report.observedAt.toISOString(),
-        receivedAt: newReport.receivedAt.toISOString(),
-        reporterKey,
-        reporterSince,
-      }),
+      [
+        createEvent(PRICE_REPORTED, 2, {
+          reportId: newReport.id,
+          presentationId: report.presentationId,
+          establishmentId: report.establishmentId,
+          priceCop: report.priceCop,
+          priceType: report.priceType,
+          observedAt: report.observedAt.toISOString(),
+          receivedAt: newReport.receivedAt.toISOString(),
+          reporterKey,
+          reporterSince,
+        }),
+      ],
     );
     // Dos reintentos simultáneos: el que no insertó responde como reintento.
     if (!saved.created) return retryResult(saved.report, requestHash);

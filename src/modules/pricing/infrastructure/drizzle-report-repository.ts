@@ -1,9 +1,10 @@
-import { eq } from 'drizzle-orm';
+import { and, asc, eq, gt } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type {
   NewReport,
   PriceType,
+  RecentReport,
   ReportRepository,
   SavedReport,
 } from '../application/report-repository';
@@ -42,7 +43,7 @@ export class DrizzleReportRepository implements ReportRepository {
   // ADR-015: el reporte y su evento se confirman juntos o no se guarda ninguno.
   // Si otra solicitud ya guardó la misma clave, PostgreSQL espera a que confirme, no inserta nada
   // y se devuelve el reporte que quedó guardado (grill de la #14, pregunta 6).
-  async save(report: NewReport, event: DomainEvent): Promise<SavedReport> {
+  async save(report: NewReport, events: DomainEvent[]): Promise<SavedReport> {
     return this.db.transaction(async (tx) => {
       const inserted = await tx
         .insert(reports)
@@ -50,7 +51,7 @@ export class DrizzleReportRepository implements ReportRepository {
         .onConflictDoNothing({ target: reports.idempotencyKey })
         .returning({ id: reports.id });
       if (inserted.length > 0) {
-        await this.outbox.publish(tx, event);
+        for (const event of events) await this.outbox.publish(tx, event);
         return { report, created: true };
       }
       const [stored] = await tx
@@ -60,5 +61,18 @@ export class DrizzleReportRepository implements ReportRepository {
       if (!stored) throw new Error('El reporte con esta clave no se encontró tras el conflicto.');
       return { report: toNewReport(stored), created: false };
     });
+  }
+
+  async recentOf(reporterId: string, since: Date): Promise<RecentReport[]> {
+    return this.db
+      .select({
+        id: reports.id,
+        presentationId: reports.presentationId,
+        establishmentId: reports.establishmentId,
+        receivedAt: reports.receivedAt,
+      })
+      .from(reports)
+      .where(and(eq(reports.reporterId, reporterId), gt(reports.receivedAt, since)))
+      .orderBy(asc(reports.receivedAt));
   }
 }

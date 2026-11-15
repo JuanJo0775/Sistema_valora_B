@@ -1,6 +1,6 @@
 import { InvalidObservationDateError } from '../../../domain/freshness';
 import type { DomainEvent } from '../../../shared/events';
-import type { NewReport, ReportRepository, SavedReport } from './report-repository';
+import type { NewReport, RecentReport, ReportRepository, SavedReport } from './report-repository';
 import {
   IdempotencyKeyReusedError,
   RegisterReport,
@@ -21,10 +21,23 @@ class InMemoryReportRepository implements ReportRepository {
     return Promise.resolve(this.reports.find((report) => report.idempotencyKey === key) ?? null);
   }
 
-  save(report: NewReport, event: DomainEvent): Promise<SavedReport> {
+  save(report: NewReport, events: DomainEvent[]): Promise<SavedReport> {
     this.reports.push(report);
-    this.events.push(event);
+    this.events.push(...events);
     return Promise.resolve({ report, created: true });
+  }
+
+  recentOf(reporterId: string, since: Date): Promise<RecentReport[]> {
+    return Promise.resolve(
+      this.reports
+        .filter((report) => report.reporterId === reporterId && report.receivedAt > since)
+        .map(({ id, presentationId, establishmentId, receivedAt }) => ({
+          id,
+          presentationId,
+          establishmentId,
+          receivedAt,
+        })),
+    );
   }
 }
 
