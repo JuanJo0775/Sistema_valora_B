@@ -1,8 +1,8 @@
-import type { FlagReason, ModerationStore, Observation } from './stores';
+import type { FlagReason, ModerationStore, ObservationStore } from './stores';
 
 export interface FlagReportPorts {
   moderation: ModerationStore;
-  observations: { byReportId(reportId: string): Promise<Observation | null> };
+  observations: Pick<ObservationStore, 'byReportId'>;
   clock: { now(): Date };
 }
 

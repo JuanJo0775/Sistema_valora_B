@@ -20,6 +20,7 @@ export interface Observation {
 // Puertos hacia las tablas propias de reliability.
 export interface ObservationStore {
   forPresentation(presentationId: string, establishmentIds: string[]): Promise<Observation[]>;
+  byReportId(reportId: string): Promise<Observation | null>;
   save(observation: Observation): Promise<void>;
 }
 

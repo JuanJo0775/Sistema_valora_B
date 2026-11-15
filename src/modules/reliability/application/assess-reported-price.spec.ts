@@ -41,6 +41,12 @@ class InMemoryObservations implements ObservationStore {
     );
   }
 
+  byReportId(reportId: string): Promise<Observation | null> {
+    return Promise.resolve(
+      this.saved.find((observation) => observation.reportId === reportId) ?? null,
+    );
+  }
+
   save(observation: Observation): Promise<void> {
     this.saved.push(observation);
     return Promise.resolve();

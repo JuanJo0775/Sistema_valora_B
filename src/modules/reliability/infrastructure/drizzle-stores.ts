@@ -40,6 +40,14 @@ export class DrizzleObservationStore implements ObservationStore {
     return rows.map(toObservation);
   }
 
+  async byReportId(reportId: string): Promise<Observation | null> {
+    const [row] = await this.db
+      .select()
+      .from(observations)
+      .where(eq(observations.reportId, reportId));
+    return row ? toObservation(row) : null;
+  }
+
   async save(observation: Observation): Promise<void> {
     await this.db.insert(observations).values(observation).onConflictDoNothing();
   }

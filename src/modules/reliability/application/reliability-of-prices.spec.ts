@@ -29,6 +29,7 @@ function setup(saved: Observation[], reputations: Record<string, number> = {}) {
       Promise.resolve(
         saved.filter((o) => o.presentationId === presentationId && ids.includes(o.establishmentId)),
       ),
+    byReportId: () => Promise.reject(new Error('ReliabilityOfPrices no busca por reporte')),
     save: () => Promise.reject(new Error('ReliabilityOfPrices no guarda')),
   };
   const reputationStore: ReputationStore = {
