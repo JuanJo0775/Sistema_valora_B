@@ -44,6 +44,7 @@ interface ModerationItemResponse {
   deviationPercent?: number;
   reportersCount: number;
   createdAt: string;
+  appealNote?: string;
 }
 
 @Controller('moderation')

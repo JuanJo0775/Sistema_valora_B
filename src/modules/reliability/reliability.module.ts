@@ -10,11 +10,13 @@ import {
   MODERATION_DECIDER,
   type ModerationDecider,
 } from './application/decide-moderation';
+import { AppealReport } from './application/appeal-report';
 import { FlagReport } from './application/flag-report';
 import { ModerationQueue } from './application/moderation-queue';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
 import { FlagsController } from './http/flags.controller';
 import { ModerationController } from './http/moderation.controller';
+import { MyReportsController } from './http/my-reports.controller';
 import { DrizzleModerationStore } from './infrastructure/drizzle-moderation-store';
 import { DrizzleObservationStore, DrizzleReputationStore } from './infrastructure/drizzle-stores';
 
@@ -23,7 +25,7 @@ const ZONE_RADIUS_METERS = 1000;
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, IdentityModule],
-  controllers: [FlagsController, ModerationController],
+  controllers: [FlagsController, ModerationController, MyReportsController],
   providers: [
     {
       provide: ReliabilityOfPrices,
@@ -42,6 +44,16 @@ const ZONE_RADIUS_METERS = 1000;
         new FlagReport({
           moderation: new DrizzleModerationStore(db),
           observations: new DrizzleObservationStore(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: AppealReport,
+      inject: [DATABASE],
+      useFactory: (db: Database): AppealReport =>
+        new AppealReport({
+          observations: new DrizzleObservationStore(db),
+          moderation: new DrizzleModerationStore(db),
           clock: { now: () => new Date() },
         }),
     },
