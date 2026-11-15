@@ -251,21 +251,26 @@ paths:
         '409':
           description: >-
             Conflicto. code IDEMPOTENCY_KEY_REUSED: la misma Idempotency-Key ya se usó con otro cuerpo o por otra cuenta.
-            code DUPLICATE_REPORT (desde la issue #29): ya existe un reporte de esta cuenta para el mismo
-            producto y establecimiento en la última hora.
+            code DUPLICATE_REPORT: la cuenta ya reportó esa presentación en ese establecimiento en los
+            últimos 60 minutos (valor provisional, #29).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '422':
           description: >-
             Regla de negocio incumplida. code INVALID_OBSERVATION_DATE: observedAt está más de 5 minutos
-            en el futuro (la antigüedad mayor a 24 horas se valida desde la issue #29). code
+            en el futuro o es de hace más de 24 horas, aunque venga de la cola sin conexión (#29). code
             UNKNOWN_PRESENTATION o UNKNOWN_ESTABLISHMENT: la presentación o el establecimiento no existen.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '429':
-          description: Límite de frecuencia superado (desde la issue #29)
+          description: >-
+            Más de 20 reportes de la cuenta en la última hora (valor provisional, RF-012 RN2, #29).
+            Retry-After dice cuántos segundos faltan. Los reportes de esa hora van a la cola de
+            moderación con el motivo rafaga.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -631,7 +636,7 @@ paths:
       parameters:
         - name: reason
           in: query
-          schema: { type: string, enum: [apelacion, desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
+          schema: { type: string, enum: [apelacion, desviacion, rafaga, marcado, discrepancia_oficial, verificacion_comercio] }
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
@@ -1088,7 +1093,7 @@ components:
       required: [id, reason, productName, establishmentName, reportedPriceCop, reportersCount, createdAt]
       properties:
         id: { type: string, format: uuid, description: Id del reporte. }
-        reason: { type: string, enum: [apelacion, desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
+        reason: { type: string, enum: [apelacion, desviacion, rafaga, marcado, discrepancia_oficial, verificacion_comercio] }
         productName: { type: string, description: 'Producto y presentación, por ejemplo «Arroz Diana · 500 g».' }
         establishmentName: { type: string }
         reportedPriceCop: { type: integer }

@@ -302,6 +302,17 @@ Aplicación de RF-006, RF-013 y EC-08. El detalle está en `docs/decisiones/issu
 - **Regla del estado:** una sola función (`reportStateOf`) para esta lista y para el estado de un reporte.
 - **Acceso:** reportante, también con una cuenta suspendida; sin caché.
 
+## Validaciones del reporte y ráfagas (issue #29, 15 de noviembre de 2026)
+
+Aplicación de RF-006, RF-012 (RN2), RNF-014, PR-06 y EC-07. El detalle está en `docs/decisiones/issue-29-validaciones/`.
+
+- **Ya cumplido desde la #14:** campos faltantes, precio entero entre 1 y 10.000.000 y formato `{ code, message }`.
+- **Observación vieja:** un precio visto hace más de 24 horas se rechaza (422 `INVALID_OBSERVATION_DATE`), aunque venga de la cola sin conexión.
+- **Duplicado:** la misma cuenta no reporta la misma presentación en la misma tienda dos veces en 60 minutos (409 `DUPLICATE_REPORT`); el reintento con la misma clave sigue devolviendo su recibo.
+- **Ráfaga (RN2):** más de 20 reportes por hora desde una cuenta responde 429 con `Retry-After`, contado en la base. Al aceptar el reporte 20, `pricing` publica `ReportBurstDetected` y `reliability` pone esos reportes en la cola con el motivo `rafaga` (tabla `reliability.bursts`, migración `0017`).
+- **Valores provisionales** en `REPORT_LIMITS` (`src/domain/report-limits.ts`).
+- **Límite conocido:** dos reportes simultáneos de la misma cuenta pueden pasar los dos el límite (se cuenta antes de guardar).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
