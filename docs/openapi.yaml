@@ -310,6 +310,102 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /reports/{reportId}/appeal:
+    post:
+      tags: [Reportes]
+      operationId: appealReport
+      summary: Apelar un reporte descartado, una sola vez (RF-013 RN4)
+      description: >-
+        Solo el autor del reporte, hasta 7 días después del descarte (valor provisional). Entra a la
+        cola de moderación con el motivo apelacion y la decide un moderador distinto del que
+        descartó. Una cuenta suspendida también puede apelar (#71).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '202': { description: Apelación recibida }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El reporte no existe o no es de esta cuenta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: code ALREADY_APPEALED, el reporte ya se apeló.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            code NOT_APPEALABLE, el reporte no está descartado. code APPEAL_WINDOW_CLOSED, pasaron
+            7 días desde el descarte.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /me/reports/{reportId}/status:
+    get:
+      tags: [Reportes]
+      operationId: getMyReportStatus
+      summary: Estado de un reporte propio y hasta cuándo se puede apelar (RF-013 RN4)
+      description: >-
+        Solo el autor. Nunca dice quién decidió ni quién marcó (EC-08). Sin caché (no-store). Una
+        cuenta suspendida también puede consultarlo (#71).
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Estado del reporte
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reportId, status]
+                properties:
+                  reportId: { type: string, format: uuid }
+                  status:
+                    type: string
+                    enum:
+                      [
+                        normal,
+                        en_revision,
+                        descartado,
+                        apelacion_pendiente,
+                        apelacion_aceptada,
+                        apelacion_rechazada,
+                      ]
+                  appealableUntil:
+                    type: string
+                    format: date-time
+                    description: Solo si el reporte está descartado y todavía se puede apelar.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El reporte no existe o no es de esta cuenta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /me/reports:
     get:
       tags: [Reportes]
@@ -421,13 +517,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-        '403':
-          description: >-
-            code ACCOUNT_SUSPENDED: la contraseña es correcta, pero la cuenta está suspendida; message
-            dice hasta cuándo. Con la contraseña incorrecta responde 401, sin revelar la suspensión.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
         '429':
           description: >-
             Más de 5 fallos por correo o 20 intentos por IP en 15 minutos (valores provisionales). No
@@ -472,6 +561,12 @@ paths:
                     description: >-
                       Va en la cabecera X-CSRF-Token de las rutas con sesión que modifican datos. El
                       frontend lo guarda en memoria.
+                  suspendedUntil:
+                    type: string
+                    format: date-time
+                    description: >-
+                      Solo si la cuenta está suspendida: la sesión está limitada a ver el estado de
+                      sus reportes y apelar (#71).
         '401': { $ref: '#/components/responses/Unauthorized' }
   /moderation/queue:
     get:
@@ -488,7 +583,7 @@ paths:
       parameters:
         - name: reason
           in: query
-          schema: { type: string, enum: [desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
+          schema: { type: string, enum: [apelacion, desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
@@ -547,6 +642,12 @@ paths:
         '409':
           description: >-
             code OWN_REPORT: el moderador es el autor del reporte; lo decide otro moderador (#73).
+            code SAME_MODERATOR: quien descartó el reporte no decide su apelación (#71).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code DECISION_NOT_ALLOWED, observar_cuentas sobre una apelación (#71).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -721,14 +822,15 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     Unauthorized:
       description: >-
-        Se requiere sesión. También responde así una sesión revocada o la de una cuenta suspendida.
+        Se requiere sesión. También responde así una sesión revocada o vencida.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Forbidden:
       description: >-
         code FORBIDDEN: el rol no tiene permiso. code CSRF_TOKEN_INVALID: falta la cabecera
-        X-CSRF-Token o no coincide con la sesión.
+        X-CSRF-Token o no coincide con la sesión. code ACCOUNT_SUSPENDED: la cuenta está suspendida y
+        su sesión solo sirve para ver el estado de sus reportes, apelar y cerrar sesión (#71).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -938,7 +1040,7 @@ components:
       required: [id, reason, productName, establishmentName, reportedPriceCop, reportersCount, createdAt]
       properties:
         id: { type: string, format: uuid, description: Id del reporte. }
-        reason: { type: string, enum: [desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
+        reason: { type: string, enum: [apelacion, desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
         productName: { type: string, description: 'Producto y presentación, por ejemplo «Arroz Diana · 500 g».' }
         establishmentName: { type: string }
         reportedPriceCop: { type: integer }
@@ -947,3 +1049,6 @@ components:
         deviationPercent: { type: number, description: Desviación frente a la mediana, en porcentaje entero. }
         reportersCount: { type: integer, minimum: 0, description: Cuántas cuentas lo marcaron como dudoso. }
         createdAt: { type: string, format: date-time }
+        appealNote:
+          type: string
+          description: Solo en las apelaciones; el motivo del autor, sin decir quién descartó (#71).

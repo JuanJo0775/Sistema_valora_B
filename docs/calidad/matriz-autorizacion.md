@@ -10,9 +10,9 @@
 |---|---|
 | Sin sesión | El consumidor: consulta sin cuenta (grill de la #33, pregunta 1). |
 | Reportante | Cuenta registrada: reporta precios y marca precios dudosos. |
-| Moderador | Revisa la cola y decide. Hoy se crea por SQL (README). |
+| Moderador | Revisa la cola y decide. Se crea con `pnpm identity:set-role` o lo sube otro moderador (#73). |
 | Comercio | Llega con el Corte 3; hoy no tiene rutas propias. |
-| Suspendida | Cuenta con `suspended_until` en el futuro, aunque su sesión siga abierta. |
+| Suspendida | Reportante con `suspended_until` en el futuro. Desde la #71 tiene una sesión limitada: ve el estado de sus reportes, apela y cierra sesión; lo demás responde 403 `ACCOUNT_SUSPENDED`. |
 
 ## Rutas con sesión
 
@@ -20,15 +20,15 @@
 
 | Ruta | Sin sesión | Reportante | Moderador | Comercio | Suspendida |
 |---|---|---|---|---|---|
-| `POST /v1/reports` | 401 | Permitido | 403 | 403 | 401 |
-| `POST /v1/reports/{reportId}/flag` | 401 | Permitido | 403 | 403 | 401 |
-| `POST /v1/reports/{reportId}/appeal` | 401 | Permitido | 403 | 403 | 401 |
-| `GET /v1/me/reports/{reportId}/status` | 401 | Permitido | 403 | 403 | 401 |
-| `GET /v1/moderation/queue` | 401 | 403 | Permitido | 403 | 401 |
-| `POST /v1/moderation/{itemId}/decision` | 401 | 403 | Permitido | 403 | 401 |
-| `POST /v1/moderation/roles` | 401 | 403 | Permitido | 403 | 401 |
-| `GET /v1/auth/session` | 401 | Permitido | Permitido | Permitido | 401 |
-| `POST /v1/auth/logout` | 401 | Permitido | Permitido | Permitido | 401 |
+| `POST /v1/reports` | 401 | Permitido | 403 | 403 | 403 |
+| `POST /v1/reports/{reportId}/flag` | 401 | Permitido | 403 | 403 | 403 |
+| `POST /v1/reports/{reportId}/appeal` | 401 | Permitido | 403 | 403 | Permitido |
+| `GET /v1/me/reports/{reportId}/status` | 401 | Permitido | 403 | 403 | Permitido |
+| `GET /v1/moderation/queue` | 401 | 403 | Permitido | 403 | 403 |
+| `POST /v1/moderation/{itemId}/decision` | 401 | 403 | Permitido | 403 | 403 |
+| `POST /v1/moderation/roles` | 401 | 403 | Permitido | 403 | 403 |
+| `GET /v1/auth/session` | 401 | Permitido | Permitido | Permitido | Permitido |
+| `POST /v1/auth/logout` | 401 | Permitido | Permitido | Permitido | Permitido |
 
 **45 casos**, todos en verde (`authorization-matrix.spec.ts`). Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
 

@@ -30,8 +30,13 @@
 
 ### 4. ¿Qué pasa si se acepta?
 
-- **Decisión:** el reporte queda `aprobado`, se publica de nuevo `PriceAssessed` como normal y el autor recupera 0,20 de reputación (paso `appealAccepted` en el dominio). Para la racha de RN6, el descarte revertido cuenta como `aprobar`. Si ese descarte completó la racha y suspendió la cuenta, `reliability` publica `ReporterSuspensionLifted` y `identity` levanta la suspensión, solo si su fecha de fin sigue siendo la de esa racha (una suspensión posterior por otra causa no se toca). Una apelación rechazada no suma otro descarte a la racha ni otra baja de reputación.
+- **Decisión:** el reporte queda `aprobado`, se publica de nuevo `PriceAssessed` como normal y el autor recupera 0,20 de reputación (paso `appealAccepted` en el dominio). Para la racha de RN6, el descarte revertido cuenta como `aprobar`. Para levantar la suspensión que pudo causar ese descarte, `reliability` publica `ReporterSuspensionLifted` con la fecha de fin que ese descarte habría puesto (descarte + 7 días), e `identity` la levanta solo si la fecha de la cuenta es esa. Si el descarte no suspendió, o una suspensión posterior por otra causa la cambió, no pasa nada. (Ajuste al construir: así no hace falta reconstruir el orden de la racha.) Una apelación rechazada no suma otro descarte a la racha ni otra baja de reputación.
 - **Razón:** una cuenta honesta no debe seguir castigada por un error ya corregido.
+
+### 5. ¿Cómo apela una cuenta que el descarte suspendió? (hueco encontrado al construir)
+
+- **Decisión:** una cuenta suspendida sí inicia sesión, pero con una sesión limitada: solo puede ver el estado de sus reportes, apelar, ver su sesión (que dice `suspendedUntil`) y cerrarla (`@AllowSuspended`). Las demás rutas responden 403 `ACCOUNT_SUSPENDED`. Cambia la pregunta 4 de la #33: el login ya no responde 403.
+- **Razón:** con el login bloqueado, la cuenta no podía apelar el descarte que la suspendió (el plazo de 7 días vencía junto con la suspensión) y el levantamiento de la pregunta 4 nunca serviría.
 
 ## Decisiones menores (sin pregunta)
 

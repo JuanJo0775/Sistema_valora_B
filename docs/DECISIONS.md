@@ -269,7 +269,7 @@ Aplicación de RF-002, RF-013 (RN6), RNF-010, PR-14 y EC-08. El detalle está en
 - **Roles:** el consumidor es quien consulta sin sesión; no hay un valor de rol nuevo. Siguen `reportante`, `moderador` y `comercio` (Corte 3).
 - **Suspensión:** sin rutas nuevas. `observar_cuentas` suspende al autor del reporte; un tercer `descartar` seguido sobre reportes del mismo autor también (RN6, regla `suspensionAfter` en `src/domain/suspension.ts`: un `aprobar` corta la racha, y vuelve a suspender en el sexto). Dura 7 días (provisional), revoca todas las sesiones y una nueva la extiende sin acortarla.
 - **Integración:** `reliability` publica `ReporterSuspensionRequested` v1 (clave seudónima, motivo, fecha de fin) en la transacción de la decisión; `identity` lo escucha. `identity.accounts` gana `reporter_key` (la guarda `ReporterIdentity` al calcularla) y `suspended_until`.
-- **Acceso:** el login de una cuenta suspendida responde 403 `ACCOUNT_SUSPENDED` solo con la contraseña correcta; una sesión de una cuenta suspendida responde 401.
+- **Acceso:** el login de una cuenta suspendida responde 403 `ACCOUNT_SUSPENDED` solo con la contraseña correcta; una sesión de una cuenta suspendida responde 401. **Cambiado en la #71:** ahora la cuenta suspendida entra con una sesión limitada.
 - **Evidencia:** matriz de 30 casos y guardián de rutas (`docs/calidad/matriz-autorizacion.md`).
 - **Fuera de alcance:** cambio de rol auditado y creación de moderadores (issue aparte); comercio limitado a su tienda (Corte 3).
 
@@ -281,6 +281,17 @@ Aplicación de RF-002 (RN1, RN4). El detalle está en `docs/decisiones/issue-73-
 - **Bitácora:** `identity.role_changes`, inmutable con un trigger, con ids de cuenta (sin correos) y sin llave foránea, para sobrevivir al borrado de una cuenta. Sin autor significa «sistema».
 - **Primer moderador:** comando `pnpm identity:set-role <correo> <rol> "<motivo>"`, con el mismo caso de uso.
 - **Conflicto de interés:** un moderador no decide sobre un reporte cuya clave seudónima es la suya (409 `OWN_REPORT`).
+
+## Apelación de un reporte descartado (issue #71, 14 de noviembre de 2026)
+
+Aplicación de RF-013 RN4 y EC-08. El detalle está en `docs/decisiones/issue-71-apelacion/`.
+
+- **Rutas:** `POST /v1/reports/{reportId}/appeal` (solo el autor, una vez, con motivo, hasta 7 días después del descarte) y `GET /v1/me/reports/{reportId}/status` (el estado y hasta cuándo puede apelar, sin decir quién decidió). Un reporte de otra cuenta responde 404.
+- **Cola:** motivo `apelacion`, primero que todo, con el motivo del autor. La decide un moderador distinto del que descartó (409 `SAME_MODERATOR`); `observar_cuentas` no aplica (422).
+- **Aceptar:** el reporte vuelve a contar y a la comparación, el autor recupera 0,20 de reputación, el descarte cuenta como `aprobar` en la racha y se publica `ReporterSuspensionLifted` con la fecha que ese descarte habría puesto; `identity` levanta la suspensión solo si coincide. **Rechazar:** sin otro castigo.
+- **Sesión limitada:** una cuenta suspendida inicia sesión, pero solo puede ver el estado de sus reportes, apelar, ver su sesión (`suspendedUntil`) y cerrarla (`@AllowSuspended`); lo demás responde 403 `ACCOUNT_SUSPENDED`. Cambia el acceso de la #33.
+- **Persistencia:** tabla `reliability.appeals` y columna `stage` en `moderation_log` (migración `0016`).
+- **Fuera de alcance:** la lista `GET /v1/me/reports`.
 
 ## Regla de cambio
 

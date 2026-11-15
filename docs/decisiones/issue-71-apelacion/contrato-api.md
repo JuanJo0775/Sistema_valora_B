@@ -40,6 +40,15 @@ Cambios en `docs/openapi.yaml` y en los eventos internos, en el mismo pull reque
 | 409 | También `SAME_MODERATOR`: quien descartó no decide la apelación. |
 | 422 | `DECISION_NOT_ALLOWED`: `observar_cuentas` sobre una apelación. |
 
+## Sesión limitada de una cuenta suspendida (pregunta 5)
+
+| Ruta | Antes (#33) | Después |
+|---|---|---|
+| `POST /v1/auth/login` | 403 `ACCOUNT_SUSPENDED` | 204: entra con una sesión limitada. |
+| `GET /v1/auth/session` | 401 | 200 con `suspendedUntil`. |
+| `POST /v1/auth/logout`, apelar y estado | 401 | Permitidas. |
+| Las demás rutas con sesión | 401 | 403 `ACCOUNT_SUSPENDED`. |
+
 ## Eventos internos
 
 **`ReporterSuspensionLifted` v1 (nuevo, publica `reliability`, escucha `identity`):**
@@ -48,4 +57,4 @@ Cambios en `docs/openapi.yaml` y en los eventos internos, en el mismo pull reque
 { "reporterKey": "hex de 64 caracteres", "suspendedUntil": "2026-11-21T14:00:00.000Z" }
 ```
 
-`identity` levanta la suspensión solo si `suspended_until` de la cuenta es igual a `suspendedUntil`.
+`suspendedUntil` es la fecha que habría puesto el descarte revertido; `identity` levanta la suspensión solo si `suspended_until` de la cuenta es igual.
