@@ -31,7 +31,7 @@ export interface PricesReliability {
 export interface CompareProductPorts {
   products: ProductLookup;
   stores: StoresWithinRadius;
-  prices: CurrentPrices;
+  prices: Pick<CurrentPrices, 'findByPresentations'>;
   reliability: PricesReliability;
   clock: Clock;
 }

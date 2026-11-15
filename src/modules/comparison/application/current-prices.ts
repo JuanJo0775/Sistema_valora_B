@@ -12,4 +12,6 @@ export interface CurrentPrice {
 // Puerto hacia la tabla propia del módulo.
 export interface CurrentPrices {
   findByPresentations(presentationIds: string[]): Promise<CurrentPrice[]>;
+  // Grill de la #28: todos los precios de una tienda.
+  findByEstablishment(establishmentId: string): Promise<CurrentPrice[]>;
 }

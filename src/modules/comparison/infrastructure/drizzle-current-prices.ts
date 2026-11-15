@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { eq, inArray, type SQL } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { CurrentPrice, CurrentPrices } from '../application/current-prices';
 import { priceCurrent } from './schema';
@@ -8,6 +8,14 @@ export class DrizzleCurrentPrices implements CurrentPrices {
 
   async findByPresentations(presentationIds: string[]): Promise<CurrentPrice[]> {
     if (presentationIds.length === 0) return [];
+    return this.find(inArray(priceCurrent.presentationId, presentationIds));
+  }
+
+  findByEstablishment(establishmentId: string): Promise<CurrentPrice[]> {
+    return this.find(eq(priceCurrent.establishmentId, establishmentId));
+  }
+
+  private async find(where: SQL): Promise<CurrentPrice[]> {
     const rows = await this.db
       .select({
         reportId: priceCurrent.reportId,
@@ -18,7 +26,7 @@ export class DrizzleCurrentPrices implements CurrentPrices {
         status: priceCurrent.status,
       })
       .from(priceCurrent)
-      .where(inArray(priceCurrent.presentationId, presentationIds));
+      .where(where);
     // La restricción CHECK de la tabla garantiza que es uno de los dos estados.
     return rows.map((row) => ({ ...row, status: row.status as CurrentPrice['status'] }));
   }
