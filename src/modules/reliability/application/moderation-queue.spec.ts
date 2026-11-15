@@ -70,4 +70,29 @@ describe('cola de moderación (RF-013)', () => {
     ]);
     expect(JSON.stringify(queue)).not.toContain('clave-del-autor');
   });
+
+  // RN2 de RF-013 y grill de la #32, pregunta 6.
+  it('ordena por gravedad: mayor desviación, luego más marcas y, en empate, el más antiguo', async () => {
+    const small = pending(suspicious(0.45));
+    const large = pending(suspicious(0.8));
+    const oneFlag = pending({ status: 'sin_datos', references: 0 }, 1, 5);
+    const olderOneFlag = pending({ status: 'sin_datos', references: 0 }, 1, 30);
+    const threeFlags = pending({ status: 'sin_datos', references: 0 }, 3);
+
+    const queue = await setup([oneFlag, small, threeFlags, olderOneFlag, large]).list({});
+
+    expect(queue.map((item) => item.id)).toEqual(
+      [large, small, threeFlags, olderOneFlag, oneFlag].map((item) => item.observation.reportId),
+    );
+  });
+
+  it('filtra por motivo y respeta el límite, 20 por defecto', async () => {
+    const detected = Array.from({ length: 22 }, (_, index) => pending(suspicious(0.5), 0, index));
+    const flagged = pending({ status: 'sin_datos', references: 0 }, 1);
+    const queue = setup([...detected, flagged]);
+
+    await expect(queue.list({ reason: 'marcado' })).resolves.toHaveLength(1);
+    await expect(queue.list({ reason: 'desviacion', limit: 3 })).resolves.toHaveLength(3);
+    await expect(queue.list({})).resolves.toHaveLength(20);
+  });
 });
