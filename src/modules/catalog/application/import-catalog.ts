@@ -1,5 +1,6 @@
 import { assertSameBase, type Unit } from '../../../domain/unit-price';
 import type { ProductImage } from './product-repository';
+import type { WholesaleReference, WholesaleReferenceRepository } from './wholesale-references';
 
 // Producto completo tal como lo carga la semilla (issue #51), con ids fijos ya calculados.
 export interface ProductImport {
@@ -30,12 +31,20 @@ export const PRODUCT_IMPORT_REPOSITORY = Symbol('PRODUCT_IMPORT_REPOSITORY');
 
 // Puerta de entrada pública para que el módulo imports guarde productos sin tocar las tablas de catalog.
 export class ImportCatalog {
-  constructor(private readonly products: ProductImportRepository) {}
+  constructor(
+    private readonly products: ProductImportRepository,
+    private readonly references: Pick<WholesaleReferenceRepository, 'save'>,
+  ) {}
 
   // Issue #59: la comparación (#15, #21) nunca recibe un producto con bases mezcladas.
   async save(product: ProductImport): Promise<void> {
     assertSameBase(product.presentations.map((presentation) => presentation.unit));
     await this.products.save(product);
+  }
+
+  // Grill de la #34 (RF-014): la referencia SIPSA de un producto, cargada a mano.
+  saveReference(reference: WholesaleReference): Promise<void> {
+    return this.references.save(reference);
   }
 
   listProductIds(): Promise<string[]> {

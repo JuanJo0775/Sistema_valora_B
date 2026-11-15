@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SeedRow, SeedSource } from '../application/seed-source';
 
@@ -13,6 +13,16 @@ export class CsvSeedSource implements SeedSource {
 
   readStores(): Promise<SeedRow[]> {
     return this.read('tiendas.csv');
+  }
+
+  // Grill de la #34: sipsa.csv es opcional.
+  async readReferences(): Promise<SeedRow[]> {
+    try {
+      await access(join(this.folder, 'sipsa.csv'));
+    } catch {
+      return [];
+    }
+    return this.read('sipsa.csv');
   }
 
   private async read(file: string): Promise<SeedRow[]> {

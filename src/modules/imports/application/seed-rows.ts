@@ -1,9 +1,11 @@
 import { isValidGtin } from '../../../domain/gtin';
 import { baseOf, type Unit, type UnitPricePer } from '../../../domain/unit-price';
+import { acceptsWholesaleReference } from '../../../domain/wholesale-reference';
 import type { SeedRow } from './seed-source';
 
 export const PRODUCTS_FILE = 'productos.csv';
 export const STORES_FILE = 'tiendas.csv';
+export const REFERENCES_FILE = 'sipsa.csv';
 
 const UNITS: string[] = ['g', 'kg', 'ml', 'l', 'und'] satisfies Unit[];
 const STORE_TYPES = ['barrio', 'minimercado', 'supermercado', 'descuento'];
@@ -16,6 +18,8 @@ export const text = (row: SeedRow, column: string): string => (row.values[column
 export const isVerifiedStore = (row: SeedRow): boolean => text(row, 'revisar') === 'no';
 export const isVerifiedProduct = (row: SeedRow): boolean =>
   text(row, 'verificar') === 'no' && text(row, 'responsable') !== '';
+// Grill de la #34: la referencia SIPSA también la revisa alguien del equipo (RF-014 RN5).
+export const isVerifiedReference = isVerifiedProduct;
 
 const at = (file: string, row: SeedRow, message: string): string =>
   `${file}, fila ${String(row.line)}: ${message}`;
@@ -162,4 +166,59 @@ function imageErrors(row: SeedRow): string[] {
     errors.push(at(PRODUCTS_FILE, row, 'la imagen necesita una URL https y su atribución'));
   }
   return errors;
+}
+
+// Grill de la #34, pregunta 3 (RF-014 RN2): la referencia es de un producto verificado de la semilla
+// que se vende por peso, porque SIPSA da pesos por kilo.
+export function referenceErrors(
+  rows: SeedRow[],
+  unitByProduct: Map<string, { name: string; unit: Unit }>,
+  productKeyOf: (row: SeedRow) => string,
+): string[] {
+  return rows.flatMap((row) => {
+    const errors: string[] = [];
+    const product = unitByProduct.get(productKeyOf(row));
+    if (!product) {
+      errors.push(
+        at(
+          REFERENCES_FILE,
+          row,
+          `el producto «${text(row, 'producto')}» de «${text(row, 'marca')}» no está verificado en productos.csv`,
+        ),
+      );
+    } else if (!acceptsWholesaleReference(product.unit)) {
+      errors.push(
+        at(
+          REFERENCES_FILE,
+          row,
+          `«${product.name}» no se vende por peso; SIPSA da precios por kilo`,
+        ),
+      );
+    }
+    if (text(row, 'producto_sipsa') === '' || text(row, 'mercado') === '') {
+      errors.push(at(REFERENCES_FILE, row, 'faltan producto_sipsa o mercado'));
+    }
+    const price = Number(text(row, 'precio_kg'));
+    if (!Number.isInteger(price) || price < 1) {
+      errors.push(at(REFERENCES_FILE, row, 'precio_kg debe ser un entero mayor que 0'));
+    }
+    const start = text(row, 'inicio_periodo');
+    const end = text(row, 'fin_periodo');
+    if (!isValidDate(start) || !isValidDate(end) || start > end) {
+      errors.push(
+        at(
+          REFERENCES_FILE,
+          row,
+          'el periodo debe tener fechas AAAA-MM-DD y no puede empezar después de terminar',
+        ),
+      );
+    }
+    if (!isHttpsUrl(text(row, 'url_fuente'))) {
+      errors.push(at(REFERENCES_FILE, row, 'url_fuente debe ser una URL https'));
+    }
+    if (!isValidDate(text(row, 'fecha_consulta'))) {
+      errors.push(at(REFERENCES_FILE, row, 'la fecha debe tener el formato AAAA-MM-DD'));
+    }
+    return errors;
+  });
 }

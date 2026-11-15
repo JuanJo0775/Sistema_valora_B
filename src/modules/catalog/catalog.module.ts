@@ -30,6 +30,7 @@ import { ProductsController } from './http/products.controller';
 import { DrizzleProductImportRepository } from './infrastructure/drizzle-product-import-repository';
 import { DrizzleProductRepository } from './infrastructure/drizzle-product-repository';
 import { DrizzleProductRequestRepository } from './infrastructure/drizzle-product-request-repository';
+import { DrizzleWholesaleReferenceRepository } from './infrastructure/drizzle-wholesale-reference-repository';
 import { LocalImageStorage } from './infrastructure/local-image-storage';
 import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
 
@@ -114,9 +115,9 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
     },
     {
       provide: ImportCatalog,
-      inject: [PRODUCT_IMPORT_REPOSITORY],
-      useFactory: (repository: ProductImportRepository): ImportCatalog =>
-        new ImportCatalog(repository),
+      inject: [PRODUCT_IMPORT_REPOSITORY, DATABASE],
+      useFactory: (repository: ProductImportRepository, db: Database): ImportCatalog =>
+        new ImportCatalog(repository, new DrizzleWholesaleReferenceRepository(db)),
     },
     {
       provide: PresentationExists,

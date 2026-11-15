@@ -29,12 +29,15 @@ async function seed(): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const { stores, products, notInFiles } = result;
+    const { stores, products, references, notInFiles } = result;
     logger.log(
       `Tiendas: ${String(stores.saved)} guardadas, ${String(stores.skipped)} pendientes de revisar.`,
     );
     logger.log(
       `Productos: ${String(products.saved)} guardados (${String(products.presentations)} presentaciones), ${String(products.skipped)} pendientes de verificar.`,
+    );
+    logger.log(
+      `Referencias SIPSA: ${String(references.saved)} guardadas, ${String(references.skipped)} pendientes de verificar.`,
     );
     if (notInFiles.stores + notInFiles.products > 0) {
       logger.warn(
