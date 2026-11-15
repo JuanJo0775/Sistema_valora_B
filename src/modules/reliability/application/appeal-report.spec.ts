@@ -1,4 +1,11 @@
-import { AppealReport } from './appeal-report';
+import {
+  AlreadyAppealedError,
+  AppealReport,
+  AppealWindowClosedError,
+  InvalidAppealNoteError,
+  NotAppealableError,
+} from './appeal-report';
+import { ReportNotFoundError } from './flag-report';
 import type { LogEntry, NewAppeal, Observation } from './stores';
 
 const discardedAt = new Date('2026-11-14T14:00:00Z');
@@ -55,5 +62,61 @@ describe('apelar un reporte descartado (RF-013 RN4)', () => {
     await appealReport.execute({ reportId: 'reporte-1', appellantKey: 'autora', note });
 
     expect(appeals).toEqual([{ reportId: 'reporte-1', note, createdAt: now }]);
+  });
+
+  describe('lo que no se puede apelar', () => {
+    it('otra cuenta no encuentra el reporte, para no revelar que existe', async () => {
+      const { appeals, appealReport } = setup();
+
+      await expect(
+        appealReport.execute({ reportId: 'reporte-1', appellantKey: 'otra', note }),
+      ).rejects.toThrow(ReportNotFoundError);
+      await expect(
+        appealReport.execute({ reportId: 'no-existe', appellantKey: 'autora', note }),
+      ).rejects.toThrow(ReportNotFoundError);
+      expect(appeals).toEqual([]);
+    });
+
+    it.each([
+      ['normal', { moderation: undefined }],
+      ['aprobado', { moderation: 'aprobado' as const }],
+    ])('un reporte %s no se apela', async (_case, change) => {
+      const { appeals, appealReport } = setup(observation(change));
+
+      await expect(
+        appealReport.execute({ reportId: 'reporte-1', appellantKey: 'autora', note }),
+      ).rejects.toThrow(NotAppealableError);
+      expect(appeals).toEqual([]);
+    });
+
+    it('se apela una sola vez', async () => {
+      const { appealReport } = setup();
+      await appealReport.execute({ reportId: 'reporte-1', appellantKey: 'autora', note });
+
+      await expect(
+        appealReport.execute({ reportId: 'reporte-1', appellantKey: 'autora', note }),
+      ).rejects.toThrow(AlreadyAppealedError);
+    });
+
+    it('pasados 7 días del descarte ya no se apela', async () => {
+      const { appeals, appealReport } = setup(observation(), new Date('2026-11-21T14:00:01Z'));
+
+      await expect(
+        appealReport.execute({ reportId: 'reporte-1', appellantKey: 'autora', note }),
+      ).rejects.toThrow(AppealWindowClosedError);
+      expect(appeals).toEqual([]);
+    });
+
+    it.each(['', '   ', 'Corto'])(
+      'sin un motivo de 10 caracteres ("%s") no se apela',
+      async (short) => {
+        const { appeals, appealReport } = setup();
+
+        await expect(
+          appealReport.execute({ reportId: 'reporte-1', appellantKey: 'autora', note: short }),
+        ).rejects.toThrow(InvalidAppealNoteError);
+        expect(appeals).toEqual([]);
+      },
+    );
   });
 });
