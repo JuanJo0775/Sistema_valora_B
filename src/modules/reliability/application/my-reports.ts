@@ -33,6 +33,8 @@ export interface MyReportsPage {
 }
 
 const UNNAMED = 'Sin nombre';
+// Grill de la #76, pregunta 2.
+export const DEFAULT_MY_REPORTS_LIMIT = 20;
 
 // RF-006: los aportes de la cuenta con su estado, el más reciente primero.
 export class MyReports {
@@ -40,8 +42,9 @@ export class MyReports {
 
   async list(reporterKey: string, request: MyReportsRequest): Promise<MyReportsPage> {
     const { moderation, labels, names, clock } = this.ports;
+    const limit = request.limit ?? DEFAULT_MY_REPORTS_LIMIT;
     const reports = await moderation.authoredBy(reporterKey, {
-      limit: request.limit ?? 20,
+      limit,
       ...(request.before ? { before: request.before } : {}),
     });
     const [presentationNames, establishmentNames] = await Promise.all([
@@ -49,7 +52,11 @@ export class MyReports {
       names.of([...new Set(reports.map((report) => report.observation.establishmentId))]),
     ]);
     const now = clock.now();
+    // Con la página llena puede haber más: se piden con before = la llegada del último.
+    const last = reports.at(-1);
+    const nextBefore = reports.length === limit && last ? last.observation.receivedAt : undefined;
     return {
+      ...(nextBefore ? { nextBefore } : {}),
       items: reports.map((report) => {
         const { observation } = report;
         return {
