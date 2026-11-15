@@ -108,4 +108,55 @@ describe('moderación por HTTP (RF-013)', () => {
       expect(responses.map((response) => response.status)).toEqual([401, 403, 403]);
     });
   });
+
+  describe('GET /v1/moderation/queue', () => {
+    const queue = (as: SignedIn | null, query: Record<string, string> = {}) => {
+      const call = request(server).get('/v1/moderation/queue').query(query);
+      return as ? call.set('Cookie', as.cookie) : call;
+    };
+
+    it('un moderador ve el reporte marcado, sin datos de las cuentas', async () => {
+      await request(server)
+        .post(`/v1/reports/${reportId}/flag`)
+        .set('Cookie', reporter.cookie)
+        .set('X-CSRF-Token', reporter.csrfToken)
+        .send({ reason: 'precio_falso' })
+        .expect(202);
+
+      const response = await queue(moderator).expect(200);
+
+      expect(response.body).toEqual({
+        items: [
+          {
+            id: reportId,
+            reason: 'marcado',
+            productName: 'Sin nombre',
+            establishmentName: 'Sin nombre',
+            reportedPriceCop: 2000,
+            medianPriceCop: 2000,
+            deviationPercent: 0,
+            reportersCount: 1,
+            createdAt: observation.receivedAt.toISOString(),
+          },
+        ],
+      });
+      expect(JSON.stringify(response.body)).not.toContain(observation.reporterKey);
+    });
+
+    it('un motivo desconocido o un límite fuera de rango responden 400', async () => {
+      const responses = await Promise.all([
+        queue(moderator, { reason: 'otro' }),
+        queue(moderator, { limit: '51' }),
+        queue(moderator, { limit: '0' }),
+      ]);
+
+      expect(responses.map((response) => response.status)).toEqual([400, 400, 400]);
+    });
+
+    it('sin sesión 401; un reportante 403', async () => {
+      const responses = await Promise.all([queue(null), queue(reporter)]);
+
+      expect(responses.map((response) => response.status)).toEqual([401, 403]);
+    });
+  });
 });
