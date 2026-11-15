@@ -107,4 +107,26 @@ describe('cola de moderación (RF-013)', () => {
 
     expect(item).toMatchObject({ productName: 'Sin nombre', establishmentName: 'Sin nombre' });
   });
+
+  // Grill de la #71, pregunta 3.
+  it('una apelación aparece primero, con el motivo del autor y sin quién descartó', async () => {
+    const detected = pending(suspicious(0.9), 3);
+    const appealed: PendingItem = {
+      ...pending(suspicious(0.5)),
+      appeal: { note: 'El precio sí era ese', createdAt: minutesAgo(1) },
+    };
+    appealed.observation.moderation = 'descartado';
+
+    const queue = await setup([detected, appealed]).list({});
+
+    expect(queue[0]).toMatchObject({
+      id: appealed.observation.reportId,
+      reason: 'apelacion',
+      appealNote: 'El precio sí era ese',
+    });
+    expect(queue.map((item) => item.reason)).toEqual(['apelacion', 'desviacion']);
+    await expect(setup([detected, appealed]).list({ reason: 'apelacion' })).resolves.toHaveLength(
+      1,
+    );
+  });
 });
