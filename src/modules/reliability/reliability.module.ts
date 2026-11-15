@@ -1,13 +1,15 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
 import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
-import { CatalogModule, PresentationFreshness } from '../catalog';
-import { EstablishmentsAround, EstablishmentsModule } from '../establishments';
+import { CatalogModule, PresentationFreshness, PresentationLabels } from '../catalog';
+import { EstablishmentNames, EstablishmentsAround, EstablishmentsModule } from '../establishments';
 import { IdentityModule } from '../identity';
 import { AssessReportedPrice, type PriceReportedV2 } from './application/assess-reported-price';
 import { FlagReport } from './application/flag-report';
+import { ModerationQueue } from './application/moderation-queue';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
 import { FlagsController } from './http/flags.controller';
+import { ModerationController } from './http/moderation.controller';
 import { DrizzleModerationStore } from './infrastructure/drizzle-moderation-store';
 import { DrizzleObservationStore, DrizzleReputationStore } from './infrastructure/drizzle-stores';
 
@@ -16,7 +18,7 @@ const ZONE_RADIUS_METERS = 1000;
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, IdentityModule],
-  controllers: [FlagsController],
+  controllers: [FlagsController, ModerationController],
   providers: [
     {
       provide: ReliabilityOfPrices,
@@ -37,6 +39,16 @@ const ZONE_RADIUS_METERS = 1000;
           observations: new DrizzleObservationStore(db),
           clock: { now: () => new Date() },
         }),
+    },
+    {
+      provide: ModerationQueue,
+      inject: [DATABASE, PresentationLabels, EstablishmentNames],
+      useFactory: (
+        db: Database,
+        labels: PresentationLabels,
+        names: EstablishmentNames,
+      ): ModerationQueue =>
+        new ModerationQueue({ moderation: new DrizzleModerationStore(db), labels, names }),
     },
   ],
   exports: [ReliabilityOfPrices],
