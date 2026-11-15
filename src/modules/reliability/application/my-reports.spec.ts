@@ -74,6 +74,15 @@ describe('mis aportes con su estado (RF-006, grill de la #76)', () => {
     ]);
   });
 
+  // Grill de la #29, pregunta 3: un reporte de una ráfaga espera la decisión del moderador.
+  it('un aporte que llegó en una ráfaga está en revisión', async () => {
+    const { myReports } = setup([authored({ burst: true })]);
+
+    const page = await myReports.list('autora', {});
+
+    expect(page.items.map((item) => item.status)).toEqual(['en_revision']);
+  });
+
   it('sin aportes, la lista está vacía', async () => {
     await expect(setup([]).myReports.list('autora', {})).resolves.toEqual({ items: [] });
   });
