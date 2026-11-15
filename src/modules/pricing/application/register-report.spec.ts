@@ -3,6 +3,7 @@ import type { DomainEvent } from '../../../shared/events';
 import type { NewReport, RecentReport, ReportRepository, SavedReport } from './report-repository';
 import {
   DuplicateReportError,
+  TooManyReportsError,
   IdempotencyKeyReusedError,
   RegisterReport,
   UnknownEstablishmentError,
@@ -11,6 +12,7 @@ import {
 
 const presentationId = '11111111-1111-4111-8111-111111111111';
 const establishmentId = '22222222-2222-4222-8222-222222222222';
+const missing = '99999999-9999-4999-8999-999999999999';
 const now = new Date('2026-11-12T14:00:00Z');
 
 // Repositorio en memoria: doble del puerto, sin base de datos.
@@ -46,8 +48,9 @@ function setup(clock = { now: () => now }) {
   const reports = new InMemoryReportRepository();
   const registerReport = new RegisterReport({
     reports,
-    presentations: { exists: (id) => Promise.resolve(id === presentationId) },
-    establishments: { exists: (id) => Promise.resolve(id === establishmentId) },
+    // Existe todo salvo `missing`: así una cuenta puede reportar en muchas tiendas.
+    presentations: { exists: (id) => Promise.resolve(id !== missing) },
+    establishments: { exists: (id) => Promise.resolve(id !== missing) },
     reporters: {
       of: () => Promise.resolve({ reporterKey: 'clave-seudonima', reporterSince: '2026-11-01' }),
     },
@@ -85,7 +88,6 @@ describe('registrar un reporte de precio', () => {
 
   it('rechaza una presentación o una tienda que no existen, sin guardar nada', async () => {
     const { reports, registerReport } = setup();
-    const missing = '99999999-9999-4999-8999-999999999999';
 
     await expect(
       registerReport.execute({
@@ -195,6 +197,38 @@ describe('registrar un reporte de precio', () => {
         receipt: first.receipt,
         created: false,
       });
+    });
+  });
+
+  // RF-012 RN2 y grill de la #29, pregunta 3.
+  describe('ráfagas', () => {
+    // n reportes de la misma cuenta, uno por minuto y cada uno en una tienda distinta.
+    const reportMany = async (registerReport: RegisterReport, n: number, advance: () => void) => {
+      for (let index = 0; index < n; index += 1) {
+        await registerReport.execute({
+          idempotencyKey: `clave-${String(index)}`,
+          report: { ...report, establishmentId: `tienda-${String(index)}` },
+        });
+        advance();
+      }
+    };
+
+    it('el reporte 21 de la hora se rechaza con los segundos de espera y no se guarda', async () => {
+      let current = now;
+      const { reports, registerReport } = setup({ now: () => current });
+      await reportMany(registerReport, 20, () => {
+        current = new Date(current.getTime() + 60 * 1000);
+      });
+
+      const attempt = registerReport.execute({
+        idempotencyKey: 'clave-21',
+        report: { ...report, establishmentId: 'tienda-21' },
+      });
+
+      await expect(attempt).rejects.toThrow(TooManyReportsError);
+      // El primero llegó hace 20 minutos: faltan 40 para que salga de la hora.
+      await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 40 * 60 });
+      expect(reports.reports).toHaveLength(20);
     });
   });
 });
