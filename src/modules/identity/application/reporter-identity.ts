@@ -10,6 +10,8 @@ export interface ReporterPseudonym {
 
 export interface AccountCreation {
   createdAtOf(accountId: string): Promise<Date>;
+  // Grill de la #33, pregunta 3: guarda la clave para encontrar la cuenta por ella.
+  rememberReporterKey(accountId: string, reporterKey: string): Promise<void>;
 }
 
 export interface ReporterIdentityPorts {
@@ -21,10 +23,10 @@ export class ReporterIdentity {
   constructor(private readonly ports: ReporterIdentityPorts) {}
 
   async of(accountId: string): Promise<ReporterPseudonym> {
-    const createdAt = await this.ports.accounts.createdAtOf(accountId);
-    return {
-      reporterKey: createHmac('sha256', this.ports.secret).update(accountId).digest('hex'),
-      reporterSince: createdAt.toISOString().slice(0, 10),
-    };
+    const { accounts, secret } = this.ports;
+    const createdAt = await accounts.createdAtOf(accountId);
+    const reporterKey = createHmac('sha256', secret).update(accountId).digest('hex');
+    await accounts.rememberReporterKey(accountId, reporterKey);
+    return { reporterKey, reporterSince: createdAt.toISOString().slice(0, 10) };
   }
 }
