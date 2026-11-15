@@ -11,6 +11,9 @@ export interface NearbyEstablishment {
   distanceM: number;
 }
 
+// Grill de la #28: la tienda de la ruta de precios por tienda.
+export type EstablishmentDetail = Omit<NearbyEstablishment, 'distanceM'>;
+
 // Ubicación aproximada del usuario: solo se usa para calcular la cercanía y no se guarda (RF-005 RN5).
 export interface NearbyQuery {
   lat: number;
@@ -39,6 +42,7 @@ export interface EstablishmentRepository {
   findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
   findAround(query: AroundQuery): Promise<string[]>;
   namesOf(establishmentIds: string[]): Promise<Map<string, string>>;
+  findById(establishmentId: string): Promise<EstablishmentDetail | null>;
   exists(establishmentId: string): Promise<boolean>;
 }
 

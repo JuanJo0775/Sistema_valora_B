@@ -9,6 +9,7 @@ import {
 import { PresentationExists } from './application/presentation-exists';
 import { PresentationFreshness } from './application/presentation-freshness';
 import { PresentationLabels } from './application/presentation-labels';
+import { PresentationsForPricing } from './application/presentations-for-pricing';
 import { ProductForComparison } from './application/product-for-comparison';
 import { PRODUCT_REPOSITORY, type ProductRepository } from './application/product-repository';
 import { SearchProducts } from './application/search-products';
@@ -64,6 +65,12 @@ import { DrizzleProductRepository } from './infrastructure/drizzle-product-repos
         new PresentationFreshness(products),
     },
     {
+      provide: PresentationsForPricing,
+      inject: [PRODUCT_REPOSITORY],
+      useFactory: (products: ProductRepository): PresentationsForPricing =>
+        new PresentationsForPricing(products),
+    },
+    {
       provide: PresentationLabels,
       inject: [PRODUCT_REPOSITORY],
       useFactory: (products: ProductRepository): PresentationLabels =>
@@ -76,6 +83,7 @@ import { DrizzleProductRepository } from './infrastructure/drizzle-product-repos
     ProductForComparison,
     PresentationFreshness,
     PresentationLabels,
+    PresentationsForPricing,
   ],
 })
 export class CatalogModule {}

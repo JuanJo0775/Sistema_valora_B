@@ -48,6 +48,10 @@ class InMemoryProductRepository implements ProductRepository {
   labelsOf(): Promise<Map<string, string>> {
     return Promise.reject(new Error('GetProduct no consulta nombres'));
   }
+
+  pricingOf(): Promise<Map<string, never>> {
+    return Promise.reject(new Error('GetProduct no consulta presentaciones para precios'));
+  }
 }
 
 describe('consultar un producto del catálogo', () => {
