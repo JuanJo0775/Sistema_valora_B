@@ -1,4 +1,4 @@
-import { FlagReport } from './flag-report';
+import { AlreadyFlaggedError, FlagReport, ReportNotFoundError } from './flag-report';
 import type { ModerationStore, NewFlag, Observation, PendingItem } from './stores';
 
 const now = new Date('2026-11-14T14:00:00Z');
@@ -19,9 +19,13 @@ const observation = (reportId: string): Observation => ({
 class InMemoryModeration implements ModerationStore {
   readonly flags: NewFlag[] = [];
 
+  // Igual que la llave (report_id, flagger_key) de la tabla flags.
   flag(flag: NewFlag): Promise<boolean> {
-    this.flags.push(flag);
-    return Promise.resolve(true);
+    const repeated = this.flags.some(
+      (seen) => seen.reportId === flag.reportId && seen.flaggerKey === flag.flaggerKey,
+    );
+    if (!repeated) this.flags.push(flag);
+    return Promise.resolve(!repeated);
   }
 
   pending(): Promise<PendingItem[]> {
@@ -66,5 +70,25 @@ describe('marcar un reporte como dudoso (RF-013)', () => {
         createdAt: now,
       },
     ]);
+  });
+
+  it('la misma cuenta no puede marcar dos veces el mismo reporte; otra cuenta sí', async () => {
+    const { moderation, flagReport } = setup();
+    await flagReport.execute({ reportId: 'reporte-1', flaggerKey: 'vecina', reason: 'otro' });
+
+    await expect(
+      flagReport.execute({ reportId: 'reporte-1', flaggerKey: 'vecina', reason: 'precio_falso' }),
+    ).rejects.toThrow(AlreadyFlaggedError);
+    await flagReport.execute({ reportId: 'reporte-1', flaggerKey: 'otra', reason: 'otro' });
+    expect(moderation.flags.map((flag) => flag.flaggerKey)).toEqual(['vecina', 'otra']);
+  });
+
+  it('un reporte que no existe no se puede marcar', async () => {
+    const { moderation, flagReport } = setup();
+
+    await expect(
+      flagReport.execute({ reportId: 'no-existe', flaggerKey: 'vecina', reason: 'otro' }),
+    ).rejects.toThrow(ReportNotFoundError);
+    expect(moderation.flags).toEqual([]);
   });
 });
