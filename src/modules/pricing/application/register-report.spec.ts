@@ -290,4 +290,23 @@ describe('registrar un reporte de precio', () => {
       expect(JSON.stringify(bursts())).not.toContain(reporterId);
     });
   });
+
+  // Grill de la #30 (PR-08): la cola sin conexión manda todo junto al reconectar.
+  it('50 reportes de la cola observados a lo largo del día y enviados a la vez se aceptan todos', async () => {
+    const { reports, registerReport } = setup();
+    const queue = Array.from({ length: 50 }, (_, index) => ({
+      idempotencyKey: `cola-${String(index)}`,
+      report: {
+        ...report,
+        // Diez tiendas; un reporte cada 20 minutos durante unas 16 horas.
+        establishmentId: `tienda-${String(index % 10)}`,
+        observedAt: new Date(now.getTime() - (index + 1) * 20 * 60 * 1000),
+      },
+    }));
+
+    for (const queued of queue) await registerReport.execute(queued);
+
+    expect(reports.reports).toHaveLength(50);
+    expect(reports.events.filter((event) => event.type === 'ReportBurstDetected')).toEqual([]);
+  });
 });
