@@ -11,6 +11,13 @@ type Column = {
   udt_name: string;
 };
 
+// Los esquemas de la aplicación (un pgSchema por módulo, ADR-003, más shared). Se revisan solo
+// estos: la imagen de PostGIS de la CI trae otros, como el geocodificador «tiger», que no son de
+// Valora. Un módulo nuevo debe agregarse aquí.
+const APP_SCHEMAS = sql.raw(
+  "('identity', 'catalog', 'establishments', 'pricing', 'reliability', 'comparison', 'shared')",
+);
+
 // EC-08 y PR-15 (grill de la #36, pregunta 2): la base no guarda datos personales fuera de identity
 // ni coordenadas del usuario. Si una migración nueva agrega una columna así, esta prueba falla.
 describe('privacidad del esquema de la base (EC-08, #36)', () => {
@@ -29,7 +36,7 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     db = drizzle(pool);
     const result = await db.execute<Column>(
       sql`select table_schema, table_name, column_name, udt_name from information_schema.columns
-          where table_schema not in ('pg_catalog', 'information_schema', 'public', 'topology', 'drizzle')`,
+          where table_schema in ${APP_SCHEMAS}`,
     );
     columns = result.rows;
   });
@@ -43,6 +50,18 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
       .filter((column) => pattern.test(column.column_name))
       .map((column) => `${column.table_schema}.${column.table_name}.${column.column_name}`)
       .sort();
+
+  it('revisa los esquemas de todos los módulos', () => {
+    expect([...new Set(columns.map((column) => column.table_schema))].sort()).toEqual([
+      'catalog',
+      'comparison',
+      'establishments',
+      'identity',
+      'pricing',
+      'reliability',
+      'shared',
+    ]);
+  });
 
   it('el correo y la contraseña solo están en identity.accounts', () => {
     expect(named(/email|correo|password|contrasena/)).toEqual([
