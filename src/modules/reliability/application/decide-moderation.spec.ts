@@ -567,5 +567,21 @@ describe('decisión de moderación (RF-013)', () => {
         }),
       ]);
     });
+
+    it('rechazarla deja el reporte descartado, sin otra baja de reputación ni eventos', async () => {
+      const { reported, reputations, published, moderation, decide } = await appealedSetup();
+
+      await decide.execute({
+        reportId: reported.reportId,
+        decision: 'descartar',
+        note,
+        moderatorKey: 'moderadora-b',
+      });
+
+      expect(reported.moderation).toBe('descartado');
+      expect(reputations.values.get('autor-dudoso')).toBeCloseTo(0.3);
+      expect(published).toEqual([]);
+      await expect(moderation.decisionsAbout('autor-dudoso')).resolves.toEqual(['descartar']);
+    });
   });
 });
