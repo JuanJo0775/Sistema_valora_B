@@ -21,10 +21,10 @@ export const isVerifiedProduct = (row: SeedRow): boolean =>
 // Grill de la #34: la referencia SIPSA también la revisa alguien del equipo (RF-014 RN5).
 export const isVerifiedReference = isVerifiedProduct;
 
-const at = (file: string, row: SeedRow, message: string): string =>
+export const at = (file: string, row: SeedRow, message: string): string =>
   `${file}, fila ${String(row.line)}: ${message}`;
 
-const isValidDate = (value: string): boolean =>
+export const isValidDate = (value: string): boolean =>
   DATE.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 
 // Trazabilidad (grill de la #51, pregunta 5): una fila verificada sin fuente o sin fecha se rechaza.
