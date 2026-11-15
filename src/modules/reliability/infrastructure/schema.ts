@@ -94,6 +94,12 @@ export const moderationLog = reliabilitySchema.table(
   ],
 );
 
+// Grill de la #29, pregunta 3: los reportes que llegaron en una ráfaga de su cuenta (RF-012 RN2).
+export const bursts = reliabilitySchema.table('bursts', {
+  reportId: uuid('report_id').primaryKey(),
+  detectedAt: timestamp('detected_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Grill de la #71, pregunta 1: una apelación por reporte, con el motivo del autor.
 export const appeals = reliabilitySchema.table('appeals', {
   reportId: uuid('report_id').primaryKey(),

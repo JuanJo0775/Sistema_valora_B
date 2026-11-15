@@ -14,7 +14,7 @@ import type {
   Stage,
 } from '../application/stores';
 import { toObservation } from './drizzle-stores';
-import { appeals, flags, moderationLog, observations } from './schema';
+import { appeals, bursts, flags, moderationLog, observations } from './schema';
 
 type Executor = NodePgDatabase | Transaction;
 
@@ -51,13 +51,18 @@ export class DrizzleModerationStore implements ModerationStore {
       .as('flag_count');
     const flagsOf = sql<number>`coalesce(${flagCount.total}, 0)`.mapWith(Number);
     const inReview = await this.db
-      .select({ observation: observations, flags: flagsOf })
+      .select({ observation: observations, flags: flagsOf, burst: bursts.reportId })
       .from(observations)
       .leftJoin(flagCount, eq(flagCount.reportId, observations.reportId))
+      .leftJoin(bursts, eq(bursts.reportId, observations.reportId))
       .where(
         and(
           isNull(observations.moderation),
-          or(sql`${observations.verdict}->>'status' = 'sospechoso'`, sql`${flagCount.total} > 0`),
+          or(
+            sql`${observations.verdict}->>'status' = 'sospechoso'`,
+            sql`${flagCount.total} > 0`,
+            sql`${bursts.reportId} is not null`,
+          ),
         ),
       );
     // Grill de la #71, pregunta 3: las apelaciones que nadie ha decidido.
@@ -68,7 +73,11 @@ export class DrizzleModerationStore implements ModerationStore {
       .leftJoin(flagCount, eq(flagCount.reportId, observations.reportId))
       .where(notExists(this.appealDecision(appeals.reportId)));
     return [
-      ...inReview.map((row) => ({ observation: toObservation(row.observation), flags: row.flags })),
+      ...inReview.map((row) => ({
+        observation: toObservation(row.observation),
+        flags: row.flags,
+        ...(row.burst ? { burst: true as const } : {}),
+      })),
       ...appealed.map((row) => ({
         observation: toObservation(row.observation),
         flags: row.flags,
@@ -149,7 +158,7 @@ export class DrizzleModerationStore implements ModerationStore {
       .limit(page.limit);
     if (rows.length === 0) return [];
     const ids = rows.map((row) => row.reportId);
-    const [flagCounts, appealRows, logRows] = await Promise.all([
+    const [flagCounts, appealRows, logRows, burstRows] = await Promise.all([
       this.db
         .select({ reportId: flags.reportId, total: count() })
         .from(flags)
@@ -161,6 +170,10 @@ export class DrizzleModerationStore implements ModerationStore {
         .from(moderationLog)
         .where(inArray(moderationLog.reportId, ids))
         .orderBy(asc(moderationLog.decidedAt)),
+      this.db
+        .select({ reportId: bursts.reportId })
+        .from(bursts)
+        .where(inArray(bursts.reportId, ids)),
     ]);
     return rows.map((row) => {
       const log = logRows.filter((entry) => entry.reportId === row.reportId);
@@ -182,8 +195,17 @@ export class DrizzleModerationStore implements ModerationStore {
             }
           : null,
         discardedAt: revision?.decision === 'descartar' ? revision.decidedAt : null,
+        burst: burstRows.some((seen) => seen.reportId === row.reportId),
       };
     });
+  }
+
+  async markBurst(reportIds: string[]): Promise<void> {
+    if (reportIds.length === 0) return;
+    await this.db
+      .insert(bursts)
+      .values(reportIds.map((reportId) => ({ reportId })))
+      .onConflictDoNothing();
   }
 
   // La decisión sobre la apelación de un reporte, si la hay.

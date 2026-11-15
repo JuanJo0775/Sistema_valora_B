@@ -301,17 +301,20 @@ describe('repositorios de reliability', () => {
     const firstPage = await moderation.authoredBy(observation.reporterKey, { limit: 2 });
 
     expect(firstPage).toEqual([
-      { observation: newest, flags: 1, appeal: null, discardedAt: null },
+      { observation: newest, flags: 1, appeal: null, discardedAt: null, burst: false },
       {
         observation: { ...discarded, moderation: 'descartado' },
         flags: 0,
         appeal: { note: 'Sí era ese precio.', createdAt: at(13), outcome: null },
         discardedAt: at(12),
+        burst: false,
       },
     ]);
     await expect(
       moderation.authoredBy(observation.reporterKey, { limit: 2, before: at(9) }),
-    ).resolves.toEqual([{ observation: oldest, flags: 0, appeal: null, discardedAt: null }]);
+    ).resolves.toEqual([
+      { observation: oldest, flags: 0, appeal: null, discardedAt: null, burst: false },
+    ]);
   });
 
   // Grill de la #29, pregunta 3: los reportes de una ráfaga entran a la cola.

@@ -19,7 +19,7 @@ const authored = (change: Partial<AuthoredReport> = {}, at = hoursAgo(1)): Autho
     receivedAt: at,
     verdict: { status: 'normal', median: 2500, deviation: 0, references: 3 },
   };
-  return { observation, flags: 0, appeal: null, discardedAt: null, ...change };
+  return { observation, flags: 0, appeal: null, discardedAt: null, burst: false, ...change };
 };
 
 function setup(stored: AuthoredReport[]) {

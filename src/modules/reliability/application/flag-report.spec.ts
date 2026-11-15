@@ -55,6 +55,10 @@ class InMemoryModeration implements ModerationStore {
   authoredBy(): Promise<[]> {
     return Promise.resolve([]);
   }
+
+  markBurst(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 function setup(known: Observation[] = [observation('reporte-1')]) {

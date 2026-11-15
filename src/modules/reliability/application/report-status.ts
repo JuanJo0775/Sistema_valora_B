@@ -34,7 +34,7 @@ export function reportStateOf(
   report: AuthoredReport,
   now: Date,
 ): { status: ReportState; appealableUntil?: Date } {
-  const { observation, flags, appeal, discardedAt } = report;
+  const { observation, flags, appeal, discardedAt, burst } = report;
   if (appeal) {
     return { status: appeal.outcome ? APPEAL_STATE[appeal.outcome] : 'apelacion_pendiente' };
   }
@@ -47,7 +47,7 @@ export function reportStateOf(
   }
   const inQueue =
     observation.moderation === undefined &&
-    (observation.verdict.status === 'sospechoso' || flags > 0);
+    (observation.verdict.status === 'sospechoso' || flags > 0 || burst);
   return { status: inQueue ? 'en_revision' : 'normal' };
 }
 
@@ -65,11 +65,13 @@ export class ReportStatus {
       moderation.revisionOf(reportId),
       moderation.pending(),
     ]);
-    const flags = pending.find((item) => item.observation.reportId === reportId)?.flags ?? 0;
+    const item = pending.find((seen) => seen.observation.reportId === reportId);
+    const flags = item?.flags ?? 0;
+    const burst = item?.burst ?? false;
     const discardedAt = revision?.decision === 'descartar' ? revision.decidedAt : null;
     return {
       reportId,
-      ...reportStateOf({ observation: reported, flags, appeal, discardedAt }, clock.now()),
+      ...reportStateOf({ observation: reported, flags, appeal, discardedAt, burst }, clock.now()),
     };
   }
 }

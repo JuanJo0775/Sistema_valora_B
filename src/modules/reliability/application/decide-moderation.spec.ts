@@ -171,6 +171,10 @@ class InMemoryModeration implements ModerationStore {
     return Promise.reject(new Error('DecideModeration no lista aportes'));
   }
 
+  markBurst(): Promise<void> {
+    return Promise.reject(new Error('DecideModeration no marca ráfagas'));
+  }
+
   private appealDecision(reportId: string): LogEntry | undefined {
     return this.log.find((entry) => entry.reportId === reportId && entry.stage === 'apelacion');
   }
