@@ -999,6 +999,57 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /moderation/products/{productId}/image:
+    put:
+      tags: [Moderación]
+      operationId: setProductImage
+      summary: Subir la foto de un producto (ADR-020)
+      description: >-
+        Solo el rol moderador (en el Corte 2, fotos del equipo). JPEG, PNG o WebP de hasta 2 MB. El
+        servidor la reduce a 800 px de lado mayor como máximo, la guarda en WebP y descarta todos sus
+        metadatos, incluida la ubicación (EC-08). Reemplaza la imagen del producto, también una de Open
+        Food Facts. La foto se sirve fuera de /v1, en solo lectura, en MEDIA_PUBLIC_URL (hoy
+        /media/products/<archivo>.webp, con Cache-Control public, max-age=31536000, immutable) hasta
+        decidir el proveedor (ADR-012) (#88).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: La imagen del producto
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, source, attribution]
+                properties:
+                  url: { type: string, format: uri }
+                  source: { type: string, enum: [equipo] }
+                  attribution: { type: string, example: Equipo Valora }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El producto no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: code PAYLOAD_TOO_LARGE, la foto pesa más de 2 MB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /moderation/product-requests:
     get:
       tags: [Moderación]
@@ -1327,7 +1378,7 @@ components:
         Única forma de error de la API (issue #41). Solo tiene code y message; la única excepción es
         availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84). Valores de code:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), NOT_FOUND (404),
-        CONFLICT (409), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
+        CONFLICT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
         INVALID_OBSERVATION_DATE, INVALID_TTL y los que agreguen las reglas futuras.
       required: [code, message]

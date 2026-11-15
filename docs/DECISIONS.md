@@ -391,6 +391,16 @@ Aplicación de RF-008 (RN1, RN3, RN4), EC-02, EC-04 y EC-08. El detalle está en
 - **Datos anteriores:** `pnpm comparison:rebuild-history` vuelve a entregar los eventos ya entregados solo al receptor del historial (`OutboxRelay.redeliver`); se puede repetir.
 - **Caché:** pública de 5 minutos con ETag.
 
+## Fotos de productos (issue #88, 15 de noviembre de 2026)
+
+Aplicación de ADR-020 (aceptado ese día), RF-003 y EC-08. El detalle está en `docs/adr/0020-imagenes-productos.md` y `docs/decisiones/issue-88-fotos-productos/plan.md`.
+
+- **Ruta:** `PUT /v1/moderation/products/{productId}/image`, solo moderador; `multipart/form-data` con `file`. 400 sin archivo o si no es JPEG, PNG o WebP; 413 `PAYLOAD_TOO_LARGE` con más de 2 MB; 404 si el producto no existe.
+- **Proceso:** `sharp` la reduce a 800 px como máximo, la guarda en WebP y descarta los metadatos (también la ubicación).
+- **Almacenamiento:** puerto `ImageStorage`; hoy una carpeta del servidor (`MEDIA_DIR`) servida en `MEDIA_PUBLIC_URL` con caché de un año (el nombre cambia con la foto). El proveedor llega con ADR-012.
+- **Semilla:** si `productos.csv` no trae imagen, ya no borra la foto subida.
+- **Pendiente:** borrar el archivo anterior al reemplazar una foto; fotos del comercio (Corte 3).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

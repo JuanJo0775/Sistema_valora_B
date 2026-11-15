@@ -35,6 +35,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Privacidad (#36)                 | Pruebas guardianas del esquema y de las respuestas públicas, e informe en `docs/calidad/privacidad-ec08.md` (EC-08)           |
 | Sincronización (#30)             | 50 reportes de la cola sin pérdida ni duplicados (p95 ~1 s); los límites cuentan por la hora de observación                   |
 | Propuestas de tiendas (#27)      | Un reportante propone una tienda; el moderador la aprueba, la fusiona o la rechaza, con duplicados sugeridos a 50 m           |
+| Fotos de productos (#88)         | El moderador sube la foto (hasta 2 MB); se guarda en WebP de 800 px sin metadatos y se sirve en `/media` (ADR-020)            |
 | Historial de precios (#83)       | `GET /v1/products/{productId}/history`: 30 días por presentación y por día; `pnpm comparison:rebuild-history`                 |
 | Propuestas de productos (#26)    | Un reportante propone un producto; el moderador lo aprueba, lo fusiona (queda como alias) o lo rechaza; alias e imagen        |
 
@@ -159,6 +160,10 @@ pnpm identity:set-role tu-correo@ejemplo.com moderador "Primer moderador del equ
 ```
 
 El cambio queda en la bitácora `identity.role_changes` como hecho por el sistema. Después, un moderador puede subir o bajar a otros con `POST /v1/moderation/roles`. Con esa cuenta, `GET /v1/moderation/queue` muestra los reportes pendientes.
+
+### Fotos de productos
+
+Las fotos que sube un moderador (`PUT /v1/moderation/products/{productId}/image`, ADR-020) se guardan en la carpeta `MEDIA_DIR` (por defecto `media/`, fuera de Git) y la API las sirve en `MEDIA_PUBLIC_URL`. Agrega las dos variables a tu `.env` (están en `.env.example`). Cuando se decida el proveedor de despliegue (ADR-012), la carpeta se cambia por su almacenamiento.
 
 ### Llenar el historial de precios
 
