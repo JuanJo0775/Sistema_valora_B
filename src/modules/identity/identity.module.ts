@@ -91,9 +91,12 @@ const CLOCK = Symbol('CLOCK');
     },
     {
       provide: ChangeRole,
-      inject: [ACCOUNT_REPOSITORY, CLOCK],
-      useFactory: (accounts: AccountRepository, clock: Clock): ChangeRole =>
-        new ChangeRole({ accounts, clock }),
+      inject: [ACCOUNT_REPOSITORY, ATTEMPT_LIMITER, CLOCK],
+      useFactory: (
+        accounts: AccountRepository,
+        limiter: AttemptLimiter,
+        clock: Clock,
+      ): ChangeRole => new ChangeRole({ accounts, limiter, clock }),
     },
     SessionGuard,
   ],

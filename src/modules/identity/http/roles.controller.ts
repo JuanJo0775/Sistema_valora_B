@@ -3,6 +3,7 @@ import {
   ConflictException,
   Controller,
   HttpCode,
+  HttpException,
   HttpStatus,
   NotFoundException,
   Post,
@@ -15,6 +16,7 @@ import {
   InvalidRoleNoteError,
   OwnRoleError,
   RoleUnchangedError,
+  TooManyAttemptsError,
 } from '../application/change-role';
 import { ChangeRoleDto } from './auth.dto';
 import { type AuthenticatedSession, CurrentSession, Roles, SessionGuard } from './session.guard';
@@ -40,6 +42,12 @@ export class RolesController {
         changedBy: session.accountId,
       });
     } catch (error) {
+      if (error instanceof TooManyAttemptsError) {
+        throw new HttpException(
+          { retryAfterSeconds: error.retryAfterSeconds },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
       if (error instanceof AccountNotFoundError) throw new NotFoundException();
       if (error instanceof OwnRoleError || error instanceof RoleUnchangedError) {
         throw new ConflictException({ code: error.code, message: error.message });

@@ -1,9 +1,11 @@
 import type { AccountRepository, Role } from './account-repository';
+import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
 import type { Clock } from './clock';
 import { normalizeEmail } from './register-account';
 
 export interface ChangeRolePorts {
   accounts: Pick<AccountRepository, 'findByEmail' | 'applyRoleChange'>;
+  limiter: AttemptLimiter;
   clock: Clock;
 }
 
@@ -14,6 +16,12 @@ export interface ChangeRoleRequest {
   // Cuenta del moderador que lo pide, o null si es el sistema (comando identity:set-role).
   changedBy: string | null;
 }
+
+export { TooManyAttemptsError } from './attempt-limiter';
+
+// Grill de la #73, pregunta 2: límite provisional por moderador, para que la ruta no sirva para
+// averiguar qué correos están registrados.
+export const ROLE_CHANGES_PER_MODERATOR = { limit: 20, windowMinutes: 15 };
 
 // Grill de la #73, pregunta 3: el motivo es obligatorio, de 10 a 500 caracteres.
 export const ROLE_NOTE_LENGTH = { min: 10, max: 500 } as const;
@@ -62,6 +70,7 @@ export class ChangeRole {
   constructor(private readonly ports: ChangeRolePorts) {}
 
   async execute(request: ChangeRoleRequest): Promise<void> {
+    if (request.changedBy !== null) this.countAttempt(request.changedBy);
     const note = request.note.trim();
     if (note.length < ROLE_NOTE_LENGTH.min || note.length > ROLE_NOTE_LENGTH.max) {
       throw new InvalidRoleNoteError();
@@ -79,5 +88,13 @@ export class ChangeRole {
       note,
       changedAt: clock.now(),
     });
+  }
+
+  private countAttempt(moderatorId: string): void {
+    const { limiter } = this.ports;
+    const key = `cambio-de-rol:${moderatorId}`;
+    const wait = limiter.retryAfterSeconds(key, ROLE_CHANGES_PER_MODERATOR);
+    if (wait !== null) throw new TooManyAttemptsError(wait);
+    limiter.record(key, ROLE_CHANGES_PER_MODERATOR);
   }
 }
