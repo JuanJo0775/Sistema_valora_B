@@ -213,6 +213,13 @@ describe('semilla de datos iniciales', () => {
       [],
       'productos.csv, fila 3: «Arroz de prueba» ya tiene la categoría grains-groceries en la fila 2',
     ],
+    // Issue #59: un producto no mezcla bases de unidad.
+    [
+      'producto con bases de unidad distintas',
+      [productRow(2), productRow(3, { cantidad: '6', unidad: 'und' })],
+      [],
+      'productos.csv, fila 3: «Arroz de prueba» mezcla bases de unidad: 100g en la fila 2 y und aquí',
+    ],
     [
       'tienda con tipo desconocido',
       [],
