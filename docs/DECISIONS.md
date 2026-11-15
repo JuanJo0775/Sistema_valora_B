@@ -370,6 +370,15 @@ Aplicación de RF-003 (RN2, RN3, RN4), RF-004, ADR-020 (propuesto) y EC-08. El d
 - **Código tomado mientras esperaba:** aprobar o fusionar responde 409 `BARCODE_TAKEN`; la propuesta solo se puede rechazar.
 - **Persistencia:** `catalog.product_aliases` y las columnas de imagen (migración `0019`), y `catalog.product_requests` (migración `0020`), con la clave seudónima de quien propone y del moderador.
 
+## El duplicado dice cuándo reportar de nuevo (issue #84, 15 de noviembre de 2026)
+
+Aplicación de RF-006 (RN5) y PR-06. El detalle está en `docs/decisiones/issue-84-duplicado-disponible/grill.md`.
+
+- **El 409 `DUPLICATE_REPORT` trae `availableFrom`:** la hora de observación desde la que se acepta otro reporte de esa presentación en esa tienda, y el mensaje la dice en hora de Colombia.
+- **No es `Retry-After`:** el duplicado se mide por la hora de observación (#30); reintentar el mismo reporte nunca pasa.
+- **Regla:** `nextAllowedObservation` en `src/domain/report-limits.ts`.
+- **Formato de error:** `ConflictError` en el contrato, solo para este código; el esquema `Error` sigue igual.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
