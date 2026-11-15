@@ -1,7 +1,7 @@
 # Matriz de autorización por rol
 
 - **Requisitos:** RF-002 (RN3: un reportante no modera), RF-013, RNF-010 (100 % de rutas sensibles con control de rol), PR-14 (20 casos de autorización), EC-08.
-- **Issue:** #33. Fecha: 14 de noviembre de 2026.
+- **Issues:** #33 y #73 (cambio de rol). Fecha: 14 de noviembre de 2026.
 - **Cómo se reproduce:** `corepack pnpm exec jest test/integration/authorization-matrix.spec.ts test/integration/route-guardian.spec.ts --runInBand`.
 
 ## Actores
@@ -24,10 +24,11 @@
 | `POST /v1/reports/{reportId}/flag` | 401 | Permitido | 403 | 403 | 401 |
 | `GET /v1/moderation/queue` | 401 | 403 | Permitido | 403 | 401 |
 | `POST /v1/moderation/{itemId}/decision` | 401 | 403 | Permitido | 403 | 401 |
+| `POST /v1/moderation/roles` | 401 | 403 | Permitido | 403 | 401 |
 | `GET /v1/auth/session` | 401 | Permitido | Permitido | Permitido | 401 |
 | `POST /v1/auth/logout` | 401 | Permitido | Permitido | Permitido | 401 |
 
-**30 casos**, todos en verde (`authorization-matrix.spec.ts`). Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
+**35 casos**, todos en verde (`authorization-matrix.spec.ts`). Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
 
 ## Rutas públicas
 
@@ -41,9 +42,8 @@
 - una ruta con sesión no declara `@Roles`, salvo `GET /auth/session` y `POST /auth/logout`, que sirven a cualquier rol;
 - la lista pública nombra una ruta que ya no existe.
 
-Se comprobó que falla al quitar `@Roles` de `POST /reports/{reportId}/flag`. Resultado: **6 de 6 rutas con sesión tienen control** (100 %).
+Se comprobó que falla al quitar `@Roles` de `POST /reports/{reportId}/flag`. Resultado: **7 de 7 rutas con sesión tienen control** (100 %).
 
 ## Fuera de esta matriz
 
-- Cambio de rol auditado y creación de moderadores desde la aplicación (RF-002 RN1 y RN4): issue aparte.
 - Comercio limitado a su propia tienda (RF-002 RN2): Corte 3.
