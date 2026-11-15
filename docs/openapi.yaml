@@ -274,6 +274,9 @@ paths:
       tags: [Reportes]
       operationId: flagReport
       summary: Marcar un precio como dudoso (RF-013)
+      description: >-
+        Solo el rol reportante. Una marca por cuenta y reporte (RN1); el reporte entra a la cola de
+        moderación con el motivo marcado. Quién marca no se muestra a nadie (EC-08).
       security:
         - sessionCookie: []
           csrfToken: []
@@ -294,8 +297,19 @@ paths:
                 comment: { type: string, maxLength: 280 }
       responses:
         '202': { description: Señal recibida para moderación }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El reporte no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: code ALREADY_FLAGGED, esta cuenta ya marcó este reporte.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /me/reports:
     get:
       tags: [Reportes]
@@ -457,6 +471,11 @@ paths:
       tags: [Moderación]
       operationId: getModerationQueue
       summary: Cola de reportes en revisión (RF-012, RF-013)
+      description: >-
+        Solo el rol moderador. Reportes sin decisión que la detección marcó sospechosos (desviacion)
+        o que alguna cuenta marcó como dudosos (marcado). Orden por gravedad (RN2): primero
+        desviacion, de mayor a menor desviación; luego marcado, de más a menos marcas; en empate, el
+        más antiguo. Hoy solo aparecen desviacion y marcado; las demás llegan con el corte 3.
       security:
         - sessionCookie: []
       parameters:
@@ -475,12 +494,19 @@ paths:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/ModerationItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /moderation/{itemId}/decision:
     post:
       tags: [Moderación]
       operationId: decideModerationItem
       summary: Registrar la decisión del moderador; queda auditada (RF-013)
+      description: >-
+        Solo el rol moderador. itemId es el id del reporte. Toda decisión exige motivo (RN3) y queda
+        en una bitácora que no se puede modificar. aprobar vuelve a mostrar el precio como normal;
+        descartar deja de mostrarlo (pasa al precio confiable más reciente de la tienda) y baja la
+        reputación de su autor; observar_cuentas solo queda en la bitácora por ahora (#33).
       security:
         - sessionCookie: []
           csrfToken: []
@@ -495,14 +521,20 @@ paths:
           application/json:
             schema:
               type: object
-              required: [decision]
+              required: [decision, note]
               properties:
                 decision: { type: string, enum: [aprobar, descartar, observar_cuentas] }
-                note: { type: string, maxLength: 500 }
+                note: { type: string, minLength: 10, maxLength: 500 }
       responses:
         '204': { description: Decisión registrada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404':
+          description: El reporte no está en la cola (no existe o ya se decidió).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /commerce/claims:
     post:
       tags: [Comercios]
@@ -725,9 +757,13 @@ components:
             comparación.
     ComparisonItem:
       type: object
-      required: [establishment, presentationId, priceCop, unitPrice, source, freshness, reliability, confirmations, isCheapest, observedAt]
+      required: [establishment, reportId, presentationId, priceCop, unitPrice, source, freshness, reliability, confirmations, isCheapest, observedAt]
       properties:
         establishment: { $ref: '#/components/schemas/Establishment' }
+        reportId:
+          type: string
+          format: uuid
+          description: El reporte cuyo precio se muestra; sirve para marcarlo como dudoso (RF-013).
         presentationId: { type: string, format: uuid }
         priceCop: { type: integer, minimum: 1 }
         unitPrice:
@@ -834,15 +870,16 @@ components:
         receivedAt: { type: string, format: date-time }
     ModerationItem:
       type: object
-      required: [id, reason, reportedPriceCop, medianPriceCop]
+      description: Nunca incluye quién reportó ni quién marcó (EC-08).
+      required: [id, reason, productName, establishmentName, reportedPriceCop, reportersCount, createdAt]
       properties:
-        id: { type: string, format: uuid }
+        id: { type: string, format: uuid, description: Id del reporte. }
         reason: { type: string, enum: [desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
-        productName: { type: string }
+        productName: { type: string, description: 'Producto y presentación, por ejemplo «Arroz Diana · 500 g».' }
         establishmentName: { type: string }
         reportedPriceCop: { type: integer }
-        medianPriceCop: { type: integer }
+        medianPriceCop: { type: integer, description: Mediana de referencia; no está si no había con qué comparar. }
         officialPriceCop: { type: integer }
-        deviationPercent: { type: number }
-        reportersCount: { type: integer }
+        deviationPercent: { type: number, description: Desviación frente a la mediana, en porcentaje entero. }
+        reportersCount: { type: integer, minimum: 0, description: Cuántas cuentas lo marcaron como dudoso. }
         createdAt: { type: string, format: date-time }
