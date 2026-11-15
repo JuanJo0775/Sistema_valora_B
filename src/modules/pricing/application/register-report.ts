@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { assertObservedAtAccepted } from '../../../domain/observation-date';
+import { REPORT_LIMITS } from '../../../domain/report-limits';
 import { createEvent } from '../../../shared/events';
 import type { NewReport, ReportInput, ReportRepository } from './report-repository';
 
@@ -59,6 +60,18 @@ export class IdempotencyKeyReusedError extends Error {
   readonly code = 'IDEMPOTENCY_KEY_REUSED';
 }
 
+// Grill de la #29, pregunta 2: la capa HTTP lo traduce a 409.
+export class DuplicateReportError extends Error {
+  readonly code = 'DUPLICATE_REPORT';
+
+  constructor() {
+    super(
+      `Ya reportaste esta presentación en esta tienda en los últimos ${String(REPORT_LIMITS.duplicateWindowMinutes)} minutos.`,
+    );
+    this.name = 'DuplicateReportError';
+  }
+}
+
 // Huella del reporte (grill de la #14, pregunta 6): distingue un reintento de un reporte distinto.
 function hashOf(report: ReportInput): string {
   // Con la cuenta: la misma clave usada por otra cuenta es un conflicto, no un reintento.
@@ -99,6 +112,7 @@ export class RegisterReport {
     if (!(await this.deps.establishments.exists(report.establishmentId))) {
       throw new UnknownEstablishmentError('El establecimiento no existe en el directorio.');
     }
+    await this.checkLimits(report, receivedAt);
     const newReport = {
       ...report,
       id: randomUUID(),
@@ -127,5 +141,20 @@ export class RegisterReport {
     // Dos reintentos simultáneos: el que no insertó responde como reintento.
     if (!saved.created) return retryResult(saved.report, requestHash);
     return { receipt: { id: newReport.id, status: 'recibido', receivedAt }, created: true };
+  }
+
+  // Grill de la #29: los límites de aportes de una cuenta, contados en la base.
+  private async checkLimits(report: ReportInput, receivedAt: Date): Promise<void> {
+    const windowMs = REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000;
+    const recent = await this.deps.reports.recentOf(
+      report.reporterId,
+      new Date(receivedAt.getTime() - windowMs),
+    );
+    const duplicate = recent.some(
+      (seen) =>
+        seen.presentationId === report.presentationId &&
+        seen.establishmentId === report.establishmentId,
+    );
+    if (duplicate) throw new DuplicateReportError();
   }
 }
