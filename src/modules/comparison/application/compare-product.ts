@@ -47,6 +47,8 @@ export interface CompareProductInput {
 
 export interface ComparisonItem {
   establishment: NearbyEstablishment;
+  // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo.
+  reportId: string;
   presentationId: string;
   priceCop: number;
   unitPrice: UnitPrice;
@@ -189,6 +191,7 @@ export class CompareProduct {
       if (!establishment || !presentation) continue;
       const item: Candidate['item'] = {
         establishment,
+        reportId: price.reportId,
         presentationId: price.presentationId,
         priceCop: price.priceCop,
         unitPrice: calculateUnitPrice(price.priceCop, presentation),

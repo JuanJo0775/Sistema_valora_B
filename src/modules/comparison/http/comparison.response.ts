@@ -11,6 +11,7 @@ export interface ComparisonItemResponse {
     lng: number;
     distanceM: number;
   };
+  reportId: string;
   presentationId: string;
   priceCop: number;
   unitPrice: { valueCop: number; per: string };
@@ -43,6 +44,7 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
         lng: establishment.lng,
         distanceM: establishment.distanceM,
       },
+      reportId: item.reportId,
       presentationId: item.presentationId,
       priceCop: item.priceCop,
       // Se muestra redondeado; el orden ya usó el valor exacto.
