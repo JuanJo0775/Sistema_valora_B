@@ -15,6 +15,10 @@ class InMemorySource implements SeedSource {
     return Promise.resolve(this.references);
   }
 
+  readSample(): Promise<SeedRow[]> {
+    return Promise.resolve([]);
+  }
+
   readProducts(): Promise<SeedRow[]> {
     return Promise.resolve(this.products);
   }

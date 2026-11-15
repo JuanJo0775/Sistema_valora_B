@@ -4,3 +4,4 @@ export {
   PRICE_HISTORY_CONSUMER,
   PRICE_HISTORY_EVENTS,
 } from './comparison.module';
+export { CurrentPriceOf } from './application/current-price-of';

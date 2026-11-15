@@ -25,6 +25,7 @@
     "db:seed": "nest start --entryFile seed",
     "identity:set-role": "nest start --entryFile set-role --",
     "comparison:rebuild-history": "nest start --entryFile rebuild-history",
+    "quality:accuracy": "nest start --entryFile accuracy",
     "reliability:evaluate": "jest test/integration/reliability-detection.spec.ts --runInBand"
   },
   "dependencies": {

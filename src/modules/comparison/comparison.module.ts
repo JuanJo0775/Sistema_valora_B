@@ -15,6 +15,7 @@ import {
 } from '../establishments';
 import { ReliabilityModule, ReliabilityOfPrices } from '../reliability';
 import { CompareProduct } from './application/compare-product';
+import { CurrentPriceOf } from './application/current-price-of';
 import { PriceHistory } from './application/price-history';
 import { StorePrices } from './application/store-prices';
 import { ComparisonController } from './http/comparison.controller';
@@ -95,7 +96,15 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
           clock: { now: () => new Date() },
         }),
     },
+    // PR-22 (#93): el precio publicado, para el informe de exactitud.
+    {
+      provide: CurrentPriceOf,
+      inject: [DATABASE],
+      useFactory: (db: Database): CurrentPriceOf =>
+        new CurrentPriceOf(new DrizzleCurrentPrices(db)),
+    },
   ],
+  exports: [CurrentPriceOf],
 })
 export class ComparisonModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}
