@@ -58,10 +58,10 @@ describe('suspensión pedida por reliability (grill de la #33, pregunta 6)', () 
     await requestSuspension(reporterKey, until);
 
     await request(server).get('/v1/auth/session').set('Cookie', ana.cookie).expect(401);
-    const stored = await db.execute<{ suspended_until: Date }>(
+    const stored = await db.execute<{ suspended_until: string }>(
       sql`select suspended_until from identity.accounts`,
     );
-    expect(stored.rows).toEqual([{ suspended_until: until }]);
+    expect(stored.rows.map((row) => new Date(row.suspended_until))).toEqual([until]);
   });
 
   it('una clave que ninguna cuenta tiene no cambia nada', async () => {

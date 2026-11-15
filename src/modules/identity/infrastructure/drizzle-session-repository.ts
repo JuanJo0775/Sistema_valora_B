@@ -1,5 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { Transaction } from '../../../shared/database/database.module';
 import type { Role } from '../application/account-repository';
 import type {
   NewSession,
@@ -9,7 +10,8 @@ import type {
 import { accounts, sessions } from './schema';
 
 export class DrizzleSessionRepository implements SessionRepository {
-  constructor(private readonly db: NodePgDatabase) {}
+  // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
+  constructor(private readonly db: NodePgDatabase | Transaction) {}
 
   async create(session: NewSession): Promise<void> {
     await this.db.insert(sessions).values(session);

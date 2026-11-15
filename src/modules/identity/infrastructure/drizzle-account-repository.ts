@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { Transaction } from '../../../shared/database/database.module';
 import type { AccountCreation } from '../application/reporter-identity';
 import type {
   Account,
@@ -10,7 +11,8 @@ import type {
 import { accounts } from './schema';
 
 export class DrizzleAccountRepository implements AccountRepository, AccountCreation {
-  constructor(private readonly db: NodePgDatabase) {}
+  // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
+  constructor(private readonly db: NodePgDatabase | Transaction) {}
 
   async findByEmail(email: string): Promise<Account | null> {
     const [found] = await this.db

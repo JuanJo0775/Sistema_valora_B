@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../shared/config/env.validation';
-import { DATABASE, type Database } from '../../shared/database/database.module';
+import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
+import { type DomainEvent, EventBus } from '../../shared/events';
 import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/account-repository';
 import type { AttemptLimiter } from './application/attempt-limiter';
 import type { Clock } from './application/clock';
@@ -12,6 +13,7 @@ import { RegisterAccount } from './application/register-account';
 import { ReporterIdentity } from './application/reporter-identity';
 import { ResolveSession } from './application/resolve-session';
 import { SESSION_REPOSITORY, type SessionRepository } from './application/session-repository';
+import { SuspendReporter } from './application/suspend-reporter';
 import { AuthController } from './http/auth.controller';
 import { SessionGuard } from './http/session.guard';
 import { Argon2PasswordHasher } from './infrastructure/argon2-password-hasher';
@@ -90,4 +92,26 @@ const CLOCK = Symbol('CLOCK');
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
   exports: [ResolveSession, SessionGuard, ReporterIdentity],
 })
-export class IdentityModule {}
+export class IdentityModule implements OnModuleInit {
+  constructor(private readonly bus: EventBus) {}
+
+  // Grill de la #33, pregunta 6: reliability pide suspender a un autor por su clave seudónima. La
+  // suspensión y la revocación de sesiones van en la transacción del suscriptor.
+  onModuleInit(): void {
+    this.bus.subscribe(
+      'identity.accounts',
+      'ReporterSuspensionRequested',
+      async (event: DomainEvent, tx: Transaction) => {
+        const payload = event.payload as { reporterKey: string; suspendedUntil: string };
+        await new SuspendReporter({
+          accounts: new DrizzleAccountRepository(tx),
+          sessions: new DrizzleSessionRepository(tx),
+          clock: { now: () => new Date() },
+        }).execute({
+          reporterKey: payload.reporterKey,
+          suspendedUntil: new Date(payload.suspendedUntil),
+        });
+      },
+    );
+  }
+}
