@@ -22,6 +22,7 @@ import {
   SessionGuard,
 } from '../../identity';
 import {
+  InvalidNoteError,
   MODERATION_DECIDER,
   type ModerationDecider,
   ReportNotInQueueError,
@@ -90,6 +91,10 @@ export class ModerationController {
       });
     } catch (error) {
       if (error instanceof ReportNotInQueueError) throw new NotFoundException();
+      // El DTO mide el texto tal cual; el caso de uso, sin los espacios de los extremos.
+      if (error instanceof InvalidNoteError) {
+        throw new RequestValidationError(`note: ${error.message}`);
+      }
       throw error;
     }
   }
