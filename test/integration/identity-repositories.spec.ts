@@ -80,6 +80,7 @@ describe('repositorios de identity', () => {
       ...session,
       revokedAt: null,
       role: 'reportante',
+      accountSuspendedUntil: null,
     });
     await sessions.touch(session.id, later);
     await sessions.revoke(session.id, later);
