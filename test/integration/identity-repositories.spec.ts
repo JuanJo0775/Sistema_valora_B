@@ -89,4 +89,15 @@ describe('repositorios de identity', () => {
     });
     await expect(sessions.findByTokenHash('b'.repeat(64))).resolves.toBeNull();
   });
+
+  // Grill de la #33, pregunta 3.
+  it('guarda la clave seudónima de una cuenta y la encuentra por esa clave', async () => {
+    await accounts.create(ana);
+
+    await accounts.rememberReporterKey(ana.id, 'f'.repeat(64));
+    await accounts.rememberReporterKey(ana.id, 'f'.repeat(64));
+
+    await expect(accounts.idByReporterKey('f'.repeat(64))).resolves.toBe(ana.id);
+    await expect(accounts.idByReporterKey('e'.repeat(64))).resolves.toBeNull();
+  });
 });
