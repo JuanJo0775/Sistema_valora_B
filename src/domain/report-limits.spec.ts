@@ -63,4 +63,14 @@ describe('ráfaga por hora de observación (grill de la #30)', () => {
 
     expect(burstAt(hour, at(14)).waitSeconds).toBe(10 * 60);
   });
+
+  it('el reporte que deja 20 observaciones en una hora completa la ráfaga y dice cuáles son las otras', () => {
+    const hour = observed(19, at(10, 10), 2);
+
+    const check = burstAt(hour, at(10, 50));
+
+    expect(check).toMatchObject({ exceeded: false, completes: true });
+    expect(check.window).toEqual(hour.map((report) => report.id));
+    expect(burstAt(observed(18, at(10, 10), 2), at(10, 50)).completes).toBe(false);
+  });
 });
