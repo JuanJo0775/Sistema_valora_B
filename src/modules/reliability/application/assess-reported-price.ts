@@ -29,6 +29,8 @@ export interface AssessReportedPricePorts {
 
 export const PRICE_ASSESSED = 'PriceAssessed';
 
+const isFlagged = (observation: Observation) => observation.verdict.status === 'sospechoso';
+
 const toScored = (observation: Omit<Observation, 'verdict'>): ScoredReport => ({
   reporterKey: observation.reporterKey,
   priceCop: observation.priceCop,
@@ -62,7 +64,7 @@ export class AssessReportedPrice {
       (id) => id !== reported.establishmentId,
     );
     const inZone = (await observations.forPresentation(reported.presentationId, neighbours)).filter(
-      (seen) => seen.verdict.status !== 'sospechoso',
+      (seen) => !isFlagged(seen),
     );
     const since = new Map(
       [...inStore, ...inZone].map((seen) => [seen.reporterKey, seen.reporterSince]),
@@ -72,7 +74,10 @@ export class AssessReportedPrice {
     const ttlDays = ttlDaysFor((await freshness.isFresh(reported.presentationId)) ?? false);
     const verdict = assessAnomaly({
       candidate: toScored(observation),
-      others: inStore.map(toScored),
+      // Calibración de la #67: en la tienda, los que ya están en revisión forman grupo pero no
+      // entran a la mediana; en la zona no cuentan.
+      others: inStore.filter((seen) => !isFlagged(seen)).map(toScored),
+      flagged: inStore.filter(isFlagged).map(toScored),
       zone: inZone.map(toScored),
       now: observation.receivedAt,
       ttlDays,
@@ -81,7 +86,7 @@ export class AssessReportedPrice {
     await observations.save({ ...observation, verdict });
     // Un sospechoso no da ni recibe reputación: un grupo coordinado no se infla entre sus cuentas.
     if (verdict.status !== 'sospechoso') {
-      const trusted = inStore.filter((seen) => seen.verdict.status !== 'sospechoso');
+      const trusted = inStore.filter((seen) => !isFlagged(seen));
       await this.rewardCorroboration(observation, trusted, ttlDays);
     }
 

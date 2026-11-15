@@ -238,12 +238,18 @@ Aplicación de RF-010, RF-011, RF-012, ADR-004, ADR-005, ADR-015 y EC-03. El det
 - **Flujo:** `pricing` publica `PriceReported` v2; `reliability` lo evalúa, guarda la observación y la reputación, y publica `PriceAssessed` v1; `comparison` actualiza `price_current` con ese veredicto (ya no escucha `PriceReported`).
 - **Clave seudónima:** `PriceReported` v2 lleva `reporterKey` = `HMAC-SHA256(REPORTER_KEY_SECRET, id de la cuenta)` y `reporterSince` (día de creación). `identity` la calcula (`ReporterIdentity`). `REPORTER_KEY_SECRET` es una variable nueva y no debe cambiar una vez en uso. Los `PriceReported` v1 no se evalúan.
 - **`reliability`:** tablas `observations` (copia de cada reporte con su veredicto, solo inserción), `reputations` y `reputation_events` (un punto por reporte). No lee tablas de `pricing`.
-- **Referencias:** primero la tienda; si no hay 3 cuentas, se completa con las tiendas a 1 km (`EstablishmentsAround`, provisional), sin los sospechosos de la zona. La coordinación se mira solo en la tienda. Ajuste al construir: los sospechosos de la misma tienda sí cuentan, para no romper la detección de grupos (la regla de la #20 los saca de la mediana).
+- **Referencias:** primero la tienda; si no hay 3 cuentas, se completa con las tiendas a 1 km (`EstablishmentsAround`, provisional), sin los sospechosos de la zona. La coordinación se mira solo en la tienda. Ajuste al construir y calibración de la #67: los sospechosos de la misma tienda cuentan para formar un grupo coordinado, pero nunca entran a la mediana (`flagged` en `assessAnomaly`).
 - **Sospechosos:** no reemplazan un precio existente; sin precio previo entran `en_revision` (columna `status` de `price_current`), van al final de la comparación, nunca son `isCheapest` y no salen con `onlyCurrent`. `sin_datos` se trata como normal.
 - **Reputación:** sube (`corroborated`) cuando otra cuenta de la tienda coincide; cada reporte da su punto una vez; los sospechosos no dan ni reciben.
 - **Lectura:** `ReliabilityOfPrices` calcula el nivel y las confirmaciones al consultar. Un precio sin observación (anterior a la #31) cuenta como `baja`.
 - **TTL:** pasó al dominio (`ttlDaysFor` en `freshness.ts`); `catalog` expone `PresentationFreshness`.
 - **Calibración:** el umbral de `media` bajó de 0,25 a 0,2: con 0,25, un reporte solo caía a `baja` a la hora de llegar.
+
+## Medición de la detección (issue #67, 14 de noviembre de 2026)
+
+- Conjunto etiquetado sintético de 100 reportes con 30 anómalos (`test/fixtures/reliability/`), medido con el caso de uso real de `reliability` contra `valora_test`. La prueba falla si la detección baja del 80 % (EC-03). `pnpm reliability:evaluate` imprime la tabla.
+- Resultado: **28 de 30 detectados (93 %)** y **1 falso positivo de 70** (una promoción real de −43 % reportada como normal). Informe: `docs/calidad/deteccion-anomalos.md`.
+- Calibración: los reportes en revisión ya no entran a la mediana (un ataque anterior movía la mediana y hacía ver anómalo un precio honesto). Los valores provisionales no cambiaron.
 
 ## Regla de cambio
 

@@ -22,7 +22,8 @@
     "format:check": "prettier --check .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "nest start --entryFile seed"
+    "db:seed": "nest start --entryFile seed",
+    "reliability:evaluate": "jest test/integration/reliability-detection.spec.ts --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.9",

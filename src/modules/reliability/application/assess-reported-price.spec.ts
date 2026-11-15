@@ -200,4 +200,16 @@ describe('evaluar un precio reportado (reliability)', () => {
     expect(reputations.values.has('beto-2')).toBe(false);
     expect(new Map([...reputations.values].filter(([key]) => before.has(key)))).toEqual(before);
   });
+
+  it('un ataque anterior en la tienda no mueve la mediana de los precios honestos que llegan después (#67)', async () => {
+    const { published, assess, seedUsual } = setup();
+    await seedUsual();
+    for (const key of ['nueva-1', 'nueva-2', 'nueva-3', 'nueva-4']) {
+      await assess.execute(reported(key, 1500, { reporterSince: '2026-11-14' }));
+    }
+
+    await assess.execute(reported('eli', 5000));
+
+    expect(published.at(-1)?.payload).toMatchObject({ verdict: 'normal' });
+  });
 });

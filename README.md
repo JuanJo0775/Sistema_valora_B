@@ -23,6 +23,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Score de confiabilidad (#19)     | Regla del dominio: corroboración, reputación del reportante y decaimiento por edad, con niveles alta, media y baja (RF-011)   |
 | Precios anómalos (#20)           | Regla del dominio: precio fuera del 40 % de la mediana y grupos coordinados de cuentas nuevas (RF-012)                        |
 | Confiabilidad (#31, parte 1)     | Módulo `reliability`: evalúa cada reporte, guarda reputación y la comparación muestra `reliability` y `confirmations`         |
+| Detección medida (#67)           | Conjunto etiquetado de 100 reportes: 93 % de anómalos detectados, 1 falso positivo; `pnpm reliability:evaluate`               |
 
 Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 

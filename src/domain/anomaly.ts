@@ -23,6 +23,9 @@ export interface AnomalyInput extends ReportWindow {
   // Grill de la #31, pregunta 7: reportes de las otras tiendas de la zona; completan la referencia
   // cuando la tienda no tiene suficientes cuentas.
   zone?: ScoredReport[];
+  // Calibración de la #67: reportes de la tienda que ya están en revisión. Cuentan para formar un
+  // grupo coordinado, pero nunca entran a la mediana (un ataque anterior no la mueve).
+  flagged?: ScoredReport[];
 }
 
 export type AnomalyResult =
@@ -95,8 +98,13 @@ export function assessAnomaly(
 
   // Pregunta 5: la mediana se mide sin el grupo, para que no la mueva hacia su propio precio. Varias
   // cuentas nuevas de acuerdo no son sospechosas por sí solas: el precio también debe ser raro.
-  // RF-012 RN3: «sobre un mismo establecimiento»; las tiendas de la zona no forman grupo.
-  const group = coordinatedWith(input, inStore, params);
+  // RF-012 RN3: «sobre un mismo establecimiento»; las tiendas de la zona no forman grupo. Los
+  // reportes en revisión de la tienda también cuentan para el grupo.
+  const groupPool = comparableReports({
+    ...input,
+    others: [...input.others, ...(input.flagged ?? [])],
+  });
+  const group = coordinatedWith(input, groupPool, params);
   if (group.length + 1 >= params.coordination.minAccounts) {
     const honest = references.filter((reference) => !group.includes(reference));
     if (notEnough(honest)) return { status: 'sin_datos', references: honest.length };
