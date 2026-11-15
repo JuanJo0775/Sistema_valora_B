@@ -7,7 +7,7 @@ export interface ModerationQueuePorts {
   names: { of(establishmentIds: string[]): Promise<Map<string, string>> };
 }
 
-export type QueueReason = 'desviacion' | 'marcado';
+export type QueueReason = 'apelacion' | 'desviacion' | 'marcado';
 
 // Grill de la #32, pregunta 6: lo que el moderador necesita para decidir, nunca quién reportó ni
 // quién marcó (EC-08).
@@ -21,6 +21,8 @@ export interface QueueItem {
   deviationPercent?: number;
   reportersCount: number;
   createdAt: Date;
+  // Grill de la #71, pregunta 3: el motivo del autor, solo en las apelaciones.
+  appealNote?: string;
 }
 
 export interface QueueRequest {
@@ -30,11 +32,16 @@ export interface QueueRequest {
 
 // Pregunta 3: si la detección lo marcó sospechoso, el motivo es la desviación aunque también
 // tenga marcas.
-const reasonOf = ({ observation }: PendingItem): QueueReason =>
-  observation.verdict.status === 'sospechoso' ? 'desviacion' : 'marcado';
+const reasonOf = ({ observation, appeal }: PendingItem): QueueReason => {
+  // Grill de la #71, pregunta 3: una apelación es un caso ya revisado que espera respuesta.
+  if (appeal) return 'apelacion';
+  return observation.verdict.status === 'sospechoso' ? 'desviacion' : 'marcado';
+};
 
 // Grill de la #32, pregunta 6.
 export const DEFAULT_QUEUE_LIMIT = 20;
+// Grill de la #71, pregunta 3: las apelaciones van antes que todo.
+const QUEUE_ORDER: QueueReason[] = ['apelacion', 'desviacion', 'marcado'];
 const UNNAMED = 'Sin nombre';
 
 const deviationOf = ({ observation }: PendingItem): number =>
@@ -43,7 +50,7 @@ const deviationOf = ({ observation }: PendingItem): number =>
 // RN2 de RF-013: primero las desviaciones (la mayor primero), luego las marcas (más marcas
 // primero); en empate, el que llegó antes.
 const bySeverity = (a: PendingItem, b: PendingItem): number => {
-  const rank = (item: PendingItem) => (reasonOf(item) === 'desviacion' ? 0 : 1);
+  const rank = (item: PendingItem) => QUEUE_ORDER.indexOf(reasonOf(item));
   return (
     rank(a) - rank(b) ||
     deviationOf(b) - deviationOf(a) ||
@@ -82,6 +89,7 @@ export class ModerationQueue {
           : {}),
         reportersCount: item.flags,
         createdAt: observation.receivedAt,
+        ...(item.appeal ? { appealNote: item.appeal.note } : {}),
       };
     });
   }

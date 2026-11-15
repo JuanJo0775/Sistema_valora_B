@@ -13,7 +13,8 @@ export const RELIABILITY_PARAMS = {
   // Pregunta 3: reputación de una cuenta nueva. Una cuenta neutra pesa 1 al corroborar.
   neutralReputation: 0.5,
   // Pregunta 3: cuánto sube con una confirmación y cuánto baja con un rechazo.
-  reputationSteps: { corroborated: 0.05, rejected: 0.2 },
+  // Grill de la #71, pregunta 4: una apelación aceptada devuelve lo que quitó el descarte.
+  reputationSteps: { corroborated: 0.05, rejected: 0.2, appealAccepted: 0.2 },
   // Pregunta 6: umbrales de los niveles.
   levels: { high: 0.6, medium: 0.2 },
 };
@@ -101,7 +102,7 @@ export function reliabilityLevel(
   return 'baja';
 }
 
-export type ReputationEvent = 'corroborated' | 'rejected';
+export type ReputationEvent = 'corroborated' | 'rejected' | 'appealAccepted';
 
 // Pregunta 3: ganar confianza cuesta más que perderla. Guardarla y llamar a esta regla le toca a la
 // #31 (corroboración) y a la moderación (#32, #33).
@@ -110,9 +111,7 @@ export function updateReputation(
   event: ReputationEvent,
   params: ReliabilityParams = RELIABILITY_PARAMS,
 ): number {
-  const step =
-    event === 'corroborated'
-      ? params.reputationSteps.corroborated
-      : -params.reputationSteps.rejected;
+  const steps = params.reputationSteps;
+  const step = event === 'rejected' ? -steps.rejected : steps[event];
   return clamp(current + step);
 }

@@ -40,16 +40,6 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
-// Grill de la #33, pregunta 4: solo se dice con la contraseña correcta; la capa HTTP responde 403.
-export class AccountSuspendedError extends Error {
-  readonly code = 'ACCOUNT_SUSPENDED';
-
-  constructor(readonly suspendedUntil: Date) {
-    super(`La cuenta está suspendida hasta ${suspendedUntil.toISOString()}.`);
-    this.name = 'AccountSuspendedError';
-  }
-}
-
 // Límites provisionales (pregunta 10): 5 fallos por correo y 20 intentos por IP en 15 minutos.
 export const LOGIN_FAILURES_PER_EMAIL = { limit: 5, windowMinutes: 15 };
 export const LOGIN_ATTEMPTS_PER_IP = { limit: 20, windowMinutes: 15 };
@@ -80,9 +70,6 @@ export class Login {
     }
 
     const now = this.ports.clock.now();
-    if (account.suspendedUntil && account.suspendedUntil > now) {
-      throw new AccountSuspendedError(account.suspendedUntil);
-    }
 
     // Grill de la #16, pregunta 3: cada inicio de sesión crea una sesión y un token nuevos.
     const token = newSessionToken();

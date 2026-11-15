@@ -82,11 +82,21 @@ export const moderationLog = reliabilitySchema.table(
     note: text('note').notNull(),
     moderatorKey: text('moderator_key').notNull(),
     decidedAt: timestamp('decided_at', { withTimezone: true }).notNull(),
+    // Grill de la #71: revision (la cola de la #32) o apelacion (la del autor).
+    stage: text('stage').notNull().default('revision'),
   },
   (table) => [
     check(
       'moderation_log_decision_valid',
       sql`${table.decision} in ('aprobar', 'descartar', 'observar_cuentas')`,
     ),
+    check('moderation_log_stage_valid', sql`${table.stage} in ('revision', 'apelacion')`),
   ],
 );
+
+// Grill de la #71, pregunta 1: una apelación por reporte, con el motivo del autor.
+export const appeals = reliabilitySchema.table('appeals', {
+  reportId: uuid('report_id').primaryKey(),
+  note: text('note').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});

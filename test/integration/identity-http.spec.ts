@@ -101,18 +101,23 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
     });
 
     // Grill de la #33, pregunta 4.
-    it('una cuenta suspendida responde 403 ACCOUNT_SUSPENDED; con la contraseña mala, el 401 de siempre', async () => {
+    // Grill de la #71, pregunta 5: entra con una sesión limitada que dice hasta cuándo.
+    it('una cuenta suspendida inicia sesión y su sesión dice hasta cuándo está suspendida', async () => {
       await register();
       await db.execute(sql`update identity.accounts set suspended_until = '2099-01-01T00:00:00Z'`);
 
-      const suspended = await login().expect(403);
-      const wrongPassword = await login('otra-clave-larga').expect(401);
+      const response = await login().expect(204);
+      const [setCookie] = response.headers['set-cookie'] as unknown as string[];
+      const cookie = (setCookie ?? '').split(';')[0] ?? '';
+      const session = await request(server)
+        .get('/v1/auth/session')
+        .set('Cookie', cookie)
+        .expect(200);
 
-      expect(suspended.body).toEqual({
-        code: 'ACCOUNT_SUSPENDED',
-        message: 'La cuenta está suspendida hasta 2099-01-01T00:00:00.000Z.',
+      expect(session.body).toMatchObject({
+        role: 'reportante',
+        suspendedUntil: '2099-01-01T00:00:00.000Z',
       });
-      expect(wrongPassword.body).toMatchObject({ code: 'UNAUTHORIZED' });
     });
 
     it('al sexto intento fallido con el mismo correo responde 429 con Retry-After', async () => {

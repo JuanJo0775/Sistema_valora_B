@@ -28,6 +28,7 @@ import {
   type ModerationDecider,
   OwnReportError,
   ReportNotInQueueError,
+  SameModeratorError,
 } from '../application/decide-moderation';
 import { ModerationQueue } from '../application/moderation-queue';
 import { DecisionDto } from './decision.dto';
@@ -44,6 +45,7 @@ interface ModerationItemResponse {
   deviationPercent?: number;
   reportersCount: number;
   createdAt: string;
+  appealNote?: string;
 }
 
 @Controller('moderation')
@@ -93,7 +95,7 @@ export class ModerationController {
       });
     } catch (error) {
       if (error instanceof ReportNotInQueueError) throw new NotFoundException();
-      if (error instanceof OwnReportError) {
+      if (error instanceof OwnReportError || error instanceof SameModeratorError) {
         throw new ConflictException({ code: error.code, message: error.message });
       }
       // El DTO mide el texto tal cual; el caso de uso, sin los espacios de los extremos.

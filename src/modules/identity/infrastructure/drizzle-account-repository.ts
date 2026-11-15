@@ -54,7 +54,7 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
     return found ?? null;
   }
 
-  async suspend(accountId: string, until: Date): Promise<void> {
+  async suspend(accountId: string, until: Date | null): Promise<void> {
     await this.db.update(accounts).set({ suspendedUntil: until }).where(eq(accounts.id, accountId));
   }
 

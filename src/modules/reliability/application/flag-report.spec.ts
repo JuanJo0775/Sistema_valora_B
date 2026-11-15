@@ -39,6 +39,18 @@ class InMemoryModeration implements ModerationStore {
   decisionsAbout(): Promise<[]> {
     return Promise.resolve([]);
   }
+
+  appeal(): Promise<boolean> {
+    return Promise.reject(new Error('FlagReport no apela'));
+  }
+
+  appealOf(): Promise<null> {
+    return Promise.resolve(null);
+  }
+
+  revisionOf(): Promise<null> {
+    return Promise.resolve(null);
+  }
 }
 
 function setup(known: Observation[] = [observation('reporte-1')]) {

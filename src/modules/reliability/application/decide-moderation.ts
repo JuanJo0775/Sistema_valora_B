@@ -1,6 +1,7 @@
 import { replacesCurrentPrice } from '../../../domain/current-price';
 import { suspensionAfter, suspensionEnd } from '../../../domain/suspension';
 import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
+import { DomainError } from '../../../domain/domain-error';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import { PRICE_ASSESSED } from './assess-reported-price';
 import { isReliable } from './standing';
@@ -43,6 +44,7 @@ export class InvalidNoteError extends Error {
 
 export const PRICE_WITHDRAWN = 'PriceWithdrawn';
 export const REPORTER_SUSPENSION_REQUESTED = 'ReporterSuspensionRequested';
+export const REPORTER_SUSPENSION_LIFTED = 'ReporterSuspensionLifted';
 
 // El precio que comparison mostraría sin el retirado: el confiable observado más recientemente.
 const latestOf = (candidates: Observation[]): Observation | null =>
@@ -58,6 +60,25 @@ export class OwnReportError extends Error {
   constructor() {
     super('Un moderador no decide sobre sus propios reportes; lo decide otro moderador.');
     this.name = 'OwnReportError';
+  }
+}
+
+// Grill de la #71, pregunta 3: una apelación la revisa otro moderador; la capa HTTP la traduce a 409.
+export class SameModeratorError extends Error {
+  readonly code = 'SAME_MODERATOR';
+
+  constructor() {
+    super('Quien descartó el reporte no decide su apelación; la decide otro moderador.');
+    this.name = 'SameModeratorError';
+  }
+}
+
+// Grill de la #71, pregunta 3: una apelación se acepta o se rechaza (422).
+export class DecisionNotAllowedError extends DomainError {
+  readonly code = 'DECISION_NOT_ALLOWED';
+
+  constructor() {
+    super('Una apelación solo se aprueba o se descarta.');
   }
 }
 
@@ -90,8 +111,10 @@ export class DecideModeration {
     if (!item) throw new ReportNotInQueueError(request.reportId);
     const reported = item.observation;
     if (reported.reporterKey === request.moderatorKey) throw new OwnReportError();
+    const stage = item.appeal ? 'apelacion' : 'revision';
+    if (stage === 'apelacion') await this.checkAppealDecision(request);
     const decidedAt = clock.now();
-    await moderation.decide({ ...request, note, decidedAt });
+    await moderation.decide({ ...request, note, decidedAt, stage });
     if (request.decision === 'aprobar') {
       // Grill de la #32, pregunta 4: comparison lo vuelve a mostrar como precio normal.
       await events.publish(
@@ -107,8 +130,12 @@ export class DecideModeration {
           reason: null,
         }),
       );
+      // Grill de la #71, pregunta 4: aceptar la apelación devuelve lo que quitó el descarte.
+      if (stage === 'apelacion') await this.acceptAppeal(reported);
     }
-    if (request.decision === 'descartar') {
+    // Grill de la #71, pregunta 4: rechazar la apelación deja el descarte como estaba, sin castigar
+    // dos veces.
+    if (request.decision === 'descartar' && stage === 'revision') {
       await this.discard(reported);
       // RN6 de RF-013: la decisión recién guardada ya está en la lista.
       const until = suspensionAfter(
@@ -121,6 +148,27 @@ export class DecideModeration {
       // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.
       await this.requestSuspension(reported, 'observar_cuentas', suspensionEnd(decidedAt));
     }
+  }
+
+  // Grill de la #71, pregunta 4: el descarte revertido devuelve la reputación y, si suspendió la
+  // cuenta, la suspensión se levanta. identity solo la levanta si su fecha de fin es la de ese
+  // descarte; si el descarte no la causó, la fecha no coincide y no pasa nada.
+  private async acceptAppeal(reported: Observation): Promise<void> {
+    await this.adjustReputation(reported, 'appealAccepted');
+    const discard = await this.ports.moderation.revisionOf(reported.reportId);
+    if (!discard) return;
+    await this.ports.events.publish(
+      createEvent(REPORTER_SUSPENSION_LIFTED, 1, {
+        reporterKey: reported.reporterKey,
+        suspendedUntil: suspensionEnd(discard.decidedAt).toISOString(),
+      }),
+    );
+  }
+
+  private async checkAppealDecision(request: DecisionRequest): Promise<void> {
+    if (request.decision === 'observar_cuentas') throw new DecisionNotAllowedError();
+    const discard = await this.ports.moderation.revisionOf(request.reportId);
+    if (discard?.moderatorKey === request.moderatorKey) throw new SameModeratorError();
   }
 
   // Grill de la #33, pregunta 6: identity suspende la cuenta al recibir el evento.
@@ -139,11 +187,19 @@ export class DecideModeration {
   }
 
   // Grill de la #32, pregunta 4: el autor pierde reputación y comparison deja de mostrar el precio.
-  private async discard(reported: Observation): Promise<void> {
-    const { observations, reputations, events } = this.ports;
+  private async adjustReputation(
+    reported: Observation,
+    event: 'rejected' | 'appealAccepted',
+  ): Promise<void> {
+    const { reputations } = this.ports;
     const current = await reputations.valuesOf([reported.reporterKey]);
     const value = current.get(reported.reporterKey) ?? RELIABILITY_PARAMS.neutralReputation;
-    await reputations.save(reported.reporterKey, updateReputation(value, 'rejected'));
+    await reputations.save(reported.reporterKey, updateReputation(value, event));
+  }
+
+  private async discard(reported: Observation): Promise<void> {
+    const { observations, events } = this.ports;
+    await this.adjustReputation(reported, 'rejected');
 
     const inStore = await observations.forPresentation(reported.presentationId, [
       reported.establishmentId,

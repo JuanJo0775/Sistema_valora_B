@@ -76,12 +76,23 @@ describe('resolver la sesión de una petición', () => {
     expect(sessions.touched).toEqual([]);
   });
 
-  // Grill de la #33, pregunta 4: aunque la sesión siga abierta, la cuenta suspendida no entra.
-  it('la sesión de una cuenta suspendida no sirve; terminada la suspensión, sí', async () => {
-    const suspended = setup(session({ accountSuspendedUntil: new Date('2026-11-19T14:00:00Z') }));
+  // Grill de la #71, pregunta 5: la sesión de una cuenta suspendida sirve, pero limitada; el guard
+  // decide qué rutas puede usar.
+  it('la sesión de una cuenta suspendida dice hasta cuándo; terminada la suspensión, ya no', async () => {
+    const until = new Date('2026-11-19T14:00:00Z');
+    const suspended = setup(session({ accountSuspendedUntil: until }));
     const finished = setup(session({ accountSuspendedUntil: minutesAgo(1) }));
 
-    await expect(suspended.resolve.execute(token)).resolves.toBeNull();
-    await expect(finished.resolve.execute(token)).resolves.not.toBeNull();
+    await expect(suspended.resolve.execute(token)).resolves.toEqual({
+      sessionId: 'sesion-1',
+      accountId: 'cuenta-1',
+      role: 'reportante',
+      suspendedUntil: until,
+    });
+    await expect(finished.resolve.execute(token)).resolves.toEqual({
+      sessionId: 'sesion-1',
+      accountId: 'cuenta-1',
+      role: 'reportante',
+    });
   });
 });

@@ -14,6 +14,8 @@ export interface ActiveSession {
   sessionId: string;
   accountId: string;
   role: Role;
+  // Grill de la #71, pregunta 5: solo si la cuenta está suspendida; la sesión queda limitada.
+  suspendedUntil?: Date;
 }
 
 export class ResolveSession {
@@ -24,9 +26,13 @@ export class ResolveSession {
     const now = this.ports.clock.now();
     // Grill de la #16, pregunta 3: vencida por inactividad o por el máximo, o cerrada, no sirve.
     if (!session || !isSessionActive({ ...session, now })) return null;
-    // Grill de la #33, pregunta 4: una cuenta suspendida no entra, aunque la sesión siga abierta.
-    if (session.accountSuspendedUntil && session.accountSuspendedUntil > now) return null;
     if (needsTouch(session.lastSeenAt, now)) await this.ports.sessions.touch(session.id, now);
-    return { sessionId: session.id, accountId: session.accountId, role: session.role };
+    const suspendedUntil = session.accountSuspendedUntil;
+    return {
+      sessionId: session.id,
+      accountId: session.accountId,
+      role: session.role,
+      ...(suspendedUntil && suspendedUntil > now ? { suspendedUntil } : {}),
+    };
   }
 }

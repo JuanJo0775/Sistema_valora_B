@@ -44,7 +44,7 @@ describe('repositorios de reliability', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log`,
+      sql`truncate reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals`,
     );
   });
 
@@ -125,6 +125,7 @@ describe('repositorios de reliability', () => {
       note: 'Precio imposible para esta tienda.',
       moderatorKey: 'c'.repeat(64),
       decidedAt: new Date('2026-11-15T10:00:00Z'),
+      stage: 'revision',
     });
 
     await expect(moderation.pending()).resolves.toEqual([]);
@@ -154,6 +155,7 @@ describe('repositorios de reliability', () => {
       note: 'Motivo de la prueba',
       moderatorKey: 'c'.repeat(64),
       decidedAt: new Date(Date.UTC(2026, 10, 14, 14, minute)),
+      stage: 'revision' as const,
     });
 
     await moderation.decide(entry(second.reportId, 'descartar', 2));
@@ -164,5 +166,99 @@ describe('repositorios de reliability', () => {
       'aprobar',
       'descartar',
     ]);
+  });
+
+  // Grill de la #71: la apelación de un reporte descartado.
+  describe('apelaciones', () => {
+    const discardedAt = new Date('2026-11-15T10:00:00Z');
+    const discard = {
+      reportId: observation.reportId,
+      decision: 'descartar' as const,
+      note: 'Precio imposible para esta tienda.',
+      moderatorKey: 'c'.repeat(64),
+      decidedAt: discardedAt,
+      stage: 'revision' as const,
+    };
+    const appeal = {
+      reportId: observation.reportId,
+      note: 'El precio sí era ese, está en la etiqueta.',
+      createdAt: new Date('2026-11-16T10:00:00Z'),
+    };
+
+    it('una apelación por reporte; queda pendiente en la cola con el motivo del autor', async () => {
+      const moderation = new DrizzleModerationStore(db);
+      await new DrizzleObservationStore(db).save(observation);
+      await moderation.decide(discard);
+
+      await expect(moderation.appeal(appeal)).resolves.toBe(true);
+      await expect(moderation.appeal(appeal)).resolves.toBe(false);
+
+      await expect(moderation.pending()).resolves.toEqual([
+        {
+          observation: { ...observation, moderation: 'descartado' },
+          flags: 0,
+          appeal: { note: appeal.note, createdAt: appeal.createdAt },
+        },
+      ]);
+      await expect(moderation.revisionOf(observation.reportId)).resolves.toEqual(discard);
+      await expect(moderation.appealOf(observation.reportId)).resolves.toEqual({
+        note: appeal.note,
+        createdAt: appeal.createdAt,
+        outcome: null,
+      });
+    });
+
+    it('aceptarla deja el reporte aprobado, sale de la cola y el descarte cuenta como aprobar', async () => {
+      const moderation = new DrizzleModerationStore(db);
+      const observations = new DrizzleObservationStore(db);
+      await observations.save(observation);
+      await moderation.decide(discard);
+      await moderation.appeal(appeal);
+
+      await moderation.decide({
+        ...discard,
+        decision: 'aprobar',
+        moderatorKey: 'd'.repeat(64),
+        decidedAt: new Date('2026-11-17T10:00:00Z'),
+        stage: 'apelacion',
+      });
+
+      await expect(moderation.pending()).resolves.toEqual([]);
+      await expect(observations.byReportId(observation.reportId)).resolves.toMatchObject({
+        moderation: 'aprobado',
+      });
+      await expect(moderation.appealOf(observation.reportId)).resolves.toMatchObject({
+        outcome: 'aceptada',
+      });
+      await expect(moderation.decisionsAbout(observation.reporterKey)).resolves.toEqual([
+        'aprobar',
+      ]);
+    });
+
+    it('rechazarla deja el reporte descartado y no suma otro descarte a la racha', async () => {
+      const moderation = new DrizzleModerationStore(db);
+      const observations = new DrizzleObservationStore(db);
+      await observations.save(observation);
+      await moderation.decide(discard);
+      await moderation.appeal(appeal);
+
+      await moderation.decide({
+        ...discard,
+        moderatorKey: 'd'.repeat(64),
+        decidedAt: new Date('2026-11-17T10:00:00Z'),
+        stage: 'apelacion',
+      });
+
+      await expect(moderation.pending()).resolves.toEqual([]);
+      await expect(observations.byReportId(observation.reportId)).resolves.toMatchObject({
+        moderation: 'descartado',
+      });
+      await expect(moderation.appealOf(observation.reportId)).resolves.toMatchObject({
+        outcome: 'rechazada',
+      });
+      await expect(moderation.decisionsAbout(observation.reporterKey)).resolves.toEqual([
+        'descartar',
+      ]);
+    });
   });
 });

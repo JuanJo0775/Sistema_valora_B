@@ -257,4 +257,10 @@ describe('garantías del score', () => {
       expect(strong(7)).toBeLessThan(0.8);
     });
   });
+
+  // Grill de la #71, pregunta 4: aceptar una apelación revierte la baja del descarte.
+  it('una apelación aceptada devuelve 0,20 de reputación, sin pasar de 1', () => {
+    expect(updateReputation(0.3, 'appealAccepted')).toBeCloseTo(0.5);
+    expect(updateReputation(0.9, 'appealAccepted')).toBe(1);
+  });
 });

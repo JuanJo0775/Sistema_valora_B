@@ -297,12 +297,26 @@ describe('moderación por HTTP (RF-013)', () => {
     }
     await app.get(OutboxRelay).runOnce();
 
+    // La sesión que tenía se cerró; vuelve a entrar con una sesión limitada (grill de la #71).
     await request(server).get('/v1/auth/session').set('Cookie', author.cookie).expect(401);
     const login = await request(server)
       .post('/v1/auth/login')
       .send({ email: 'autor@correo.com', password: 'una-clave-larga' })
+      .expect(204);
+    const [setCookie] = login.headers['set-cookie'] as unknown as string[];
+    const limited = (setCookie ?? '').split(';')[0] ?? '';
+    const session = await request(server)
+      .get('/v1/auth/session')
+      .set('Cookie', limited)
+      .expect(200);
+    const { csrfToken } = session.body as { csrfToken: string };
+    const flag = await request(server)
+      .post(`/v1/reports/${reportId}/flag`)
+      .set('Cookie', limited)
+      .set('X-CSRF-Token', csrfToken)
+      .send({ reason: 'otro' })
       .expect(403);
-    expect(login.body).toMatchObject({ code: 'ACCOUNT_SUSPENDED' });
+    expect(flag.body).toMatchObject({ code: 'ACCOUNT_SUSPENDED' });
     // EC-08: ni la cola ni los eventos llevan la cuenta ni el correo del autor.
     const events = await db.execute(sql`select payload from shared.outbox`);
     const everything = JSON.stringify([queue.body, events.rows]);
