@@ -2,6 +2,8 @@
 export { IdentityModule } from './identity.module';
 export type { Role } from './application/account-repository';
 export { ReporterIdentity, type ReporterPseudonym } from './application/reporter-identity';
+// Grill de la #73, pregunta 4: el comando identity:set-role.
+export { ChangeRole } from './application/change-role';
 export {
   type AuthenticatedSession,
   CurrentSession,

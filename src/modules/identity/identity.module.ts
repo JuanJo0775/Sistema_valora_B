@@ -101,7 +101,7 @@ const CLOCK = Symbol('CLOCK');
     SessionGuard,
   ],
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
-  exports: [ResolveSession, SessionGuard, ReporterIdentity],
+  exports: [ResolveSession, SessionGuard, ReporterIdentity, ChangeRole],
 })
 export class IdentityModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}
