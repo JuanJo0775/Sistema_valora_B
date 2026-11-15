@@ -230,5 +230,32 @@ describe('registrar un reporte de precio', () => {
       await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 40 * 60 });
       expect(reports.reports).toHaveLength(20);
     });
+
+    it('al aceptar el reporte 20 avisa a moderación con la clave seudónima y los reportes de esa hora', async () => {
+      let current = now;
+      const { reports, registerReport } = setup({ now: () => current });
+      const advance = () => {
+        current = new Date(current.getTime() + 60 * 1000);
+      };
+      const bursts = () => reports.events.filter((event) => event.type === 'ReportBurstDetected');
+
+      await reportMany(registerReport, 19, advance);
+      expect(bursts()).toEqual([]);
+      await registerReport.execute({
+        idempotencyKey: 'clave-20',
+        report: { ...report, establishmentId: 'tienda-20' },
+      });
+
+      expect(bursts()).toEqual([
+        expect.objectContaining({
+          version: 1,
+          payload: {
+            reporterKey: 'clave-seudonima',
+            reportIds: reports.reports.map((saved) => saved.id),
+          },
+        }),
+      ]);
+      expect(JSON.stringify(bursts())).not.toContain(reporterId);
+    });
   });
 });
