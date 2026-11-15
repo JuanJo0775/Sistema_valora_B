@@ -524,5 +524,29 @@ describe('decisión de moderación (RF-013)', () => {
       ).rejects.toThrow(DecisionNotAllowedError);
       expect(moderation.log.filter((entry) => entry.stage === 'apelacion')).toEqual([]);
     });
+
+    it('aceptarla deja el reporte aprobado, lo publica como normal y devuelve la reputación', async () => {
+      const { reported, reputations, published, decide } = await appealedSetup();
+      expect(reputations.values.get('autor-dudoso')).toBeCloseTo(0.3);
+
+      await decide.execute({
+        reportId: reported.reportId,
+        decision: 'aprobar',
+        note,
+        moderatorKey: 'moderadora-b',
+      });
+
+      expect(reported.moderation).toBe('aprobado');
+      expect(reputations.values.get('autor-dudoso')).toBeCloseTo(0.5);
+      expect(published).toEqual([
+        expect.objectContaining({
+          type: 'PriceAssessed',
+          payload: expect.objectContaining({
+            reportId: reported.reportId,
+            verdict: 'normal',
+          }) as unknown,
+        }),
+      ]);
+    });
   });
 });
