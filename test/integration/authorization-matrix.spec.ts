@@ -15,7 +15,7 @@ type Expected = 'permitido' | 401 | 403;
 
 interface Route {
   name: string;
-  method: 'get' | 'post';
+  method: 'get' | 'post' | 'put';
   path: string;
   body?: object;
 }
@@ -82,6 +82,12 @@ const routes: Record<string, Route> = {
     method: 'post',
     path: `/v1/moderation/product-requests/${someReport}/decision`,
     body: { decision: 'rechazar', note: 'Motivo suficiente para la prueba' },
+  },
+  // ADR-020 (#88): sin archivo, a quien sí puede le responde 400.
+  productImage: {
+    name: 'PUT /v1/moderation/products/{productId}/image',
+    method: 'put',
+    path: `/v1/moderation/products/${someReport}/image`,
   },
   queue: { name: 'GET /v1/moderation/queue', method: 'get', path: '/v1/moderation/queue' },
   decision: {
@@ -162,6 +168,11 @@ const matrix: [keyof typeof routes, Actor, Expected][] = [
   ['productRequestDecision', 'moderador', 'permitido'],
   ['productRequestDecision', 'comercio', 403],
   ['productRequestDecision', 'suspendida', 403],
+  ['productImage', 'sin_sesion', 401],
+  ['productImage', 'reportante', 403],
+  ['productImage', 'moderador', 'permitido'],
+  ['productImage', 'comercio', 403],
+  ['productImage', 'suspendida', 403],
   ['queue', 'sin_sesion', 401],
   ['queue', 'reportante', 403],
   ['queue', 'moderador', 'permitido'],

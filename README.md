@@ -25,7 +25,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Confiabilidad (#31, parte 1)     | Módulo `reliability`: evalúa cada reporte, guarda reputación y la comparación muestra `reliability` y `confirmations`         |
 | Detección medida (#67)           | Conjunto etiquetado de 100 reportes: 93 % de anómalos detectados, 1 falso positivo; `pnpm reliability:evaluate`               |
 | Moderación (#32)                 | Marcar un precio dudoso, cola por gravedad para moderadores y decisiones con motivo en una bitácora que no se puede modificar |
-| Roles y suspensión (#33)         | Suspensión de 7 días por `observar_cuentas` o 3 descartes seguidos; matriz de autorización de 80 casos y guardián de rutas    |
+| Roles y suspensión (#33)         | Suspensión de 7 días por `observar_cuentas` o 3 descartes seguidos; matriz de autorización de 85 casos y guardián de rutas    |
 | Cambio de rol (#73)              | `POST /v1/moderation/roles` y `pnpm identity:set-role`, con bitácora inmutable; un moderador no decide sus propios reportes   |
 | Apelación (#71)                  | El autor apela un descarte una vez, en 7 días, y ve el estado de su reporte; una cuenta suspendida entra con sesión limitada  |
 | Mis aportes (#76)                | `GET /v1/me/reports`: los aportes de la cuenta con su estado, el más reciente primero, paginados con `before`                 |

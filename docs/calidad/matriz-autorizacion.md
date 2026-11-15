@@ -31,13 +31,14 @@
 | `POST /v1/product-requests` | 401 | Permitido | 403 | 403 | 403 |
 | `GET /v1/moderation/product-requests` | 401 | 403 | Permitido | 403 | 403 |
 | `POST /v1/moderation/product-requests/{requestId}/decision` | 401 | 403 | Permitido | 403 | 403 |
+| `PUT /v1/moderation/products/{productId}/image` | 401 | 403 | Permitido | 403 | 403 |
 | `GET /v1/moderation/queue` | 401 | 403 | Permitido | 403 | 403 |
 | `POST /v1/moderation/{itemId}/decision` | 401 | 403 | Permitido | 403 | 403 |
 | `POST /v1/moderation/roles` | 401 | 403 | Permitido | 403 | 403 |
 | `GET /v1/auth/session` | 401 | Permitido | Permitido | Permitido | Permitido |
 | `POST /v1/auth/logout` | 401 | Permitido | Permitido | Permitido | Permitido |
 
-**80 casos**, todos en verde (`authorization-matrix.spec.ts`). Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
+**85 casos**, todos en verde (`authorization-matrix.spec.ts`). Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
 
 ## Rutas públicas
 
