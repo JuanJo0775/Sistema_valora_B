@@ -81,6 +81,23 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     };
   }
 
+  async findWithinMeters(
+    point: { lat: number; lng: number },
+    meters: number,
+  ): Promise<{ id: string; name: string; distanceM: number }[]> {
+    const origin = sql`ST_SetSRID(ST_MakePoint(${point.lng}, ${point.lat}), 4326)::geography`;
+    const distance = sql`ST_Distance(${establishments.location}, ${origin})`;
+    return this.db
+      .select({
+        id: establishments.id,
+        name: establishments.name,
+        distanceM: sql<number>`round(${distance})::int`.mapWith(Number),
+      })
+      .from(establishments)
+      .where(sql`ST_DWithin(${establishments.location}, ${origin}, ${meters})`)
+      .orderBy(distance);
+  }
+
   // La ubicación del usuario solo viaja como parámetro de esta consulta: no se guarda (RF-005 RN5).
   private async searchWithinRadius(search: RadiusSearch): Promise<NearbyEstablishment[]> {
     const point = sql`ST_SetSRID(ST_MakePoint(${search.lng}, ${search.lat}), 4326)::geography`;

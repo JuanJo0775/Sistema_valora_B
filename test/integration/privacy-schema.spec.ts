@@ -70,7 +70,7 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     ]);
   });
 
-  it('la única columna geográfica es la ubicación pública de la tienda', () => {
+  it('las únicas columnas geográficas son ubicaciones de tiendas', () => {
     const geographic = columns
       .filter(
         (column) =>
@@ -79,7 +79,11 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
       )
       .map((column) => `${column.table_schema}.${column.table_name}.${column.column_name}`);
 
-    expect(geographic).toEqual(['establishments.establishments.location']);
+    // Grill de la #27: la de una tienda propuesta también es de la tienda, no de quien la propone.
+    expect(geographic.sort()).toEqual([
+      'establishments.establishments.location',
+      'establishments.store_proposals.location',
+    ]);
   });
 
   it('ninguna tabla guarda la IP de quien hace la petición', () => {
