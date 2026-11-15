@@ -18,4 +18,17 @@ describe('hora de observación de un reporte', () => {
       assertObservedAtAccepted({ observedAt: minutesAfterReceipt(3), receivedAt });
     }).not.toThrow();
   });
+
+  // Grill de la #29, pregunta 1: un precio de hace más de un día ya no sirve para comparar.
+  it('un precio visto hace más de 24 horas se rechaza, aunque llegue de la cola sin conexión', () => {
+    expect(() => {
+      assertObservedAtAccepted({ observedAt: minutesAfterReceipt(-24 * 60 - 1), receivedAt });
+    }).toThrow(InvalidObservationDateError);
+  });
+
+  it('un precio visto justo hace 24 horas se acepta', () => {
+    expect(() => {
+      assertObservedAtAccepted({ observedAt: minutesAfterReceipt(-24 * 60), receivedAt });
+    }).not.toThrow();
+  });
 });
