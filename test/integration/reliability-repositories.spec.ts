@@ -44,7 +44,7 @@ describe('repositorios de reliability', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals`,
+      sql`truncate reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals, reliability.bursts`,
     );
   });
 
@@ -312,5 +312,26 @@ describe('repositorios de reliability', () => {
     await expect(
       moderation.authoredBy(observation.reporterKey, { limit: 2, before: at(9) }),
     ).resolves.toEqual([{ observation: oldest, flags: 0, appeal: null, discardedAt: null }]);
+  });
+
+  // Grill de la #29, pregunta 3: los reportes de una ráfaga entran a la cola.
+  it('los reportes de una ráfaga quedan pendientes en la cola y en el estado del aporte', async () => {
+    const observations = new DrizzleObservationStore(db);
+    const moderation = new DrizzleModerationStore(db);
+    const normal = {
+      ...observation,
+      verdict: { status: 'normal', median: 4500, deviation: 0, references: 3 },
+    } as const;
+    await observations.save(normal);
+
+    await moderation.markBurst([normal.reportId]);
+    await moderation.markBurst([normal.reportId]);
+
+    await expect(moderation.pending()).resolves.toEqual([
+      { observation: normal, flags: 0, burst: true },
+    ]);
+    await expect(moderation.authoredBy(normal.reporterKey, { limit: 10 })).resolves.toMatchObject([
+      { burst: true },
+    ]);
   });
 });
