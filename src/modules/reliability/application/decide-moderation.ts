@@ -2,6 +2,7 @@ import { replacesCurrentPrice } from '../../../domain/current-price';
 import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import { PRICE_ASSESSED } from './assess-reported-price';
+import { isReliable } from './standing';
 import type {
   Decision,
   ModerationStore,
@@ -40,11 +41,6 @@ export class InvalidNoteError extends Error {
 }
 
 export const PRICE_WITHDRAWN = 'PriceWithdrawn';
-
-// Confiable: no descartado y, si la detección lo marcó, aprobado por un moderador.
-const isReliable = (seen: Observation): boolean =>
-  seen.moderation === 'aprobado' ||
-  (seen.moderation === undefined && seen.verdict.status !== 'sospechoso');
 
 // El precio que comparison mostraría sin el retirado: el confiable observado más recientemente.
 const latestOf = (candidates: Observation[]): Observation | null =>
