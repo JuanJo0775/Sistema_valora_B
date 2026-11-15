@@ -31,6 +31,14 @@ export class InvalidNoteError extends Error {
   }
 }
 
+// No existe, no está en revisión o ya se decidió: la capa HTTP la traduce a 404 NOT_FOUND.
+export class ReportNotInQueueError extends Error {
+  constructor(readonly reportId: string) {
+    super(`El reporte ${reportId} no está en la cola de moderación.`);
+    this.name = 'ReportNotInQueueError';
+  }
+}
+
 // RF-013: el moderador decide sobre un reporte de la cola y la decisión queda en la bitácora.
 export class DecideModeration {
   constructor(private readonly ports: DecideModerationPorts) {}
@@ -40,10 +48,14 @@ export class DecideModeration {
     if (note.length < NOTE_LENGTH.min || note.length > NOTE_LENGTH.max) {
       throw new InvalidNoteError();
     }
-    const { moderation, observations, events, clock } = this.ports;
-    const reported = await observations.byReportId(request.reportId);
+    const { moderation, events, clock } = this.ports;
+    const item = (await moderation.pending()).find(
+      (pending) => pending.observation.reportId === request.reportId,
+    );
+    if (!item) throw new ReportNotInQueueError(request.reportId);
+    const reported = item.observation;
     await moderation.decide({ ...request, note, decidedAt: clock.now() });
-    if (reported && request.decision === 'aprobar') {
+    if (request.decision === 'aprobar') {
       // Grill de la #32, pregunta 4: comparison lo vuelve a mostrar como precio normal.
       await events.publish(
         createEvent(PRICE_ASSESSED, 1, {
