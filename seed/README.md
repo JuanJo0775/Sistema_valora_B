@@ -99,6 +99,21 @@ SIPSA es el sistema del DANE que publica **precios mayoristas** de alimentos en 
 - Un producto en ml o unidades no es comparable con un precio por kilo: la fila se rechaza.
 - Volver a cargar la misma fila (producto, mercado e inicio del periodo) la actualiza; no la duplica.
 
+### Cómo se actualiza cada semana (decidido el 15-nov-2026)
+
+Fuente: el ZIP **«Informes por ciudades»** de la página de SIPSA (<https://www.dane.gov.co/index.php/estadisticas-por-tema/agropecuario/sistema-de-informacion-de-precios-sipsa/componente-precios-mayoristas>), que trae un PDF por mercado. El anexo diario en Excel **no** trae Armenia.
+
+1. Una vez por semana, descargar el ZIP del último día hábil (`bol-SIPSADiario-regionales-DDmesAAAA.zip`). El del sábado solo trae Bogotá.
+2. Buscar cada producto en el PDF **«Armenia, Retiro»**. Si no aparece, usar **«Pereira, Mercasa»** como respaldo; el mercado queda escrito en la fila y la comparación lo muestra.
+3. Si no aparece en ninguno de los dos, probar el día hábil anterior. Si no salió en toda la semana, esa semana el producto no lleva fila.
+4. **Precio por kilo:** el punto medio entre mínimo y máximo. Si viene por bulto, bolsa o arroba, dividir por los kilos que dice el informe (por ejemplo, cebolla: bulto de 50 kg entre $100.000 y $112.000 → $106.000 ÷ 50 = $2.120).
+5. Una fila por producto, con la fecha del informe en `inicio_periodo` y `fin_periodo`, el enlace del ZIP en `url_fuente`, el nombre de quien la copió en `responsable` y `verificar = no`.
+6. Correr `pnpm db:seed`. La referencia se deja de mostrar a los 30 días.
+
+Equivalencias usadas: «Banano criollo» → Banano; «Cebolla cabezona blanca» → Cebolla cabezona; «Tomate chonto» → Tomate chonto; «Papa parda pastusa» → Papa pastusa.
+
+Las filas solo se cargan cuando el producto también está verificado en `productos.csv` (con responsable). Si no, la semilla dice qué fila corregir.
+
 ## `muestra-exactitud.csv` (PR-22, #93)
 
 No se carga a la base: sirve para medir qué tan exactos son los precios que publica Valora. El equipo anota lo que ve en la tienda y `pnpm quality:accuracy` lo compara con el precio vigente de Valora para esa presentación en esa tienda. El resultado queda en `docs/calidad/exactitud-pr22.md`.
