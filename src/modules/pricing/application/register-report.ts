@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { assertObservedAtAccepted } from '../../../domain/observation-date';
-import { REPORT_LIMITS } from '../../../domain/report-limits';
+import { burstWaitSeconds, REPORT_LIMITS } from '../../../domain/report-limits';
 import { createEvent } from '../../../shared/events';
 import type { NewReport, ReportInput, ReportRepository } from './report-repository';
 
@@ -60,6 +60,8 @@ export class IdempotencyKeyReusedError extends Error {
   readonly code = 'IDEMPOTENCY_KEY_REUSED';
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+
 // Grill de la #29, pregunta 2: la capa HTTP lo traduce a 409.
 export class DuplicateReportError extends Error {
   readonly code = 'DUPLICATE_REPORT';
@@ -69,6 +71,14 @@ export class DuplicateReportError extends Error {
       `Ya reportaste esta presentación en esta tienda en los últimos ${String(REPORT_LIMITS.duplicateWindowMinutes)} minutos.`,
     );
     this.name = 'DuplicateReportError';
+  }
+}
+
+// RF-012 RN2 (grill de la #29, pregunta 3): bloqueo temporal; la capa HTTP responde 429.
+export class TooManyReportsError extends Error {
+  constructor(readonly retryAfterSeconds: number) {
+    super('Demasiados reportes en la última hora.');
+    this.name = 'TooManyReportsError';
   }
 }
 
@@ -145,16 +155,22 @@ export class RegisterReport {
 
   // Grill de la #29: los límites de aportes de una cuenta, contados en la base.
   private async checkLimits(report: ReportInput, receivedAt: Date): Promise<void> {
-    const windowMs = REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000;
-    const recent = await this.deps.reports.recentOf(
-      report.reporterId,
-      new Date(receivedAt.getTime() - windowMs),
-    );
+    const duplicateWindowMs = REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000;
+    // La ventana más larga de las dos: la del duplicado o la hora de la ráfaga.
+    const since = new Date(receivedAt.getTime() - Math.max(duplicateWindowMs, HOUR_MS));
+    const recent = await this.deps.reports.recentOf(report.reporterId, since);
+    const duplicateSince = receivedAt.getTime() - duplicateWindowMs;
     const duplicate = recent.some(
       (seen) =>
+        seen.receivedAt.getTime() > duplicateSince &&
         seen.presentationId === report.presentationId &&
         seen.establishmentId === report.establishmentId,
     );
     if (duplicate) throw new DuplicateReportError();
+    const wait = burstWaitSeconds(
+      recent.map((seen) => seen.receivedAt),
+      receivedAt,
+    );
+    if (wait !== null) throw new TooManyReportsError(wait);
   }
 }
