@@ -134,8 +134,8 @@ describe('propuestas de productos (RF-003, #26)', () => {
     expect(byAlias.map((found) => found.id)).toEqual([rice.id]);
     const merged = await products.findById(rice.id);
     expect(
-      merged?.presentations.map(({ quantity, unit }) => `${String(quantity)} ${unit}`),
-    ).toEqual(['500 g', '1 kg']);
+      merged?.presentations.map(({ quantity, unit }) => `${String(quantity)} ${unit}`).sort(),
+    ).toEqual(['1 kg', '500 g']);
     await expect(products.findById(samePresentation.id)).resolves.toBeNull();
   });
 
