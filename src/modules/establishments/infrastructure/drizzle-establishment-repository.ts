@@ -1,6 +1,7 @@
 import { and, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
+  EstablishmentDetail,
   EstablishmentRepository,
   EstablishmentType,
   NearbyEstablishment,
@@ -56,6 +57,28 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       .from(establishments)
       .where(inArray(establishments.id, establishmentIds));
     return new Map(rows.map((row) => [row.id, row.name]));
+  }
+
+  async findById(establishmentId: string): Promise<EstablishmentDetail | null> {
+    const [row] = await this.db
+      .select({
+        id: establishments.id,
+        name: establishments.name,
+        type: establishments.type,
+        address: establishments.address,
+        lat: sql<number>`ST_Y(${establishments.location}::geometry)`.mapWith(Number),
+        lng: sql<number>`ST_X(${establishments.location}::geometry)`.mapWith(Number),
+      })
+      .from(establishments)
+      .where(eq(establishments.id, establishmentId));
+    if (!row) return null;
+    const { address, ...rest } = row;
+    // La restricción CHECK de la tabla garantiza el tipo.
+    return {
+      ...rest,
+      type: rest.type as EstablishmentDetail['type'],
+      ...(address === null ? {} : { address }),
+    };
   }
 
   // La ubicación del usuario solo viaja como parámetro de esta consulta: no se guarda (RF-005 RN5).

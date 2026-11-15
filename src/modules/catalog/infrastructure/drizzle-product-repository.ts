@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Unit } from '../../../domain/unit-price';
 import type {
+  PresentationForPricing,
   PresentationView,
   ProductForComparisonView,
   ProductRepository,
@@ -98,25 +99,45 @@ export class DrizzleProductRepository implements ProductRepository {
 
   // Grill de la #32: «Arroz blanco Diana · 500 g» o «… · 6 × 1 kg».
   async labelsOf(presentationIds: string[]): Promise<Map<string, string>> {
+    const pricing = await this.pricingOf(presentationIds);
+    return new Map([...pricing].map(([id, presentation]) => [id, presentation.label]));
+  }
+
+  async pricingOf(presentationIds: string[]): Promise<Map<string, PresentationForPricing>> {
     if (presentationIds.length === 0) return new Map();
     const rows = await this.db
       .select({
         id: presentations.id,
+        productId: products.id,
         name: products.name,
         brand: products.brand,
         quantity: presentations.quantity,
         unit: presentations.unit,
         packCount: presentations.packCount,
+        isFresh: categories.isFresh,
       })
       .from(presentations)
       .innerJoin(products, eq(presentations.productId, products.id))
+      .innerJoin(categories, eq(products.categoryCode, categories.code))
       .where(inArray(presentations.id, presentationIds));
     return new Map(
       rows.map((row) => {
         const product = row.brand === null ? row.name : `${row.name} ${row.brand}`;
-        const size = `${String(Number(row.quantity))} ${row.unit}`;
+        const quantity = Number(row.quantity);
+        const size = `${String(quantity)} ${row.unit}`;
         const pack = row.packCount > 1 ? `${String(row.packCount)} × ${size}` : size;
-        return [row.id, `${product} · ${pack}`];
+        return [
+          row.id,
+          {
+            productId: row.productId,
+            label: `${product} · ${pack}`,
+            quantity,
+            // La restricción CHECK de la tabla garantiza que es una de las 5 unidades.
+            unit: row.unit as Unit,
+            packCount: row.packCount,
+            isFresh: row.isFresh,
+          },
+        ];
       }),
     );
   }

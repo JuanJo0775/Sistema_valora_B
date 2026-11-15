@@ -4,5 +4,9 @@ export { ImportCatalog, type ProductImport } from './application/import-catalog'
 export { PresentationExists } from './application/presentation-exists';
 export { PresentationFreshness } from './application/presentation-freshness';
 export { PresentationLabels } from './application/presentation-labels';
+export { PresentationsForPricing } from './application/presentations-for-pricing';
 export { ProductForComparison } from './application/product-for-comparison';
-export type { ProductForComparisonView } from './application/product-repository';
+export type {
+  PresentationForPricing,
+  ProductForComparisonView,
+} from './application/product-repository';

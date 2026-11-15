@@ -35,7 +35,7 @@
 
 ## Rutas públicas
 
-`GET /v1/health`, `GET /v1/products`, `GET /v1/products/{productId}`, `GET /v1/products/{productId}/comparison`, `GET /v1/establishments/nearby`, `POST /v1/auth/register` y `POST /v1/auth/login`.
+`GET /v1/health`, `GET /v1/products`, `GET /v1/products/{productId}`, `GET /v1/products/{productId}/comparison`, `GET /v1/establishments/nearby`, `GET /v1/establishments/{establishmentId}/prices` (#28), `POST /v1/auth/register` y `POST /v1/auth/login`.
 
 ## Guardián de rutas (RNF-010)
 

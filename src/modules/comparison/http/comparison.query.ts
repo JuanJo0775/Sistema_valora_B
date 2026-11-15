@@ -37,3 +37,11 @@ export class ComparisonQueryDto {
   @IsBoolean({ message: 'debe ser true o false' })
   onlyCurrent = false;
 }
+
+// Parámetros de GET /v1/establishments/{establishmentId}/prices (grill de la #28, pregunta 2).
+export class StorePricesQueryDto {
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean({ message: 'debe ser true o false' })
+  onlyCurrent = false;
+}

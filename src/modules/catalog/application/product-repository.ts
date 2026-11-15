@@ -35,6 +35,16 @@ export interface ProductSearch {
   limit: number;
 }
 
+// Grill de la #28: lo que la ruta de precios por tienda necesita de cada presentación.
+export interface PresentationForPricing {
+  productId: string;
+  label: string;
+  quantity: number;
+  unit: Unit;
+  packCount: number;
+  isFresh: boolean;
+}
+
 export interface ProductRepository {
   findById(id: string): Promise<ProductView | null>;
   search(query: ProductSearch): Promise<ProductView[]>;
@@ -43,6 +53,7 @@ export interface ProductRepository {
   findForComparison(productId: string): Promise<ProductForComparisonView | null>;
   isFreshPresentation(presentationId: string): Promise<boolean | null>;
   labelsOf(presentationIds: string[]): Promise<Map<string, string>>;
+  pricingOf(presentationIds: string[]): Promise<Map<string, PresentationForPricing>>;
 }
 
 export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');
