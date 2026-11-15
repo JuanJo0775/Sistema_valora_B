@@ -26,6 +26,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Detección medida (#67)           | Conjunto etiquetado de 100 reportes: 93 % de anómalos detectados, 1 falso positivo; `pnpm reliability:evaluate`               |
 | Moderación (#32)                 | Marcar un precio dudoso, cola por gravedad para moderadores y decisiones con motivo en una bitácora que no se puede modificar |
 | Roles y suspensión (#33)         | Suspensión de 7 días por `observar_cuentas` o 3 descartes seguidos; matriz de autorización de 30 casos y guardián de rutas    |
+| Cambio de rol (#73)              | `POST /v1/moderation/roles` y `pnpm identity:set-role`, con bitácora inmutable; un moderador no decide sus propios reportes   |
 
 Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
 
@@ -139,15 +140,15 @@ Con la API en marcha:
 
 Si la API no arranca, el mensaje dice qué falta: una variable de entorno o la conexión a la base (base, host y puerto).
 
-### Crear un moderador en desarrollo
+### Crear un moderador
 
-La API no crea moderadores (grill de la #32, pregunta 7). Registra la cuenta con `POST /v1/auth/register` y cambia su rol en `valora_dev`:
+El primer moderador lo crea quien administra el servidor (grill de la #73, pregunta 4). Registra la cuenta con `POST /v1/auth/register` y luego:
 
-```sql
-UPDATE identity.accounts SET role = 'moderador' WHERE email = 'tu-correo@ejemplo.com';
+```bash
+pnpm identity:set-role tu-correo@ejemplo.com moderador "Primer moderador del equipo"
 ```
 
-Con esa cuenta, `GET /v1/moderation/queue` muestra los reportes pendientes.
+El cambio queda en la bitácora `identity.role_changes` como hecho por el sistema. Después, un moderador puede subir o bajar a otros con `POST /v1/moderation/roles`. Con esa cuenta, `GET /v1/moderation/queue` muestra los reportes pendientes.
 
 ## Día a día
 

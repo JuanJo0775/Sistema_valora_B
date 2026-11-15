@@ -544,6 +544,60 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: >-
+            code OWN_REPORT: el moderador es el autor del reporte; lo decide otro moderador (#73).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /moderation/roles:
+    post:
+      tags: [Moderación]
+      operationId: changeAccountRole
+      summary: Cambiar el rol de una cuenta; queda auditado (RF-002 RN1 y RN4)
+      description: >-
+        Solo el rol moderador. Vuelve moderadora una cuenta reportante o devuelve a reportante a otro
+        moderador; el cambio se nota desde la siguiente petición de esa cuenta. Queda en una bitácora
+        que no se puede modificar (quién, qué, cuándo y por qué). comercio no se asigna hasta el
+        Corte 3. El administrador del sistema usa el comando pnpm identity:set-role (#73).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role, note]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                role: { type: string, enum: [reportante, moderador] }
+                note: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '204': { description: Rol cambiado y anotado en la bitácora }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Ninguna cuenta tiene ese correo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: >-
+            code OWN_ROLE: un moderador no cambia su propio rol. code ROLE_UNCHANGED: la cuenta ya
+            tiene ese rol.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Más de 20 cambios del mismo moderador en 15 minutos (valor provisional).
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /commerce/claims:
     post:
       tags: [Comercios]
