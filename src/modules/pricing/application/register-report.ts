@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { assertObservedAtAccepted } from '../../../domain/observation-date';
-import { burstAt, REPORT_LIMITS } from '../../../domain/report-limits';
+import { burstAt, nextAllowedObservation, REPORT_LIMITS } from '../../../domain/report-limits';
 import { createEvent } from '../../../shared/events';
 import type { NewReport, ReportInput, ReportRepository } from './report-repository';
 
@@ -63,13 +63,22 @@ export class IdempotencyKeyReusedError extends Error {
 const HOUR_MS = 60 * 60 * 1000;
 export const REPORT_BURST_DETECTED = 'ReportBurstDetected';
 
-// Grill de la #29, pregunta 2: la capa HTTP lo traduce a 409.
+// El mensaje dice la hora como la ve quien reporta en el Quindío.
+const COLOMBIA_TIME = new Intl.DateTimeFormat('es-CO', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'America/Bogota',
+});
+
+// Grill de la #29, pregunta 2: la capa HTTP lo traduce a 409. Issue #84: dice desde qué hora de
+// observación se acepta un reporte nuevo (reintentar el mismo nunca pasa: su hora no cambia).
 export class DuplicateReportError extends Error {
   readonly code = 'DUPLICATE_REPORT';
 
-  constructor() {
+  constructor(readonly availableFrom: Date) {
     super(
-      `Ya reportaste esta presentación en esta tienda en los últimos ${String(REPORT_LIMITS.duplicateWindowMinutes)} minutos.`,
+      `Ya reportaste esta presentación en esta tienda. Puedes reportarla de nuevo con una observación desde las ${COLOMBIA_TIME.format(availableFrom)}.`,
     );
     this.name = 'DuplicateReportError';
   }
@@ -185,13 +194,22 @@ export class RegisterReport {
       new Date(observed + margin),
     );
     const duplicateWindowMs = REPORT_LIMITS.duplicateWindowMinutes * 60 * 1000;
-    const duplicate = around.some(
+    const samePair = around.filter(
       (seen) =>
-        Math.abs(seen.observedAt.getTime() - observed) < duplicateWindowMs &&
         seen.presentationId === report.presentationId &&
         seen.establishmentId === report.establishmentId,
     );
-    if (duplicate) throw new DuplicateReportError();
+    const duplicate = samePair.some(
+      (seen) => Math.abs(seen.observedAt.getTime() - observed) < duplicateWindowMs,
+    );
+    if (duplicate) {
+      throw new DuplicateReportError(
+        nextAllowedObservation(
+          samePair.map((seen) => seen.observedAt),
+          report.observedAt,
+        ),
+      );
+    }
     const burst = burstAt(around, report.observedAt);
     if (burst.exceeded) throw new TooManyReportsError(burst.waitSeconds ?? 1);
     return burst.completes ? burst.window : null;
