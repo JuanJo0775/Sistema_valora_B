@@ -41,7 +41,7 @@ export class StorePrices {
 
   async of(
     establishmentId: string,
-    _options: { onlyCurrent: boolean },
+    options: { onlyCurrent: boolean },
   ): Promise<StorePricesResult | null> {
     const { stores, presentations, prices, reliability, clock } = this.ports;
     const establishment = await stores.find(establishmentId);
@@ -77,8 +77,15 @@ export class StorePrices {
         observedAt: price.observedAt,
       };
     });
-    items.sort((a, b) => a.productName.localeCompare(b.productName, 'es'));
-    return { establishment, prices: items };
+    // Grill de la #28, pregunta 2: como en la comparación, onlyCurrent quita los desactualizados y
+    // los que están en revisión.
+    const shown = options.onlyCurrent
+      ? items.filter(
+          (item) => item.freshness !== 'desactualizado' && item.reliability !== 'en_revision',
+        )
+      : items;
+    shown.sort((a, b) => a.productName.localeCompare(b.productName, 'es'));
+    return { establishment, prices: shown };
   }
 
   // La confiabilidad se calcula con el TTL de la categoría de cada presentación (fresca o no).
