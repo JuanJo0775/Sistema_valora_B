@@ -2,6 +2,7 @@ import { InvalidObservationDateError } from '../../../domain/freshness';
 import type { DomainEvent } from '../../../shared/events';
 import type { NewReport, RecentReport, ReportRepository, SavedReport } from './report-repository';
 import {
+  DuplicateReportError,
   IdempotencyKeyReusedError,
   RegisterReport,
   UnknownEstablishmentError,
@@ -41,7 +42,7 @@ class InMemoryReportRepository implements ReportRepository {
   }
 }
 
-function setup() {
+function setup(clock = { now: () => now }) {
   const reports = new InMemoryReportRepository();
   const registerReport = new RegisterReport({
     reports,
@@ -50,7 +51,7 @@ function setup() {
     reporters: {
       of: () => Promise.resolve({ reporterKey: 'clave-seudonima', reporterSince: '2026-11-01' }),
     },
-    clock: { now: () => now },
+    clock,
   });
   return { reports, registerReport };
 }
@@ -150,5 +151,50 @@ describe('registrar un reporte de precio', () => {
         report: { ...report, reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
       }),
     ).rejects.toThrow(IdempotencyKeyReusedError);
+  });
+
+  // Grill de la #29, pregunta 2: una cuenta no infla sus propias confirmaciones.
+  describe('duplicados', () => {
+    const minutesLater = (minutes: number) => new Date(now.getTime() + minutes * 60 * 1000);
+
+    it('la misma cuenta, presentación y tienda en 60 minutos con otra clave es un duplicado', async () => {
+      let current = now;
+      const { reports, registerReport } = setup({ now: () => current });
+      await registerReport.execute({ idempotencyKey: 'clave-1', report });
+
+      current = minutesLater(59);
+      await expect(
+        registerReport.execute({
+          idempotencyKey: 'clave-2',
+          report: { ...report, priceCop: 4600 },
+        }),
+      ).rejects.toThrow(DuplicateReportError);
+      expect(reports.reports).toHaveLength(1);
+    });
+
+    it('pasados 60 minutos, o desde otra cuenta, no es duplicado', async () => {
+      let current = now;
+      const { reports, registerReport } = setup({ now: () => current });
+      await registerReport.execute({ idempotencyKey: 'clave-1', report });
+
+      await registerReport.execute({
+        idempotencyKey: 'clave-2',
+        report: { ...report, reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
+      });
+      current = minutesLater(61);
+      await registerReport.execute({ idempotencyKey: 'clave-3', report });
+
+      expect(reports.reports).toHaveLength(3);
+    });
+
+    it('el reintento con la misma clave sigue devolviendo su recibo', async () => {
+      const { registerReport } = setup();
+      const first = await registerReport.execute({ idempotencyKey: 'clave-1', report });
+
+      await expect(registerReport.execute({ idempotencyKey: 'clave-1', report })).resolves.toEqual({
+        receipt: first.receipt,
+        created: false,
+      });
+    });
   });
 });
