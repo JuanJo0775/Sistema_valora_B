@@ -23,8 +23,6 @@ describe('apelación de punta a punta (RF-013 RN4, #71)', () => {
   let db: Database;
 
   beforeAll(async () => {
-    // Intervalo muy largo: el repartidor del outbox se llama a mano con runOnce().
-    process.env['OUTBOX_POLL_INTERVAL_MS'] = '3600000';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     configureApp(app);
