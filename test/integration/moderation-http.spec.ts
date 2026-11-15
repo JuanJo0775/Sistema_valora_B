@@ -6,7 +6,9 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import type { Observation } from '../../src/modules/reliability/application/stores';
 import { DrizzleObservationStore } from '../../src/modules/reliability/infrastructure/drizzle-stores';
+import { ReporterIdentity } from '../../src/modules/identity';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { OutboxRelay } from '../../src/shared/events';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Reporte de prueba ya evaluado por reliability: solo existe dentro de esta prueba.
@@ -232,5 +234,57 @@ describe('moderación por HTTP (RF-013)', () => {
 
       expect(responses.map((response) => response.status)).toEqual([401, 403, 403]);
     });
+  });
+
+  // RN6 de RF-013 y grill de la #33: la suspensión de punta a punta.
+  it('tres descartes seguidos dejan al autor sin sesión y sin poder entrar, sin exponer su cuenta', async () => {
+    const author = await signIn(server, db, 'autor@correo.com');
+    const { reporterKey } = await app.get(ReporterIdentity).of(author.accountId);
+    const reportIds = [
+      'e1111111-1111-4111-8111-aaaaaaaaaaaa',
+      'e1111111-1111-4111-8111-bbbbbbbbbbbb',
+      'e1111111-1111-4111-8111-cccccccccccc',
+    ];
+    const store = new DrizzleObservationStore(db);
+    for (const id of reportIds) {
+      await store.save({
+        ...observation,
+        reportId: id,
+        reporterKey,
+        verdict: {
+          status: 'sospechoso',
+          reason: 'rango',
+          median: 4000,
+          deviation: 0.5,
+          references: 3,
+        },
+      });
+    }
+    const queue = await request(server)
+      .get('/v1/moderation/queue')
+      .set('Cookie', moderator.cookie)
+      .expect(200);
+
+    for (const id of reportIds) {
+      await request(server)
+        .post(`/v1/moderation/${id}/decision`)
+        .set('Cookie', moderator.cookie)
+        .set('X-CSRF-Token', moderator.csrfToken)
+        .send({ decision: 'descartar', note: 'Precio falso, no coincide con la tienda' })
+        .expect(204);
+    }
+    await app.get(OutboxRelay).runOnce();
+
+    await request(server).get('/v1/auth/session').set('Cookie', author.cookie).expect(401);
+    const login = await request(server)
+      .post('/v1/auth/login')
+      .send({ email: 'autor@correo.com', password: 'una-clave-larga' })
+      .expect(403);
+    expect(login.body).toMatchObject({ code: 'ACCOUNT_SUSPENDED' });
+    // EC-08: ni la cola ni los eventos llevan la cuenta ni el correo del autor.
+    const events = await db.execute(sql`select payload from shared.outbox`);
+    const everything = JSON.stringify([queue.body, events.rows]);
+    expect(everything).not.toContain(author.accountId);
+    expect(everything).not.toContain('autor@correo.com');
   });
 });
