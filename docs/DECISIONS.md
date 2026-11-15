@@ -321,6 +321,15 @@ Aplicación de RF-004 y EC-06.
 - `pnpm db:seed` nombra la fila que mezcla bases y no guarda nada (todo o nada, como las demás validaciones de la semilla).
 - Así la comparación (#15, #21) nunca recibe bases mezcladas. La semilla actual no tiene ningún producto mezclado.
 
+## Precios vigentes de un establecimiento (issue #28, 15 de noviembre de 2026)
+
+Aplicación de RF-008, EC-02 y EC-04. El detalle está en `docs/decisiones/issue-28-precios-por-tienda/`.
+
+- **Ruta:** `GET /v1/establishments/{establishmentId}/prices`, pública, en `comparison` (lee `price_current`). Trae la tienda y cada precio con la misma forma de la comparación, sin la distancia.
+- **Contenido:** todos los precios de la tienda ordenados por producto; `onlyCurrent=true` quita los desactualizados y los en revisión. La confiabilidad usa el TTL de la categoría de cada presentación.
+- **Caché:** `public, max-age=60` y ETag (304), porque la URL no lleva la ubicación del usuario.
+- **Consultas públicas nuevas:** `EstablishmentDetails` (establishments) y `PresentationsForPricing` (catalog); `PresentationLabels` ahora reutiliza la misma consulta.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.

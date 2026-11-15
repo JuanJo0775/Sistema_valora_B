@@ -208,6 +208,96 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Establishment' }
         '400': { $ref: '#/components/responses/BadRequest' }
+  /establishments/{establishmentId}/prices:
+    get:
+      tags: [Comparación]
+      operationId: listEstablishmentPrices
+      summary: Precios vigentes de un establecimiento (RF-008)
+      description: >-
+        Pública, sin cuenta. Todos los precios de la tienda leídos de price_current, ordenados por
+        producto y presentación, cada uno con su vigencia y su confiabilidad, como en la comparación
+        (sin la distancia). onlyCurrent=true quita los desactualizados y los que están en revisión.
+        Lectura pública con caché de 60 segundos (valor provisional, EC-04) y ETag: con If-None-Match
+        igual al ETag responde 304 (#28).
+      parameters:
+        - name: establishmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: onlyCurrent
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: La tienda y sus precios
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=60' }
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [establishment, prices]
+                properties:
+                  establishment:
+                    type: object
+                    required: [id, name, type, lat, lng]
+                    properties:
+                      id: { type: string, format: uuid }
+                      name: { type: string }
+                      type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+                      address: { type: string }
+                      lat: { type: number }
+                      lng: { type: number }
+                  prices:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          productId,
+                          presentationId,
+                          productName,
+                          reportId,
+                          priceCop,
+                          unitPrice,
+                          source,
+                          freshness,
+                          reliability,
+                          confirmations,
+                          observedAt,
+                        ]
+                      properties:
+                        productId: { type: string, format: uuid }
+                        presentationId: { type: string, format: uuid }
+                        productName:
+                          type: string
+                          description: 'Producto y presentación, por ejemplo «Arroz Diana · 500 g».'
+                        reportId:
+                          type: string
+                          format: uuid
+                          description: El reporte cuyo precio se muestra; sirve para marcarlo (RF-013).
+                        priceCop: { type: integer, minimum: 1 }
+                        unitPrice:
+                          type: object
+                          required: [valueCop, per]
+                          properties:
+                            valueCop: { type: integer, minimum: 0 }
+                            per: { type: string, enum: [100g, 100ml, und] }
+                        source: { type: string, enum: [comunidad, oficial, siembra] }
+                        freshness: { type: string, enum: [vigente, por_confirmar, desactualizado] }
+                        reliability: { type: string, enum: [alta, media, baja, en_revision] }
+                        confirmations: { type: integer, minimum: 0 }
+                        observedAt: { type: string, format: date-time }
+        '304': { description: Los precios no cambiaron desde el ETag enviado }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404':
+          description: El establecimiento no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /reports:
     post:
       tags: [Reportes]
