@@ -194,19 +194,44 @@ describe('registrar un reporte de precio', () => {
       expect(reports.reports).toHaveLength(1);
     });
 
-    it('pasados 60 minutos, o desde otra cuenta, no es duplicado', async () => {
+    // Grill de la #30, pregunta 2: el duplicado compara horas de observación, no de llegada.
+    it('observaciones a más de 60 minutos, o de otra cuenta, no son duplicado aunque lleguen juntas', async () => {
+      const { reports, registerReport } = setup();
+      const seenAt = (minutesBefore: number) => new Date(now.getTime() - minutesBefore * 60 * 1000);
+
+      await registerReport.execute({
+        idempotencyKey: 'clave-1',
+        report: { ...report, observedAt: seenAt(180) },
+      });
+      await registerReport.execute({
+        idempotencyKey: 'clave-2',
+        report: { ...report, observedAt: seenAt(110) },
+      });
+      await registerReport.execute({
+        idempotencyKey: 'clave-3',
+        report: {
+          ...report,
+          observedAt: seenAt(110),
+          reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        },
+      });
+
+      expect(reports.reports).toHaveLength(3);
+    });
+
+    it('una observación a menos de 60 minutos de otra es duplicado, aunque llegue mucho después', async () => {
       let current = now;
       const { reports, registerReport } = setup({ now: () => current });
       await registerReport.execute({ idempotencyKey: 'clave-1', report });
 
-      await registerReport.execute({
-        idempotencyKey: 'clave-2',
-        report: { ...report, reporterId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
-      });
-      current = minutesLater(61);
-      await registerReport.execute({ idempotencyKey: 'clave-3', report });
-
-      expect(reports.reports).toHaveLength(3);
+      current = minutesLater(300);
+      await expect(
+        registerReport.execute({
+          idempotencyKey: 'clave-2',
+          report: { ...report, observedAt: new Date(report.observedAt.getTime() + 50 * 60 * 1000) },
+        }),
+      ).rejects.toThrow(DuplicateReportError);
+      expect(reports.reports).toHaveLength(1);
     });
 
     it('el reintento con la misma clave sigue devolviendo su recibo', async () => {
