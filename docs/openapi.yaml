@@ -410,11 +410,19 @@ paths:
     get:
       tags: [Reportes]
       operationId: listMyReports
-      summary: Consultar mis aportes (RF-006)
+      summary: Consultar mis aportes con su estado (RF-006)
+      description: >-
+        Solo el rol reportante (también con una cuenta suspendida). El más reciente primero. Un
+        reporte aparece cuando reliability lo evalúa (segundos después de enviarlo). Nunca dice
+        quién decidió ni quién marcó (EC-08). Sin caché (no-store) (#76).
       security:
         - sessionCookie: []
       parameters:
         - $ref: '#/components/parameters/Limit'
+        - name: before
+          in: query
+          description: El nextBefore de la página anterior.
+          schema: { type: string, format: date-time }
       responses:
         '200':
           description: Aportes de la cuenta autenticada
@@ -422,11 +430,51 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [items]
                 properties:
                   items:
                     type: array
-                    items: { $ref: '#/components/schemas/ReportReceipt' }
+                    items:
+                      type: object
+                      required:
+                        [
+                          reportId,
+                          productName,
+                          establishmentName,
+                          priceCop,
+                          priceType,
+                          observedAt,
+                          status,
+                        ]
+                      properties:
+                        reportId: { type: string, format: uuid }
+                        productName: { type: string }
+                        establishmentName: { type: string }
+                        priceCop: { type: integer, minimum: 1 }
+                        priceType: { type: string, enum: [normal, oferta] }
+                        observedAt: { type: string, format: date-time }
+                        status:
+                          type: string
+                          enum:
+                            [
+                              normal,
+                              en_revision,
+                              descartado,
+                              apelacion_pendiente,
+                              apelacion_aceptada,
+                              apelacion_rechazada,
+                            ]
+                        appealableUntil:
+                          type: string
+                          format: date-time
+                          description: Solo si el reporte está descartado y todavía se puede apelar.
+                  nextBefore:
+                    type: string
+                    format: date-time
+                    description: Solo si la página está llena; se manda como before para la siguiente.
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /product-requests:
     post:
       tags: [Catálogo]

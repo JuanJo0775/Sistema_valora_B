@@ -13,6 +13,7 @@ import {
 import { AppealReport } from './application/appeal-report';
 import { FlagReport } from './application/flag-report';
 import { ModerationQueue } from './application/moderation-queue';
+import { MyReports } from './application/my-reports';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
 import { ReportStatus } from './application/report-status';
 import { FlagsController } from './http/flags.controller';
@@ -65,6 +66,21 @@ const ZONE_RADIUS_METERS = 1000;
         new ReportStatus({
           observations: new DrizzleObservationStore(db),
           moderation: new DrizzleModerationStore(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: MyReports,
+      inject: [DATABASE, PresentationLabels, EstablishmentNames],
+      useFactory: (
+        db: Database,
+        labels: PresentationLabels,
+        names: EstablishmentNames,
+      ): MyReports =>
+        new MyReports({
+          moderation: new DrizzleModerationStore(db),
+          labels,
+          names,
           clock: { now: () => new Date() },
         }),
     },

@@ -1,8 +1,10 @@
-import { and, asc, count, desc, eq, isNull, notExists, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, lt, notExists, or, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Transaction } from '../../../shared/database/database.module';
 import type {
   AppealRecord,
+  AuthoredPage,
+  AuthoredReport,
   Decision,
   LogEntry,
   ModerationStore,
@@ -131,6 +133,57 @@ export class DrizzleModerationStore implements ModerationStore {
       .orderBy(desc(moderationLog.decidedAt))
       .limit(1);
     return found ? toLogEntry(found) : null;
+  }
+
+  async authoredBy(reporterKey: string, page: AuthoredPage): Promise<AuthoredReport[]> {
+    const rows = await this.db
+      .select()
+      .from(observations)
+      .where(
+        and(
+          eq(observations.reporterKey, reporterKey),
+          page.before ? lt(observations.receivedAt, page.before) : undefined,
+        ),
+      )
+      .orderBy(desc(observations.receivedAt))
+      .limit(page.limit);
+    if (rows.length === 0) return [];
+    const ids = rows.map((row) => row.reportId);
+    const [flagCounts, appealRows, logRows] = await Promise.all([
+      this.db
+        .select({ reportId: flags.reportId, total: count() })
+        .from(flags)
+        .where(inArray(flags.reportId, ids))
+        .groupBy(flags.reportId),
+      this.db.select().from(appeals).where(inArray(appeals.reportId, ids)),
+      this.db
+        .select()
+        .from(moderationLog)
+        .where(inArray(moderationLog.reportId, ids))
+        .orderBy(asc(moderationLog.decidedAt)),
+    ]);
+    return rows.map((row) => {
+      const log = logRows.filter((entry) => entry.reportId === row.reportId);
+      const revision = log.filter((entry) => entry.stage === 'revision').at(-1);
+      const appealDecision = log.find((entry) => entry.stage === 'apelacion');
+      const appealRow = appealRows.find((seen) => seen.reportId === row.reportId);
+      return {
+        observation: toObservation(row),
+        flags: flagCounts.find((seen) => seen.reportId === row.reportId)?.total ?? 0,
+        appeal: appealRow
+          ? {
+              note: appealRow.note,
+              createdAt: appealRow.createdAt,
+              outcome: appealDecision
+                ? appealDecision.decision === 'aprobar'
+                  ? 'aceptada'
+                  : 'rechazada'
+                : null,
+            }
+          : null,
+        discardedAt: revision?.decision === 'descartar' ? revision.decidedAt : null,
+      };
+    });
   }
 
   // La decisión sobre la apelación de un reporte, si la hay.

@@ -10,6 +10,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { RequestValidationError } from '../../../shared/http/validation';
@@ -27,8 +28,25 @@ import {
   InvalidAppealNoteError,
 } from '../application/appeal-report';
 import { ReportNotFoundError } from '../application/flag-report';
+import { MyReports } from '../application/my-reports';
 import { ReportStatus, type ReportState } from '../application/report-status';
 import { AppealDto } from './appeal.dto';
+import { MyReportsQueryDto } from './my-reports.query';
+
+// Grill de la #76, pregunta 2: la forma de GET /v1/me/reports en el contrato.
+interface MyReportsResponse {
+  items: {
+    reportId: string;
+    productName: string;
+    establishmentName: string;
+    priceCop: number;
+    priceType: string;
+    observedAt: string;
+    status: ReportState;
+    appealableUntil?: string;
+  }[];
+  nextBefore?: string;
+}
 
 // Grill de la #71: lo que el autor hace con sus propios reportes. reliability solo lo conoce por su
 // clave seudónima (EC-08).
@@ -37,6 +55,7 @@ export class MyReportsController {
   constructor(
     private readonly appealReport: AppealReport,
     private readonly reportStatus: ReportStatus,
+    private readonly myReports: MyReports,
     private readonly identities: ReporterIdentity,
   ) {}
 
@@ -101,5 +120,30 @@ export class MyReportsController {
       if (error instanceof ReportNotFoundError) throw new NotFoundException();
       throw error;
     }
+  }
+
+  // Grill de la #76: la lista de aportes, el más reciente primero; privada y sin caché.
+  @Get('me/reports')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(SessionGuard)
+  @Roles('reportante')
+  @AllowSuspended()
+  async list(
+    @Query() query: MyReportsQueryDto,
+    @CurrentSession() session: AuthenticatedSession,
+  ): Promise<MyReportsResponse> {
+    const { reporterKey } = await this.identities.of(session.accountId);
+    const page = await this.myReports.list(reporterKey, {
+      limit: query.limit,
+      ...(query.before ? { before: query.before } : {}),
+    });
+    return {
+      items: page.items.map(({ observedAt, appealableUntil, ...item }) => ({
+        ...item,
+        observedAt: observedAt.toISOString(),
+        ...(appealableUntil ? { appealableUntil: appealableUntil.toISOString() } : {}),
+      })),
+      ...(page.nextBefore ? { nextBefore: page.nextBefore.toISOString() } : {}),
+    };
   }
 }

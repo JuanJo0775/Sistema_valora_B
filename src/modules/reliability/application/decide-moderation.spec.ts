@@ -167,6 +167,10 @@ class InMemoryModeration implements ModerationStore {
     return Promise.resolve(revisions.at(-1) ?? null);
   }
 
+  authoredBy(): Promise<[]> {
+    return Promise.reject(new Error('DecideModeration no lista aportes'));
+  }
+
   private appealDecision(reportId: string): LogEntry | undefined {
     return this.log.find((entry) => entry.reportId === reportId && entry.stage === 'apelacion');
   }
