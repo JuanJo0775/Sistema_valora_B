@@ -71,4 +71,31 @@ describe('confiabilidad de los precios que muestra la comparación', () => {
 
     expect(result).toEqual({ ...price, level: 'media', confirmations: 0 });
   });
+
+  // Grill de la #32, pregunta 4: la moderación cambia lo que confirma un precio.
+  it('un reporte descartado no confirma; uno sospechoso aprobado confirma como cualquier otro', async () => {
+    const suspicious = {
+      verdict: {
+        status: 'sospechoso',
+        reason: 'rango',
+        median: 4000,
+        deviation: 0.5,
+        references: 3,
+      },
+    } as const;
+    const withDiscarded = setup([
+      observation('r-ana', 'ana', 4000),
+      observation('r-beto', 'beto', 4050, { moderation: 'descartado' }),
+    ]);
+    const withApproved = setup([
+      observation('r-ana', 'ana', 4000),
+      observation('r-caro', 'caro', 3950, { ...suspicious, moderation: 'aprobado' }),
+    ]);
+
+    const [discarded] = await withDiscarded.of([price], 14);
+    const [approved] = await withApproved.of([price], 14);
+
+    expect(discarded?.confirmations).toBe(0);
+    expect(approved?.confirmations).toBe(1);
+  });
 });
