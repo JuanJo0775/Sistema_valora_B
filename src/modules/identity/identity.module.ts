@@ -8,6 +8,7 @@ import type { AttemptLimiter } from './application/attempt-limiter';
 import { ChangeRole } from './application/change-role';
 import type { Clock } from './application/clock';
 import type { PasswordHasher } from './application/password-hasher';
+import { LiftSuspension } from './application/lift-suspension';
 import { Login } from './application/login';
 import { Logout } from './application/logout';
 import { RegisterAccount } from './application/register-account';
@@ -119,6 +120,18 @@ export class IdentityModule implements OnModuleInit {
           sessions: new DrizzleSessionRepository(tx),
           clock: { now: () => new Date() },
         }).execute({
+          reporterKey: payload.reporterKey,
+          suspendedUntil: new Date(payload.suspendedUntil),
+        });
+      },
+    );
+    // Grill de la #71, pregunta 4: una apelación aceptada levanta la suspensión de ese descarte.
+    this.bus.subscribe(
+      'identity.accounts',
+      'ReporterSuspensionLifted',
+      async (event: DomainEvent, tx: Transaction) => {
+        const payload = event.payload as { reporterKey: string; suspendedUntil: string };
+        await new LiftSuspension({ accounts: new DrizzleAccountRepository(tx) }).execute({
           reporterKey: payload.reporterKey,
           suspendedUntil: new Date(payload.suspendedUntil),
         });
