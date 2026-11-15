@@ -548,5 +548,24 @@ describe('decisión de moderación (RF-013)', () => {
         }),
       ]);
     });
+
+    // Grill de la #71, pregunta 4: identity solo la levanta si su fecha coincide con esta.
+    it('aceptarla pide levantar la suspensión que pudo causar ese descarte', async () => {
+      const { reported, published, decide } = await appealedSetup();
+
+      await decide.execute({
+        reportId: reported.reportId,
+        decision: 'aprobar',
+        note,
+        moderatorKey: 'moderadora-b',
+      });
+
+      expect(published.filter((event) => event.type === 'ReporterSuspensionLifted')).toEqual([
+        expect.objectContaining({
+          version: 1,
+          payload: { reporterKey: 'autor-dudoso', suspendedUntil: '2026-11-21T14:00:00.000Z' },
+        }),
+      ]);
+    });
   });
 });
