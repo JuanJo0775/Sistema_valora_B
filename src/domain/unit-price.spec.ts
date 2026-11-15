@@ -1,9 +1,12 @@
 import {
+  assertSameBase,
+  baseOf,
   calculateUnitPrice,
   compareUnitPrices,
   IncompatibleUnitsError,
   InvalidPriceError,
   InvalidQuantityError,
+  MixedUnitBasesError,
 } from './unit-price';
 
 describe('precio por unidad base', () => {
@@ -142,5 +145,30 @@ describe('cantidades que JavaScript escribe en notación exponencial', () => {
 
   it('2 × 10^21 g a $2.000 equivale a $0 por 100 g', () => {
     expect(calculateUnitPrice(2000, { quantity: 2e21, unit: 'g' }).displayCop).toBe(0);
+  });
+});
+
+// Issue #59: un producto representa una sola cosa; sus presentaciones comparten la base.
+describe('base de unidad de un producto', () => {
+  it('g y kg se comparan por 100 g; ml y l por 100 ml; und por unidad', () => {
+    expect((['g', 'kg', 'ml', 'l', 'und'] as const).map(baseOf)).toEqual([
+      '100g',
+      '100g',
+      '100ml',
+      '100ml',
+      'und',
+    ]);
+  });
+
+  it('presentaciones en g y kg comparten la base', () => {
+    expect(() => {
+      assertSameBase(['g', 'kg', 'g']);
+    }).not.toThrow();
+  });
+
+  it('presentaciones en g y und mezclan bases y se rechazan', () => {
+    expect(() => {
+      assertSameBase(['g', 'und']);
+    }).toThrow(MixedUnitBasesError);
   });
 });
