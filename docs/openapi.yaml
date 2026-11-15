@@ -310,6 +310,12 @@ paths:
         Exige sesión de reportante y la cabecera X-CSRF-Token (issue #16); el reporte guarda la cuenta,
         que nunca sale en respuestas ni eventos (EC-08). La misma Idempotency-Key usada por otra cuenta
         responde 409.
+
+        Cola sin conexión (ADR-010, #30): la PWA manda cada reporte de la cola por esta misma ruta, con
+        su clave. Qué hacer con cada respuesta: 201 o 200, confirmado (sale de la cola); 400, 409 o 422,
+        final (sale de la cola y avisa); 429 de un reporte que ya estaba en la cola, final (su hora de
+        observación no cambia, así que no pasará); 401 o 403, iniciar sesión y reintentar con la misma
+        clave; sin red o 5xx, reintentar más tarde con la misma clave.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -341,8 +347,9 @@ paths:
         '409':
           description: >-
             Conflicto. code IDEMPOTENCY_KEY_REUSED: la misma Idempotency-Key ya se usó con otro cuerpo o por otra cuenta.
-            code DUPLICATE_REPORT: la cuenta ya reportó esa presentación en ese establecimiento en los
-            últimos 60 minutos (valor provisional, #29).
+            code DUPLICATE_REPORT: la cuenta ya tiene un reporte de esa presentación en ese
+            establecimiento observado a menos de 60 minutos de este (por la hora de observación, no de
+            llegada; valor provisional, #29, #30).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -356,9 +363,10 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '429':
           description: >-
-            Más de 20 reportes de la cuenta en la última hora (valor provisional, RF-012 RN2, #29).
-            Retry-After dice cuántos segundos faltan. Los reportes de esa hora van a la cola de
-            moderación con el motivo rafaga.
+            Más de 20 reportes de la cuenta observados dentro de una misma hora (por la hora de
+            observación, no de llegada; valor provisional, RF-012 RN2, #29, #30). Retry-After dice
+            cuántos segundos faltan para que una observación nueva pueda entrar. Los reportes de esa hora
+            van a la cola de moderación con el motivo rafaga.
           headers:
             Retry-After: { $ref: '#/components/headers/RetryAfter' }
           content:

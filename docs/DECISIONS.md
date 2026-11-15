@@ -308,7 +308,7 @@ Aplicación de RF-006, RF-012 (RN2), RNF-014, PR-06 y EC-07. El detalle está en
 
 - **Ya cumplido desde la #14:** campos faltantes, precio entero entre 1 y 10.000.000 y formato `{ code, message }`.
 - **Observación vieja:** un precio visto hace más de 24 horas se rechaza (422 `INVALID_OBSERVATION_DATE`), aunque venga de la cola sin conexión.
-- **Duplicado:** la misma cuenta no reporta la misma presentación en la misma tienda dos veces en 60 minutos (409 `DUPLICATE_REPORT`); el reintento con la misma clave sigue devolviendo su recibo.
+- **Duplicado:** la misma cuenta no reporta la misma presentación en la misma tienda dos veces en 60 minutos (409 `DUPLICATE_REPORT`); el reintento con la misma clave sigue devolviendo su recibo. **Cambiado en la #30:** cuenta por la hora de observación.
 - **Ráfaga (RN2):** más de 20 reportes por hora desde una cuenta responde 429 con `Retry-After`, contado en la base. Al aceptar el reporte 20, `pricing` publica `ReportBurstDetected` y `reliability` pone esos reportes en la cola con el motivo `rafaga` (tabla `reliability.bursts`, migración `0017`).
 - **Valores provisionales** en `REPORT_LIMITS` (`src/domain/report-limits.ts`).
 - **Límite conocido:** dos reportes simultáneos de la misma cuenta pueden pasar los dos el límite (se cuenta antes de guardar).
@@ -337,6 +337,16 @@ Aplicación de EC-08, RNF-007, PR-15 y Ley 1581. El detalle está en `docs/decis
 - Correo y contraseña solo en `identity`; la única columna geográfica es la ubicación de la tienda; ninguna tabla guarda IP; `reliability` usa claves seudónimas.
 - `pricing.reports.reporter_id` (id de la cuenta) se deja como referencia interna documentada: nunca sale en respuestas ni eventos.
 - Dos pruebas guardianas (esquema y respuestas públicas) impiden que una migración o una ruta nueva rompa la privacidad sin que se note.
+
+## Sincronización sin conexión, lado del servidor (issue #30, 15 de noviembre de 2026)
+
+Aplicación de RF-007, EC-07, RNF-013, PR-07, PR-08 y ADR-010. El detalle está en `docs/decisiones/issue-30-sincronizacion/` y la medición en `docs/calidad/sincronizacion-ec07.md`.
+
+- **Sin ruta de lotes:** la cola manda cada reporte a `POST /v1/reports` con su clave; el servidor ya era idempotente.
+- **Cambia la #29:** el duplicado y la ráfaga cuentan por la hora de observación, no de llegada (`burstAt` en `src/domain/report-limits.ts`). Al reconectar, la cola ya no choca con el límite.
+- **Medición:** 50 reportes, 150 envíos (repetidos, simultáneos y en desorden): 50 recibidos, 0 duplicados, el precio vigente correcto en cada tienda y p95 de confirmación de alrededor de 1 s en el servidor local.
+- **Regla de reintentos de la cola**, documentada en el contrato de `POST /v1/reports`.
+- **Límite conocido:** se pueden repartir horas de observación falsas dentro de las 24 h para evitar la ráfaga.
 
 ## Regla de cambio
 
