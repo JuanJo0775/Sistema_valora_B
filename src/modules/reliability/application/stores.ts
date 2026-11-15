@@ -72,6 +72,21 @@ export interface PendingItem {
   appeal?: { note: string; createdAt: Date };
 }
 
+// Grill de la #76: un aporte de la cuenta con lo necesario para saber su estado.
+export interface AuthoredReport {
+  observation: Observation;
+  flags: number;
+  appeal: AppealRecord | null;
+  // Cuándo se descartó en la revisión, si se descartó.
+  discardedAt: Date | null;
+}
+
+export interface AuthoredPage {
+  limit: number;
+  // Solo los que llegaron antes de esta fecha.
+  before?: Date;
+}
+
 export interface ModerationStore {
   // false si esa cuenta ya había marcado ese reporte (RN1 de RF-013).
   flag(flag: NewFlag): Promise<boolean>;
@@ -87,6 +102,8 @@ export interface ModerationStore {
   appealOf(reportId: string): Promise<AppealRecord | null>;
   // La última decisión de revisión sobre un reporte.
   revisionOf(reportId: string): Promise<LogEntry | null>;
+  // Grill de la #76: los aportes de una clave, el que llegó más tarde primero.
+  authoredBy(reporterKey: string, page: AuthoredPage): Promise<AuthoredReport[]>;
 }
 
 export interface ReputationStore {
