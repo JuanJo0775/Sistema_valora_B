@@ -217,6 +217,28 @@ describe('moderación por HTTP (RF-013)', () => {
       expect(log.rows).toEqual([]);
     });
 
+    // Grill de la #73, pregunta 5.
+    it('una moderadora no decide sobre un reporte que ella misma hizo: 409 OWN_REPORT', async () => {
+      const { reporterKey } = await app.get(ReporterIdentity).of(moderator.accountId);
+      const ownId = 'e1111111-1111-4111-8111-dddddddddddd';
+      await new DrizzleObservationStore(db).save({
+        ...observation,
+        reportId: ownId,
+        reporterKey,
+        verdict: {
+          status: 'sospechoso',
+          reason: 'rango',
+          median: 4000,
+          deviation: 0.5,
+          references: 3,
+        },
+      });
+
+      const response = await decide(moderator, ownId).expect(409);
+
+      expect(response.body).toMatchObject({ code: 'OWN_REPORT' });
+    });
+
     it('un reporte que no está en la cola responde 404', async () => {
       const response = await decide(moderator).expect(404);
 
