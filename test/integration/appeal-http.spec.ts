@@ -158,4 +158,28 @@ describe('apelación por HTTP (RF-013 RN4, #71)', () => {
       expect(responses.map((response) => response.status)).toEqual([404, 403, 401]);
     });
   });
+
+  describe('POST /v1/moderation/{itemId}/decision sobre una apelación', () => {
+    it('quien descartó responde 409 SAME_MODERATOR; observar las cuentas, 422 DECISION_NOT_ALLOWED', async () => {
+      await appeal(author).expect(202);
+
+      const same = await decide(moderatorA, reportId, 'aprobar').expect(409);
+      const observe = await decide(moderatorB, reportId, 'observar_cuentas').expect(422);
+
+      expect(same.body).toMatchObject({ code: 'SAME_MODERATOR' });
+      expect(observe.body).toMatchObject({ code: 'DECISION_NOT_ALLOWED' });
+    });
+
+    it('otra moderadora la acepta y la autora ve la apelación aceptada', async () => {
+      await appeal(author).expect(202);
+
+      await decide(moderatorB, reportId, 'aprobar').expect(204);
+
+      const response = await request(server)
+        .get(`/v1/me/reports/${reportId}/status`)
+        .set('Cookie', author.cookie)
+        .expect(200);
+      expect(response.body).toEqual({ reportId, status: 'apelacion_aceptada' });
+    });
+  });
 });
