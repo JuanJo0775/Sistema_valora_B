@@ -120,7 +120,8 @@ describe('sincronización de la cola sin conexión (PR-08, #30)', () => {
     await relay.runOnce();
 
     const statuses = [...firstRound.flat(), ...retries].map((response) => response.status);
-    expect(statuses.every((status) => status === 200 || status === 201)).toBe(true);
+    // Si falla, muestra qué códigos llegaron en vez de 200 o 201.
+    expect(statuses.filter((status) => status !== 200 && status !== 201)).toEqual([]);
     // 100 % recibidos y 0 duplicados: 50 reportes y 50 eventos, uno por clave.
     const saved = await db.execute<{ total: string }>(
       sql`select count(*) as total from pricing.reports`,
