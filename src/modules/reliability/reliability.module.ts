@@ -3,15 +3,20 @@ import { DATABASE, type Database, type Transaction } from '../../shared/database
 import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
 import { CatalogModule, PresentationFreshness } from '../catalog';
 import { EstablishmentsAround, EstablishmentsModule } from '../establishments';
+import { IdentityModule } from '../identity';
 import { AssessReportedPrice, type PriceReportedV2 } from './application/assess-reported-price';
+import { FlagReport } from './application/flag-report';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
+import { FlagsController } from './http/flags.controller';
+import { DrizzleModerationStore } from './infrastructure/drizzle-moderation-store';
 import { DrizzleObservationStore, DrizzleReputationStore } from './infrastructure/drizzle-stores';
 
 // Grill de la #31, pregunta 7: radio de la zona de referencia (provisional).
 const ZONE_RADIUS_METERS = 1000;
 
 @Module({
-  imports: [CatalogModule, EstablishmentsModule],
+  imports: [CatalogModule, EstablishmentsModule, IdentityModule],
+  controllers: [FlagsController],
   providers: [
     {
       provide: ReliabilityOfPrices,
@@ -20,6 +25,16 @@ const ZONE_RADIUS_METERS = 1000;
         new ReliabilityOfPrices({
           observations: new DrizzleObservationStore(db),
           reputations: new DrizzleReputationStore(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: FlagReport,
+      inject: [DATABASE],
+      useFactory: (db: Database): FlagReport =>
+        new FlagReport({
+          moderation: new DrizzleModerationStore(db),
+          observations: new DrizzleObservationStore(db),
           clock: { now: () => new Date() },
         }),
     },
