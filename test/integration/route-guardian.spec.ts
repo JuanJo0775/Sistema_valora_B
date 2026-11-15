@@ -13,6 +13,8 @@ const PUBLIC_ROUTES = new Set([
   'GET /products/:productId',
   'GET /products/:productId/comparison',
   'GET /establishments/nearby',
+  // Grill de la #28: los precios de una tienda son públicos.
+  'GET /establishments/:establishmentId/prices',
   'POST /auth/register',
   'POST /auth/login',
 ]);
