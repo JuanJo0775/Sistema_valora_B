@@ -25,6 +25,10 @@ class InMemoryProductRepository implements ProductRepository {
     return Promise.resolve(this.products.find((product) => product.id === id) ?? null);
   }
 
+  listCategories(): Promise<never> {
+    return Promise.reject(new Error('GetProduct no lista categorías'));
+  }
+
   search(): Promise<ProductView[]> {
     return Promise.reject(new Error('GetProduct no busca productos'));
   }

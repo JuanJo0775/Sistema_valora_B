@@ -7,6 +7,7 @@ import { type RouteInfo, routesOf } from '../support/routes';
 // ruta nueva que no esté en estas listas debe declarar SessionGuard y @Roles, o la prueba falla.
 const PUBLIC_ROUTES = new Set([
   'GET /health',
+  'GET /categories',
   'GET /products',
   'GET /products/:productId',
   'GET /products/:productId/comparison',

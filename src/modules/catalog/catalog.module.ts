@@ -5,6 +5,7 @@ import { DATABASE, type Database } from '../../shared/database/database.module';
 import { IdentityModule } from '../identity';
 import { DecideProductRequest } from './application/decide-product-request';
 import { GetProduct } from './application/get-product';
+import { ListCategories } from './application/list-categories';
 import {
   ImportCatalog,
   PRODUCT_IMPORT_REPOSITORY,
@@ -25,6 +26,7 @@ import { RequestProduct } from './application/request-product';
 import { SearchProducts } from './application/search-products';
 import { WholesaleReferenceOf } from './application/wholesale-reference-of';
 import { SetProductImage } from './application/set-product-image';
+import { CategoriesController } from './http/categories.controller';
 import { ProductImageController } from './http/product-image.controller';
 import { ProductRequestsController } from './http/product-requests.controller';
 import { ProductsController } from './http/products.controller';
@@ -37,7 +39,12 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
 
 @Module({
   imports: [IdentityModule],
-  controllers: [ProductsController, ProductRequestsController, ProductImageController],
+  controllers: [
+    ProductsController,
+    CategoriesController,
+    ProductRequestsController,
+    ProductImageController,
+  ],
   providers: [
     // ADR-020 (#88): el moderador sube la foto de un producto.
     {
@@ -103,6 +110,11 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
       provide: GetProduct,
       inject: [PRODUCT_REPOSITORY],
       useFactory: (products: ProductRepository): GetProduct => new GetProduct(products),
+    },
+    {
+      provide: ListCategories,
+      inject: [PRODUCT_REPOSITORY],
+      useFactory: (products: ProductRepository): ListCategories => new ListCategories(products),
     },
     {
       provide: SearchProducts,
