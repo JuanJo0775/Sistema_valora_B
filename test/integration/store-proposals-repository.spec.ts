@@ -15,6 +15,7 @@ const proposal: NewStoreProposal = {
   address: 'Cra. 14 # 20-10',
   lat: 4.5339,
   lng: -75.6811,
+  municipality: 'calarca',
   proposerKey: 'a'.repeat(64),
   createdAt: new Date('2026-11-15T10:00:00Z'),
 };
@@ -73,7 +74,8 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
       address: 'Cra. 14 # 20-10',
       lat: 4.5339,
       lng: -75.6811,
-      municipality: 'armenia',
+      // Grill de la #106: la tienda aprobada queda en el municipio de la propuesta.
+      municipality: 'calarca',
     });
     // Una propuesta ya decidida no se decide otra vez.
     await expect(

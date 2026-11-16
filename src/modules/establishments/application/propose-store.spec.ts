@@ -21,6 +21,7 @@ describe('proponer una tienda nueva (RF-005, grill de la #27)', () => {
       type: 'barrio',
       lat: 4.5339,
       lng: -75.6811,
+      municipality: 'calarca',
       proposerKey: 'clave-de-quien-propone',
     });
 
@@ -32,6 +33,8 @@ describe('proponer una tienda nueva (RF-005, grill de la #27)', () => {
         type: 'barrio',
         lat: 4.5339,
         lng: -75.6811,
+        // Grill de la #106: el reportante dice en qué municipio está la tienda.
+        municipality: 'calarca',
         proposerKey: 'clave-de-quien-propone',
         createdAt: now,
       },
