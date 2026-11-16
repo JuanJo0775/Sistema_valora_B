@@ -451,6 +451,15 @@ Aplicación de RF-009 RN5, RF-005 y EC-08. El detalle está en `docs/decisiones/
 - **Respuestas:** la tienda trae `municipality` en la comparación, la cercanía y los precios por tienda.
 - **Fuera:** filtro por municipio en «tiendas cercanas» y cálculo del municipio con polígonos municipales.
 
+## Prueba de humo (15 de noviembre de 2026)
+
+Insumo de RNF-009 (el despliegue debe pasar pruebas de humo) y respuesta a «¿está todo conectado?».
+
+- **Qué es:** `test/smoke/smoke.ts`, un script con `fetch` que recorre la API encendida con los datos de la semilla. No usa Jest: las pruebas de Jest vacían sus tablas y no prueban la semilla ni el outbox con el proceso real.
+- **Modos:** completo (crea cuentas y un precio de prueba) y `--solo-lectura` (solo consultas públicas, para el sistema desplegado).
+- **Primer resultado en `valora_dev`:** 22 de 22 pasos en verde con moderación; 7 de 7 en solo lectura. No apareció ningún error del sistema.
+- **Fuera por ahora:** correrla en la CI. Entra cuando exista el despliegue (ADR-012).
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
