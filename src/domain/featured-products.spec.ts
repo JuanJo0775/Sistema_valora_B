@@ -2,11 +2,7 @@ import { type FeaturedCandidate, rankFeaturedProducts } from './featured-product
 import { calculateUnitPrice } from './unit-price';
 
 // Producto de prueba: por defecto, 500 g a $2.000 ($400 por 100 g) en una tienda.
-function candidate(
-  productId: string,
-  storeCount: number,
-  priceCop = 2000,
-): FeaturedCandidate & { productId: string } {
+function candidate(productId: string, storeCount: number, priceCop = 2000): FeaturedCandidate {
   return {
     productId,
     storeCount,
