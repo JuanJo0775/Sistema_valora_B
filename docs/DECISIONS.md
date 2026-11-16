@@ -451,6 +451,19 @@ Aplicación de RF-009 RN5, RF-005 y EC-08. El detalle está en `docs/decisiones/
 - **Respuestas:** la tienda trae `municipality` en la comparación, la cercanía y los precios por tienda.
 - **Fuera:** filtro por municipio en «tiendas cercanas» y cálculo del municipio con polígonos municipales.
 
+## Canasta básica de hoy (issue #120, 16 de noviembre de 2026)
+
+Aplicación de RF-008, RF-009, EC-04, EC-06 y EC-08 para la pantalla de Inicio del frontend.
+
+- **Qué productos entran:** decisión de la usuaria: los que más tiendas del municipio tienen con precio vigente. Sin lista a mano ni columnas nuevas en la semilla.
+- **Ruta:** , pública, en  (lee ). No cuelga de  porque  es de  y Express tomaría «featured» como un id.  va de 1 a 50, con 5 por defecto.
+- **Precios que cuentan:** como la comparación con : solo vigentes (ni por confirmar, ni desactualizados, ni en revisión). Sin promociones (ADR-009).
+- **El más bajo de cada producto:** valor exacto del precio por unidad, con los desempates de la comparación ().
+- **Orden declarado en  (EC-06):** más tiendas primero (); en empate, el precio por unidad que se muestra (entre bases distintas es solo un desempate estable) y el id del producto. La regla vive en .
+- **Módulos:**  expone  (nombre, marca y categoría) y la tienda sale de ; ningún módulo lee tablas de otro.
+- **Caché:** pública de 60 s con ETag (EC-04). Sin  ni datos de quién reportó (EC-08).
+- **Por revisar si crece:** el caso de uso lee todo  y filtra por municipio en memoria. Con pocos miles de filas basta; si crece, se filtra en la consulta.
+
 ## Prueba de humo (15 de noviembre de 2026)
 
 Insumo de RNF-009 (el despliegue debe pasar pruebas de humo) y respuesta a «¿está todo conectado?».
