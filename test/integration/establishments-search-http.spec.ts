@@ -96,4 +96,20 @@ describe('GET /v1/establishments', () => {
 
     expect((response.body as { items: { id: string }[] }).items.map(({ id }) => id)).toEqual(ids);
   });
+
+  it.each([
+    ['sin q ni municipio', {}, 'Envía q o municipality'],
+    ['q de solo espacios', { q: '   ' }, 'q: debe tener al menos 2 caracteres'],
+    ['q de una letra', { q: 'a' }, 'q: debe tener al menos 2 caracteres'],
+    [
+      'un municipio que no es del Quindío',
+      { municipality: 'pereira' },
+      'municipality: debe ser un municipio del Quindío',
+    ],
+    ['límite mayor que 50', { q: 'pepe', limit: 51 }, 'limit: debe estar entre 1 y 50'],
+  ])('%s responde 400 VALIDATION_ERROR', async (_case, query, message) => {
+    const response = await request(server).get('/v1/establishments').query(query).expect(400);
+
+    expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
+  });
 });
