@@ -16,6 +16,7 @@ import { PresentationFreshness } from './application/presentation-freshness';
 import { PresentationLabels } from './application/presentation-labels';
 import { PresentationsForPricing } from './application/presentations-for-pricing';
 import { ProductForComparison } from './application/product-for-comparison';
+import { ProductSummaries } from './application/product-summaries';
 import { PRODUCT_REPOSITORY, type ProductRepository } from './application/product-repository';
 import {
   PRODUCT_REQUEST_REPOSITORY,
@@ -169,6 +170,12 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
       useFactory: (products: ProductRepository): PresentationLabels =>
         new PresentationLabels(products),
     },
+    // B#120: nombre y categoría de los productos de la canasta básica.
+    {
+      provide: ProductSummaries,
+      inject: [PRODUCT_REPOSITORY],
+      useFactory: (products: ProductRepository): ProductSummaries => new ProductSummaries(products),
+    },
   ],
   exports: [
     ImportCatalog,
@@ -178,6 +185,7 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
     PresentationFreshness,
     PresentationLabels,
     PresentationsForPricing,
+    ProductSummaries,
   ],
 })
 export class CatalogModule {}

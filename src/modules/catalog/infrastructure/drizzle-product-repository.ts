@@ -9,6 +9,7 @@ import type {
   ProductForComparisonView,
   ProductRepository,
   ProductSearch,
+  ProductSummaryView,
   ProductView,
 } from '../application/product-repository';
 import { categories, presentations, products } from './schema';
@@ -147,6 +148,22 @@ export class DrizzleProductRepository implements ProductRepository {
           },
         ];
       }),
+    );
+  }
+
+  async summariesOf(productIds: string[]): Promise<Map<string, ProductSummaryView>> {
+    if (productIds.length === 0) return new Map();
+    const rows = await this.selectProducts().where(inArray(products.id, productIds));
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          id: row.id,
+          name: row.name,
+          ...(row.brand === null ? {} : { brand: row.brand }),
+          category: { code: row.categoryCode, name: row.categoryName },
+        },
+      ]),
     );
   }
 

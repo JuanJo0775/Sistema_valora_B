@@ -6,6 +6,7 @@ import {
   PresentationLabels,
   PresentationsForPricing,
   ProductForComparison,
+  ProductSummaries,
   WholesaleReferenceOf,
 } from '../catalog';
 import {
@@ -16,9 +17,11 @@ import {
 import { ReliabilityModule, ReliabilityOfPrices } from '../reliability';
 import { CompareProduct } from './application/compare-product';
 import { CurrentPriceOf } from './application/current-price-of';
+import { FeaturedProducts } from './application/featured-products';
 import { PriceHistory } from './application/price-history';
 import { StorePrices } from './application/store-prices';
 import { ComparisonController } from './http/comparison.controller';
+import { FeaturedProductsController } from './http/featured-products.controller';
 import { PriceHistoryController } from './http/price-history.controller';
 import { StorePricesController } from './http/store-prices.controller';
 import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
@@ -36,7 +39,12 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
-  controllers: [ComparisonController, StorePricesController, PriceHistoryController],
+  controllers: [
+    ComparisonController,
+    StorePricesController,
+    PriceHistoryController,
+    FeaturedProductsController,
+  ],
   providers: [
     {
       provide: CompareProduct,
@@ -93,6 +101,24 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
           products,
           labels,
           history: new DrizzlePriceHistory(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    // B#120: la canasta básica de hoy en un municipio.
+    {
+      provide: FeaturedProducts,
+      inject: [DATABASE, EstablishmentsWithinRadius, PresentationsForPricing, ProductSummaries],
+      useFactory: (
+        db: Database,
+        stores: EstablishmentsWithinRadius,
+        presentations: PresentationsForPricing,
+        products: ProductSummaries,
+      ): FeaturedProducts =>
+        new FeaturedProducts({
+          prices: new DrizzleCurrentPrices(db),
+          stores,
+          presentations,
+          products,
           clock: { now: () => new Date() },
         }),
     },

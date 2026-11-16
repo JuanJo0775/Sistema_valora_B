@@ -65,6 +65,8 @@ export interface ProductRepository {
   isFreshPresentation(presentationId: string): Promise<boolean | null>;
   labelsOf(presentationIds: string[]): Promise<Map<string, string>>;
   pricingOf(presentationIds: string[]): Promise<Map<string, PresentationForPricing>>;
+  // B#120: nombre, marca y categoría de varios productos.
+  summariesOf(productIds: string[]): Promise<Map<string, ProductSummaryView>>;
   // #111: la lista cerrada de categorías, por nombre.
   listCategories(): Promise<CategoryView[]>;
 }

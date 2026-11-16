@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
+  IsInt,
   IsLatitude,
   IsLongitude,
   IsOptional,
@@ -66,4 +67,19 @@ export class StorePricesQueryDto {
   @Transform(toBoolean)
   @IsBoolean({ message: 'debe ser true o false' })
   onlyCurrent = false;
+}
+
+// Parámetros de GET /v1/featured-products (B#120).
+export class FeaturedProductsQueryDto {
+  // Uno de los 12 municipios del Quindío; obligatorio.
+  @IsIn(MUNICIPALITY_CODES, { message: 'debe ser un municipio del Quindío' })
+  municipality!: Municipality;
+
+  // Mismos valores que el parámetro común Limit del contrato, con 5 por defecto.
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'debe ser un número entero' })
+  @Min(1, { message: 'debe estar entre 1 y 50' })
+  @Max(50, { message: 'debe estar entre 1 y 50' })
+  limit = 5;
 }
