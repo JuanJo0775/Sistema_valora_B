@@ -43,7 +43,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Historial de precios (#83)       | `GET /v1/products/{productId}/history`: 30 días por presentación y por día; `pnpm comparison:rebuild-history`                 |
 | Propuestas de productos (#26)    | Un reportante propone un producto; el moderador lo aprueba, lo fusiona (queda como alias) o lo rechaza; alias e imagen        |
 
-Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** se usa en el desarrollo local; solo la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas.
+Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** hace falta para desarrollar: la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas y el despliegue usará una imagen Docker (ADR-012, proveedor por definir).
 
 ## Primeros pasos (desde cero)
 
