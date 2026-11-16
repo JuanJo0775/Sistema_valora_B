@@ -50,7 +50,7 @@ Cada integrante debe realizar commits con su propia cuenta. No compartir cuentas
 - No incluir identidad ni ubicación personal del reportante en respuestas públicas.
 - La comparación no puede ordenar por patrocinio, perfil comercial ni promociones.
 - Los reportes se conservan como historial; un reporte sospechoso se marca y revisa, no se borra.
-- No introducir Docker en el MVP.
+- Docker solo para el despliegue y la CI (ADR-012, 15 de noviembre de 2026): nadie necesita Docker para desarrollar.
 - No convertir valores provisionales en constantes aprobadas.
 
 ## Definition of Done
