@@ -1,5 +1,15 @@
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsLatitude, IsLongitude, IsOptional, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsLatitude,
+  IsLongitude,
+  IsOptional,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+import { type Municipality, MUNICIPALITY_CODES } from '../../../domain/municipality';
 import type { SortCriterion } from '../../../domain/neutral-ranking';
 
 const SORT_CRITERIA: SortCriterion[] = ['unit_price', 'distance', 'recent'];
@@ -11,15 +21,27 @@ const toBoolean = ({ value }: { value: unknown }): unknown => {
   return value;
 };
 
+// Sin municipio, la ubicación es obligatoria; con municipio, solo si se manda una de las dos.
+const needsLocation = (dto: ComparisonQueryDto): boolean =>
+  dto.municipality === undefined || dto.lat !== undefined || dto.lng !== undefined;
+
 // Parámetros de GET /v1/products/{productId}/comparison (grill de la #15, preguntas 3 y 8).
 export class ComparisonQueryDto {
+  // Grill de la #106: con municipio, la ubicación es opcional; si se manda, van las dos.
+  @ValidateIf(needsLocation)
   @Type(() => Number)
   @IsLatitude({ message: 'debe estar entre -90 y 90' })
-  lat!: number;
+  lat?: number;
 
+  @ValidateIf(needsLocation)
   @Type(() => Number)
   @IsLongitude({ message: 'debe estar entre -180 y 180' })
-  lng!: number;
+  lng?: number;
+
+  // Grill de la #106 (RF-009 RN5): uno de los 12 municipios del Quindío.
+  @IsOptional()
+  @IsIn(MUNICIPALITY_CODES, { message: 'debe ser un municipio del Quindío' })
+  municipality?: Municipality;
 
   // El mismo radio de /nearby: de 0,5 a 3 km (ADR-019), valores iniciales calibrables.
   @IsOptional()
