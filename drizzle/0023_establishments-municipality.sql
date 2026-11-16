@@ -1,0 +1,2 @@
+ALTER TABLE "establishments"."establishments" ADD COLUMN "municipality" text DEFAULT 'armenia' NOT NULL;--> statement-breakpoint
+ALTER TABLE "establishments"."establishments" ADD CONSTRAINT "establishments_municipality_valid" CHECK (municipality in ('armenia', 'buenavista', 'calarca', 'circasia', 'cordoba', 'filandia', 'genova', 'la-tebaida', 'montenegro', 'pijao', 'quimbaya', 'salento'));

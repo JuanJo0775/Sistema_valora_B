@@ -112,17 +112,23 @@ paths:
         depende solo de los criterios declarados; las promociones vienen aparte (ADR-009, EC-06).
         La ubicación aproximada del usuario (lat, lng) se usa solo para calcular la cercanía: no se
         guarda, no se registra en los logs ni aparece en la respuesta (RF-005 RN5, EC-08). Por eso la
-        respuesta lleva Cache-Control no-store, aunque es una lectura pública.
+        respuesta lleva Cache-Control no-store, aunque es una lectura pública. Se envía la ubicación
+        (lat y lng), un municipio, o las dos cosas (RF-009 RN5, #106). Sin ubicación no hay distancia:
+        distanceM no sale, radiusKm no se usa y sort=distance responde 400.
       parameters:
         - $ref: '#/components/parameters/ProductId'
         - name: lat
           in: query
-          required: true
+          description: Obligatoria (con lng) si no se envía municipality.
           schema: { type: number, minimum: -90, maximum: 90 }
         - name: lng
           in: query
-          required: true
+          description: Obligatoria (con lat) si no se envía municipality.
           schema: { type: number, minimum: -180, maximum: 180 }
+        - name: municipality
+          in: query
+          description: Solo las tiendas de ese municipio del Quindío (#106).
+          schema: { $ref: '#/components/schemas/Municipality' }
         - name: radiusKm
           in: query
           description: Radio de búsqueda en kilómetros (valores iniciales calibrables, ADR-019).
@@ -296,7 +302,7 @@ paths:
                 properties:
                   establishment:
                     type: object
-                    required: [id, name, type, lat, lng]
+                    required: [id, name, type, lat, lng, municipality]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
@@ -304,6 +310,7 @@ paths:
                       address: { type: string }
                       lat: { type: number }
                       lng: { type: number }
+                      municipality: { $ref: '#/components/schemas/Municipality' }
                   prices:
                     type: array
                     items:
@@ -369,13 +376,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, type, lat, lng]
+              required: [name, type, lat, lng, municipality]
               properties:
                 name: { type: string, minLength: 2, maxLength: 120 }
                 type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
                 lat: { type: number, minimum: -90, maximum: 90 }
                 lng: { type: number, minimum: -180, maximum: 180 }
                 address: { type: string, maxLength: 200 }
+                municipality: { $ref: '#/components/schemas/Municipality' }
       responses:
         '202':
           description: Propuesta recibida, pendiente de moderación
@@ -951,7 +959,7 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name, type, lat, lng, outOfZone, possibleDuplicates, createdAt]
+                      required: [id, name, type, lat, lng, municipality, outOfZone, possibleDuplicates, createdAt]
                       properties:
                         id: { type: string, format: uuid }
                         name: { type: string }
@@ -959,6 +967,7 @@ paths:
                         address: { type: string }
                         lat: { type: number }
                         lng: { type: number }
+                        municipality: { $ref: '#/components/schemas/Municipality' }
                         outOfZone: { type: boolean }
                         possibleDuplicates:
                           type: array
@@ -1450,7 +1459,7 @@ components:
           items: { $ref: '#/components/schemas/Presentation' }
     Establishment:
       type: object
-      required: [id, name, type, lat, lng]
+      required: [id, name, type, lat, lng, municipality]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -1458,12 +1467,17 @@ components:
         address: { type: string, description: Opcional; muchas tiendas no tienen dirección formal. }
         lat: { type: number, description: Latitud de la tienda (nunca la del usuario, RF-005 RN4). }
         lng: { type: number, description: Longitud de la tienda. }
+        municipality: { $ref: '#/components/schemas/Municipality' }
         distanceM:
           type: integer
           minimum: 0
           description: >-
-            Metros desde el punto consultado; siempre viene en GET /establishments/nearby y en la
-            comparación.
+            Metros desde el punto consultado; viene en GET /establishments/nearby y en la comparación
+            cuando se envió la ubicación (#106).
+    Municipality:
+      type: string
+      description: Municipio del Quindío (#106). Las tiendas de la semilla son de Armenia.
+      enum: [armenia, buenavista, calarca, circasia, cordoba, filandia, genova, la-tebaida, montenegro, pijao, quimbaya, salento]
     ComparisonItem:
       type: object
       required: [establishment, reportId, presentationId, priceCop, unitPrice, source, freshness, reliability, confirmations, isCheapest, observedAt]
@@ -1534,11 +1548,14 @@ components:
         productId: { type: string, format: uuid }
         criteria:
           type: object
-          description: Criterios de orden declarados al usuario (EC-06).
-          required: [sort, radiusKm]
+          description: >-
+            Criterios declarados al usuario (EC-06). radiusKm sale si se envió la ubicación;
+            municipality, si se filtró por municipio (#106).
+          required: [sort]
           properties:
             sort: { type: string, enum: [unit_price, distance, recent] }
             radiusKm: { type: number }
+            municipality: { $ref: '#/components/schemas/Municipality' }
         results:
           type: array
           description: >-

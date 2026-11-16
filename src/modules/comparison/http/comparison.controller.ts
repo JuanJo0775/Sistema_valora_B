@@ -8,7 +8,11 @@ import {
   Query,
 } from '@nestjs/common';
 import { RequestValidationError } from '../../../shared/http/validation';
-import { CompareProduct } from '../application/compare-product';
+import {
+  CompareProduct,
+  DistanceNeedsLocationError,
+  MissingAreaError,
+} from '../application/compare-product';
 import { ComparisonQueryDto } from './comparison.query';
 import { type ComparisonResponse, toComparisonResponse } from './comparison.response';
 
@@ -30,16 +34,28 @@ export class ComparisonController {
     productId: string,
     @Query() query: ComparisonQueryDto,
   ): Promise<ComparisonResponse> {
-    const { lat, lng, radiusKm, sort, onlyCurrent } = query;
-    const comparison = await this.compareProduct.execute({
-      productId,
-      lat,
-      lng,
-      radiusKm,
-      sort,
-      onlyCurrent,
-    });
-    if (!comparison) throw new NotFoundException();
-    return toComparisonResponse(comparison);
+    const { lat, lng, municipality, radiusKm, sort, onlyCurrent } = query;
+    try {
+      const comparison = await this.compareProduct.execute({
+        productId,
+        ...(lat === undefined ? {} : { lat }),
+        ...(lng === undefined ? {} : { lng }),
+        ...(municipality === undefined ? {} : { municipality }),
+        radiusKm,
+        sort,
+        onlyCurrent,
+      });
+      if (!comparison) throw new NotFoundException();
+      return toComparisonResponse(comparison);
+    } catch (error) {
+      // Grill de la #106: errores de los datos enviados (400).
+      if (error instanceof DistanceNeedsLocationError) {
+        throw new RequestValidationError(
+          'sort: para ordenar por distancia hay que enviar lat y lng',
+        );
+      }
+      if (error instanceof MissingAreaError) throw new RequestValidationError(error.message);
+      throw error;
+    }
   }
 }

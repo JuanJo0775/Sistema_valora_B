@@ -6,6 +6,7 @@ import type {
   StoreProposalDecisionRecord,
   StoreProposalRepository,
 } from '../application/store-proposals';
+import type { Municipality } from '../../../domain/municipality';
 import { establishments, storeProposals } from './schema';
 
 const STATUS_AFTER = { aprobar: 'aprobada', fusionar: 'fusionada', rechazar: 'rechazada' } as const;
@@ -27,6 +28,7 @@ export class DrizzleStoreProposalRepository implements StoreProposalRepository {
         address: storeProposals.address,
         lat: sql<number>`ST_Y(${storeProposals.location}::geometry)`.mapWith(Number),
         lng: sql<number>`ST_X(${storeProposals.location}::geometry)`.mapWith(Number),
+        municipality: storeProposals.municipality,
         proposerKey: storeProposals.proposerKey,
         createdAt: storeProposals.createdAt,
       })
@@ -34,9 +36,11 @@ export class DrizzleStoreProposalRepository implements StoreProposalRepository {
       .where(eq(storeProposals.status, 'pendiente'))
       .orderBy(asc(storeProposals.createdAt));
     // La restricción CHECK de la tabla garantiza el tipo.
-    return rows.map(({ address, type, ...row }) => ({
+    return rows.map(({ address, type, municipality, ...row }) => ({
       ...row,
       type: type as EstablishmentType,
+      // La restricción CHECK de la tienda garantiza el municipio al aprobarla; aquí viene del DTO.
+      municipality: municipality as Municipality,
       ...(address === null ? {} : { address }),
     }));
   }
@@ -60,8 +64,8 @@ export class DrizzleStoreProposalRepository implements StoreProposalRepository {
       // RF-005 RN7: solo una propuesta aprobada aparece en el mapa.
       if (record.decision === 'aprobar') {
         await tx.execute(
-          sql`insert into ${establishments} (id, name, type, address, location)
-              select id, name, type, address, location from ${storeProposals}
+          sql`insert into ${establishments} (id, name, type, address, location, municipality)
+              select id, name, type, address, location, municipality from ${storeProposals}
               where id = ${decided.id}`,
         );
       }

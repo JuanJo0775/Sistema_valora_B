@@ -13,6 +13,7 @@ export type {
   AroundQuery,
   EstablishmentDetail,
   EstablishmentType,
+  InMunicipalityQuery,
   NearbyEstablishment,
   WithinRadiusQuery,
 } from './application/establishment-repository';

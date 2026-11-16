@@ -84,6 +84,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
             type: 'barrio',
             lat: 4.535,
             lng: -75.6811,
+            municipality: 'armenia',
             distanceM: expect.closeTo(122, -1) as unknown,
           },
           // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo.
@@ -125,6 +126,19 @@ describe('GET /v1/products/{productId}/comparison', () => {
       productId,
       'onlyCurrent: debe ser true o false',
     ],
+    // Grill de la #106.
+    [
+      'con un municipio que no es del Quindío',
+      { municipality: 'pereira' },
+      productId,
+      'municipality: debe ser un municipio del Quindío',
+    ],
+    [
+      'por distancia sin ubicación',
+      { municipality: 'armenia', sort: 'distance' },
+      productId,
+      'sort: para ordenar por distancia hay que enviar lat y lng',
+    ],
   ])('%s responde 400 VALIDATION_ERROR', async (_case, query, id, message) => {
     const response = await compare(query, id).expect(400);
 
@@ -159,6 +173,32 @@ describe('GET /v1/products/{productId}/comparison', () => {
       url: 'https://www.dane.gov.co/sipsa/boletin.xlsx',
     });
     expect(JSON.stringify(response.body)).not.toContain('Integrante del equipo');
+  });
+
+  // Grill de la #106 (RF-009 RN5): comparar en un municipio sin compartir la ubicación (EC-08).
+  it('con municipio y sin ubicación responde las tiendas del municipio, sin distancia', async () => {
+    const observedAt = new Date(Date.now() - 60 * 60 * 1000);
+    await db.insert(priceCurrent).values({
+      presentationId,
+      establishmentId: storeId,
+      reportId: 'a9999999-9999-4999-8999-000000000106',
+      priceCop: 2000,
+      priceType: 'normal',
+      observedAt,
+      receivedAt: observedAt,
+    });
+
+    const inArmenia = await compare({ municipality: 'armenia' }).expect(200);
+    const inCalarca = await compare({ municipality: 'calarca' }).expect(200);
+
+    const body = inArmenia.body as {
+      criteria: unknown;
+      results: { establishment: Record<string, unknown> }[];
+    };
+    expect(body.criteria).toEqual({ sort: 'unit_price', municipality: 'armenia' });
+    expect(body.results[0]?.establishment).toMatchObject({ id: storeId, municipality: 'armenia' });
+    expect(body.results[0]?.establishment).not.toHaveProperty('distanceM');
+    expect((inCalarca.body as { results: unknown[] }).results).toEqual([]);
   });
 
   it('un producto que no existe responde 404', async () => {

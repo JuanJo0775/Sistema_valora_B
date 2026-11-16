@@ -6,8 +6,14 @@ import {
 } from '../../../domain/neutral-ranking';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import { isRecentReference } from '../../../domain/wholesale-reference';
+import type { Municipality } from '../../../domain/municipality';
 import type { ProductForComparisonView, WholesaleReferenceView } from '../../catalog';
-import type { NearbyEstablishment, WithinRadiusQuery } from '../../establishments';
+import type {
+  EstablishmentDetail,
+  InMunicipalityQuery,
+  NearbyEstablishment,
+  WithinRadiusQuery,
+} from '../../establishments';
 import type { PriceRef, PriceReliability } from '../../reliability';
 import type { CurrentPrices } from './current-prices';
 
@@ -18,6 +24,24 @@ export interface ProductLookup {
 
 export interface StoresWithinRadius {
   find(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
+  // Grill de la #106: sin la ubicación del usuario, las de un municipio.
+  findInMunicipality(query: InMunicipalityQuery): Promise<EstablishmentDetail[]>;
+}
+
+// Grill de la #106: sin la ubicación del usuario no hay distancia con qué ordenar (400).
+export class DistanceNeedsLocationError extends Error {
+  constructor() {
+    super('Para ordenar por distancia hay que enviar lat y lng.');
+    this.name = 'DistanceNeedsLocationError';
+  }
+}
+
+// Hace falta la ubicación (lat y lng) o un municipio para saber qué tiendas comparar (400).
+export class MissingAreaError extends Error {
+  constructor() {
+    super('Envía lat y lng, o un municipio.');
+    this.name = 'MissingAreaError';
+  }
 }
 
 export interface Clock {
@@ -52,15 +76,18 @@ export interface WholesaleReferenceSummary {
 
 export interface CompareProductInput {
   productId: string;
-  lat: number;
-  lng: number;
+  // Grill de la #106: la ubicación es opcional si viene el municipio.
+  lat?: number;
+  lng?: number;
+  municipality?: Municipality;
   radiusKm: number;
   sort: SortCriterion;
   onlyCurrent: boolean;
 }
 
 export interface ComparisonItem {
-  establishment: NearbyEstablishment;
+  // Sin la ubicación del usuario (#106) no hay distancia.
+  establishment: EstablishmentDetail & { distanceM?: number };
   // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo.
   reportId: string;
   presentationId: string;
@@ -80,7 +107,7 @@ export interface ComparisonItem {
 export interface Comparison {
   productId: string;
   // El orden declarado al usuario (EC-06).
-  criteria: { sort: SortCriterion; radiusKm: number };
+  criteria: { sort: SortCriterion; radiusKm?: number; municipality?: Municipality };
   results: ComparisonItem[];
   // ADR-009: siempre aparte; vacío hasta el módulo comercial (grill de la #15, pregunta 6).
   promotions: [];
@@ -159,6 +186,9 @@ export class CompareProduct {
   constructor(private readonly ports: CompareProductPorts) {}
 
   async execute(input: CompareProductInput): Promise<Comparison | null> {
+    const located = input.lat !== undefined && input.lng !== undefined;
+    if (!located && input.municipality === undefined) throw new MissingAreaError();
+    if (!located && input.sort === 'distance') throw new DistanceNeedsLocationError();
     const product = await this.ports.products.find(input.productId);
     if (!product) return null;
 
@@ -176,7 +206,11 @@ export class CompareProduct {
     const reference = await this.ports.references.latestFor(product.id);
     return {
       productId: product.id,
-      criteria: { sort: input.sort, radiusKm: input.radiusKm },
+      criteria: {
+        sort: input.sort,
+        ...(input.lat === undefined ? {} : { radiusKm: input.radiusKm }),
+        ...(input.municipality === undefined ? {} : { municipality: input.municipality }),
+      },
       results: toResults(ranked, reliability),
       promotions: [],
       // Pregunta 3: solo si su periodo terminó hace 30 días o menos.
@@ -196,6 +230,15 @@ export class CompareProduct {
     };
   }
 
+  // execute() ya comprobó que, sin ubicación, viene el municipio.
+  private storesInMunicipality(
+    ids: string[],
+    municipality: Municipality | undefined,
+  ): Promise<EstablishmentDetail[]> {
+    if (municipality === undefined) throw new MissingAreaError();
+    return this.ports.stores.findInMunicipality({ ids, municipality });
+  }
+
   // Los precios vigentes del producto en las tiendas del radio, con su precio por unidad y vigencia.
   private async candidatesFor(
     product: ProductForComparisonView,
@@ -203,12 +246,18 @@ export class CompareProduct {
   ): Promise<Candidate[]> {
     const presentations = new Map(product.presentations.map((p) => [p.id, p]));
     const prices = await this.ports.prices.findByPresentations([...presentations.keys()]);
-    const stores = await this.ports.stores.find({
-      ids: [...new Set(prices.map((price) => price.establishmentId))],
-      lat: input.lat,
-      lng: input.lng,
-      radiusMeters: input.radiusKm * 1000,
-    });
+    const ids = [...new Set(prices.map((price) => price.establishmentId))];
+    const { lat, lng, municipality } = input;
+    const stores: ComparisonItem['establishment'][] =
+      lat !== undefined && lng !== undefined
+        ? await this.ports.stores.find({
+            ids,
+            lat,
+            lng,
+            radiusMeters: input.radiusKm * 1000,
+            ...(municipality === undefined ? {} : { municipality }),
+          })
+        : await this.storesInMunicipality(ids, municipality);
     const storesById = new Map(stores.map((store) => [store.id, store]));
     const now = this.ports.clock.now();
     const ttlDays = ttlDaysFor(product.isFresh);
@@ -235,7 +284,8 @@ export class CompareProduct {
         establishmentId: establishment.id,
         presentationId: item.presentationId,
         unitPrice: item.unitPrice,
-        distanceMeters: establishment.distanceM,
+        // Sin ubicación todas empatan en distancia; decide el resto de la cadena (#21).
+        distanceMeters: establishment.distanceM ?? 0,
         observedAt: item.observedAt,
       });
     }

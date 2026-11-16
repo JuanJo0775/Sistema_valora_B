@@ -1,6 +1,10 @@
 import type { WholesaleReferenceView } from '../../catalog';
 import type { NearbyEstablishment } from '../../establishments';
-import { CompareProduct, type CompareProductInput } from './compare-product';
+import {
+  CompareProduct,
+  type CompareProductInput,
+  DistanceNeedsLocationError,
+} from './compare-product';
 import type { CurrentPrice } from './current-prices';
 
 const productId = '11111111-1111-4111-8111-111111111111';
@@ -39,7 +43,21 @@ function setup({
         ),
     },
     stores: {
-      find: ({ ids }) => Promise.resolve(stores.filter((store) => ids.includes(store.id))),
+      find: ({ ids, municipality }) =>
+        Promise.resolve(
+          stores.filter(
+            (store) =>
+              ids.includes(store.id) &&
+              (municipality === undefined || store.municipality === municipality),
+          ),
+        ),
+      // Grill de la #106: sin ubicación, las tiendas del municipio, sin distancia.
+      findInMunicipality: ({ ids, municipality }) =>
+        Promise.resolve(
+          stores
+            .filter((store) => ids.includes(store.id) && store.municipality === municipality)
+            .map(({ distanceM: _distanceM, ...store }) => store),
+        ),
     },
     prices: {
       findByPresentations: (ids) =>
@@ -64,6 +82,7 @@ const store = (id: string, distanceM = 500): NearbyEstablishment => ({
   id,
   name: `Tienda ${id}`,
   type: 'barrio',
+  municipality: 'armenia',
   lat: 4.535,
   lng: -75.6811,
   distanceM,
@@ -292,6 +311,47 @@ describe('comparar los precios de un producto', () => {
       }).execute(input());
 
       expect(comparison).not.toHaveProperty('wholesaleReference');
+    });
+  });
+
+  // Grill de la #106 (RF-009 RN5): filtrar por municipio, con o sin la ubicación del usuario.
+  describe('por municipio', () => {
+    const inCalarca = { ...store('t2', 300), municipality: 'calarca' as const };
+    const fixture = {
+      prices: [price('t1', 2000), price('t2', 1800)],
+      stores: [store('t1'), inCalarca],
+    };
+    const withoutLocation = (change: Partial<CompareProductInput> = {}): CompareProductInput => ({
+      productId,
+      radiusKm: 2,
+      sort: 'unit_price',
+      onlyCurrent: false,
+      ...change,
+    });
+
+    it('sin ubicación da las tiendas del municipio, sin distancia, y el criterio dice el municipio', async () => {
+      const comparison = await setup(fixture).execute(withoutLocation({ municipality: 'calarca' }));
+
+      expect(comparison?.criteria).toEqual({ sort: 'unit_price', municipality: 'calarca' });
+      expect(comparison?.results.map((item) => item.establishment.id)).toEqual(['t2']);
+      expect(comparison?.results[0]?.establishment).not.toHaveProperty('distanceM');
+    });
+
+    it('con ubicación y municipio se aplican los dos filtros', async () => {
+      const comparison = await setup(fixture).execute(input({ municipality: 'armenia' }));
+
+      expect(comparison?.criteria).toEqual({
+        sort: 'unit_price',
+        radiusKm: 2,
+        municipality: 'armenia',
+      });
+      expect(comparison?.results.map((item) => item.establishment.id)).toEqual(['t1']);
+    });
+
+    it('sin ubicación no se puede ordenar por distancia', async () => {
+      await expect(
+        setup(fixture).execute(withoutLocation({ municipality: 'calarca', sort: 'distance' })),
+      ).rejects.toThrow(DistanceNeedsLocationError);
     });
   });
 });

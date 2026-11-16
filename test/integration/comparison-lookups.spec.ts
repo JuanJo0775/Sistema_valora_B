@@ -93,6 +93,7 @@ describe('consultas públicas que usa la comparación (grill de la #15, pregunta
         type: 'barrio',
         lat: 4.535,
         lng: -75.6811,
+        municipality: 'armenia',
         distanceM: expect.closeTo(122, -1) as unknown,
       },
     ]);
@@ -184,6 +185,7 @@ describe('consultas públicas que usa la comparación (grill de la #15, pregunta
       address: 'Cra. 14 # 20-10',
       lat: 4.535,
       lng: -75.6811,
+      municipality: 'armenia',
     });
     await expect(app.get(EstablishmentDetails).find(missingId)).resolves.toBeNull();
   });

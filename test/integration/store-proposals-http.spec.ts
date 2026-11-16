@@ -11,7 +11,13 @@ import { type SignedIn, signIn } from '../support/sign-in';
 
 // Tienda de prueba: solo existe dentro de esta prueba.
 const existingId = 'f0222222-2222-4222-8222-111111111111';
-const proposalBody = { name: 'Tienda Esperanza', type: 'barrio', lat: 4.5339, lng: -75.6811 };
+const proposalBody = {
+  name: 'Tienda Esperanza',
+  type: 'barrio',
+  lat: 4.5339,
+  lng: -75.6811,
+  municipality: 'armenia',
+};
 const note = 'Tienda verificada en el sitio';
 
 describe('propuestas de tiendas por HTTP (RF-005, #27)', () => {
@@ -81,12 +87,16 @@ describe('propuestas de tiendas por HTTP (RF-005, #27)', () => {
         propose(reporter, { ...proposalBody, type: 'tienda' }),
         propose(reporter, { ...proposalBody, lat: 95 }),
         propose(reporter, { ...proposalBody, name: '' }),
+        // Grill de la #106: solo municipios del Quindío.
+        propose(reporter, { ...proposalBody, municipality: 'pereira' }),
         propose(null),
         propose(moderator),
         withoutCsrf,
       ]);
 
-      expect(responses.map((response) => response.status)).toEqual([400, 400, 400, 401, 403, 403]);
+      expect(responses.map((response) => response.status)).toEqual([
+        400, 400, 400, 400, 401, 403, 403,
+      ]);
     });
   });
 
@@ -110,6 +120,7 @@ describe('propuestas de tiendas por HTTP (RF-005, #27)', () => {
             type: 'barrio',
             lat: 4.5339,
             lng: -75.6811,
+            municipality: 'armenia',
             outOfZone: false,
             possibleDuplicates: [
               {

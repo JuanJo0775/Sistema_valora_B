@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentType } from './establishment-repository';
 import type { StoreProposalRepository } from './store-proposals';
 
@@ -13,6 +14,8 @@ export interface StoreProposalRequest {
   address?: string;
   lat: number;
   lng: number;
+  // Grill de la #106.
+  municipality: Municipality;
   // Clave seudónima de quien propone (EC-08).
   proposerKey: string;
 }
@@ -32,6 +35,7 @@ export class ProposeStore {
       ...(address ? { address } : {}),
       lat: request.lat,
       lng: request.lng,
+      municipality: request.municipality,
       proposerKey: request.proposerKey,
       createdAt: this.ports.clock.now(),
     });

@@ -8,6 +8,8 @@ export interface EstablishmentResponse {
   address?: string;
   lat: number;
   lng: number;
+  // Grill de la #106.
+  municipality: string;
   distanceM: number;
 }
 
@@ -24,6 +26,7 @@ export function toNearbyResponse(found: NearbyEstablishment[]): NearbyResponse {
       ...(store.address === undefined ? {} : { address: store.address }),
       lat: store.lat,
       lng: store.lng,
+      municipality: store.municipality,
       distanceM: store.distanceM,
     })),
   };

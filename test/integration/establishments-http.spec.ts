@@ -55,6 +55,7 @@ describe('GET /v1/establishments/nearby', () => {
           address: 'Cra. 14 #20-30',
           lat: expect.closeTo(at(1500).lat, 6) as unknown,
           lng: expect.closeTo(center.lng, 6) as unknown,
+          municipality: 'armenia',
           distanceM: expect.any(Number) as unknown,
         },
       ],

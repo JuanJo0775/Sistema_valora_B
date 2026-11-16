@@ -9,7 +9,9 @@ export interface ComparisonItemResponse {
     address?: string;
     lat: number;
     lng: number;
-    distanceM: number;
+    municipality: string;
+    // Grill de la #106: sin la ubicación del usuario no hay distancia.
+    distanceM?: number;
   };
   reportId: string;
   presentationId: string;
@@ -25,7 +27,7 @@ export interface ComparisonItemResponse {
 
 export interface ComparisonResponse {
   productId: string;
-  criteria: { sort: string; radiusKm: number };
+  criteria: { sort: string; radiusKm?: number; municipality?: string };
   results: ComparisonItemResponse[];
   promotions: [];
   // Grill de la #34: referencia SIPSA aparte, nunca precio de una tienda.
@@ -52,7 +54,8 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
         ...(establishment.address === undefined ? {} : { address: establishment.address }),
         lat: establishment.lat,
         lng: establishment.lng,
-        distanceM: establishment.distanceM,
+        municipality: establishment.municipality,
+        ...(establishment.distanceM === undefined ? {} : { distanceM: establishment.distanceM }),
       },
       reportId: item.reportId,
       presentationId: item.presentationId,

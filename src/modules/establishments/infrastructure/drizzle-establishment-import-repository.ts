@@ -16,13 +16,21 @@ export class DrizzleEstablishmentImportRepository implements EstablishmentImport
       type: establishment.type,
       address: establishment.address ?? null,
       location: { lat: establishment.lat, lng: establishment.lng },
+      // Grill de la #106: la semilla es de Armenia.
+      municipality: establishment.municipality ?? 'armenia',
     };
     await this.db
       .insert(establishments)
       .values(row)
       .onConflictDoUpdate({
         target: establishments.id,
-        set: { name: row.name, type: row.type, address: row.address, location: row.location },
+        set: {
+          name: row.name,
+          type: row.type,
+          address: row.address,
+          location: row.location,
+          municipality: row.municipality,
+        },
       });
   }
 

@@ -12,6 +12,7 @@ const store = {
   address: 'Cra. 14 # 20-10',
   lat: 4.535,
   lng: -75.6811,
+  municipality: 'armenia' as const,
 };
 
 const presentation = (

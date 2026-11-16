@@ -162,6 +162,20 @@
       "when": 1794770206305,
       "tag": "0022_catalog-wholesale-references",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794787305523,
+      "tag": "0023_establishments-municipality",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794787492037,
+      "tag": "0024_store-proposals-municipality",
+      "breakpoints": true
     }
   ]
 }
