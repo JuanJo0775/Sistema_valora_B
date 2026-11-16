@@ -125,4 +125,26 @@ describe('canasta básica de hoy en un municipio (B#120)', () => {
     });
     expect(arroz?.cheapest.unitPrice).toMatchObject({ per: '100g', displayCop: 440 });
   });
+
+  it('solo cuentan los precios vigentes: ni por confirmar, ni desactualizados, ni en revisión', async () => {
+    const featured = setup([
+      price('arroz-500g', donJose.id, 2500),
+      // El arroz no es fresco: 14 días de vigencia. A los 20 días está por confirmar.
+      price('arroz-1kg', ara.id, 3000, { observedAt: hoursAgo(20 * 24) }),
+      price('leche-1l', donJose.id, 4800, { status: 'en_revision' }),
+      price('leche-1l', ara.id, 4500, {
+        // 30 días: más de dos veces la vigencia, desactualizado.
+        observedAt: hoursAgo(30 * 24),
+      }),
+    ]);
+
+    const result = await featured.of({ municipality: 'armenia', limit: 5 });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      productId: 'arroz',
+      storeCount: 1,
+      cheapest: { presentationId: 'arroz-500g', priceCop: 2500 },
+    });
+  });
 });
