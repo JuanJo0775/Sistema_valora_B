@@ -48,7 +48,7 @@ report() {
   echo "::endgroup::"
 }
 
-if [ -n "${PR_NUMBER:-}" ]; then
+if [[ -n "${PR_NUMBER:-}" ]]; then
   report "pull request #${PR_NUMBER}" "pullRequest=${PR_NUMBER}"
 fi
 # La rama base del pull request, o la rama que recibió el cambio.
