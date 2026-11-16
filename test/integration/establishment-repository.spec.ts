@@ -53,6 +53,8 @@ describe('repositorio de establecimientos con PostGIS', () => {
       address: 'Cra. 14 #20-30',
       lat: expect.closeTo(at(100).lat, 6) as unknown,
       lng: expect.closeTo(center.lng, 6) as unknown,
+      // Grill de la #106: sin municipio explícito, una tienda es de Armenia.
+      municipality: 'armenia',
       distanceM: expect.any(Number) as unknown,
     });
     expect(Math.abs((found[0]?.distanceM ?? 0) - 100)).toBeLessThan(5);
@@ -79,5 +81,45 @@ describe('repositorio de establecimientos con PostGIS', () => {
     const found = await repository.findNearby({ ...center, radiusMeters: 1000, limit: 1 });
 
     expect(found.map((store) => store.name)).toEqual([near.name]);
+  });
+
+  // Grill de la #106 (RF-009 RN5): cada tienda dice su municipio y se puede filtrar por él.
+  describe('municipio', () => {
+    const calarca = { id: '33333333-3333-4333-8333-333333333333', name: 'Tienda de Calarcá' };
+
+    beforeEach(async () => {
+      await db.insert(establishments).values([
+        { ...near, type: 'barrio', location: at(100) },
+        { ...middle, type: 'minimercado', location: at(500) },
+        { ...calarca, type: 'barrio', municipality: 'calarca', location: at(300) },
+      ]);
+    });
+
+    it('la tienda dice su municipio en el detalle', async () => {
+      await expect(repository.findById(calarca.id)).resolves.toMatchObject({
+        municipality: 'calarca',
+      });
+    });
+
+    it('de una lista de tiendas, las de un municipio, sin distancia y por nombre', async () => {
+      const found = await repository.findInMunicipality({
+        ids: [near.id, middle.id, calarca.id],
+        municipality: 'armenia',
+      });
+
+      expect(found.map((store) => store.name)).toEqual([near.name, middle.name]);
+      expect(found[0]).not.toHaveProperty('distanceM');
+    });
+
+    it('dentro del radio también se puede pedir un solo municipio', async () => {
+      const found = await repository.findWithinRadius({
+        ids: [near.id, middle.id, calarca.id],
+        ...center,
+        radiusMeters: 1000,
+        municipality: 'calarca',
+      });
+
+      expect(found.map((store) => store.name)).toEqual([calarca.name]);
+    });
   });
 });

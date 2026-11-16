@@ -73,6 +73,7 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
       address: 'Cra. 14 # 20-10',
       lat: 4.5339,
       lng: -75.6811,
+      municipality: 'armenia',
     });
     // Una propuesta ya decidida no se decide otra vez.
     await expect(
