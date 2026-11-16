@@ -185,6 +185,21 @@ pnpm comparison:rebuild-history
 
 Se puede repetir sin duplicar nada.
 
+### Prueba de humo
+
+Recorre por HTTP el camino completo contra una API encendida y con la semilla cargada: búsqueda, tiendas cercanas, comparación (por ubicación y por municipio), referencia SIPSA, registro de precio con reintento y duplicado, llegada del precio a la comparación por el outbox, mis aportes, marca de dudoso y, si hay moderador, el descarte y la apelación. Responde «¿está todo conectado?», cosa que `pnpm test` no cubre porque cada prueba vacía sus tablas.
+
+```bash
+pnpm dev                                   # en otra terminal
+pnpm smoke                                 # recorrido completo
+pnpm smoke -- --solo-lectura               # solo consultas públicas
+```
+
+- `SMOKE_URL` cambia la dirección (por defecto `http://localhost:3000`).
+- `SMOKE_MODERATOR_EMAIL` y `SMOKE_MODERATOR_PASSWORD` (de una cuenta moderadora, ver «Crear un moderador») activan los pasos de moderación.
+- **El recorrido completo crea datos:** dos cuentas `humo-…@valora.test` y un precio de prueba que termina descartado. Úsalo en `valora_dev`; contra el sistema desplegado, solo `--solo-lectura`.
+- Termina con código 1 si un paso falla.
+
 ## Día a día
 
 ### Al empezar una tarea
@@ -272,6 +287,7 @@ La base de pruebas de la CI usa una contraseña distinta en cada corrida, genera
 | `pnpm db:generate`                  | Genera una migración en `drizzle/` a partir de los `schema.ts`.                               |
 | `pnpm db:migrate`                   | Aplica las migraciones pendientes en la base de `DATABASE_URL` (lee `.env`).                  |
 | `pnpm db:seed`                      | Carga las filas verificadas de `seed/` en la base de `DATABASE_URL` (sin duplicar ni borrar). |
+| `pnpm smoke`                        | Prueba de humo contra una API encendida (ver «Prueba de humo»).                               |
 
 Antes de abrir un pull request, corre `pnpm typecheck`, `pnpm lint`, `pnpm test:cov` y `pnpm depcheck`. La CI corre en cada pull request hacia `dev` o `main`, con dos jobs obligatorios: `Calidad` (`typecheck`, `lint`, `format:check`, `depcheck` y `build`) y `Pruebas` (`test:cov --ci`). Si una sola verificación falla, no se mezcla.
 
