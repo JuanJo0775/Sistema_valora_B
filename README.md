@@ -98,7 +98,13 @@ corepack pnpm install
 cp .env.example .env
 ```
 
-En PowerShell: `Copy-Item .env.example .env`. Luego, en `.env`, cambia `SESSION_SECRET` por un texto largo y aleatorio. Los demás valores ya sirven si creas la base como en el paso 5. `.env` **nunca** se sube al repositorio.
+En PowerShell: `Copy-Item .env.example .env`. Luego, en `.env`, cambia `SESSION_SECRET` y `REPORTER_KEY_SECRET` por textos largos y aleatorios, **propios de tu equipo** (no copies los de otra persona). Puedes generarlos con:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Los demás valores ya sirven si creas la base como en el paso 5. `.env` **nunca** se sube al repositorio. Si alguien te pasa su `.env`, cambia esas dos líneas.
 
 ### 5. Crea el usuario y las bases de datos
 
@@ -223,17 +229,32 @@ Reglas:
 
 Se validan al arrancar: si falta alguna o es inválida, la aplicación no inicia y el mensaje nombra la variable.
 
-| Variable                  | Descripción                                                                           |
-| ------------------------- | ------------------------------------------------------------------------------------- |
-| `PORT`                    | Puerto HTTP (entero).                                                                 |
-| `NODE_ENV`                | `development`, `test` o `production`.                                                 |
-| `DATABASE_URL`            | Conexión a la base de desarrollo.                                                     |
-| `DATABASE_URL_TEST`       | Conexión a la base de pruebas; su nombre debe terminar en `_test`.                    |
-| `SESSION_SECRET`          | Secreto de la sesión; usa un valor propio y aleatorio.                                |
-| `OUTBOX_POLL_INTERVAL_MS` | Cada cuántos milisegundos el repartidor revisa la bandeja de eventos (inicial: 5000). |
-| `OUTBOX_MAX_ATTEMPTS`     | Intentos de entrega antes de marcar un evento como fallido (inicial: 5).              |
+| Variable                  | Descripción                                                                                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                    | Puerto HTTP (entero).                                                                                                                                    |
+| `NODE_ENV`                | `development`, `test` o `production`.                                                                                                                    |
+| `DATABASE_URL`            | Conexión a la base de desarrollo.                                                                                                                        |
+| `DATABASE_URL_TEST`       | Conexión a la base de pruebas; su nombre debe terminar en `_test`.                                                                                       |
+| `SESSION_SECRET`          | Firma el token CSRF (ADR-014); valor propio y aleatorio. Cambiarlo cierra las sesiones abiertas.                                                         |
+| `REPORTER_KEY_SECRET`     | Firma la clave seudónima del reportante (#31); valor propio y aleatorio. **No cambiarlo una vez en uso:** las reputaciones quedan asociadas a esa clave. |
+| `OUTBOX_POLL_INTERVAL_MS` | Cada cuántos milisegundos el repartidor revisa la bandeja de eventos (inicial: 5000).                                                                    |
+| `OUTBOX_MAX_ATTEMPTS`     | Intentos de entrega antes de marcar un evento como fallido (inicial: 5).                                                                                 |
+| `MEDIA_DIR`               | Carpeta donde se guardan las fotos subidas (ADR-020); por defecto `media`, fuera de Git.                                                                 |
+| `MEDIA_PUBLIC_URL`        | Dirección pública de esa carpeta; en local, `http://localhost:3000/media`.                                                                               |
 
-Si alguien agrega una variable, aparece en `.env.example`: cópiala a tu `.env`.
+Si alguien agrega una variable, aparece en `.env.example`: cópiala a tu `.env`. `.env.example` es la referencia: este README no copia sus valores para que no se desactualice.
+
+### Secretos y variables en GitHub
+
+Se configuran en **Settings → Secrets and variables → Actions** (solo quien administra el repositorio). Ningún valor real va en el repositorio ni en esta documentación.
+
+| Nombre                                                   | Tipo      | Para qué sirve hoy                                                                                                                                                                                           |
+| -------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SONAR_TOKEN`                                            | Secreto   | Análisis de SonarQube en la CI (#24). Si deja de funcionar, se regenera en SonarQube Cloud (Analysis Method → With GitHub Actions) y se actualiza aquí.                                                      |
+| `SESSION_SECRET`, `REPORTER_KEY_SECRET`                  | Secretos  | Reservados para el despliegue (#23). La CI no los usa: las pruebas traen sus propios valores (`test/setup-env.ts`). Las mismas reglas de la tabla anterior: no cambiar `REPORTER_KEY_SECRET` una vez en uso. |
+| `PORT`, `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_MAX_ATTEMPTS` | Variables | Reservadas para el despliegue (#23); no son secretas.                                                                                                                                                        |
+
+La base de pruebas de la CI usa una contraseña distinta en cada corrida, generada en el workflow (#24).
 
 ## Comandos
 
