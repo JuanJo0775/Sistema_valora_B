@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Unit } from '../../../domain/unit-price';
 import type {
+  CategoryView,
   PresentationForPricing,
   ProductImage,
   PresentationView,
@@ -214,5 +215,12 @@ export class DrizzleProductRepository implements ProductRepository {
         .filter((presentation) => presentation.productId === row.id)
         .map(toPresentationView),
     }));
+  }
+
+  async listCategories(): Promise<CategoryView[]> {
+    return this.db
+      .select({ code: categories.code, name: categories.name })
+      .from(categories)
+      .orderBy(asc(categories.name));
   }
 }

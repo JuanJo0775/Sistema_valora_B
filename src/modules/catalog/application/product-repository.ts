@@ -62,6 +62,8 @@ export interface ProductRepository {
   isFreshPresentation(presentationId: string): Promise<boolean | null>;
   labelsOf(presentationIds: string[]): Promise<Map<string, string>>;
   pricingOf(presentationIds: string[]): Promise<Map<string, PresentationForPricing>>;
+  // #111: la lista cerrada de categorías, por nombre.
+  listCategories(): Promise<CategoryView[]>;
 }
 
 export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');
