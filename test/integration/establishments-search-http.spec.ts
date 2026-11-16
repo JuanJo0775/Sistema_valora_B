@@ -112,4 +112,10 @@ describe('GET /v1/establishments', () => {
 
     expect(response.body).toEqual({ code: 'VALIDATION_ERROR', message });
   });
+
+  it('los comodines que escribe el usuario se buscan como texto, no traen todo el directorio', async () => {
+    const response = await request(server).get('/v1/establishments').query({ q: '%_' }).expect(200);
+
+    expect(response.body).toEqual({ items: [] });
+  });
 });
