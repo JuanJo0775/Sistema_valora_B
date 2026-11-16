@@ -1,4 +1,5 @@
 import { Controller, Get, Header, Query } from '@nestjs/common';
+import { RequestValidationError } from '../../../shared/http/validation';
 import { ListNearbyEstablishments } from '../application/list-nearby-establishments';
 import { SearchEstablishments } from '../application/search-establishments';
 import {
@@ -23,6 +24,10 @@ export class EstablishmentsController {
     @Query() query: SearchEstablishmentsQueryDto,
   ): Promise<{ items: EstablishmentDetailResponse[] }> {
     const { q, municipality, limit } = query;
+    // #116: sin ningún filtro devolvería todo el directorio.
+    if (q === undefined && municipality === undefined) {
+      throw new RequestValidationError('Envía q o municipality');
+    }
     const found = await this.searchEstablishments.execute({ q, municipality, limit });
     return { items: found.map(toEstablishmentDetailResponse) };
   }
