@@ -30,7 +30,10 @@ export interface ProductView {
   presentations: PresentationView[];
 }
 
-// Lo que la comparación necesita: las presentaciones y si la categoría es fresca (TTL, ADR-005).
+// B#120: lo que la canasta básica muestra de cada producto, sin sus presentaciones.
+export type ProductSummaryView = Omit<ProductView, 'image' | 'presentations'>;
+
+// Lo que la comparación necesita:las presentaciones y si la categoría es fresca (TTL, ADR-005).
 export interface ProductForComparisonView {
   id: string;
   isFresh: boolean;

@@ -14,4 +14,5 @@ export { WholesaleReferenceOf } from './application/wholesale-reference-of';
 export type {
   PresentationForPricing,
   ProductForComparisonView,
+  ProductSummaryView,
 } from './application/product-repository';

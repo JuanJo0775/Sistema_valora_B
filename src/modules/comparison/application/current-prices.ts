@@ -14,4 +14,6 @@ export interface CurrentPrices {
   findByPresentations(presentationIds: string[]): Promise<CurrentPrice[]>;
   // Grill de la #28: todos los precios de una tienda.
   findByEstablishment(establishmentId: string): Promise<CurrentPrice[]>;
+  // B#120: todos los precios, para la canasta básica de un municipio.
+  findAll(): Promise<CurrentPrice[]>;
 }
