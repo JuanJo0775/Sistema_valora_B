@@ -1,5 +1,6 @@
 import { Transform, Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import { type Municipality, MUNICIPALITY_CODES } from '../../../domain/municipality';
 
 // Parámetros de GET /v1/establishments (#116).
 export class SearchEstablishmentsQueryDto {
@@ -9,6 +10,11 @@ export class SearchEstablishmentsQueryDto {
   @IsString()
   @MinLength(2, { message: 'debe tener al menos 2 caracteres' })
   q?: string;
+
+  // Uno de los 12 municipios del Quindío (#106).
+  @IsOptional()
+  @IsIn(MUNICIPALITY_CODES, { message: 'debe ser un municipio del Quindío' })
+  municipality?: Municipality;
 
   // Mismos valores que el parámetro común Limit del contrato.
   @IsOptional()

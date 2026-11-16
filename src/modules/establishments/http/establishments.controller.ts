@@ -22,7 +22,8 @@ export class EstablishmentsController {
   async search(
     @Query() query: SearchEstablishmentsQueryDto,
   ): Promise<{ items: EstablishmentDetailResponse[] }> {
-    const found = await this.searchEstablishments.execute({ q: query.q ?? '', limit: query.limit });
+    const { q, municipality, limit } = query;
+    const found = await this.searchEstablishments.execute({ q, municipality, limit });
     return { items: found.map(toEstablishmentDetailResponse) };
   }
 

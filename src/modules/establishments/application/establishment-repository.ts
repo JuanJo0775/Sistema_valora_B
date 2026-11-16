@@ -42,9 +42,11 @@ export interface InMunicipalityQuery {
   municipality: Municipality;
 }
 
-// #116: tiendas cuyo nombre contiene cada palabra, sin la ubicación del usuario.
+// #116: tiendas cuyo nombre contiene cada palabra de q y que están en el municipio, sin la
+// ubicación del usuario.
 export interface SearchQuery {
-  text: string;
+  q?: string;
+  municipality?: Municipality;
   limit: number;
 }
 

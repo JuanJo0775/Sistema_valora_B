@@ -1,7 +1,9 @@
+import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentDetail, EstablishmentRepository } from './establishment-repository';
 
 export interface SearchEstablishmentsInput {
-  q: string;
+  q?: string;
+  municipality?: Municipality;
   limit: number;
 }
 
@@ -10,6 +12,6 @@ export class SearchEstablishments {
   constructor(private readonly establishments: EstablishmentRepository) {}
 
   execute(input: SearchEstablishmentsInput): Promise<EstablishmentDetail[]> {
-    return this.establishments.search({ text: input.q, limit: input.limit });
+    return this.establishments.search(input);
   }
 }

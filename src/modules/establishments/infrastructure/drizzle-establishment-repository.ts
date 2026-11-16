@@ -89,7 +89,14 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     const rows = await this.db
       .select(detailColumns)
       .from(establishments)
-      .where(and(...wordConditions(query.text)))
+      .where(
+        and(
+          ...wordConditions(query.q ?? ''),
+          query.municipality === undefined
+            ? undefined
+            : eq(establishments.municipality, query.municipality),
+        ),
+      )
       .orderBy(establishments.name)
       .limit(query.limit);
     return rows.map(toDetail);
