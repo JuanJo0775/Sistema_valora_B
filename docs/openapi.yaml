@@ -78,6 +78,30 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Product' }
         '400': { $ref: '#/components/responses/BadRequest' }
+  /categories:
+    get:
+      tags: [Catálogo]
+      operationId: listCategories
+      summary: Listar las categorías del catálogo (RF-003)
+      description: >-
+        La lista cerrada de categorías (grill de la #49), ordenada por nombre. El frontend la usa para
+        proponer un producto (`categoryCode` de `POST /v1/product-requests`, #111). Solo cambia con una
+        migración: caché pública de una hora (EC-04).
+      responses:
+        '200':
+          description: Todas las categorías, por nombre
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=3600' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Category' }
   /products/{productId}:
     get:
       tags: [Catálogo]
