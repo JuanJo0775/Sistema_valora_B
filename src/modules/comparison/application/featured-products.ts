@@ -1,9 +1,11 @@
 import { rankFeaturedProducts } from '../../../domain/featured-products';
+import { ttlDaysFor } from '../../../domain/freshness';
 import type { Municipality } from '../../../domain/municipality';
 import { type RankableOffer, rankOffers } from '../../../domain/neutral-ranking';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import type { PresentationForPricing, ProductSummaryView } from '../../catalog';
 import type { EstablishmentDetail, InMunicipalityQuery } from '../../establishments';
+import { freshnessAt } from './compare-product';
 import type { CurrentPrice, CurrentPrices } from './current-prices';
 
 // Puertos hacia las consultas públicas de establishments y catalog (por su index.ts).
@@ -113,10 +115,14 @@ export class FeaturedProducts {
       presentations.of([...new Set(current.map((price) => price.presentationId))]),
     ]);
     const storesById = new Map(inMunicipality.map((store) => [store.id, store]));
+    const now = this.ports.clock.now();
     return current.flatMap((price) => {
       const establishment = storesById.get(price.establishmentId);
       const presentation = known.get(price.presentationId);
       if (!establishment || !presentation) return [];
+      // Como la comparación con onlyCurrent: ni en revisión, ni por confirmar, ni desactualizados.
+      const freshness = freshnessAt(price.observedAt, now, ttlDaysFor(presentation.isFresh));
+      if (price.status === 'en_revision' || freshness !== 'vigente') return [];
       return [
         {
           price,
