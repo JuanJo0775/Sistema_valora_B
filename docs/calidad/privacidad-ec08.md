@@ -34,6 +34,7 @@
 | `GET /v1/products`, `GET /v1/products/{productId}` | Ninguno (solo catálogo). |
 | `GET /v1/products/{productId}/comparison` | Ninguno. Lleva `reportId` del precio, sin autor. `no-store` porque la URL lleva la ubicación. |
 | `GET /v1/establishments/nearby` | Ninguno. `no-store` por la misma razón. |
+| `GET /v1/establishments` | Ninguno (solo el directorio de tiendas). Sirve para elegir la tienda sin compartir la ubicación (#116). |
 | `GET /v1/establishments/{establishmentId}/prices` | Ninguno. Lleva `reportId`, sin autor. |
 | `POST /v1/auth/register`, `POST /v1/auth/login` | No dicen si un correo existe (#16). |
 

@@ -8,6 +8,7 @@ import type {
   NearbyEstablishment,
   AroundQuery,
   NearbyQuery,
+  SearchQuery,
   WithinRadiusQuery,
 } from '../application/establishment-repository';
 import type { Municipality } from '../../../domain/municipality';
@@ -44,6 +45,21 @@ function toDetail({ address, type, municipality, ...rest }: DetailRow): Establis
   };
 }
 
+// El nombre sin tildes y en minúsculas, como la búsqueda de productos (unaccent de PostgreSQL).
+const plain = (text: SQL) => sql`lower(public.unaccent('public.unaccent'::regdictionary, ${text}))`;
+
+// Cada palabra debe aparecer; los comodines de LIKE que escribe el usuario se buscan como texto.
+function wordConditions(text: string): SQL[] {
+  return text
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+    .map((word) => word.replace(/[\\%_]/g, (wildcard) => `\\${wildcard}`))
+    .map(
+      (word) =>
+        sql`${plain(sql`${establishments.name}`)} like '%' || ${plain(sql`${word}`)} || '%'`,
+    );
+}
+
 interface RadiusSearch {
   lat: number;
   lng: number;
@@ -66,6 +82,24 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
 
   findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]> {
     return this.searchWithinRadius(query);
+  }
+
+  // #116: sin la ubicación del usuario no hay distancia; se ordenan por nombre.
+  async search(query: SearchQuery): Promise<EstablishmentDetail[]> {
+    const rows = await this.db
+      .select(detailColumns)
+      .from(establishments)
+      .where(
+        and(
+          ...wordConditions(query.q ?? ''),
+          query.municipality === undefined
+            ? undefined
+            : eq(establishments.municipality, query.municipality),
+        ),
+      )
+      .orderBy(establishments.name)
+      .limit(query.limit);
+    return rows.map(toDetail);
   }
 
   // Grill de la #15, pregunta 2: sin tope, para no perder tiendas que tienen precio.

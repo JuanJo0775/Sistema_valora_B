@@ -42,6 +42,14 @@ export interface InMunicipalityQuery {
   municipality: Municipality;
 }
 
+// #116: tiendas cuyo nombre contiene cada palabra de q y que están en el municipio, sin la
+// ubicación del usuario.
+export interface SearchQuery {
+  q?: string;
+  municipality?: Municipality;
+  limit: number;
+}
+
 // Tiendas cerca de otra tienda (la zona de reliability).
 export interface AroundQuery {
   establishmentId: string;
@@ -51,6 +59,7 @@ export interface AroundQuery {
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.
 export interface EstablishmentRepository {
   findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]>;
+  search(query: SearchQuery): Promise<EstablishmentDetail[]>;
   findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
   findInMunicipality(query: InMunicipalityQuery): Promise<EstablishmentDetail[]>;
   findAround(query: AroundQuery): Promise<string[]>;
