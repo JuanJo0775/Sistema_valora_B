@@ -64,6 +64,7 @@ const store = (id: string, distanceM = 500): NearbyEstablishment => ({
   id,
   name: `Tienda ${id}`,
   type: 'barrio',
+  municipality: 'armenia',
   lat: 4.535,
   lng: -75.6811,
   distanceM,

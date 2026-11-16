@@ -1,3 +1,4 @@
+import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentType } from './establishment-repository';
 
 // Tienda tal como la carga la semilla (issue #51), con id fijo ya calculado.
@@ -8,6 +9,8 @@ export interface EstablishmentImport {
   address?: string;
   lat: number;
   lng: number;
+  // Grill de la #106: si no viene, la tienda es de Armenia.
+  municipality?: Municipality;
 }
 
 export interface EstablishmentImportRepository {

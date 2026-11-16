@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { MUNICIPALITY_CODES } from '../../../domain/municipality';
 import { check, customType, index, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export interface GeoPoint {
@@ -24,8 +25,14 @@ export const establishments = establishmentsSchema.table(
     type: text('type').notNull(),
     address: text('address'),
     location: geographyPoint('location').notNull(),
+    // Grill de la #106: municipio del Quindío; las tiendas de la semilla son de Armenia (#51).
+    municipality: text('municipality').notNull().default('armenia'),
   },
   (table) => [
+    check(
+      'establishments_municipality_valid',
+      sql.raw(`municipality in (${MUNICIPALITY_CODES.map((code) => `'${code}'`).join(', ')})`),
+    ),
     // Tipos del grill de la #50, pregunta 1.
     check(
       'establishments_type_valid',

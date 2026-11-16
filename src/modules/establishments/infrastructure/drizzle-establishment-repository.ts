@@ -4,12 +4,45 @@ import type {
   EstablishmentDetail,
   EstablishmentRepository,
   EstablishmentType,
+  InMunicipalityQuery,
   NearbyEstablishment,
   AroundQuery,
   NearbyQuery,
   WithinRadiusQuery,
 } from '../application/establishment-repository';
+import type { Municipality } from '../../../domain/municipality';
 import { establishments } from './schema';
+
+// Lo que describe una tienda, sin distancia.
+const detailColumns = {
+  id: establishments.id,
+  name: establishments.name,
+  type: establishments.type,
+  address: establishments.address,
+  lat: sql<number>`ST_Y(${establishments.location}::geometry)`.mapWith(Number),
+  lng: sql<number>`ST_X(${establishments.location}::geometry)`.mapWith(Number),
+  municipality: establishments.municipality,
+};
+
+interface DetailRow {
+  id: string;
+  name: string;
+  type: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  municipality: string;
+}
+
+// Las restricciones CHECK de la tabla garantizan el tipo y el municipio.
+function toDetail({ address, type, municipality, ...rest }: DetailRow): EstablishmentDetail {
+  return {
+    ...rest,
+    type: type as EstablishmentType,
+    ...(address === null ? {} : { address }),
+    municipality: municipality as Municipality,
+  };
+}
 
 interface RadiusSearch {
   lat: number;
@@ -37,7 +70,31 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
 
   // Grill de la #15, pregunta 2: sin tope, para no perder tiendas que tienen precio.
   findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]> {
-    return this.searchWithinRadius({ ...query, where: inArray(establishments.id, query.ids) });
+    return this.searchWithinRadius({
+      ...query,
+      where: and(
+        inArray(establishments.id, query.ids),
+        query.municipality === undefined
+          ? undefined
+          : eq(establishments.municipality, query.municipality),
+      ),
+    });
+  }
+
+  // Grill de la #106: sin la ubicación del usuario no hay distancia; se ordenan por nombre.
+  async findInMunicipality(query: InMunicipalityQuery): Promise<EstablishmentDetail[]> {
+    if (query.ids.length === 0) return [];
+    const rows = await this.db
+      .select(detailColumns)
+      .from(establishments)
+      .where(
+        and(
+          inArray(establishments.id, query.ids),
+          eq(establishments.municipality, query.municipality),
+        ),
+      )
+      .orderBy(establishments.name);
+    return rows.map(toDetail);
   }
 
   // Grill de la #31, pregunta 7: las tiendas a radiusMeters o menos de otra tienda, ella incluida.
@@ -61,24 +118,10 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
 
   async findById(establishmentId: string): Promise<EstablishmentDetail | null> {
     const [row] = await this.db
-      .select({
-        id: establishments.id,
-        name: establishments.name,
-        type: establishments.type,
-        address: establishments.address,
-        lat: sql<number>`ST_Y(${establishments.location}::geometry)`.mapWith(Number),
-        lng: sql<number>`ST_X(${establishments.location}::geometry)`.mapWith(Number),
-      })
+      .select(detailColumns)
       .from(establishments)
       .where(eq(establishments.id, establishmentId));
-    if (!row) return null;
-    const { address, ...rest } = row;
-    // La restricción CHECK de la tabla garantiza el tipo.
-    return {
-      ...rest,
-      type: rest.type as EstablishmentDetail['type'],
-      ...(address === null ? {} : { address }),
-    };
+    return row ? toDetail(row) : null;
   }
 
   async findWithinMeters(
@@ -111,6 +154,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         address: establishments.address,
         lat: sql<number>`ST_Y(${establishments.location}::geometry)`.mapWith(Number),
         lng: sql<number>`ST_X(${establishments.location}::geometry)`.mapWith(Number),
+        municipality: establishments.municipality,
         distanceM: sql<number>`round(${distance})::int`.mapWith(Number),
       })
       .from(establishments)
@@ -133,6 +177,8 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       ...(row.address === null ? {} : { address: row.address }),
       lat: row.lat,
       lng: row.lng,
+      // La restricción CHECK de la tabla garantiza que es un municipio de la lista.
+      municipality: row.municipality as Municipality,
       distanceM: row.distanceM,
     }));
   }

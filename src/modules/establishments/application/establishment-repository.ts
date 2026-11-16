@@ -1,3 +1,5 @@
+import type { Municipality } from '../../../domain/municipality';
+
 export type EstablishmentType = 'barrio' | 'minimercado' | 'supermercado' | 'descuento';
 
 export interface NearbyEstablishment {
@@ -8,6 +10,8 @@ export interface NearbyEstablishment {
   // Ubicación de la tienda (pública). Nunca la del usuario (RF-005 RN4).
   lat: number;
   lng: number;
+  // Grill de la #106: municipio del Quindío.
+  municipality: Municipality;
   distanceM: number;
 }
 
@@ -28,6 +32,14 @@ export interface WithinRadiusQuery {
   lat: number;
   lng: number;
   radiusMeters: number;
+  // Grill de la #106: además del radio, solo las de un municipio.
+  municipality?: Municipality;
+}
+
+// Grill de la #106: las tiendas de la lista que están en un municipio, sin la ubicación del usuario.
+export interface InMunicipalityQuery {
+  ids: string[];
+  municipality: Municipality;
 }
 
 // Tiendas cerca de otra tienda (la zona de reliability).
@@ -40,6 +52,7 @@ export interface AroundQuery {
 export interface EstablishmentRepository {
   findNearby(query: NearbyQuery): Promise<NearbyEstablishment[]>;
   findWithinRadius(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
+  findInMunicipality(query: InMunicipalityQuery): Promise<EstablishmentDetail[]>;
   findAround(query: AroundQuery): Promise<string[]>;
   namesOf(establishmentIds: string[]): Promise<Map<string, string>>;
   findById(establishmentId: string): Promise<EstablishmentDetail | null>;
