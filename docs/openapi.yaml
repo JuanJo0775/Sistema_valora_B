@@ -251,6 +251,44 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /establishments:
+    get:
+      tags: [Establecimientos]
+      operationId: searchEstablishments
+      summary: Buscar tiendas por nombre o municipio, sin ubicación (RF-005, #116)
+      description: >-
+        Para elegir la tienda sin compartir la ubicación (EC-08), por ejemplo al registrar un precio (RF-006).
+        Se envía al menos uno de q o municipality; sin ninguno responde 400 VALIDATION_ERROR («Envía q o
+        municipality»), para no devolver todo el directorio. Con q, cada palabra debe aparecer en el nombre
+        de la tienda, en cualquier orden y también como pedazo, sin distinguir tildes ni mayúsculas (como la
+        búsqueda de productos). Ordenadas por nombre. Sin ubicación no hay distancia: los items no traen
+        distanceM. Caché pública de 5 minutos (valor inicial calibrable, EC-04).
+      parameters:
+        - name: q
+          in: query
+          description: Parte del nombre de la tienda; cada palabra debe aparecer, sin distinguir tildes.
+          schema: { type: string, minLength: 2 }
+        - name: municipality
+          in: query
+          description: Solo las tiendas de ese municipio del Quindío.
+          schema: { $ref: '#/components/schemas/Municipality' }
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Tiendas encontradas, ordenadas por nombre
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=300' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Establishment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
   /establishments/nearby:
     get:
       tags: [Establecimientos]
