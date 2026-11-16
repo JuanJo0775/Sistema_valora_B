@@ -10,7 +10,11 @@ export class LocalImageStorage implements ImageStorage {
 
   constructor(dir: string, publicUrl: string) {
     this.root = resolve(dir);
-    this.publicUrl = publicUrl.replace(/\/+$/, '');
+    // Sin las barras del final. Un ciclo y no una expresión regular: SonarQube marcó /\/+$/ por
+    // backtracking (typescript:S8786).
+    let url = publicUrl;
+    while (url.endsWith('/')) url = url.slice(0, -1);
+    this.publicUrl = url;
   }
 
   async save(name: string, content: Buffer): Promise<string> {
