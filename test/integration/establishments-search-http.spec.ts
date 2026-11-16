@@ -86,4 +86,14 @@ describe('GET /v1/establishments', () => {
       ],
     });
   });
+
+  it.each([
+    ['solo el municipio', { municipality: 'armenia' }, [panaderia.id, donPepe.id]],
+    ['el nombre y el municipio', { q: 'pepe', municipality: 'armenia' }, [donPepe.id]],
+    ['un municipio sin tiendas', { municipality: 'salento' }, []],
+  ])('con %s responde solo las tiendas de ese municipio', async (_case, query, ids) => {
+    const response = await request(server).get('/v1/establishments').query(query).expect(200);
+
+    expect((response.body as { items: { id: string }[] }).items.map(({ id }) => id)).toEqual(ids);
+  });
 });
