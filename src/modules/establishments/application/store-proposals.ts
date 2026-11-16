@@ -1,3 +1,4 @@
+import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentType } from './establishment-repository';
 
 // Grill de la #27, pregunta 1: una tienda que propone un reportante, pendiente de moderación (RN7).
@@ -10,6 +11,8 @@ export interface NewStoreProposal {
   lat: number;
   lng: number;
   // Clave seudónima de quien la propone (EC-08): nunca sale en respuestas.
+  // Grill de la #106: municipio del Quindío donde está la tienda.
+  municipality: Municipality;
   proposerKey: string;
   createdAt: Date;
 }

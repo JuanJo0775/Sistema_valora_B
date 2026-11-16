@@ -1,4 +1,5 @@
 import { equivalentStoreNames, isInServiceArea } from '../../../domain/store-proposal';
+import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentRepository, EstablishmentType } from './establishment-repository';
 import type { StoreProposalRepository } from './store-proposals';
 
@@ -18,6 +19,7 @@ export interface StoreProposalItem {
   address?: string;
   lat: number;
   lng: number;
+  municipality: Municipality;
   outOfZone: boolean;
   possibleDuplicates: { id: string; name: string; distanceM: number }[];
   createdAt: Date;

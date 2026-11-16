@@ -9,6 +9,7 @@ import {
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { type Municipality, MUNICIPALITY_CODES } from '../../../domain/municipality';
 import { PROPOSAL_NOTE_LENGTH } from '../application/decide-store-proposal';
 import type { EstablishmentType } from '../application/establishment-repository';
 import type { StoreProposalDecision } from '../application/store-proposals';
@@ -31,6 +32,10 @@ export class StoreProposalDto {
 
   @IsLongitude({ message: 'debe estar entre -180 y 180' })
   lng!: number;
+
+  // Grill de la #106: uno de los 12 municipios del Quindío.
+  @IsIn(MUNICIPALITY_CODES, { message: 'debe ser un municipio del Quindío' })
+  municipality!: Municipality;
 
   @IsOptional()
   @IsString({ message: 'debe tener como máximo 200 caracteres' })

@@ -36,6 +36,7 @@ interface StoreProposalResponse {
   address?: string;
   lat: number;
   lng: number;
+  municipality: string;
   outOfZone: boolean;
   possibleDuplicates: { id: string; name: string; distanceM: number }[];
   createdAt: string;
@@ -66,6 +67,7 @@ export class StoreProposalsController {
       type: body.type,
       lat: body.lat,
       lng: body.lng,
+      municipality: body.municipality,
       ...(body.address === undefined ? {} : { address: body.address }),
       proposerKey: reporterKey,
     });

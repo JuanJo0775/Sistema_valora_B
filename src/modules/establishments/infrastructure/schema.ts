@@ -53,6 +53,8 @@ export const storeProposals = establishmentsSchema.table(
     address: text('address'),
     // La ubicación de la tienda propuesta, no la de quien la propone (RF-005 RN4).
     location: geographyPoint('location').notNull(),
+    // Grill de la #106: municipio que dice quien propone; pasa a la tienda si se aprueba.
+    municipality: text('municipality').notNull().default('armenia'),
     proposerKey: text('proposer_key').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     status: text('status').notNull().default('pendiente'),
