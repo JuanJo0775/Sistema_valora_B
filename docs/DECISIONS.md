@@ -442,6 +442,15 @@ Insumo de MC-E3. Proyecto en SonarQube Cloud (organización `juanjo0775`, plan F
 - **Hallazgos graves del primer análisis de `dev` y su acción:** `secrets:S6698` (BLOCKER), contraseña de la base de la CI escrita en `ci.yml` → ahora cambia en cada corrida y no queda en el código. `typescript:S4790` (CRITICAL), SHA-1 en `stable-id.ts` → falso positivo: lo exige el UUID versión 5 y no protege datos; se excluye solo en ese archivo, con la razón en `sonar-project.properties`.
 - **Pendiente:** marcar SonarQube como verificación obligatoria en «Proteger dev y main» después del primer análisis en verde.
 
+## Filtro por municipio (issue #106, 15 de noviembre de 2026)
+
+Aplicación de RF-009 RN5, RF-005 y EC-08. El detalle está en `docs/decisiones/issue-106-municipio/grill.md`.
+
+- **Municipio de cada tienda:** columna `municipality` con la lista cerrada de los 12 municipios del Quindío (`src/domain/municipality.ts`, migraciones `0023` y `0024`). Las tiendas de la semilla son de Armenia; en una tienda propuesta lo elige el reportante y pasa a la tienda al aprobarla.
+- **Comparación:** parámetro `municipality`. Con municipio, la ubicación es opcional (se compara sin compartir dónde está uno, EC-08); sin ubicación no hay `distanceM` ni `radiusKm` en los criterios y `sort=distance` responde 400.
+- **Respuestas:** la tienda trae `municipality` en la comparación, la cercanía y los precios por tienda.
+- **Fuera:** filtro por municipio en «tiendas cercanas» y cálculo del municipio con polígonos municipales.
+
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
