@@ -35,6 +35,11 @@ report() {
       "Bloqueantes y críticos: \(.total)",
       (.issues[] | "  [\(.severity)] \(.component | sub("^[^:]*:"; "")):\(.line // "-") \(.message) (\(.rule))")'
   fi
+  if json=$(get "issues/search?componentKeys=${KEY}&${scope}&resolved=false&severities=MAJOR,MINOR,INFO&ps=100"); then
+    echo "${json}" | jq -r '
+      "Mayores, menores e informativos: \(.total)",
+      (.issues[] | "  [\(.severity)] \(.component | sub("^[^:]*:"; "")):\(.line // "-") \(.message) (\(.rule))")'
+  fi
   if json=$(get "hotspots/search?projectKey=${KEY}&${scope}&status=TO_REVIEW&ps=100"); then
     echo "${json}" | jq -r '
       "Puntos de seguridad por revisar: \(.paging.total)",
