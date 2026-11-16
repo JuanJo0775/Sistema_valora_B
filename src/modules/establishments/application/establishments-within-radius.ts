@@ -1,5 +1,7 @@
 import type {
+  EstablishmentDetail,
   EstablishmentRepository,
+  InMunicipalityQuery,
   NearbyEstablishment,
   WithinRadiusQuery,
 } from './establishment-repository';
@@ -12,5 +14,11 @@ export class EstablishmentsWithinRadius {
   async find(query: WithinRadiusQuery): Promise<NearbyEstablishment[]> {
     if (query.ids.length === 0) return [];
     return this.establishments.findWithinRadius(query);
+  }
+
+  // Grill de la #106: sin la ubicación del usuario, las de un municipio (sin distancia).
+  async findInMunicipality(query: InMunicipalityQuery): Promise<EstablishmentDetail[]> {
+    if (query.ids.length === 0) return [];
+    return this.establishments.findInMunicipality(query);
   }
 }
