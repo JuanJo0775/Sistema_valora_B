@@ -18,6 +18,7 @@ import {
 import { DecideStoreProposal } from './application/decide-store-proposal';
 import { ListNearbyEstablishments } from './application/list-nearby-establishments';
 import { ProposeStore } from './application/propose-store';
+import { SearchEstablishments } from './application/search-establishments';
 import { StoreProposalsQueue } from './application/store-proposals-queue';
 import { EstablishmentsController } from './http/establishments.controller';
 import { StoreProposalsController } from './http/store-proposals.controller';
@@ -65,6 +66,12 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
       inject: [ESTABLISHMENT_REPOSITORY],
       useFactory: (repository: EstablishmentRepository): ListNearbyEstablishments =>
         new ListNearbyEstablishments(repository),
+    },
+    {
+      provide: SearchEstablishments,
+      inject: [ESTABLISHMENT_REPOSITORY],
+      useFactory: (repository: EstablishmentRepository): SearchEstablishments =>
+        new SearchEstablishments(repository),
     },
     {
       provide: ESTABLISHMENT_IMPORT_REPOSITORY,
