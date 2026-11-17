@@ -60,6 +60,14 @@ describe('Open Food Facts por código de barras (ADR-020, #119)', () => {
     await expect(images(fetcher).find('7702001000002')).resolves.toEqual({ status: 'not_found' });
   });
 
+  it('también es «no está» si responde 200 con status 0', async () => {
+    const { fetcher } = fakeFetch(() =>
+      json(200, { status: 0, status_verbose: 'product not found' }),
+    );
+
+    await expect(images(fetcher).find('7702001000002')).resolves.toEqual({ status: 'not_found' });
+  });
+
   it('un error de red o del servidor se informa sin detener el script', async () => {
     const offline = fakeFetch(() => Promise.reject(new Error('getaddrinfo ENOTFOUND')));
     const failing = fakeFetch(() => json(503, {}));
