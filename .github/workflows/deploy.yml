@@ -9,6 +9,10 @@ on:
         description: Cargar la semilla de seed/ en Neon después de migrar (tiendas, productos y SIPSA verificados)
         type: boolean
         default: false
+      copiar_fotos:
+        description: Copiar al bucket de Supabase las fotos de la semilla que siguen en Open Food Facts (después de la semilla)
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -64,6 +68,26 @@ jobs:
           OUTBOX_MAX_ATTEMPTS: '5'
           MEDIA_DIR: media
           MEDIA_PUBLIC_URL: http://localhost/media
+
+      # ADR-022: copia las fotos externas (Open Food Facts) al bucket público de Supabase. Es
+      # idempotente; si una foto falla conserva su URL original. Necesita SUPABASE_URL (variable) y
+      # SUPABASE_SECRET_KEY (secreto) en el entorno produccion (docs/despliegue.md, paso 3 bis).
+      - name: Copiar las fotos de la semilla a Supabase (opcional)
+        if: ${{ inputs.copiar_fotos }}
+        run: |
+          export SESSION_SECRET="$(openssl rand -hex 16)" REPORTER_KEY_SECRET="$(openssl rand -hex 16)"
+          pnpm build && node dist/seed-mirror-images.js
+        env:
+          NODE_ENV: production
+          PORT: '3000'
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          DATABASE_URL_TEST: ${{ secrets.NEON_DATABASE_URL }}
+          OUTBOX_POLL_INTERVAL_MS: '5000'
+          OUTBOX_MAX_ATTEMPTS: '5'
+          MEDIA_DIR: media
+          MEDIA_PUBLIC_URL: http://localhost/media
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
       - name: Disparar el despliegue en Render
         run: curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"

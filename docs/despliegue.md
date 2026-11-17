@@ -77,6 +77,16 @@ Las fotos que sube el moderador no pueden quedar en el disco de Render (se borra
 3. En GitHub, repositorio del backend: variable `SUPABASE_URL` y secreto `SUPABASE_SECRET_KEY`. El workflow `keepalive.yml` los usa cada 3 días para que el plan gratuito no pause el proyecto.
 4. En Render (paso 4) se pegan las mismas dos variables.
 
+**Copiar las fotos de la semilla a Supabase (`copiar_fotos`).** La semilla enlaza las fotos de Open Food Facts por URL externa. Para que vivan en el bucket `productos`, el workflow «Despliegue» tiene la casilla **«Copiar fotos»** (`copiar_fotos`, apagada por defecto): corre `pnpm seed:espejo-fotos` después de la semilla y antes de disparar Render. Antes hay que cargar en el **entorno `produccion`** de GitHub (no solo en el repositorio) la variable `SUPABASE_URL` y el secreto `SUPABASE_SECRET_KEY`:
+
+```sh
+R=<dueño>/<repositorio-backend>
+gh variable set SUPABASE_URL --env produccion --repo $R --body "https://<proyecto>.supabase.co"
+gh secret set SUPABASE_SECRET_KEY --env produccion --repo $R   # pide el valor por teclado
+```
+
+El valor del secreto lo escribe la persona al pedirlo `gh`: nunca va al repositorio, a un chat ni a un historial de comandos. El comando descarga cada foto externa (15 s de límite, máximo 5 MB, solo imágenes, 3 intentos con espera si Open Food Facts responde 429), la convierte a WebP, la sube con el hash del contenido y guarda la dirección de Supabase **conservando la fuente y la atribución** (CC BY-SA). Si una foto falla se queda con su URL original y se cuenta en el resumen (copiadas, ya estaban, fallidas); repetirlo es seguro. Sin esas dos variables sale con un mensaje claro y no toca nada. Para correrlo a mano: `DATABASE_URL=... SUPABASE_URL=... SUPABASE_SECRET_KEY=... pnpm seed:espejo-fotos`. Repetir la semilla no reemplaza una foto que ya está en Supabase.
+
 Si Supabase pausa el proyecto (7 días sin actividad), las URL de las fotos subidas dejan de responder: se restaura desde el panel («Restore project»). Hay una ventana de tiempo para hacerlo; su duración no está confirmada (las fuentes dan entre 90 días y 1 año), así que no conviene dejarlo pausado.
 
 ### 3 ter. Correo de verificación (ADR-029)

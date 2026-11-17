@@ -27,6 +27,7 @@ import { RequestProduct } from './application/request-product';
 import { SearchProducts } from './application/search-products';
 import { WholesaleReferenceOf } from './application/wholesale-reference-of';
 import type { ImageStorage } from './application/product-image';
+import { MirrorProductImages } from './application/mirror-product-images';
 import { SetProductImage } from './application/set-product-image';
 import { CategoriesController } from './http/categories.controller';
 import { ProductImageController } from './http/product-image.controller';
@@ -36,6 +37,7 @@ import { DrizzleProductImportRepository } from './infrastructure/drizzle-product
 import { DrizzleProductRepository } from './infrastructure/drizzle-product-repository';
 import { DrizzleProductRequestRepository } from './infrastructure/drizzle-product-request-repository';
 import { DrizzleWholesaleReferenceRepository } from './infrastructure/drizzle-wholesale-reference-repository';
+import { HttpImageDownloader } from './infrastructure/http-image-downloader';
 import { LocalImageStorage } from './infrastructure/local-image-storage';
 import { SupabaseImageStorage } from './infrastructure/supabase-image-storage';
 import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
@@ -133,6 +135,25 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
       useFactory: (repository: ProductImportRepository, db: Database): ImportCatalog =>
         new ImportCatalog(repository, new DrizzleWholesaleReferenceRepository(db)),
     },
+    // ADR-022 (actualización): pnpm seed:espejo-fotos copia las fotos externas al bucket. Esta pieza se
+    // arma siempre al arrancar (también en la API y en las pruebas, sin Supabase), así que NO puede
+    // fallar aquí: el comando exige SUPABASE_URL y la clave antes de llegar a usarla.
+    {
+      provide: MirrorProductImages,
+      inject: [PRODUCT_IMPORT_REPOSITORY, ConfigService],
+      useFactory: (
+        images: ProductImportRepository,
+        config: ConfigService<Env, true>,
+      ): MirrorProductImages => {
+        return new MirrorProductImages({
+          images,
+          downloader: new HttpImageDownloader(),
+          processor: new SharpImageProcessor(),
+          storage: imageStorage(config),
+          supabaseUrl: config.get('SUPABASE_URL', { infer: true }),
+        });
+      },
+    },
     {
       provide: PresentationExists,
       inject: [PRODUCT_REPOSITORY],
@@ -179,6 +200,7 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
   ],
   exports: [
     ImportCatalog,
+    MirrorProductImages,
     WholesaleReferenceOf,
     PresentationExists,
     ProductForComparison,

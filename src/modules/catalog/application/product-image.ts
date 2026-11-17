@@ -18,3 +18,16 @@ export class InvalidImageError extends Error {
     this.name = 'InvalidImageError';
   }
 }
+
+// ADR-022 (actualización): descarga la foto original de una dirección externa. Falla con
+// ImageDownloadError si tarda de más, pesa de más o no es una imagen.
+export interface ImageDownloader {
+  download(url: string): Promise<Buffer>;
+}
+
+export class ImageDownloadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ImageDownloadError';
+  }
+}
