@@ -1,0 +1,40 @@
+# Infraestructura del backend en Render (ADR-012, RNF-009 RN1). Los secretos no van aquí (RN2):
+# las variables con sync: false se llenan en el panel de Render al crear el servicio.
+services:
+  - type: web
+    name: valora-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: virginia
+    branch: main
+    # Una sola copia: el outbox corre dentro del proceso (ADR-015).
+    numInstances: 1
+    healthCheckPath: /v1/health
+    # Despliega el pipeline después de aplicar las migraciones, no cada commit.
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '10000'
+      # Cadena de conexión de Neon.
+      - key: DATABASE_URL
+        sync: false
+      # La validación de la configuración la exige aunque en producción no se usa.
+      - key: DATABASE_URL_TEST
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      # No debe cambiar una vez en uso: las reputaciones quedan asociadas a esta clave (#31).
+      - key: REPORTER_KEY_SECRET
+        sync: false
+      - key: OUTBOX_POLL_INTERVAL_MS
+        value: '5000'
+      - key: OUTBOX_MAX_ATTEMPTS
+        value: '5'
+      - key: MEDIA_DIR
+        value: media
+      # Dirección pública de las fotos (ADR-020).
+      - key: MEDIA_PUBLIC_URL
+        sync: false
