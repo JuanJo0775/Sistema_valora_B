@@ -23,6 +23,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "nest start --entryFile seed",
+    "seed:imagenes": "nest start --entryFile seed-images",
     "identity:set-role": "nest start --entryFile set-role --",
     "comparison:rebuild-history": "nest start --entryFile rebuild-history",
     "quality:accuracy": "nest start --entryFile accuracy",
