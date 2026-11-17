@@ -4,8 +4,6 @@ export interface DisplayNames {
   displayNameOf(accountId: string): Promise<string | null>;
 }
 
-export const DISPLAY_NAMES = Symbol('DISPLAY_NAMES');
-
 export interface OwnDisplayNamePorts {
   displayNames: DisplayNames;
 }

@@ -15,7 +15,7 @@ export interface RegisterAccountPorts {
 export interface RegisterAccountInput {
   email: string;
   // #133: ya validado por el DTO con la regla de domain/display-name.
-  displayName?: string;
+  displayName: string;
   password: string;
   acceptedPolicyVersion: string;
   ip: string;
@@ -46,7 +46,7 @@ export class RegisterAccount {
     await this.ports.accounts.create({
       id: randomUUID(),
       email,
-      displayName: input.displayName === undefined ? null : normalizeDisplayName(input.displayName),
+      displayName: normalizeDisplayName(input.displayName),
       passwordHash,
       // Grill de la #16, pregunta 5: el registro siempre crea un reportante.
       role: 'reportante',
