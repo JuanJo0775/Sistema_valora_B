@@ -11,6 +11,7 @@ const sleep = (ms: number) =>
   });
 
 interface ProductResponse {
+  status?: unknown;
   product?: { image_front_url?: unknown };
 }
 
@@ -46,6 +47,7 @@ export class OpenFoodFactsImages {
     if (response.status === 404) return { status: 'not_found' };
     if (!response.ok) return { status: 'error', message: `HTTP ${String(response.status)}` };
     const body = (await response.json()) as ProductResponse;
+    if (body.status === 0) return { status: 'not_found' };
     const photo = body.product?.image_front_url;
     return isHttps(photo) ? { status: 'found', url: photo } : { status: 'no_image' };
   }
