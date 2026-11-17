@@ -5,6 +5,7 @@ export type {
   WholesaleReference,
   WholesaleReferenceView,
 } from './application/wholesale-references';
+export { MirrorProductImages, mirrorSummary } from './application/mirror-product-images';
 export { PresentationExists } from './application/presentation-exists';
 export { PresentationFreshness } from './application/presentation-freshness';
 export { PresentationLabels } from './application/presentation-labels';
