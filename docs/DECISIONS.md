@@ -510,7 +510,7 @@ Aplicación de ADR-020 (punto 1: Open Food Facts primero, citando la fuente; pun
 
 **Reemplaza** la decisión de la #34 de no cargar precios iniciales en la semilla. Decisión de la usuaria del 16-nov-2026: datos para la demo, tomados de la página pública de D1 (el arroz Diana exacto y 9 equivalentes de marca D1).
 
-- **Dónde:** `seed/precios-iniciales.csv`. `pnpm db:seed` pone cada fila en todas las tiendas revisadas de su cadena (26 tiendas D1 en Armenia). `imports` valida y reparte; `comparison` guarda (`ImportInitialPrices`). El comando une los dos, como `accuracy.ts`, porque `imports` no puede depender del núcleo.
+- **Dónde:** `seed/precios-iniciales.csv`. `pnpm db:seed` pone cada fila en todas las tiendas revisadas de su cadena (27 tiendas D1 y 3 Carulla en Armenia; Carulla llegó con la #142). `imports` valida y reparte; `comparison` guarda (`ImportInitialPrices`). El comando une los dos, como `accuracy.ts`, porque `imports` no puede depender del núcleo.
 - **Fuente propia:** `price_current.source` (migración 0026) es `comunidad` o `siembra`. La comparación lo devuelve en `source` (el contrato ya tenía `siembra`) y el frontend lo muestra como «Dato inicial».
 - **Nunca reemplaza a la comunidad:** solo llena tiendas sin precio. Un reporte de la comunidad reemplaza al dato inicial. La escritura usa `setWhere source = 'siembra'`, para que una carrera no pise un precio de la comunidad.
 - **No es un reporte:** no pasa por `pricing` ni por `reliability`. No sube la confianza ni la reputación, no entra a la moderación ni a las ráfagas, y no va al historial de 30 días. Vence con la vigencia de siempre, desde la fecha de consulta.
