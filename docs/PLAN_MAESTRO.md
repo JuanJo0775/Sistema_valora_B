@@ -70,7 +70,7 @@ Las fechas anteriores reproducen el campo **Fecha de decisión** de cada ADR. En
 ### Otras restricciones de alcance vigentes
 
 - **Lenguaje principal:** TypeScript.
-- **Despliegue:** sin Docker en el MVP. El mecanismo reproducible y el proveedor se resuelven en ADR-012; confirmar el alcance de RDA3 con el docente.
+- **Despliegue:** con Docker (ADR-012, 15 de noviembre de 2026): una imagen descrita por un `Dockerfile` en el repositorio. Proveedores (16 de noviembre de 2026): imagen en Render, base PostgreSQL + PostGIS en Neon y PWA en Vercel, que reenvía `/v1/*` a Render. Falta confirmar con el docente que la orquestación de Render cuenta para RDA3.
 - **Alertas:** RF-019 es opcional/futuro y queda fuera del MVP; no comprometer infraestructura de alertas.
 - **Frameworks:** aceptados el 8 de noviembre de 2026. Frontend: React + TypeScript + Vite con vite-plugin-pwa (ADR-017), que reemplaza la propuesta de Next.js + Serwist. Backend: NestJS sobre Express (ADR-018).
 - **Autenticación:** la estrategia general está aceptada, pero la expiración, rotación y revocación de sesiones deben concretarse como trabajo de diseño/implementación, sin reinterpretar la decisión ya aceptada.

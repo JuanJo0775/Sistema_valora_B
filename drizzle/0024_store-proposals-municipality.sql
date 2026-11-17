@@ -1,0 +1,1 @@
+ALTER TABLE "establishments"."store_proposals" ADD COLUMN "municipality" text DEFAULT 'armenia' NOT NULL;

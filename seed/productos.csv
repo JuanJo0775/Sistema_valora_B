@@ -1,0 +1,38 @@
+﻿producto;marca;categoria;cantidad;unidad;unidades_empaque;codigo_barras;verificar;fuente;responsable;fecha
+Arroz blanco;Diana;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Arroz blanco;Diana;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Arroz blanco;Roa;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Arroz blanco;Roa;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Aceite de girasol;Premier;grains-groceries;1000;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Aceite de girasol;Premier;grains-groceries;3000;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Azúcar blanca;Manuelita;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Fríjol rojo;;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Lenteja;;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Panela;;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Sal refinada;Refisal;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Pasta spaghetti;Doria;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Pasta spaghetti;Doria;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Café molido;Sello Rojo;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Chocolate de mesa;Corona;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Atún en aceite;Van Camp's;grains-groceries;160;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Leche entera;Colanta;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Leche entera;Alquería;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Huevos rojos AA;;dairy-eggs;30;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Huevos rojos AA;;dairy-eggs;12;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Queso campesino;;dairy-eggs;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Pan tajado blanco;Bimbo;bakery;600;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Papa pastusa;;fruits-vegetables;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Tomate chonto;;fruits-vegetables;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Cebolla cabezona;;fruits-vegetables;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Plátano hartón verde;;fruits-vegetables;1;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Banano;;fruits-vegetables;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Carne de res molida;;meat-fish;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Pechuga de pollo;;meat-fish;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Gaseosa cola;Coca-Cola;beverages;1500;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Gaseosa cola;Coca-Cola;beverages;400;ml;6;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Agua sin gas;Cristal;beverages;600;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Detergente en polvo;Fab;household-cleaning;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Lavaloza en crema;Axion;household-cleaning;450;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15
+Papel higiénico doble hoja;Familia;household-cleaning;12;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15
+Crema dental;Colgate;personal-care;75;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15
+Jabón de baño;Protex;personal-care;110;g;3;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15

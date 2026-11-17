@@ -1,0 +1,28 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { HealthController } from './health/health.controller';
+import { CatalogModule } from './modules/catalog';
+import { ComparisonModule } from './modules/comparison';
+import { EstablishmentsModule } from './modules/establishments';
+import { IdentityModule } from './modules/identity';
+import { PricingModule } from './modules/pricing';
+import { ReliabilityModule } from './modules/reliability';
+import { validateEnv } from './shared/config/env.validation';
+import { DatabaseModule } from './shared/database/database.module';
+import { EventsModule } from './shared/events';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    DatabaseModule,
+    EventsModule,
+    IdentityModule,
+    CatalogModule,
+    EstablishmentsModule,
+    PricingModule,
+    ReliabilityModule,
+    ComparisonModule,
+  ],
+  controllers: [HealthController],
+})
+export class AppModule {}

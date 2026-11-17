@@ -1,0 +1,185 @@
+﻿osm_id;nombre;tipo;direccion;lat;lng;tipo_osm;revisar;fuente;fecha_consulta
+node/11471860951;Afiliados Jemay;barrio;;4.5367021;-75.6735089;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12200474941;Al Corte;barrio;;4.5386461;-75.6764558;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13700262354;Arepas;barrio;;4.5408108;-75.7020925;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12396927929;Arepas del Día;barrio;;4.5503050;-75.6637750;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3288920104;Carnecol;barrio;;4.5328732;-75.6737202;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13062088394;Carnes Camilo;barrio;;4.5271730;-75.6826860;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12235791292;Casa Blanca;barrio;;4.5490498;-75.6761593;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13790027912;Crisam;barrio;;4.5373183;-75.6730017;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12111677428;Distribuidora Los Paisas;barrio;;4.5430062;-75.6728725;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12604012832;Districerdos del Quindío;barrio;;4.5402797;-75.7032318;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11471860948;Distrimar;barrio;;4.5359297;-75.6715475;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10861431332;Don Alcides;barrio;;4.5408610;-75.7020154;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3456577512;Don Express;barrio;;4.5373155;-75.6699901;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3470475107;Don Pollo - El Bosque;barrio;;4.5389178;-75.6790672;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/8272323267;El Frutal;barrio;;4.5499033;-75.6591702;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11813006480;El guanabazo de Albita;barrio;;4.5421595;-75.6698667;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12302238680;El milagro;barrio;;4.5428786;-75.6732498;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12116019010;El Morrillo;barrio;;4.5379307;-75.6693210;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3934510355;El Nido;barrio;;4.5373833;-75.6699138;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13753298326;El Rancho;barrio;;4.5365058;-75.6742428;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3470475111;El Rancho - Carnicos;barrio;;4.5379621;-75.6781845;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/325329060;El Todo Bien;barrio;;4.5373854;-75.6683446;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11742241509;Expocarnes del Quindío;barrio;;4.5419972;-75.6699005;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/973199642;Fruver La Granja;barrio;;4.5733719;-75.6465950;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1290731123;Fruver La Granja;barrio;;4.5221709;-75.6931788;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1309878164;Fruver La Pavona;barrio;;4.5384376;-75.6975816;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12295736796;Fruver plaza 16;barrio;;4.5369489;-75.6706207;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13439731614;Fuchis;barrio;;4.5325234;-75.6678345;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11836081778;Grey Store;barrio;;4.5596021;-75.6558707;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/7705444936;Huevos Killer;barrio;;4.5399021;-75.6799209;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1424660503;Import MG;barrio;;4.5244008;-75.6846745;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12065180119;La 27;barrio;;4.5406106;-75.6903036;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10861431333;La 53;barrio;;4.5407485;-75.7019325;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11742157456;La 72;barrio;;4.5401637;-75.7034637;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1528016363;La Abundancia;barrio;;4.5319709;-75.6668719;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10024967938;La Bomba;barrio;;4.5763107;-75.6445669;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12233081285;La Flor del Valle;barrio;;4.5357971;-75.6757780;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3090151775;La Granja;barrio;;4.5380405;-75.6675633;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10861431331;La Monarca del Quindío;barrio;;4.5409210;-75.7018893;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12290974502;La Patria;barrio;;4.5430126;-75.6947718;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12347142924;La Placita Quindiana;barrio;;4.5227810;-75.6920243;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/330998166;La Placita Quindiana;barrio;;4.5395368;-75.6795420;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12714733059;Megacentro;barrio;;4.5493177;-75.6597090;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11889978787;Miscelánea Fortumax;barrio;;4.5400530;-75.6800790;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11882436372;MISCELÁNEA LA 12;barrio;;4.5322617;-75.6718056;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10812739522;Miscelania Cerros del Viento;barrio;;4.5415868;-75.7056337;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12396927927;Mizpa;barrio;;4.5503088;-75.6637325;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/306472908;Nohitos Market;barrio;;4.5436798;-75.6891428;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12269805501;Pulpas y frutas la 14;barrio;;4.5363849;-75.6706040;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13391079066;Quindicerdos;barrio;;4.5370813;-75.6760211;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/305297280;S y S;barrio;;4.5398802;-75.6857832;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3806015564;Salsamentaria del Sur;barrio;;4.5215897;-75.6951158;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13154531705;Siempre Alegre;barrio;;4.5326007;-75.6742141;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/14161592741;Siglo XXI;barrio;;4.5405618;-75.7026351;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12591760258;Soluciones GAO;barrio;;4.5505296;-75.6605309;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3470475118;Surtifruver El Bosque;barrio;;4.5383840;-75.6771008;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/325760829;Tavo;barrio;;4.5300714;-75.6759488;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11414868103;Tienda El Paisa;barrio;;4.5411410;-75.7041147;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10110513856;Tienda Los Paisas;barrio;;4.5725464;-75.6440684;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/4535043655;Tienda Mixta La 18;barrio;;4.5404652;-75.6684764;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11244920199;Tienda Shirley;barrio;;4.5432449;-75.6630397;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12629471446;Tiendas Mixtas El Cacique;barrio;;4.5366415;-75.6717369;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12235791285;Ventanilla Bambinos;barrio;;4.5489777;-75.6765508;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11427787504;Ventanilla Los Abuelos;barrio;;4.5410767;-75.7044564;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/306276605;Ventanilla Monín;barrio;;4.5437056;-75.6915930;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3208415683;Ara;descuento;;4.5423845;-75.6844657;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3273747813;Ara;descuento;;4.5277890;-75.7028773;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3277724597;Ara;descuento;;4.5380195;-75.6716506;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3288920523;Ara;descuento;;4.5341522;-75.6738382;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3371127336;Ara;descuento;;4.5198645;-75.7058876;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3411136529;Ara;descuento;Carrera 19A;4.5312327;-75.6804308;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3460438809;Ara;descuento;;4.5481618;-75.6671868;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3806015568;Ara;descuento;;4.5223113;-75.6911756;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3806811994;Ara;descuento;;4.5347034;-75.6708770;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/4191962490;Ara;descuento;;4.5345838;-75.6872431;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/6903936539;Ara;descuento;Avenida 19 de Enero;4.5661581;-75.6519464;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/9426854914;Ara;descuento;;4.5075602;-75.6905054;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/9900454017;Ara;descuento;Calle 50;4.5168287;-75.7155297;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11453120157;Ara;descuento;;4.5389607;-75.6971494;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11721794965;Ara;descuento;;4.5386379;-75.6675041;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12396936472;Ara;descuento;;4.5729498;-75.6468440;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12424950225;Ara;descuento;;4.5314392;-75.6944170;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/331153377;Ara;descuento;;4.5413950;-75.6738710;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/333513358;Ara;descuento;;4.5545227;-75.6635107;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/350693945;Ara;descuento;;4.5508414;-75.6607255;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/356809932;Ara;descuento;;4.5549499;-75.6573172;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/555577000;Ara;descuento;;4.5114070;-75.6972274;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1049774914;Ara;descuento;;4.5366073;-75.6622302;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1174689757;Ara;descuento;;4.5243658;-75.6975704;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1410462622;Ara;descuento;;4.5367304;-75.6742600;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1417130679;Ara;descuento;;4.5406344;-75.7030327;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3277724598;D1;descuento;;4.5376051;-75.6720194;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3406307355;D1;descuento;;4.5542969;-75.6636726;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3763117058;D1;descuento;;4.5572902;-75.6566292;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/5906804085;D1;descuento;;4.5751062;-75.6447591;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/7157647318;D1;descuento;;4.5007496;-75.7205105;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/8910225528;D1;descuento;Avenida 19 de Enero;4.5678333;-75.6510939;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/9007484374;D1;descuento;;4.5451261;-75.6628288;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/9426899029;D1;descuento;;4.5074194;-75.6905002;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/9665917772;D1;descuento;;4.5420884;-75.6725047;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/9977255422;D1;descuento;;4.5265005;-75.6825054;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10092392640;D1;descuento;;4.5140362;-75.6979996;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10797319721;D1;descuento;;4.5277203;-75.7146285;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11018928801;D1;descuento;;4.5609732;-75.6526858;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11134409617;D1;descuento;;4.4700636;-75.7542768;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11396299733;D1;descuento;;4.5423707;-75.6905110;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11453120156;D1;descuento;;4.5390737;-75.6970440;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12194334443;D1;descuento;;4.5536998;-75.6571517;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12295736800;D1;descuento;;4.5371388;-75.6690816;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/14134155536;D1;descuento;;4.5371361;-75.6680081;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/330299608;D1;descuento;;4.5316020;-75.6920250;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/330998260;D1;descuento;;4.5391839;-75.6797397;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/340362134;D1;descuento;;4.5482831;-75.6758707;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/781421104;D1;descuento;;4.5553723;-75.6512831;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1247668264;D1;descuento;;4.5508140;-75.6659446;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1290731122;D1;descuento;;4.5223764;-75.6931244;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1330518852;D1;descuento;;4.5117222;-75.6971712;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3280768321;Tienda D1 - Centro;descuento;;4.5312008;-75.6737537;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12033909096;Abarrotes el Paisa;minimercado;;4.5394970;-75.6956526;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/5336948633;Champiñones Sabor Selecto;minimercado;10 14-18;4.5379133;-75.6679123;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/310000008;El 7;minimercado;;4.5344965;-75.6890894;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1060400150;El Kiosko;minimercado;;4.5354022;-75.6901424;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12174083435;Mercolanta express;minimercado;;4.5529410;-75.6578073;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12295676625;Merkado colsubsidio;minimercado;;4.5359247;-75.6633230;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/9069157332;Merkatto;minimercado;;4.5414119;-75.6674947;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12070815661;Mini market Ambar;minimercado;;4.5582100;-75.6602691;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/4535043656;Miscelánea San Fernando;minimercado;;4.5403404;-75.6689959;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11149232894;Oxxo;minimercado;;4.5616128;-75.6578880;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11598423146;Oxxo;minimercado;;4.5360210;-75.6632069;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11598434073;Oxxo;minimercado;;4.5752033;-75.6447331;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11694965019;Oxxo;minimercado;;4.5168766;-75.7159217;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11817583673;Oxxo;minimercado;;4.5538982;-75.6575073;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11848915822;Oxxo;minimercado;;4.5687100;-75.6506807;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11880146631;Oxxo;minimercado;;4.5381893;-75.6673991;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11897860107;Oxxo;minimercado;;4.5327743;-75.6720203;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12193566456;Oxxo;minimercado;;4.5575383;-75.6560955;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12219481001;Oxxo;minimercado;;4.5601100;-75.6557163;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12536559074;Oxxo;minimercado;;4.5312600;-75.6947393;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/295539344;Oxxo;minimercado;;4.5464014;-75.6623888;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/296358357;Oxxo;minimercado;;4.5428300;-75.6669210;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12109386137;Snappy Market;minimercado;;4.5671048;-75.6513994;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/9012176063;Tienda Escarabajo;minimercado;;4.5809396;-75.6441047;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/1393704283;Tienda La Brasilia;minimercado;;4.5356943;-75.7378167;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3806015569;Tienda Martínez;minimercado;;4.5214380;-75.6960156;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3806015570;Ventanilla Bismak;minimercado;;4.5213007;-75.6951189;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/310000809;Al día;supermercado;;4.5342981;-75.6895707;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12111677429;Autoservicio Merka Granada;supermercado;;4.5428243;-75.6728903;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/4261667102;Benis;supermercado;;4.5362242;-75.6734958;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3322026706;Carulla;supermercado;Avenida Centenario;4.5420582;-75.6594367;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/4376473268;Carulla;supermercado;;4.5209230;-75.6931544;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11978072523;Carulla;supermercado;;4.5689762;-75.6516787;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3426240090;Centrales - Sagrado Corazón de Jesús;supermercado;;4.5366945;-75.6756761;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3295011767;Comfenalco;supermercado;;4.5355704;-75.6715372;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/305643061;D' La Costa;supermercado;;4.5424875;-75.6945921;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13343567065;El Amigo;supermercado;;4.5401228;-75.7035485;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13465138655;Fruta Fresca;supermercado;;4.5639553;-75.6557147;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/310000268;Juniors;supermercado;14;4.5359595;-75.6831288;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/942275322;La Cima;supermercado;;4.5753257;-75.6446843;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3456577517;La Italiana;supermercado;;4.5380497;-75.6694418;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12292362237;La Montaña;supermercado;;4.5406109;-75.6603950;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12449775718;Laureles Express;supermercado;;4.5517386;-75.6567226;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12117603414;Market Bayón;supermercado;;4.5487274;-75.6677418;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10024948769;Market Matiz;supermercado;;4.5780062;-75.6448414;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/305643347;Medellín;supermercado;;4.5425252;-75.6948080;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11096973168;Mercado Vivo;supermercado;Avenida 19 de Enero;4.5674175;-75.6512298;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/2131124144;Mercamos;supermercado;;4.5199075;-75.7067875;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3485389572;Mercamos;supermercado;;4.5224203;-75.6867654;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12488657926;Mercamos;supermercado;;4.5178071;-75.7127963;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1344871356;Mercamos;supermercado;;4.5418604;-75.7006379;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/11927234071;Mercasol;supermercado;;4.5419777;-75.6926324;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/2113854812;Olímpica;supermercado;;4.5315475;-75.6937838;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3630175573;Olímpica;supermercado;;4.5577671;-75.6542361;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/296917479;Olímpica;supermercado;;4.5364826;-75.6783560;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/349348954;Olímpica;supermercado;;4.5495854;-75.6592190;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/12917375315;Ready 2 Go;supermercado;;4.5017753;-75.7159977;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/334032205;Rindemax;supermercado;;4.5442040;-75.6730438;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/1470143047;Soto;supermercado;;4.5327351;-75.6661674;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/13524844753;Super Bulevar;supermercado;;4.5454765;-75.6666188;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/3114169610;Super Inter Las Américas;supermercado;;4.5425724;-75.6858987;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/306278071;Super Market York;supermercado;;4.5404135;-75.7025542;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/5502255848;Supermercado Laureles;supermercado;;4.4703467;-75.7645222;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/357939597;Supermercado Laureles;supermercado;;4.5599145;-75.6555278;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+node/10092342970;Ventanilla Verde;supermercado;;4.5341168;-75.7019032;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
+way/272170150;Ventanilla Verde;supermercado;Calle 23 16-21;4.5326964;-75.6756722;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12

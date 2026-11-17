@@ -4,7 +4,7 @@
 
 El contrato OpenAPI 3.x de la API se mantendrá en:
 
-`docs/api/openapi.yaml`
+`docs/openapi.yaml`
 
 La primera versión del archivo se incorporará al cerrar el inventario de endpoints y los modelos de solicitud/respuesta de cada módulo. No se copia ni se adopta como contrato oficial una especificación externa o un borrador anterior sin reconciliarlo con los requisitos vigentes de Notion.
 

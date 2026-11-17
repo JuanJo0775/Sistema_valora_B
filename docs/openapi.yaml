@@ -19,27 +19,55 @@ tags:
   - name: Autenticación
   - name: Moderación
   - name: Comercios
+  - name: Operación
 security: []
 paths:
+  /health:
+    get:
+      tags: [Operación]
+      operationId: getHealth
+      summary: La API está en marcha
+      description: >-
+        Pública y sin cuenta. Sirve para comprobar que el proceso responde (despliegue y monitoreo,
+        RNF-011). No revisa la base de datos (#25).
+      responses:
+        '200':
+          description: La API responde
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
   /products:
     get:
       tags: [Catálogo]
       operationId: searchProducts
       summary: Buscar productos por texto o código de barras (RF-003)
+      description: >-
+        Se envía exactamente uno de q o barcode; sin ninguno o con los dos responde 400 VALIDATION_ERROR
+        («Envía q o barcode» o «Envía solo q o barcode, no ambos»). Con q, cada palabra debe aparecer en
+        el nombre, en la marca o en los alias del producto (#26), en cualquier orden y también como pedazo («gira» encuentra «girasol»), sin
+        distinguir tildes ni mayúsculas (RF-003 RN4); los resultados se ordenan por parecido con lo escrito
+        y, en empate, por nombre. Con barcode responde el producto que tiene esa presentación o la lista
+        vacía (no 404). Caché pública de 30 segundos (valor inicial calibrable, EC-04).
       parameters:
         - name: q
           in: query
-          description: Texto libre, sin distinguir tildes.
+          description: Texto libre; cada palabra debe aparecer en el nombre, la marca o un alias, sin distinguir tildes.
           schema: { type: string, minLength: 2 }
         - name: barcode
           in: query
+          description: Código de barras leído del empaque (EAN/GTIN).
           schema: { type: string, pattern: '^[0-9]{8,14}$' }
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
-          description: Productos encontrados
+          description: Productos encontrados, del más parecido al menos parecido
           headers:
-            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=30' }
           content:
             application/json:
               schema:
@@ -50,30 +78,318 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Product' }
         '400': { $ref: '#/components/responses/BadRequest' }
+  /categories:
+    get:
+      tags: [Catálogo]
+      operationId: listCategories
+      summary: Listar las categorías del catálogo (RF-003)
+      description: >-
+        La lista cerrada de categorías (grill de la #49), ordenada por nombre. El frontend la usa para
+        proponer un producto (`categoryCode` de `POST /v1/product-requests`, #111). Solo cambia con una
+        migración: caché pública de una hora (EC-04).
+      responses:
+        '200':
+          description: Todas las categorías, por nombre
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=3600' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Category' }
   /products/{productId}:
     get:
       tags: [Catálogo]
       operationId: getProduct
       summary: Consultar un producto y sus presentaciones (RF-003, RF-004)
+      description: >-
+        Lectura pública con caché de 5 minutos (valor inicial calibrable, EC-04) y ETag: una petición con
+        If-None-Match igual al ETag responde 304 si el producto no cambió.
       parameters:
         - $ref: '#/components/parameters/ProductId'
       responses:
         '200':
-          description: Producto con presentaciones
+          description: Producto con su categoría y sus presentaciones
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=300' }
+            ETag:
+              schema: { type: string }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Product' }
+        '304': { description: El producto no cambió desde el ETag enviado }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
   /products/{productId}/comparison:
     get:
       tags: [Comparación]
       operationId: compareProduct
       summary: Comparar precios de un producto entre establecimientos (RF-008, RF-009, RF-010)
-      description: |
-        Lee el modelo precalculado price_current (ADR-004). La vigencia se calcula al leer.
-        El orden depende solo de los criterios declarados; las promociones vienen aparte (ADR-009, EC-06).
+      description: >-
+        Lee el modelo precalculado price_current (ADR-004). La vigencia se calcula al leer. El orden
+        depende solo de los criterios declarados; las promociones vienen aparte (ADR-009, EC-06).
+        La ubicación aproximada del usuario (lat, lng) se usa solo para calcular la cercanía: no se
+        guarda, no se registra en los logs ni aparece en la respuesta (RF-005 RN5, EC-08). Por eso la
+        respuesta lleva Cache-Control no-store, aunque es una lectura pública. Se envía la ubicación
+        (lat y lng), un municipio, o las dos cosas (RF-009 RN5, #106). Sin ubicación no hay distancia:
+        distanceM no sale, radiusKm no se usa y sort=distance responde 400.
       parameters:
         - $ref: '#/components/parameters/ProductId'
+        - name: lat
+          in: query
+          description: Obligatoria (con lng) si no se envía municipality.
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - name: lng
+          in: query
+          description: Obligatoria (con lat) si no se envía municipality.
+          schema: { type: number, minimum: -180, maximum: 180 }
+        - name: municipality
+          in: query
+          description: Solo las tiendas de ese municipio del Quindío (#106).
+          schema: { $ref: '#/components/schemas/Municipality' }
+        - name: radiusKm
+          in: query
+          description: Radio de búsqueda en kilómetros (valores iniciales calibrables, ADR-019).
+          schema: { type: number, minimum: 0.5, maximum: 3, default: 2 }
+        - name: sort
+          in: query
+          description: >-
+            Criterio de orden. Si hay empate, unit_price sigue con la distancia y la fecha más
+            reciente; distance, con el precio por unidad y la fecha; recent, con el precio por unidad
+            y la distancia. Al final deciden el id del establecimiento y el de la presentación,
+            comparados carácter por carácter. El precio por unidad se compara con su valor exacto.
+          schema: { type: string, enum: [unit_price, distance, recent], default: unit_price }
+        - name: onlyCurrent
+          in: query
+          description: >-
+            Si es verdadero, solo incluye precios vigentes (excluye los por confirmar y los
+            desactualizados).
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Resultados y promociones separadas
+          headers:
+            Cache-Control:
+              schema: { type: string, example: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comparison' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: >-
+            Regla de negocio incumplida. code INCOMPATIBLE_UNITS: las presentaciones del producto
+            mezclan bases de unidad (100 g, 100 ml o unidad) y no se pueden comparar; el catálogo lo
+            impide desde la issue #59.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /products/{productId}/history:
+    get:
+      tags: [Comparación]
+      operationId: getPriceHistory
+      summary: Historial de precios de los últimos 30 días (RF-008)
+      description: >-
+        Pública, sin cuenta (RN3). Una serie por presentación con el precio mínimo, el promedio
+        (redondeado al peso) y la cantidad de reportes de cada día, en hora de Colombia. Los días sin
+        precios no salen. No cuentan los precios descartados por moderación ni los sospechosos que
+        nadie ha aprobado. Sin datos de quién reportó (EC-08). Caché pública de 5 minutos con ETag
+        (EC-04) (#83).
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+        - name: establishmentId
+          in: query
+          description: Opcional; solo los precios de esa tienda.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Serie diaria por presentación
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=300' }
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [from, to, presentations]
+                properties:
+                  from: { type: string, format: date, description: Primer día de la ventana (hora de Colombia). }
+                  to: { type: string, format: date, description: Hoy, en hora de Colombia. }
+                  presentations:
+                    type: array
+                    items:
+                      type: object
+                      required: [presentationId, label, points]
+                      properties:
+                        presentationId: { type: string, format: uuid }
+                        label: { type: string }
+                        points:
+                          type: array
+                          items:
+                            type: object
+                            required: [date, minPriceCop, avgPriceCop, reports, source]
+                            properties:
+                              date: { type: string, format: date }
+                              minPriceCop: { type: integer, minimum: 1 }
+                              avgPriceCop: { type: integer, minimum: 1 }
+                              reports: { type: integer, minimum: 1 }
+                              source:
+                                type: string
+                                enum: [reportado]
+                                description: RN1; los precios oficiales llegan con commerce (Corte 3).
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404':
+          description: El producto no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /featured-products:
+    get:
+      tags: [Comparación]
+      operationId: listFeaturedProducts
+      summary: Canasta básica de hoy en un municipio (RF-008, RF-009, B#120)
+      description: >-
+        Pública, sin cuenta. Los productos con más tiendas del municipio que tienen un precio vigente,
+        cada uno con su precio más bajo por unidad y la tienda donde está. Lee price_current (ADR-004)
+        con el mismo criterio que la comparación con onlyCurrent=true: solo precios vigentes (ni por
+        confirmar, ni desactualizados, ni en revisión). El más bajo se elige con el valor exacto del
+        precio por unidad y los desempates de la comparación (la fecha más reciente y luego los ids). Las
+        promociones no entran (ADR-009) y no hay datos de quién reportó (EC-08). Orden declarado en
+        criteria (EC-06): más tiendas con precio vigente primero; en empate, el menor precio por unidad
+        que se muestra (entre productos de bases distintas, 100 g o unidad, es solo un desempate) y al
+        final el id del producto. La ruta no cuelga de /products porque /products/{productId} tomaría
+        «featured» como un id. Caché pública de 60 segundos (valor provisional, EC-04) y ETag: con
+        If-None-Match igual al ETag responde 304.
+      parameters:
+        - name: municipality
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Municipality' }
+        - name: limit
+          in: query
+          description: Los mismos valores del parámetro común Limit, con 5 por defecto.
+          schema: { type: integer, minimum: 1, maximum: 50, default: 5 }
+      responses:
+        '200':
+          description: Los productos de la canasta, en el orden declarado
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=60' }
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [criteria, items]
+                properties:
+                  criteria:
+                    type: object
+                    description: Criterio declarado al usuario (EC-06).
+                    required: [municipality, sort]
+                    properties:
+                      municipality: { $ref: '#/components/schemas/Municipality' }
+                      sort:
+                        type: string
+                        enum: [store_count]
+                        description: Más tiendas con precio vigente primero.
+                  items:
+                    type: array
+                    description: Vacío si ninguna tienda del municipio tiene precios vigentes.
+                    items:
+                      type: object
+                      required: [productId, name, category, storeCount, cheapest]
+                      properties:
+                        productId: { type: string, format: uuid }
+                        name: { type: string }
+                        brand: { type: string, description: Opcional, como en Product. }
+                        category: { $ref: '#/components/schemas/Category' }
+                        storeCount:
+                          type: integer
+                          minimum: 1
+                          description: Tiendas del municipio con al menos un precio vigente del producto.
+                        cheapest:
+                          type: object
+                          description: El precio vigente más bajo por unidad del producto en el municipio.
+                          required: [presentationId, label, priceCop, unitPrice, establishment]
+                          properties:
+                            presentationId: { type: string, format: uuid }
+                            label:
+                              type: string
+                              example: Arroz Diana · 500 g
+                              description: Producto y presentación, como label del historial.
+                            priceCop: { type: integer, minimum: 1 }
+                            unitPrice:
+                              type: object
+                              description: Redondeado al peso entero con la mitad hacia arriba (RF-004).
+                              required: [valueCop, per]
+                              properties:
+                                valueCop: { type: integer, minimum: 0 }
+                                per: { type: string, enum: [100g, 100ml, und] }
+                            establishment:
+                              type: object
+                              required: [id, name]
+                              properties:
+                                id: { type: string, format: uuid }
+                                name: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /establishments:
+    get:
+      tags: [Establecimientos]
+      operationId: searchEstablishments
+      summary: Buscar tiendas por nombre o municipio, sin ubicación (RF-005, #116)
+      description: >-
+        Para elegir la tienda sin compartir la ubicación (EC-08), por ejemplo al registrar un precio (RF-006).
+        Se envía al menos uno de q o municipality; sin ninguno responde 400 VALIDATION_ERROR («Envía q o
+        municipality»), para no devolver todo el directorio. Con q, cada palabra debe aparecer en el nombre
+        de la tienda, en cualquier orden y también como pedazo, sin distinguir tildes ni mayúsculas (como la
+        búsqueda de productos). Ordenadas por nombre. Sin ubicación no hay distancia: los items no traen
+        distanceM. Caché pública de 5 minutos (valor inicial calibrable, EC-04).
+      parameters:
+        - name: q
+          in: query
+          description: Parte del nombre de la tienda; cada palabra debe aparecer, sin distinguir tildes.
+          schema: { type: string, minLength: 2 }
+        - name: municipality
+          in: query
+          description: Solo las tiendas de ese municipio del Quindío.
+          schema: { $ref: '#/components/schemas/Municipality' }
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Tiendas encontradas, ordenadas por nombre
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=300' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Establishment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /establishments/nearby:
+    get:
+      tags: [Establecimientos]
+      operationId: listNearbyEstablishments
+      summary: Establecimientos cercanos (RF-005)
+      description: >-
+        La ubicación aproximada del usuario (lat, lng) se usa solo para calcular la cercanía: no se guarda,
+        no se registra en los logs ni aparece en la respuesta (RF-005 RN5, EC-08). Por eso la respuesta
+        lleva Cache-Control no-store, aunque es una lectura pública. Devuelve las tiendas registradas
+        dentro del radio, de la más cercana a la más lejana.
+      parameters:
         - name: lat
           in: query
           required: true
@@ -84,87 +400,174 @@ paths:
           schema: { type: number, minimum: -180, maximum: 180 }
         - name: radiusKm
           in: query
-          schema: { type: number, minimum: 0.2, maximum: 10, default: 2 }
-        - name: sort
-          in: query
-          schema: { type: string, enum: [unit_price, distance, recent], default: unit_price }
-        - name: onlyCurrent
-          in: query
-          description: Si es verdadero, excluye precios por vencer.
-          schema: { type: boolean, default: false }
-      responses:
-        '200':
-          description: Resultados y promociones separadas
-          headers:
-            Cache-Control: { $ref: '#/components/headers/CacheControl' }
-            ETag: { schema: { type: string } }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Comparison' }
-        '404': { $ref: '#/components/responses/NotFound' }
-  /products/{productId}/history:
-    get:
-      tags: [Comparación]
-      operationId: getPriceHistory
-      summary: Historial de precios de los últimos 30 días (RF-008)
-      parameters:
-        - $ref: '#/components/parameters/ProductId'
-        - name: establishmentId
-          in: query
-          schema: { type: string, format: uuid }
-      responses:
-        '200':
-          description: Serie diaria
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  points:
-                    type: array
-                    items:
-                      type: object
-                      required: [date, minPriceCop]
-                      properties:
-                        date: { type: string, format: date }
-                        minPriceCop: { type: integer, minimum: 1 }
-                        avgPriceCop: { type: integer, minimum: 1 }
-  /establishments/nearby:
-    get:
-      tags: [Establecimientos]
-      operationId: listNearbyEstablishments
-      summary: Establecimientos cercanos (RF-005)
-      parameters:
-        - name: lat
-          in: query
-          required: true
-          schema: { type: number }
-        - name: lng
-          in: query
-          required: true
-          schema: { type: number }
-        - name: radiusKm
-          in: query
-          schema: { type: number, default: 2 }
+          description: Radio de búsqueda en kilómetros (valores iniciales calibrables, ADR-019).
+          schema: { type: number, minimum: 0.5, maximum: 3, default: 2 }
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Establecimientos ordenados por distancia
+          headers:
+            Cache-Control:
+              schema: { type: string, example: no-store }
           content:
             application/json:
               schema:
                 type: object
+                required: [items]
                 properties:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/Establishment' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /establishments/{establishmentId}/prices:
+    get:
+      tags: [Comparación]
+      operationId: listEstablishmentPrices
+      summary: Precios vigentes de un establecimiento (RF-008)
+      description: >-
+        Pública, sin cuenta. Todos los precios de la tienda leídos de price_current, ordenados por
+        producto y presentación, cada uno con su vigencia y su confiabilidad, como en la comparación
+        (sin la distancia). onlyCurrent=true quita los desactualizados y los que están en revisión.
+        Lectura pública con caché de 60 segundos (valor provisional, EC-04) y ETag: con If-None-Match
+        igual al ETag responde 304 (#28).
+      parameters:
+        - name: establishmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: onlyCurrent
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: La tienda y sus precios
+          headers:
+            Cache-Control:
+              schema: { type: string, example: 'public, max-age=60' }
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [establishment, prices]
+                properties:
+                  establishment:
+                    type: object
+                    required: [id, name, type, lat, lng, municipality]
+                    properties:
+                      id: { type: string, format: uuid }
+                      name: { type: string }
+                      type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+                      address: { type: string }
+                      lat: { type: number }
+                      lng: { type: number }
+                      municipality: { $ref: '#/components/schemas/Municipality' }
+                  prices:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          productId,
+                          presentationId,
+                          productName,
+                          reportId,
+                          priceCop,
+                          unitPrice,
+                          source,
+                          freshness,
+                          reliability,
+                          confirmations,
+                          observedAt,
+                        ]
+                      properties:
+                        productId: { type: string, format: uuid }
+                        presentationId: { type: string, format: uuid }
+                        productName:
+                          type: string
+                          description: 'Producto y presentación, por ejemplo «Arroz Diana · 500 g».'
+                        reportId:
+                          type: string
+                          format: uuid
+                          description: El reporte cuyo precio se muestra; sirve para marcarlo (RF-013).
+                        priceCop: { type: integer, minimum: 1 }
+                        unitPrice:
+                          type: object
+                          required: [valueCop, per]
+                          properties:
+                            valueCop: { type: integer, minimum: 0 }
+                            per: { type: string, enum: [100g, 100ml, und] }
+                        source: { type: string, enum: [comunidad, oficial, siembra] }
+                        freshness: { type: string, enum: [vigente, por_confirmar, desactualizado] }
+                        reliability: { type: string, enum: [alta, media, baja, en_revision] }
+                        confirmations: { type: integer, minimum: 0 }
+                        observedAt: { type: string, format: date-time }
+        '304': { description: Los precios no cambiaron desde el ETag enviado }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404':
+          description: El establecimiento no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /establishment-proposals:
+    post:
+      tags: [Establecimientos]
+      operationId: proposeEstablishment
+      summary: Proponer una tienda nueva (RF-005)
+      description: >-
+        Solo el rol reportante. La propuesta queda pendiente y no aparece en el mapa hasta que un
+        moderador la aprueba (RN7). Se guarda la clave seudónima de quien propone, nunca su cuenta;
+        la ubicación es la de la tienda, no la de quien propone (RN4, EC-08) (#27).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, lat, lng, municipality]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 120 }
+                type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+                lat: { type: number, minimum: -90, maximum: 90 }
+                lng: { type: number, minimum: -180, maximum: 180 }
+                address: { type: string, maxLength: 200 }
+                municipality: { $ref: '#/components/schemas/Municipality' }
+      responses:
+        '202':
+          description: Propuesta recibida, pendiente de moderación
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [pendiente] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /reports:
     post:
       tags: [Reportes]
       operationId: createReport
       summary: Registrar el precio observado en un establecimiento (RF-006, RF-007)
       description: |
-        Idempotente por la cabecera Idempotency-Key: un reintento con la misma clave devuelve
-        la misma respuesta y no crea duplicados (EC-01, EC-07). La confianza se calcula después (ADR-004).
+        Idempotente por la cabecera Idempotency-Key: un reintento con la misma clave y el mismo cuerpo
+        devuelve la respuesta original y no crea duplicados (EC-01, EC-07). El precio vigente se
+        actualiza segundos después con el evento PriceReported; la confianza se calcula después (ADR-004).
+        Exige sesión de reportante y la cabecera X-CSRF-Token (issue #16); el reporte guarda la cuenta,
+        que nunca sale en respuestas ni eventos (EC-08). La misma Idempotency-Key usada por otra cuenta
+        responde 409.
+
+        Cola sin conexión (ADR-010, #30): la PWA manda cada reporte de la cola por esta misma ruta, con
+        su clave. Qué hacer con cada respuesta: 201 o 200, confirmado (sale de la cola); 400, 409 o 422,
+        final (sale de la cola y avisa); 429 de un reporte que ya estaba en la cola, final (su hora de
+        observación no cambia, así que no pasará); 401 o 403, iniciar sesión y reintentar con la misma
+        clave; sin red o 5xx, reintentar más tarde con la misma clave.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -182,28 +585,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReportReceipt' }
         '200':
-          description: Reintento con la misma clave; se devuelve el resultado original
+          description: Reintento con la misma clave y el mismo cuerpo; se devuelve el id, el estado y la hora de llegada originales
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReportReceipt' }
         '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        '401':
+          description: Se requiere sesión
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '409':
-          description: Ya existe un reporte de esta cuenta para el mismo producto y establecimiento en la última hora
+          description: >-
+            Conflicto. code IDEMPOTENCY_KEY_REUSED: la misma Idempotency-Key ya se usó con otro cuerpo o por otra cuenta.
+            code DUPLICATE_REPORT: la cuenta ya tiene un reporte de esa presentación en ese
+            establecimiento observado a menos de 60 minutos de este (por la hora de observación, no de
+            llegada; valor provisional, #29, #30). Solo este código trae availableFrom: la hora de
+            observación desde la que se acepta otro reporte; reintentar el mismo nunca pasa (#84).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: '#/components/schemas/ConflictError' }
         '422':
-          description: Antigüedad mayor a 24 horas o precio fuera de rango
+          description: >-
+            Regla de negocio incumplida. code INVALID_OBSERVATION_DATE: observedAt está más de 5 minutos
+            en el futuro o es de hace más de 24 horas, aunque venga de la cola sin conexión (#29). code
+            UNKNOWN_PRESENTATION o UNKNOWN_ESTABLISHMENT: la presentación o el establecimiento no existen.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '429':
+          description: >-
+            Más de 20 reportes de la cuenta observados dentro de una misma hora (por la hora de
+            observación, no de llegada; valor provisional, RF-012 RN2, #29, #30). Retry-After dice
+            cuántos segundos faltan para que una observación nueva pueda entrar. Los reportes de esa hora
+            van a la cola de moderación con el motivo rafaga.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /reports/{reportId}/flag:
     post:
       tags: [Reportes]
       operationId: flagReport
       summary: Marcar un precio como dudoso (RF-013)
+      description: >-
+        Solo el rol reportante. Una marca por cuenta y reporte (RN1); el reporte entra a la cola de
+        moderación con el motivo marcado. Quién marca no se muestra a nadie (EC-08).
       security:
         - sessionCookie: []
           csrfToken: []
@@ -224,17 +653,132 @@ paths:
                 comment: { type: string, maxLength: 280 }
       responses:
         '202': { description: Señal recibida para moderación }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El reporte no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: code ALREADY_FLAGGED, esta cuenta ya marcó este reporte.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /reports/{reportId}/appeal:
+    post:
+      tags: [Reportes]
+      operationId: appealReport
+      summary: Apelar un reporte descartado, una sola vez (RF-013 RN4)
+      description: >-
+        Solo el autor del reporte, hasta 7 días después del descarte (valor provisional). Entra a la
+        cola de moderación con el motivo apelacion y la decide un moderador distinto del que
+        descartó. Una cuenta suspendida también puede apelar (#71).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '202': { description: Apelación recibida }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El reporte no existe o no es de esta cuenta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: code ALREADY_APPEALED, el reporte ya se apeló.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            code NOT_APPEALABLE, el reporte no está descartado. code APPEAL_WINDOW_CLOSED, pasaron
+            7 días desde el descarte.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /me/reports/{reportId}/status:
+    get:
+      tags: [Reportes]
+      operationId: getMyReportStatus
+      summary: Estado de un reporte propio y hasta cuándo se puede apelar (RF-013 RN4)
+      description: >-
+        Solo el autor. Nunca dice quién decidió ni quién marcó (EC-08). Sin caché (no-store). Una
+        cuenta suspendida también puede consultarlo (#71).
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Estado del reporte
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reportId, status]
+                properties:
+                  reportId: { type: string, format: uuid }
+                  status:
+                    type: string
+                    enum:
+                      [
+                        normal,
+                        en_revision,
+                        descartado,
+                        apelacion_pendiente,
+                        apelacion_aceptada,
+                        apelacion_rechazada,
+                      ]
+                  appealableUntil:
+                    type: string
+                    format: date-time
+                    description: Solo si el reporte está descartado y todavía se puede apelar.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El reporte no existe o no es de esta cuenta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /me/reports:
     get:
       tags: [Reportes]
       operationId: listMyReports
-      summary: Consultar mis aportes (RF-006)
+      summary: Consultar mis aportes con su estado (RF-006)
+      description: >-
+        Solo el rol reportante (también con una cuenta suspendida). El más reciente primero. Un
+        reporte aparece cuando reliability lo evalúa (segundos después de enviarlo). Nunca dice
+        quién decidió ni quién marcó (EC-08). Sin caché (no-store) (#76).
       security:
         - sessionCookie: []
       parameters:
         - $ref: '#/components/parameters/Limit'
+        - name: before
+          in: query
+          description: El nextBefore de la página anterior.
+          schema: { type: string, format: date-time }
       responses:
         '200':
           description: Aportes de la cuenta autenticada
@@ -242,16 +786,60 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [items]
                 properties:
                   items:
                     type: array
-                    items: { $ref: '#/components/schemas/ReportReceipt' }
+                    items:
+                      type: object
+                      required:
+                        [
+                          reportId,
+                          productName,
+                          establishmentName,
+                          priceCop,
+                          priceType,
+                          observedAt,
+                          status,
+                        ]
+                      properties:
+                        reportId: { type: string, format: uuid }
+                        productName: { type: string }
+                        establishmentName: { type: string }
+                        priceCop: { type: integer, minimum: 1 }
+                        priceType: { type: string, enum: [normal, oferta] }
+                        observedAt: { type: string, format: date-time }
+                        status:
+                          type: string
+                          enum:
+                            [
+                              normal,
+                              en_revision,
+                              descartado,
+                              apelacion_pendiente,
+                              apelacion_aceptada,
+                              apelacion_rechazada,
+                            ]
+                        appealableUntil:
+                          type: string
+                          format: date-time
+                          description: Solo si el reporte está descartado y todavía se puede apelar.
+                  nextBefore:
+                    type: string
+                    format: date-time
+                    description: Solo si la página está llena; se manda como before para la siguiente.
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /product-requests:
     post:
       tags: [Catálogo]
       operationId: requestProduct
-      summary: Solicitar el alta de un producto que no existe en el catálogo (RF-003)
+      summary: Proponer un producto que no existe en el catálogo (RF-003)
+      description: >-
+        Solo el rol reportante. La propuesta queda pendiente y no aparece en la búsqueda hasta que un
+        moderador la aprueba (RN3). Se guarda la clave seudónima de quien propone, nunca su cuenta
+        (EC-08) (#26).
       security:
         - sessionCookie: []
           csrfToken: []
@@ -261,20 +849,51 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required: [name, categoryCode, quantity, unit]
               properties:
-                name: { type: string, maxLength: 120 }
-                barcode: { type: string }
+                name: { type: string, minLength: 2, maxLength: 120 }
+                brand: { type: string, maxLength: 80 }
+                categoryCode: { type: string, description: Código de la lista cerrada de categorías. }
                 quantity: { type: number, exclusiveMinimum: 0 }
-                unit: { $ref: '#/components/schemas/BaseUnit' }
+                unit: { $ref: '#/components/schemas/Unit' }
+                packCount: { type: integer, minimum: 1, default: 1 }
+                barcode:
+                  type: string
+                  pattern: '^(\d{8}|\d{12}|\d{13}|\d{14})$'
+                  description: Opcional; EAN/UPC con dígito de control válido.
       responses:
-        '202': { description: Solicitud registrada para revisión }
+        '202':
+          description: Propuesta recibida, pendiente de moderación
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [pendiente] }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: code BARCODE_TAKEN, el código ya es de un producto; message dice cuál (RN2).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code UNKNOWN_CATEGORY, la categoría no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /auth/register:
     post:
       tags: [Autenticación]
       operationId: register
       summary: Crear cuenta de reportante con consentimiento de datos (RF-001, Ley 1581)
+      description: >-
+        La cuenta nueva siempre es reportante y no inicia sesión. Si el correo ya tiene cuenta, responde
+        201 igual y no cambia nada, para no revelar qué correos están registrados (EC-08). El correo se
+        guarda sin espacios y en minúsculas.
       requestBody:
         required: true
         content:
@@ -283,18 +902,31 @@ paths:
               type: object
               required: [email, password, acceptedPolicyVersion]
               properties:
-                email: { type: string, format: email }
-                password: { type: string, minLength: 10, writeOnly: true }
-                acceptedPolicyVersion: { type: string }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 10, maxLength: 128, writeOnly: true }
+                acceptedPolicyVersion:
+                  type: string
+                  enum: ['2026-11']
+                  description: Versión vigente de la política de datos (provisional hasta tener el texto).
       responses:
-        '201': { description: Cuenta creada }
+        '201': { description: Cuenta creada, o correo ya registrado (misma respuesta) }
         '400': { $ref: '#/components/responses/BadRequest' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '429':
+          description: Más de 10 registros por IP en 15 minutos (valores provisionales).
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /auth/login:
     post:
       tags: [Autenticación]
       operationId: login
       summary: Iniciar sesión; el servidor entrega la cookie de sesión (ADR-014)
+      description: >-
+        Cada inicio de sesión crea una sesión y un token nuevos. La sesión vence tras 7 días sin uso o
+        30 días después del inicio (valores provisionales). Después, GET /auth/session entrega el token
+        CSRF.
       requestBody:
         required: true
         content:
@@ -303,17 +935,32 @@ paths:
               type: object
               required: [email, password]
               properties:
-                email: { type: string, format: email }
-                password: { type: string, writeOnly: true }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, maxLength: 128, writeOnly: true }
       responses:
         '204':
           description: Sesión iniciada
           headers:
             Set-Cookie:
-              description: Cookie de sesión HttpOnly, Secure, SameSite
+              description: >-
+                valora_session con HttpOnly, Secure, SameSite=Lax, Path=/ y Max-Age de 30 días.
               schema: { type: string }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: >-
+            code UNAUTHORIZED con «Correo o contraseña incorrectos.», exista o no la cuenta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: >-
+            Más de 5 fallos por correo o 20 intentos por IP en 15 minutos (valores provisionales). No
+            revela si la cuenta existe.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /auth/logout:
     post:
       tags: [Autenticación]
@@ -323,7 +970,9 @@ paths:
         - sessionCookie: []
           csrfToken: []
       responses:
-        '204': { description: Sesión cerrada }
+        '204': { description: Sesión revocada en el servidor; la cookie se borra }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /auth/session:
     get:
       tags: [Autenticación]
@@ -338,22 +987,38 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [role]
+                required: [role, csrfToken]
+                description: Sin correo ni id de la cuenta (EC-08).
                 properties:
                   role: { type: string, enum: [reportante, comercio, moderador] }
-                  csrfToken: { type: string }
+                  csrfToken:
+                    type: string
+                    description: >-
+                      Va en la cabecera X-CSRF-Token de las rutas con sesión que modifican datos. El
+                      frontend lo guarda en memoria.
+                  suspendedUntil:
+                    type: string
+                    format: date-time
+                    description: >-
+                      Solo si la cuenta está suspendida: la sesión está limitada a ver el estado de
+                      sus reportes y apelar (#71).
         '401': { $ref: '#/components/responses/Unauthorized' }
   /moderation/queue:
     get:
       tags: [Moderación]
       operationId: getModerationQueue
       summary: Cola de reportes en revisión (RF-012, RF-013)
+      description: >-
+        Solo el rol moderador. Reportes sin decisión que la detección marcó sospechosos (desviacion)
+        o que alguna cuenta marcó como dudosos (marcado). Orden por gravedad (RN2): primero
+        desviacion, de mayor a menor desviación; luego marcado, de más a menos marcas; en empate, el
+        más antiguo. Hoy solo aparecen desviacion y marcado; las demás llegan con el corte 3.
       security:
         - sessionCookie: []
       parameters:
         - name: reason
           in: query
-          schema: { type: string, enum: [desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
+          schema: { type: string, enum: [apelacion, desviacion, rafaga, marcado, discrepancia_oficial, verificacion_comercio] }
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
@@ -366,12 +1031,21 @@ paths:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/ModerationItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /moderation/{itemId}/decision:
     post:
       tags: [Moderación]
       operationId: decideModerationItem
       summary: Registrar la decisión del moderador; queda auditada (RF-013)
+      description: >-
+        Solo el rol moderador. itemId es el id del reporte. Toda decisión exige motivo (RN3) y queda
+        en una bitácora que no se puede modificar. aprobar vuelve a mostrar el precio como normal;
+        descartar deja de mostrarlo (pasa al precio confiable más reciente de la tienda) y baja la
+        reputación de su autor; si es el tercer descarte seguido de ese autor, su cuenta se suspende
+        7 días (RN6). observar_cuentas suspende 7 días al autor del reporte, que sigue en la cola. El
+        moderador nunca ve quién es el autor; la suspensión revoca sus sesiones (#33).
       security:
         - sessionCookie: []
           csrfToken: []
@@ -386,14 +1060,326 @@ paths:
           application/json:
             schema:
               type: object
-              required: [decision]
+              required: [decision, note]
               properties:
                 decision: { type: string, enum: [aprobar, descartar, observar_cuentas] }
-                note: { type: string, maxLength: 500 }
+                note: { type: string, minLength: 10, maxLength: 500 }
       responses:
         '204': { description: Decisión registrada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404':
+          description: El reporte no está en la cola (no existe o ya se decidió).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: >-
+            code OWN_REPORT: el moderador es el autor del reporte; lo decide otro moderador (#73).
+            code SAME_MODERATOR: quien descartó el reporte no decide su apelación (#71).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code DECISION_NOT_ALLOWED, observar_cuentas sobre una apelación (#71).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /moderation/store-proposals:
+    get:
+      tags: [Moderación]
+      operationId: listStoreProposals
+      summary: Tiendas propuestas pendientes de decisión (RF-005)
+      description: >-
+        Solo el rol moderador. La más antigua primero. Cada una dice si está fuera de la zona de
+        servicio (rectángulo aproximado del Quindío, RN1) y trae sus posibles duplicados: tiendas a
+        menos de 50 m con un nombre equivalente (RN3; valores provisionales). No dice quién la propuso
+        (EC-08). Sin caché (#27).
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Propuestas pendientes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, type, lat, lng, municipality, outOfZone, possibleDuplicates, createdAt]
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+                        type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+                        address: { type: string }
+                        lat: { type: number }
+                        lng: { type: number }
+                        municipality: { $ref: '#/components/schemas/Municipality' }
+                        outOfZone: { type: boolean }
+                        possibleDuplicates:
+                          type: array
+                          items:
+                            type: object
+                            required: [id, name, distanceM]
+                            properties:
+                              id: { type: string, format: uuid }
+                              name: { type: string }
+                              distanceM: { type: integer, minimum: 0 }
+                        createdAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /moderation/store-proposals/{proposalId}/decision:
+    post:
+      tags: [Moderación]
+      operationId: decideStoreProposal
+      summary: Aprobar, fusionar o rechazar una tienda propuesta (RF-005)
+      description: >-
+        Solo el rol moderador. aprobar crea la tienda (aparece en el mapa) con el id de la propuesta;
+        fusionar la une a una tienda existente (mergeInto) sin crear nada, nunca de forma automática
+        (RN3); rechazar no crea nada. Siempre con motivo (#27).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: proposalId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, note]
+              properties:
+                decision: { type: string, enum: [aprobar, fusionar, rechazar] }
+                note: { type: string, minLength: 10, maxLength: 500 }
+                mergeInto:
+                  type: string
+                  format: uuid
+                  description: Obligatorio con fusionar; la tienda existente.
+      responses:
+        '204': { description: Decisión registrada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: La propuesta no existe o ya se decidió.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code UNKNOWN_ESTABLISHMENT, la tienda con la que se quiere fusionar no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /moderation/products/{productId}/image:
+    put:
+      tags: [Moderación]
+      operationId: setProductImage
+      summary: Subir la foto de un producto (ADR-020)
+      description: >-
+        Solo el rol moderador (en el Corte 2, fotos del equipo). JPEG, PNG o WebP de hasta 2 MB. El
+        servidor la reduce a 800 px de lado mayor como máximo, la guarda en WebP y descarta todos sus
+        metadatos, incluida la ubicación (EC-08). Reemplaza la imagen del producto, también una de Open
+        Food Facts. La foto se sirve fuera de /v1, en solo lectura, en MEDIA_PUBLIC_URL (hoy
+        /media/products/<archivo>.webp, con Cache-Control public, max-age=31536000, immutable) hasta
+        decidir el proveedor (ADR-012) (#88).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: La imagen del producto
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, source, attribution]
+                properties:
+                  url: { type: string, format: uri }
+                  source: { type: string, enum: [equipo] }
+                  attribution: { type: string, example: Equipo Valora }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El producto no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: code PAYLOAD_TOO_LARGE, la foto pesa más de 2 MB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /moderation/product-requests:
+    get:
+      tags: [Moderación]
+      operationId: listProductRequests
+      summary: Productos propuestos pendientes de decisión (RF-003)
+      description: >-
+        Solo el rol moderador. La más antigua primero. Cada una trae hasta 5 posibles duplicados: los
+        primeros resultados de la búsqueda de productos con su nombre y marca. No dice quién la propuso
+        (EC-08). Sin caché (#26).
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Propuestas pendientes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, categoryCode, quantity, unit, packCount, possibleDuplicates, createdAt]
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+                        brand: { type: string }
+                        categoryCode: { type: string }
+                        quantity: { type: number }
+                        unit: { $ref: '#/components/schemas/Unit' }
+                        packCount: { type: integer, minimum: 1 }
+                        barcode: { type: string }
+                        possibleDuplicates:
+                          type: array
+                          maxItems: 5
+                          items:
+                            type: object
+                            required: [id, name]
+                            properties:
+                              id: { type: string, format: uuid }
+                              name: { type: string }
+                        createdAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /moderation/product-requests/{requestId}/decision:
+    post:
+      tags: [Moderación]
+      operationId: decideProductRequest
+      summary: Aprobar, fusionar o rechazar un producto propuesto (RF-003)
+      description: >-
+        Solo el rol moderador. aprobar crea el producto (aparece en la búsqueda) con el id de la
+        propuesta y su presentación; fusionar agrega el nombre propuesto como alias de un producto
+        existente (mergeInto) y la presentación si es nueva, nunca de forma automática; rechazar no
+        crea nada. Siempre con motivo (#26).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, note]
+              properties:
+                decision: { type: string, enum: [aprobar, fusionar, rechazar] }
+                note: { type: string, minLength: 10, maxLength: 500 }
+                mergeInto:
+                  type: string
+                  format: uuid
+                  description: Obligatorio con fusionar; el producto existente.
+      responses:
+        '204': { description: Decisión registrada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: La propuesta no existe o ya se decidió.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: >-
+            code BARCODE_TAKEN, otro producto tomó el código mientras la propuesta esperaba; solo se
+            puede rechazar (RN2).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            code UNKNOWN_PRODUCT, el producto con el que se quiere fusionar no existe; o
+            MIXED_UNIT_BASES, la presentación no comparte la base de unidad del producto (#59).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /moderation/roles:
+    post:
+      tags: [Moderación]
+      operationId: changeAccountRole
+      summary: Cambiar el rol de una cuenta; queda auditado (RF-002 RN1 y RN4)
+      description: >-
+        Solo el rol moderador. Vuelve moderadora una cuenta reportante o devuelve a reportante a otro
+        moderador; el cambio se nota desde la siguiente petición de esa cuenta. Queda en una bitácora
+        que no se puede modificar (quién, qué, cuándo y por qué). comercio no se asigna hasta el
+        Corte 3. El administrador del sistema usa el comando pnpm identity:set-role (#73).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role, note]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                role: { type: string, enum: [reportante, moderador] }
+                note: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '204': { description: Rol cambiado y anotado en la bitácora }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Ninguna cuenta tiene ese correo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: >-
+            code OWN_ROLE: un moderador no cambia su propio rol. code ROLE_UNCHANGED: la cuenta ya
+            tiene ese rol.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Más de 20 cambios del mismo moderador en 15 minutos (valor provisional).
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /commerce/claims:
     post:
       tags: [Comercios]
@@ -474,11 +1460,16 @@ components:
       type: apiKey
       in: cookie
       name: valora_session
-      description: Sesión administrada por el servidor (ADR-014).
+      description: >-
+        Sesión administrada por el servidor (ADR-014): token aleatorio; la base guarda solo su hash.
+        HttpOnly, Secure, SameSite=Lax. Vence tras 7 días sin uso o 30 desde el inicio.
     csrfToken:
       type: apiKey
       in: header
       name: X-CSRF-Token
+      description: >-
+        Lo entrega GET /auth/session. Lo exigen las rutas con sesión y método POST, PUT, PATCH o
+        DELETE.
   parameters:
     ProductId:
       name: productId
@@ -498,19 +1489,29 @@ components:
   headers:
     CacheControl:
       schema: { type: string, example: 'public, max-age=30' }
+    RetryAfter:
+      description: Segundos que faltan para poder intentar de nuevo.
+      schema: { type: integer, minimum: 1 }
   responses:
     BadRequest:
-      description: Datos inválidos
+      description: >-
+        Datos inválidos. Responde code VALIDATION_ERROR; message junta los errores de cada campo como
+        «campo: mensaje», separados por «; ». Un campo no declarado responde «campo: no está permitido»
+        y un cuerpo que no es JSON válido, «El cuerpo de la solicitud no es JSON válido.»
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Unauthorized:
-      description: Se requiere sesión
+      description: >-
+        Se requiere sesión. También responde así una sesión revocada o vencida.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Forbidden:
-      description: El rol no tiene permiso
+      description: >-
+        code FORBIDDEN: el rol no tiene permiso. code CSRF_TOKEN_INVALID: falta la cabecera
+        X-CSRF-Token o no coincide con la sesión. code ACCOUNT_SUSPENDED: la cuenta está suspendida y
+        su sesión solo sirve para ver el estado de sus reportes, apelar y cerrar sesión (#71).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -521,64 +1522,162 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     TooManyRequests:
       description: Límite de frecuencia superado
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnprocessableEntity:
+      description: Regla de negocio incumplida. code identifica la regla (por ejemplo, INVALID_QUANTITY).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalServerError:
+      description: >-
+        Error inesperado. Responde siempre code INTERNAL_ERROR y el mensaje «Ocurrió un error
+        inesperado.»; el detalle solo queda en el registro del servidor.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
   schemas:
-    Error:
+    ConflictError:
+      description: Error con availableFrom, solo en el 409 DUPLICATE_REPORT de POST /reports (#84).
       type: object
       required: [code, message]
+      additionalProperties: false
       properties:
-        code: { type: string, example: REPORT_TOO_OLD }
+        code: { type: string, example: DUPLICATE_REPORT }
         message: { type: string }
-    BaseUnit:
+        availableFrom:
+          type: string
+          format: date-time
+          description: Hora de observación desde la que se acepta otro reporte de esa presentación en esa tienda.
+    Error:
+      type: object
+      description: >-
+        Única forma de error de la API (issue #41). Solo tiene code y message; la única excepción es
+        availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84). Valores de code:
+        VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), NOT_FOUND (404),
+        CONFLICT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
+        con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
+        INVALID_OBSERVATION_DATE, INVALID_TTL y los que agreguen las reglas futuras.
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code: { type: string, example: INVALID_QUANTITY }
+        message: { type: string, example: La cantidad de la presentación debe ser mayor que cero. }
+    Unit:
       type: string
-      enum: [g, ml, und]
+      description: Unidad tal como se escribe en el empaque; la unidad base (g, ml, und) la calcula el dominio (RF-004).
+      enum: [g, kg, ml, l, und]
     Presentation:
       type: object
-      required: [id, quantity, unit]
+      required: [id, quantity, unit, packCount]
       properties:
         id: { type: string, format: uuid }
-        barcode: { type: string }
+        barcode: { type: string, description: Único en el catálogo (RF-003 RN2). }
         quantity: { type: number, exclusiveMinimum: 0 }
-        unit: { $ref: '#/components/schemas/BaseUnit' }
+        unit: { $ref: '#/components/schemas/Unit' }
+        packCount:
+          type: integer
+          minimum: 1
+          description: Unidades del empaque (6 en «6 × 330 ml»); 1 si no es un empaque.
+    Category:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, example: dairy-eggs, description: Código fijo de la lista cerrada de categorías. }
+        name: { type: string, example: Lácteos y huevos }
     Product:
       type: object
-      required: [id, name]
+      required: [id, name, category, presentations]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        category: { type: string }
+        brand: { type: string, description: Opcional; los productos a granel o frescos pueden no tener marca. }
+        category: { $ref: '#/components/schemas/Category' }
+        image:
+          type: object
+          description: >-
+            Opcional; enlace a la foto con su fuente y su atribución (ADR-020, #26). Sin image, el
+            frontend muestra la ilustración genérica.
+          required: [url, source, attribution]
+          properties:
+            url: { type: string, format: uri }
+            source: { type: string, enum: [open_food_facts, equipo] }
+            attribution: { type: string }
         presentations:
           type: array
           items: { $ref: '#/components/schemas/Presentation' }
     Establishment:
       type: object
-      required: [id, name, type]
+      required: [id, name, type, lat, lng, municipality]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        type: { type: string, enum: [barrio, minimercado, supermercado] }
-        distanceM: { type: integer, minimum: 0 }
-        hasVerifiedProfile: { type: boolean }
+        type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+        address: { type: string, description: Opcional; muchas tiendas no tienen dirección formal. }
+        lat: { type: number, description: Latitud de la tienda (nunca la del usuario, RF-005 RN4). }
+        lng: { type: number, description: Longitud de la tienda. }
+        municipality: { $ref: '#/components/schemas/Municipality' }
+        distanceM:
+          type: integer
+          minimum: 0
+          description: >-
+            Metros desde el punto consultado; viene en GET /establishments/nearby y en la comparación
+            cuando se envió la ubicación (#106).
+    Municipality:
+      type: string
+      description: Municipio del Quindío (#106). Las tiendas de la semilla son de Armenia.
+      enum: [armenia, buenavista, calarca, circasia, cordoba, filandia, genova, la-tebaida, montenegro, pijao, quimbaya, salento]
     ComparisonItem:
       type: object
-      required: [establishment, presentationId, priceCop, unitPrice, source, freshness, reliability, observedAt]
+      required: [establishment, reportId, presentationId, priceCop, unitPrice, source, freshness, reliability, confirmations, isCheapest, observedAt]
       properties:
         establishment: { $ref: '#/components/schemas/Establishment' }
+        reportId:
+          type: string
+          format: uuid
+          description: El reporte cuyo precio se muestra; sirve para marcarlo como dudoso (RF-013).
         presentationId: { type: string, format: uuid }
         priceCop: { type: integer, minimum: 1 }
         unitPrice:
           type: object
+          description: >-
+            Precio normalizado por 100 g, 100 ml o unidad (RF-004). Se muestra redondeado al
+            peso entero con la mitad hacia arriba; el orden de la comparación usa el valor exacto.
           required: [valueCop, per]
           properties:
-            valueCop: { type: number }
-            per: { type: string, enum: [kg, l, und] }
-        source: { type: string, enum: [comunidad, oficial, siembra] }
-        freshness: { type: string, enum: [vigente, por_vencer, vencido] }
-        reliability: { type: string, enum: [alta, media, baja, en_revision] }
-        isCheapest: { type: boolean }
-        confirmations: { type: integer, minimum: 0 }
+            valueCop: { type: integer, minimum: 0 }
+            per: { type: string, enum: [100g, 100ml, und] }
+        source:
+          type: string
+          enum: [comunidad, oficial, siembra]
+          description: Hoy siempre es comunidad; oficial llega con el módulo comercial (corte 3).
+        freshness:
+          type: string
+          enum: [vigente, por_confirmar, desactualizado]
+          description: >-
+            Vigencia según el TTL de la categoría (RF-010, ADR-005), con edad = ahora menos la fecha
+            de observación: vigente si edad ≤ TTL; por_confirmar si TTL < edad ≤ 2 TTL;
+            desactualizado si edad > 2 TTL (no entra al orden de la comparación).
+        reliability:
+          type: string
+          enum: [alta, media, baja, en_revision]
+          description: >-
+            Confiabilidad del precio al momento de la consulta (score de RF-011, issue #31): alta,
+            media o baja. en_revision si el único precio de esa tienda quedó sospechoso (RF-012) y
+            espera moderación; no compite en el orden. Un precio sin evaluar cuenta como baja.
+        isCheapest:
+          type: boolean
+          description: >-
+            Verdadero en el precio por unidad más bajo (valor exacto) entre los resultados vigentes y
+            por confirmar; si varios empatan, en todos. Un precio desactualizado o en_revision siempre
+            es falso.
+        confirmations:
+          type: integer
+          minimum: 0
+          description: Cuántas cuentas distintas confirman el precio (a ±5 %, dentro de su vigencia).
         observedAt: { type: string, format: date-time }
     Promotion:
       type: object
@@ -601,19 +1700,43 @@ components:
         productId: { type: string, format: uuid }
         criteria:
           type: object
-          description: Criterios de orden declarados al usuario (EC-06).
+          description: >-
+            Criterios declarados al usuario (EC-06). radiusKm sale si se envió la ubicación;
+            municipality, si se filtró por municipio (#106).
+          required: [sort]
           properties:
-            sort: { type: string }
+            sort: { type: string, enum: [unit_price, distance, recent] }
             radiusKm: { type: number }
-        cheapestPriceCop: { type: integer }
-        averagePriceCop: { type: integer, description: Solo precios vigentes y por vencer. }
+            municipality: { $ref: '#/components/schemas/Municipality' }
         results:
           type: array
+          description: >-
+            Primero los precios vigentes y por confirmar, ordenados por el criterio declarado; al final
+            los desactualizados y los que están en revisión (reliability en_revision), ordenados entre
+            sí con el mismo criterio (no compiten con los demás). Con onlyCurrent=true no aparecen.
           items: { $ref: '#/components/schemas/ComparisonItem' }
         promotions:
           type: array
-          description: Siempre separadas del resultado; no alteran el orden.
+          description: >-
+            Siempre separadas del resultado; no alteran el orden. Vacío hasta el módulo comercial
+            (corte 3).
           items: { $ref: '#/components/schemas/Promotion' }
+        wholesaleReference:
+          type: object
+          description: >-
+            Opcional. Precio mayorista por kilo publicado por SIPSA (DANE), cargado a mano por el equipo
+            (RF-014, ADR-011). Es una referencia pública: nunca es precio de una tienda, no entra al orden
+            ni a isCheapest. Solo para productos que se venden por peso, y solo si su periodo terminó hace
+            30 días o menos (#34).
+          required: [source, productName, market, pricePerKgCop, periodStart, periodEnd, url]
+          properties:
+            source: { type: string, enum: ['SIPSA (DANE)'] }
+            productName: { type: string, description: Nombre del producto en el boletín SIPSA. }
+            market: { type: string, example: 'Armenia, Mercar' }
+            pricePerKgCop: { type: integer, minimum: 1 }
+            periodStart: { type: string, format: date }
+            periodEnd: { type: string, format: date }
+            url: { type: string, format: uri, description: Boletín de donde salió el dato. }
     ReportCreate:
       type: object
       required: [presentationId, establishmentId, priceCop, observedAt]
@@ -621,11 +1744,17 @@ components:
         presentationId: { type: string, format: uuid }
         establishmentId: { type: string, format: uuid }
         priceCop: { type: integer, minimum: 1, maximum: 10000000 }
-        priceType: { type: string, enum: [normal, oferta, combo], default: normal }
+        priceType:
+          type: string
+          enum: [normal, oferta]
+          default: normal
+          description: combo queda fuera hasta definir qué significa (grill de la #14, pregunta 8).
         observedAt:
           type: string
           format: date-time
-          description: Hora real de observación en la tienda; puede ser anterior si estuvo en la cola sin conexión (máximo 24 h).
+          description: >-
+            Hora real de observación en la tienda; puede ser anterior si estuvo en la cola sin conexión.
+            No puede estar más de 5 minutos en el futuro; el máximo de 24 h de antigüedad llega con la issue #29.
     ReportReceipt:
       type: object
       required: [id, status, receivedAt]
@@ -635,15 +1764,19 @@ components:
         receivedAt: { type: string, format: date-time }
     ModerationItem:
       type: object
-      required: [id, reason, reportedPriceCop, medianPriceCop]
+      description: Nunca incluye quién reportó ni quién marcó (EC-08).
+      required: [id, reason, productName, establishmentName, reportedPriceCop, reportersCount, createdAt]
       properties:
-        id: { type: string, format: uuid }
-        reason: { type: string, enum: [desviacion, marcado, discrepancia_oficial, verificacion_comercio] }
-        productName: { type: string }
+        id: { type: string, format: uuid, description: Id del reporte. }
+        reason: { type: string, enum: [apelacion, desviacion, rafaga, marcado, discrepancia_oficial, verificacion_comercio] }
+        productName: { type: string, description: 'Producto y presentación, por ejemplo «Arroz Diana · 500 g».' }
         establishmentName: { type: string }
         reportedPriceCop: { type: integer }
-        medianPriceCop: { type: integer }
+        medianPriceCop: { type: integer, description: Mediana de referencia; no está si no había con qué comparar. }
         officialPriceCop: { type: integer }
-        deviationPercent: { type: number }
-        reportersCount: { type: integer }
+        deviationPercent: { type: number, description: Desviación frente a la mediana, en porcentaje entero. }
+        reportersCount: { type: integer, minimum: 0, description: Cuántas cuentas lo marcaron como dudoso. }
         createdAt: { type: string, format: date-time }
+        appealNote:
+          type: string
+          description: Solo en las apelaciones; el motivo del autor, sin decir quién descartó (#71).
