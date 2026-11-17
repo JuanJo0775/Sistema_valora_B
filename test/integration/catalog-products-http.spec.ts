@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
@@ -75,6 +75,30 @@ describe('GET /v1/products/{productId}', () => {
       .get(`/v1/products/${riceId}`)
       .set('If-None-Match', String(etag))
       .expect(304);
+  });
+
+  it('GET /v1/products (búsqueda) trae la imagen de cada ítem que la tiene', async () => {
+    await db
+      .update(products)
+      .set({
+        imageUrl: 'https://images.openfoodfacts.org/arroz.jpg',
+        imageSource: 'open_food_facts',
+        imageAttribution: 'Open Food Facts, CC BY-SA',
+      })
+      .where(eq(products.id, riceId));
+
+    const response = await request(server).get('/v1/products').query({ q: 'arroz' }).expect(200);
+
+    expect((response.body as { items: unknown[] }).items).toEqual([
+      expect.objectContaining({
+        id: riceId,
+        image: {
+          url: 'https://images.openfoodfacts.org/arroz.jpg',
+          source: 'open_food_facts',
+          attribution: 'Open Food Facts, CC BY-SA',
+        },
+      }),
+    ]);
   });
 
   it('un producto que no existe responde 404 NOT_FOUND', async () => {

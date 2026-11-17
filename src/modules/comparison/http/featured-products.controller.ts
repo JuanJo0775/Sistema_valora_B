@@ -27,6 +27,7 @@ interface FeaturedProductsResponse {
     name: string;
     brand?: string;
     category: { code: string; name: string };
+    image?: { url: string; source: string; attribution: string };
     storeCount: number;
     cheapest: FeaturedPriceResponse;
     priciest?: FeaturedPriceResponse;
