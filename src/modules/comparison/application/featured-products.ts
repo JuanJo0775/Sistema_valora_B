@@ -153,6 +153,7 @@ export class FeaturedProducts {
             name: summary.name,
             ...(summary.brand === undefined ? {} : { brand: summary.brand }),
             category: summary.category,
+            ...(summary.image === undefined ? {} : { image: summary.image }),
             storeCount,
             cheapest: toPrice(cheapest),
             ...(priciest === undefined || savingsPercent === undefined

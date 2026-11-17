@@ -346,6 +346,11 @@ paths:
                         name: { type: string }
                         brand: { type: string, description: Opcional, como en Product. }
                         category: { $ref: '#/components/schemas/Category' }
+                        image:
+                          description: >-
+                            Opcional, como en Product: la foto con su fuente y su atribución. Sin image,
+                            el frontend muestra la ilustración genérica.
+                          allOf: [{ $ref: '#/components/schemas/ProductImage' }]
                         storeCount:
                           type: integer
                           minimum: 1
@@ -1718,6 +1723,13 @@ components:
       properties:
         code: { type: string, example: dairy-eggs, description: Código fijo de la lista cerrada de categorías. }
         name: { type: string, example: Lácteos y huevos }
+    ProductImage:
+      type: object
+      required: [url, source, attribution]
+      properties:
+        url: { type: string, format: uri }
+        source: { type: string, enum: [open_food_facts, equipo] }
+        attribution: { type: string }
     Product:
       type: object
       required: [id, name, category, presentations]
@@ -1727,15 +1739,10 @@ components:
         brand: { type: string, description: Opcional; los productos a granel o frescos pueden no tener marca. }
         category: { $ref: '#/components/schemas/Category' }
         image:
-          type: object
           description: >-
             Opcional; enlace a la foto con su fuente y su atribución (ADR-020, #26). Sin image, el
             frontend muestra la ilustración genérica.
-          required: [url, source, attribution]
-          properties:
-            url: { type: string, format: uri }
-            source: { type: string, enum: [open_food_facts, equipo] }
-            attribution: { type: string }
+          allOf: [{ $ref: '#/components/schemas/ProductImage' }]
         presentations:
           type: array
           items: { $ref: '#/components/schemas/Presentation' }
