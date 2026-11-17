@@ -193,46 +193,46 @@ La actividad H1-01 pide: equipo conformado, repositorio Git con historial por in
 
 ### Evidencia ya preparada
 
-- [x] Repositorio backend privado creado: [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B).
-- [x] Repositorio frontend privado creado: [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F).
+- [x] Repositorio backend público con implementación, migraciones, pruebas y CI: [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B).
+- [x] Repositorio frontend público con PWA, módulos, pruebas y CI: [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F).
 - [x] README y reglas de contribución en ambos.
 - [x] Plantilla ADR en backend.
-- [x] Épicas registradas como issues GitHub: 8 backend y 8 frontend.
-- [x] Documentación inicial de arquitectura, API, UX y offline-first.
+- [x] Épicas registradas como issues GitHub: 9 backend (B00–B08) y 8 frontend (F01–F08).
+- [x] Documentación de arquitectura, API, UX, offline-first, despliegue, decisiones y calidad, actualizada a la implementación vigente.
 
 ### Pendiente para declarar H1-01 entregado
 
-- [ ] Cada integrante debe aceptar/acceder a ambos repositorios y realizar commits propios; no se debe simular autoría.
-- [ ] Elegir formalmente la herramienta C4 (por ejemplo, Structurizr, Mermaid u otra) y dejar la decisión registrada.
-- [ ] Crear/configurar un tablero de trabajo (GitHub Projects u otra herramienta acordada) y vincular los issues.
-- [ ] Confirmar los integrantes y responsables en el calendario de Notion.
+- [ ] Confirmar que cada integrante aceptó la invitación y puede trabajar en ambos repositorios; relacionar cuentas reales con commits/PR. La auditoría anterior no encontró contribuciones atribuibles a `lauvel19`; verificar antes de concluir.
+- [ ] Elegir formalmente la herramienta C4. Existe una propuesta Structurizr DSL versionada, pero no se considera aprobada hasta que el equipo la confirme y valide su render.
+- [x] Tablero de seguimiento de Notion creado con 17 épicas y actividades de cierre, dependencias, criterios y evidencias; no se requiere duplicarlo en GitHub Projects salvo acuerdo del equipo.
+- [ ] Confirmar los integrantes y responsables reales en el calendario y tablero; no inventar asignaciones.
 - [ ] Verificar permisos y que cada integrante pueda abrir PR.
 
-**Estado recomendado de H1-01:** En progreso. La estructura Git y el backlog están preparados, pero aún no hay historial de contribución de todos los integrantes ni herramienta C4/tablero confirmados. No marcar Entregado todavía.
+**Estado recomendado de H1-01:** En progreso. Los repositorios, código, tablero y backlog ya existen; siguen pendientes la confirmación de la herramienta C4, la validación de accesos/identidades y la evidencia de contribución individual de todos los integrantes. No marcar Entregado todavía.
 
 ---
 
 ## 8. Próximos pasos sugeridos
 
-1. Invitar a los demás integrantes como colaboradores en ambos repositorios.
-2. Confirmar herramienta C4 y crear el tablero con las 16 épicas.
-3. Resolver las propuestas de framework frontend/backend mediante sus ADR; la persistencia PostgreSQL + PostGIS ya está aceptada en ADR-003.
-4. Desglosar cada épica en historias pequeñas y pruebas de aceptación.
-5. Elaborar el contrato OpenAPI preliminar antes de implementar endpoints, manteniéndolo alineado con ADR-002.
-6. Comenzar por el flujo vertical mínimo: catálogo → establecimiento → reporte → comparación.
-7. Ejecutar TDD sobre normalización por unidad, dinero, idempotencia, vigencia y orden neutral.
+1. Confirmar aceptación de invitaciones, permisos de escritura e identidad de los colaboradores; documentar commits/PR por integrante.
+2. Acordar la herramienta C4 y validar el diagrama fuente; el tablero Notion ya contiene las 17 épicas.
+3. Completar el registro de fuentes/hallazgos de H1-02, la fuente local de H1-03 y la validación del equipo de H1-04/H1-05.
+4. Cerrar la prueba E2E B#17/F#27 y la automatización de despliegue B#23 antes de declarar el núcleo reproducible.
+5. Ejecutar la prueba de usabilidad y auditoría WCAG F#28, y la prueba de carga k6 B#35.
+6. Curar catálogo/SIPSA y completar la muestra local de exactitud antes de declarar verificada la calidad de datos.
+7. Mantener el módulo comercial B08/F07/F08 en Corte 3; no adelantar su implementación sin el análisis de impacto y alcance aprobado.
 
 ---
 
 ## 9. Historial de organización
 
-- Estado verificado el 17-nov-2026: ambos repositorios son públicos, tienen implementación integrada y CI. Los issues principales de las 17 épicas siguen abiertos; no declarar cierre de épicas por el solo hecho de que sus funcionalidades estén implementadas.
-- Se inicializó `main` con documentación base en cada repositorio.
-- Se añadieron guías de contribución y reglas de alcance.
-- Se registraron 8 épicas backend y 8 épicas frontend como issues.
+- 17-nov-2026: ambos repositorios públicos contienen implementación funcional, pruebas, CI y documentación técnica; los 17 issues principales siguen abiertos porque hay criterios globales o validaciones pendientes.
+- Se amplió la documentación para reflejar el estado vigente de arquitectura, decisiones, entregables, despliegue y calidad.
+- Se integraron módulos funcionales de catálogo, establecimientos, identidad, reportes, confiabilidad, comparación, PWA, moderación e historial.
+- Se registran 9 épicas backend (B00–B08) y 8 frontend (F01–F08); el tablero Notion también incluye tareas transversales y una fila vacía preservada.
 - Se actualizaron los índices de épicas con sus enlaces.
-- No se subió código de aplicación, secretos, datos personales ni credenciales.
-- No se cambió el calendario ni se marcó H1-01 como entregado.
+- Los secretos no se almacenan en Git; la infraestructura usa variables protegidas y configuración documentada.
+- Se revisó el calendario y se ajustaron estados con evidencia; H1-01 continúa En progreso y no se declara entregado.
 - La base de datos ADRs de Notion se establece como fuente única de verdad para estados y fechas; este plan conserva solo la línea base transversal y evita duplicar estados cambiantes.
 
 
