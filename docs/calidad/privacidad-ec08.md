@@ -17,6 +17,7 @@
 | Dato | Dónde | Para qué |
 |---|---|---|
 | Correo | `identity.accounts.email` | Iniciar sesión. |
+| Nombre visible | `identity.accounts.display_name` (vacío en las cuentas creadas antes de la #133) | Saludar a la persona en su propia sesión («Hola, Sara»). Solo lo devuelve `GET /v1/auth/session` de esa cuenta; ninguna otra respuesta, ni la moderación, lo incluye (`privacy-public-responses.spec.ts`). |
 | Hash de la contraseña (argon2id) | `identity.accounts.password_hash` | Iniciar sesión; nunca la contraseña. |
 | Versión y fecha de la política aceptada | `identity.accounts` | Consentimiento (Ley 1581). |
 | Sesiones (hash del token) | `identity.sessions` | Sesión de servidor; no guarda IP ni navegador. |
@@ -24,7 +25,7 @@
 | Id de la cuenta que reportó | `pricing.reports.reporter_id` | Idempotencia, duplicados y ráfagas (#14, #29). Ver hallazgo 1. |
 | Cambios de rol | `identity.role_changes` (ids, sin correo) | Bitácora inmutable (#73). |
 
-**Ubicación:** la única columna geográfica es `establishments.establishments.location`, la ubicación pública de la tienda. La ubicación del usuario solo viaja como parámetro de la consulta (`/nearby` y la comparación) y no se guarda.
+**Ubicación:** la única columna geográfica es `establishments.establishments.location`, la ubicación pública de la tienda. La ubicación del usuario solo viaja como parámetro de la consulta (`/nearby`, la comparación y la canasta básica de hoy, B#128) y no se guarda.
 
 ## Qué expone cada ruta pública
 
@@ -33,7 +34,7 @@
 | `GET /v1/health` | Ninguno. |
 | `GET /v1/products`, `GET /v1/products/{productId}` | Ninguno (solo catálogo). |
 | `GET /v1/products/{productId}/comparison` | Ninguno. Lleva `reportId` del precio, sin autor. `no-store` porque la URL lleva la ubicación. |
-| `GET /v1/featured-products` | Ninguno. Solo el producto, su precio más bajo y el nombre de la tienda; sin `reportId` ni autor (B#120). |
+| `GET /v1/featured-products` | Ninguno. Solo el producto, sus precios más bajo y más alto y el nombre de la tienda; sin `reportId` ni autor (B#120). Con la ubicación, `no-store` y la distancia de la tienda, nunca la ubicación consultada (B#128). |
 | `GET /v1/establishments/nearby` | Ninguno. `no-store` por la misma razón. |
 | `GET /v1/establishments` | Ninguno (solo el directorio de tiendas). Sirve para elegir la tienda sin compartir la ubicación (#116). |
 | `GET /v1/establishments/{establishmentId}/prices` | Ninguno. Lleva `reportId`, sin autor. |

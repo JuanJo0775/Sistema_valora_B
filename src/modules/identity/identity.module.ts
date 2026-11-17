@@ -11,6 +11,7 @@ import type { PasswordHasher } from './application/password-hasher';
 import { LiftSuspension } from './application/lift-suspension';
 import { Login } from './application/login';
 import { Logout } from './application/logout';
+import { OwnDisplayName } from './application/own-display-name';
 import { RegisterAccount } from './application/register-account';
 import { ReporterIdentity } from './application/reporter-identity';
 import { ResolveSession } from './application/resolve-session';
@@ -52,6 +53,13 @@ const CLOCK = Symbol('CLOCK');
         limiter: AttemptLimiter,
         clock: Clock,
       ): RegisterAccount => new RegisterAccount({ accounts, hasher, limiter, clock }),
+    },
+    // #133: el nombre visible, solo para la propia sesión (EC-08).
+    {
+      provide: OwnDisplayName,
+      inject: [DATABASE],
+      useFactory: (db: Database): OwnDisplayName =>
+        new OwnDisplayName({ displayNames: new DrizzleAccountRepository(db) }),
     },
     {
       provide: SESSION_REPOSITORY,

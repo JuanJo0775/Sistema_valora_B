@@ -31,6 +31,7 @@ describe('pnpm identity:set-role <correo> <rol> "<motivo>"', () => {
       .post('/v1/auth/register')
       .send({
         email: 'ana@correo.com',
+        displayName: 'Ana',
         password: 'una-clave-larga',
         acceptedPolicyVersion: '2026-11',
       })

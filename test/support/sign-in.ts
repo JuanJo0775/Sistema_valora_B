@@ -16,11 +16,13 @@ export async function signIn(
   db: Database,
   email: string,
   role = 'reportante',
+  // #133: el registro pide un nombre visible.
+  displayName = 'Persona de Prueba',
 ): Promise<SignedIn> {
   const password = 'una-clave-larga';
   await request(server)
     .post('/v1/auth/register')
-    .send({ email, password, acceptedPolicyVersion: '2026-11' })
+    .send({ email, displayName, password, acceptedPolicyVersion: '2026-11' })
     .expect(201);
   await db.execute(sql`update identity.accounts set role = ${role} where email = ${email}`);
   const login = await request(server).post('/v1/auth/login').send({ email, password }).expect(204);

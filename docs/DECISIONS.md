@@ -21,7 +21,7 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | ADR-020 | Imágenes de productos (aceptado el 15 de noviembre de 2026) | Una imagen por producto: Open Food Facts, foto del equipo o ilustración genérica. En el Corte 2 solo el moderador sube fotos (JPEG, PNG o WebP hasta 2 MB; WebP de 800 px como máximo, sin metadatos). Almacenamiento detrás de un puerto: carpeta del servidor hasta ADR-012. Ver [docs/adr/0020-imagenes-productos.md](adr/0020-imagenes-productos.md). |
 | ADR-021 | Acceso a datos: Drizzle ORM con migraciones SQL versionadas (aceptado el 11 de noviembre de 2026) | Tablas en `infrastructure/schema.ts` con un `pgSchema` por módulo; migraciones generadas con `drizzle-kit`, revisadas y versionadas; driver `pg`; solo `infrastructure/` y `shared/database` importan Drizzle. Ver [docs/adr/0021-acceso-datos-drizzle.md](adr/0021-acceso-datos-drizzle.md). |
 | Proyecto | TypeScript como lenguaje principal | Backend desarrollado en TypeScript sobre NestJS (ADR-018). |
-| ADR-012 | Despliegue: Docker en Render, base en Neon y PWA en Vercel (aceptado el 16 de noviembre de 2026) | El backend se despliega como una imagen descrita por un `Dockerfile` en el repositorio (contenedores como código, RNF-009 RN1; cambio del 15 de noviembre, que reemplaza «sin Docker en el MVP»). Render construye y corre la imagen y la orquesta (salud con `GET /v1/health`, reinicio, despliegue sin corte), descrito en `render.yaml`. La base es Neon (PostgreSQL administrado con PostGIS). Vercel sirve la PWA y **reenvía `/v1/*` a Render** (rewrite en `vercel.json`): el navegador ve un solo origen, la cookie de sesión no cambia y no hay CORS. La API debe configurar `trust proxy` para leer la IP real del cliente; si no, todos comparten los límites de intentos. Una sola copia en Render mientras el outbox corra dentro del proceso. Se mantiene: sin Docker para desarrollar (PostgreSQL local) y la CI con contenedores de servicio de PostgreSQL + PostGIS; sin Testcontainers. Pendiente: dónde guardar las fotos (Render borra el disco en cada despliegue) y confirmar con el docente que la orquestación de Render cuenta para RDA3. |
+| ADR-012 | Despliegue: Docker en Render, base en Neon y PWA en Vercel (aceptado el 16 de noviembre de 2026) | El backend se despliega como una imagen descrita por un `Dockerfile` en el repositorio (contenedores como código, RNF-009 RN1; cambio del 15 de noviembre, que reemplaza «sin Docker en el MVP»). Render construye y corre la imagen y la orquesta (salud con `GET /v1/health`, reinicio, despliegue sin corte), descrito en `render.yaml`. La base es Neon (PostgreSQL administrado con PostGIS). Vercel sirve la PWA y **reenvía `/v1/*` a Render** (rewrite en `vercel.json`): el navegador ve un solo origen, la cookie de sesión no cambia y no hay CORS. La API debe configurar `trust proxy` para leer la IP real del cliente; si no, todos comparten los límites de intentos. Una sola copia en Render mientras el outbox corra dentro del proceso. Se mantiene: sin Docker para desarrollar (PostgreSQL local) y la CI con contenedores de servicio de PostgreSQL + PostGIS; sin Testcontainers. Pendiente: dónde guardar las fotos (Render borra el disco en cada despliegue). |
 | Proyecto | Dos repositorios separados (backend y frontend) | Este repositorio es responsable de API y dominio; el frontend consume su contrato. |
 
 ## Pendientes de decisión
@@ -30,7 +30,6 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 |---|---|---|
 | Valores de vigencia y score | ADR-005 aceptado; valores provisionales | TTL 7/14 días, corroboración 5 % y umbral de anomalía 40 % son hipótesis/provisionales y parametrizables. |
 | Fotos en el despliegue | ADR-012 aceptado; almacenamiento sin decidir | Render borra el disco en cada despliegue: disco persistente (de pago) o almacenamiento de objetos detrás del puerto `ImageStorage` (ADR-020). |
-| Orquestación para RDA3 | ADR-012 usa la de Render | Confirmar con el docente; si exige Kubernetes o Terraform, un ADR nuevo reemplaza esa parte. |
 | Herramientas de pruebas y calidad | Jest y Supertest en uso desde H2-01 | SonarQube y el resto del plan de calidad siguen por confirmar. |
 
 ## Versiones fijadas del entorno (H2-01, paso 1)
@@ -464,6 +463,37 @@ Aplicación de RF-008, RF-009, EC-04, EC-06 y EC-08 para la pantalla de Inicio d
 - **Módulos:** `catalog` expone `ProductSummaries` (nombre, marca y categoría) y la tienda sale de `EstablishmentsWithinRadius.findInMunicipality`; ningún módulo lee tablas de otro.
 - **Caché:** pública de 60 s con ETag (EC-04). Sin `reportId` ni datos de quién reportó (EC-08).
 - **Por revisar si crece:** el caso de uso lee todo `price_current` y filtra por municipio en memoria. Con pocos miles de filas basta; si crece, se filtra en la consulta.
+
+## Canasta del Inicio por ubicación, por categoría y con el ahorro (issue #128, 16 de noviembre de 2026)
+
+Aplicación de RF-005, RF-008, RF-009, EC-04, EC-06 y EC-08 para el rediseño del Inicio y del detalle (decisión de la usuaria: ubicación real y el ahorro lo calcula el backend).
+
+- **Área:** como la comparación (#106): `municipality`, `lat` y `lng` con `radiusKm`, o las dos cosas. `radiusKm` va de 0,5 a 3 km con **1,5 km por defecto** (la comparación usa 2 km por defecto; el Inicio del prototipo muestra 1,5 km). Sin ubicación el radio no se usa.
+- **Privacidad (EC-08):** con la ubicación, `Cache-Control: no-store`; la ubicación solo elige las tiendas del radio, no se guarda, no va al log ni a la respuesta (prueba de integración con el registro real de NestJS). La respuesta solo trae `distanceM` de la tienda. Sin ubicación sigue la caché pública de 60 s con ETag (EC-04).
+- **Categoría:** `category=<code>` filtra por el código de la lista cerrada. Un código desconocido responde la lista vacía (no 400): ningún otro filtro de lectura valida códigos de categoría contra el catálogo y así no hace falta consultarlo.
+- **Ahorro (EC-06):** regla `savingsPercent` en `src/domain/savings.ts`: (más caro − más barato) / más caro × 100 por precio por unidad, con los valores exactos (`UnitPrice.percentBelow`) y redondeado al entero con la mitad hacia arriba. Solo con dos tiendas distintas o más; con bases que no se comparan no sale.
+  - En la canasta, cada producto trae `priciest` (el más caro, con su tienda) y `savingsPercent`, entre sus precios vigentes del área.
+  - En la comparación, `savingsPercent` a nivel de respuesta, entre los resultados que pueden ser el más barato: los mismos de `isCheapest` (vigentes y por confirmar, sin desactualizados ni en revisión). Así el porcentaje habla del mismo «más barato» que se muestra.
+- **`storesWithPrices`:** tiendas del área con algún precio vigente, de cualquier categoría (no cambia con el filtro de categoría), para «Precios de 7 tiendas a menos de 1,5 km».
+- **Módulos:** las tiendas del radio salen de `EstablishmentsWithinRadius.find`, la misma consulta pública de la comparación; ningún módulo lee tablas de otro.
+
+## Cuántos precios tiene cada tienda en las listas (issue #131, 16 de noviembre de 2026)
+
+Para las tarjetas del mapa nuevo del frontend («9 precios»). RF-005, RF-008, EC-04 y EC-08.
+
+- **Qué cuenta `priceCount`:** las presentaciones con precio hoy en la tienda, con el mismo criterio que `GET /v1/establishments/{id}/prices?onlyCurrent=true`: no cuentan los desactualizados ni los que están en revisión; los por confirmar sí. Lo decide `PriceCounts` en `comparison`, con `price_current` y la consulta pública `PresentationsForPricing` de `catalog`.
+- **Dónde viven las rutas:** `GET /v1/establishments` y `GET /v1/establishments/nearby` pasan de `establishments` a `comparison` (`EstablishmentListsController`), como ya pasaba con los precios de una tienda (grill de la #28). Las tiendas salen de las consultas públicas `SearchEstablishments` y `ListNearbyEstablishments`. Así `establishments` no depende de `comparison` y no hay ciclo.
+- **Contrato:** un esquema nuevo, `EstablishmentWithPrices`, solo para las dos listas. `Establishment` no cambia, así que la comparación y los precios de una tienda siguen igual. Va sin `allOf` porque la prueba de contrato no admite campos de más.
+- **Caché y privacidad:** iguales que antes (5 minutos para la lista; `no-store` para las cercanas, que llevan la ubicación del usuario). Ningún dato del reportante.
+
+## Nombre visible de la cuenta (issue #133, 16 de noviembre de 2026)
+
+Para el «Hola, Sara» del «Yo» del frontend. RF-001, RF-002, EC-08 y ADR-014.
+
+- **Obligatorio al registrarse:** `displayName`, de 2 a 40 caracteres después de quitar los espacios sobrantes; solo letras (con tildes y ñ), espacios, apóstrofo y guion. Sin números, correos ni símbolos, así no cabe un teléfono ni un correo. La regla vive en `domain/display-name.ts`; el DTO responde 400 con un solo mensaje.
+- **Cuentas que ya existen:** quedan sin nombre (columna `display_name` nullable, migración 0025). La sesión no trae `displayName` hasta que haya una forma de ponerlo (no se pidió).
+- **Solo en la propia sesión:** `GET /v1/auth/session` lo devuelve; ninguna otra respuesta lo incluye. Se lee con un puerto aparte (`DisplayNames`), no viaja en la sesión que reciben los demás módulos. `privacy-public-responses.spec.ts` lo verifica en las rutas públicas, la cola de moderación y los aportes propios.
+- **Consentimiento:** la política de datos sigue en la versión provisional `2026-11` sin texto (grill de la #16). Cuando el equipo escriba el texto, debe mencionar el nombre visible entre los datos tratados.
 
 ## Fotos de Open Food Facts para la semilla (issue #119, 16 de noviembre de 2026)
 

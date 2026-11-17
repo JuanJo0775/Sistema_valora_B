@@ -73,6 +73,8 @@ describe('GET /v1/establishments', () => {
           lat: expect.closeTo(calarca.lat, 6) as unknown,
           lng: expect.closeTo(calarca.lng, 6) as unknown,
           municipality: 'calarca',
+          // B#131: sin precios en esta prueba.
+          priceCount: 0,
         },
         {
           id: donPepe.id,
@@ -82,6 +84,7 @@ describe('GET /v1/establishments', () => {
           lat: expect.closeTo(armenia.lat, 6) as unknown,
           lng: expect.closeTo(armenia.lng, 6) as unknown,
           municipality: 'armenia',
+          priceCount: 0,
         },
       ],
     });

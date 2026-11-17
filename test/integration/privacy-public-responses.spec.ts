@@ -57,8 +57,22 @@ describe('privacidad de las respuestas públicas (EC-08, #36)', () => {
   });
 
   it('ninguna respuesta pública trae el correo, el id de la cuenta, la clave seudónima ni la ubicación consultada', async () => {
-    const reporter = await signIn(server, db, 'reportante-privado@correo.com');
-    const flagger = await signIn(server, db, 'marcadora-privada@correo.com');
+    const reporter = await signIn(
+      server,
+      db,
+      'reportante-privado@correo.com',
+      'reportante',
+      'Reportante Secretísima',
+    );
+    const flagger = await signIn(
+      server,
+      db,
+      'marcadora-privada@correo.com',
+      'reportante',
+      'Marcadora Secretísima',
+    );
+    // #133: la moderación tampoco ve el nombre de quien reportó o marcó.
+    const moderator = await signIn(server, db, 'moderadora-privada@correo.com', 'moderador');
     const report = await request(server)
       .post('/v1/reports')
       .set('Cookie', reporter.cookie)
@@ -90,6 +104,9 @@ describe('privacidad de las respuestas públicas (EC-08, #36)', () => {
       (await identity.of(flagger.accountId)).reporterKey,
       userLocation.lat,
       userLocation.lng,
+      // #133: el nombre visible solo sale en la propia sesión.
+      'Reportante Secretísima',
+      'Marcadora Secretísima',
     ];
 
     const publicRoutes = [
@@ -102,11 +119,13 @@ describe('privacidad de las respuestas públicas (EC-08, #36)', () => {
       request(server).get(`/v1/establishments/${storeId}/prices`),
       request(server).get(`/v1/products/${productId}/history`),
       request(server).get('/v1/featured-products').query({ municipality: 'armenia' }),
+      request(server).get('/v1/moderation/queue').set('Cookie', moderator.cookie),
+      request(server).get('/v1/me/reports').set('Cookie', reporter.cookie),
     ];
     const responses = await Promise.all(publicRoutes);
 
     expect(responses.map((response) => response.status)).toEqual([
-      200, 200, 200, 200, 200, 200, 200, 200, 200,
+      200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200,
     ]);
     const everything = JSON.stringify(
       responses.map((response): unknown[] => [response.headers, response.body]),

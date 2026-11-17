@@ -20,7 +20,6 @@ import { ListNearbyEstablishments } from './application/list-nearby-establishmen
 import { ProposeStore } from './application/propose-store';
 import { SearchEstablishments } from './application/search-establishments';
 import { StoreProposalsQueue } from './application/store-proposals-queue';
-import { EstablishmentsController } from './http/establishments.controller';
 import { StoreProposalsController } from './http/store-proposals.controller';
 import { DrizzleEstablishmentImportRepository } from './infrastructure/drizzle-establishment-import-repository';
 import { DrizzleEstablishmentRepository } from './infrastructure/drizzle-establishment-repository';
@@ -28,7 +27,8 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
 
 @Module({
   imports: [IdentityModule],
-  controllers: [EstablishmentsController, StoreProposalsController],
+  // B#131: GET /establishments y /nearby viven en comparison, que suma el conteo de precios.
+  controllers: [StoreProposalsController],
   providers: [
     // Grill de la #27: propuestas de tiendas.
     {
@@ -117,6 +117,8 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     },
   ],
   exports: [
+    ListNearbyEstablishments,
+    SearchEstablishments,
     EstablishmentNames,
     EstablishmentDetails,
     ImportEstablishments,

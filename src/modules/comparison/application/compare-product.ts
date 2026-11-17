@@ -4,6 +4,7 @@ import {
   rankOffers,
   type SortCriterion,
 } from '../../../domain/neutral-ranking';
+import { savingsPercent } from '../../../domain/savings';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import { isRecentReference } from '../../../domain/wholesale-reference';
 import type { Municipality } from '../../../domain/municipality';
@@ -113,6 +114,9 @@ export interface Comparison {
   promotions: [];
   // Grill de la #34: aparte de los resultados; no entra al orden ni a isCheapest.
   wholesaleReference?: WholesaleReferenceSummary;
+  // B#128 (EC-06): cuánto menos cuesta el más barato que la tienda más cara, entre los que pueden
+  // ser el más barato (los mismos de isCheapest). Sin dos tiendas no sale.
+  savingsPercent?: number;
 }
 
 // Lo que rankOffers puede leer, junto al resultado que se devuelve.
@@ -204,6 +208,7 @@ export class CompareProduct {
       ttlDaysFor(product.isFresh),
     );
     const reference = await this.ports.references.latestFor(product.id);
+    const savings = savingsPercent(ranked.filter((candidate) => !isStale(candidate)));
     return {
       productId: product.id,
       criteria: {
@@ -213,6 +218,7 @@ export class CompareProduct {
       },
       results: toResults(ranked, reliability),
       promotions: [],
+      ...(savings === undefined ? {} : { savingsPercent: savings }),
       // Pregunta 3: solo si su periodo terminó hace 30 días o menos.
       ...(reference && isRecentReference(reference.periodEnd, this.ports.clock.now())
         ? {

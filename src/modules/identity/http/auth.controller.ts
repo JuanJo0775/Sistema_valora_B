@@ -19,6 +19,7 @@ import { TooManyAttemptsError } from '../application/attempt-limiter';
 import { csrfTokenFor } from '../application/csrf';
 import { InvalidCredentialsError, Login } from '../application/login';
 import { Logout } from '../application/logout';
+import { OwnDisplayName } from '../application/own-display-name';
 import { RegisterAccount } from '../application/register-account';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { clearedSessionCookie, sessionCookie } from './session-cookie';
@@ -32,6 +33,8 @@ import {
 // Sin correo ni id de la cuenta (EC-08): el frontend solo necesita el rol.
 export interface SessionResponse {
   role: Role;
+  // #133: el nombre con el que la app saluda; solo en la propia sesión y si la cuenta lo tiene.
+  displayName?: string;
   csrfToken: string;
   suspendedUntil?: string;
 }
@@ -60,6 +63,7 @@ export class AuthController {
     private readonly registerAccount: RegisterAccount,
     private readonly login: Login,
     private readonly logout: Logout,
+    private readonly ownDisplayName: OwnDisplayName,
     private readonly config: ConfigService<Env, true>,
   ) {}
 
@@ -70,6 +74,7 @@ export class AuthController {
     try {
       await this.registerAccount.execute({
         email: body.email,
+        displayName: body.displayName,
         password: body.password,
         acceptedPolicyVersion: body.acceptedPolicyVersion,
         ip: request.ip ?? 'desconocida',
@@ -109,10 +114,12 @@ export class AuthController {
   @Get('session')
   @UseGuards(SessionGuard)
   @AllowSuspended()
-  session(@CurrentSession() session: AuthenticatedSession): SessionResponse {
+  async session(@CurrentSession() session: AuthenticatedSession): Promise<SessionResponse> {
     const secret = this.config.get('SESSION_SECRET', { infer: true });
+    const displayName = await this.ownDisplayName.execute(session.accountId);
     return {
       role: session.role,
+      ...(displayName ? { displayName } : {}),
       csrfToken: csrfTokenFor(session.token, secret),
       // Grill de la #71, pregunta 5: el frontend muestra que la sesión está limitada.
       ...(session.suspendedUntil ? { suspendedUntil: session.suspendedUntil.toISOString() } : {}),

@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsIn, IsString, Length, MaxLength } from 'class-validator';
+import { IsEmail, IsIn, IsString, Length, MaxLength, ValidateBy } from 'class-validator';
+import { isValidDisplayName, normalizeDisplayName } from '../../../domain/display-name';
 import type { Role } from '../application/account-repository';
 import { ROLE_NOTE_LENGTH } from '../application/change-role';
 import { CURRENT_POLICY_VERSION } from '../application/policy';
@@ -9,11 +10,29 @@ import { normalizeEmail } from '../application/register-account';
 const toNormalizedEmail = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? normalizeEmail(value) : value;
 
+// #133: un solo mensaje para todo lo que no es un nombre (vacío, corto, largo, números, correo…).
+const IsDisplayName = () =>
+  ValidateBy({
+    name: 'isDisplayName',
+    validator: {
+      validate: (value: unknown) => typeof value === 'string' && isValidDisplayName(value),
+      defaultMessage: () => 'debe tener de 2 a 40 letras, sin números, correos ni símbolos',
+    },
+  });
+
+const toNormalizedName = ({ value }: { value: unknown }): unknown =>
+  typeof value === 'string' ? normalizeDisplayName(value) : value;
+
 export class RegisterDto {
   @Transform(toNormalizedEmail)
   @MaxLength(254, { message: 'debe tener como máximo 254 caracteres' })
   @IsEmail({}, { message: 'debe ser un correo válido' })
   email!: string;
+
+  // #133: el nombre visible; solo lo ve la propia cuenta (EC-08).
+  @Transform(toNormalizedName)
+  @IsDisplayName()
+  displayName!: string;
 
   @IsString({ message: 'debe ser texto' })
   @Length(10, 128, { message: 'debe tener entre 10 y 128 caracteres' })

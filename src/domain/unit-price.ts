@@ -44,6 +44,18 @@ export class UnitPrice {
     const difference = a.numerator * b.denominator - b.numerator * a.denominator;
     return difference === 0n ? 0 : difference < 0n ? -1 : 1;
   }
+
+  // B#128: cuánto menos cuesta este precio que uno más alto, en por ciento entero (la mitad hacia
+  // arriba), con los valores exactos. Lanza IncompatibleUnitsError si las bases son distintas.
+  percentBelow(higher: UnitPrice): number {
+    this.compareTo(higher);
+    const low = this.#exactCop;
+    const high = higher.#exactCop;
+    // (alto − bajo) / alto × 100, como una sola fracción.
+    const numerator = (high.numerator * low.denominator - low.numerator * high.denominator) * 100n;
+    const denominator = high.numerator * low.denominator;
+    return Number((2n * numerator + denominator) / (2n * denominator));
+  }
 }
 
 // factor: unidades base que hay en la unidad recibida; shownPer: unidades base por las que se muestra el precio

@@ -8,6 +8,7 @@ import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { countAllRows } from '../support/count-rows';
 import { OutboxRelay } from '../../src/shared/events';
 import { signIn } from '../support/sign-in';
 
@@ -209,6 +210,33 @@ describe('GET /v1/products/{productId}/comparison', () => {
     expect(response.body).toEqual({ code: 'NOT_FOUND', message: 'Recurso no encontrado.' });
   });
 
+  it('dice cuánto menos cuesta el más barato que la tienda más cara (B#128)', async () => {
+    const otherStore = 'a8888888-8888-4888-8888-222222222222';
+    await app.get(ImportEstablishments).save({
+      id: otherStore,
+      name: 'Otra tienda de prueba',
+      type: 'barrio',
+      lat: 4.535,
+      lng: -75.6811,
+    });
+    const observedAt = new Date(Date.now() - 60 * 60 * 1000);
+    const at = (establishmentId: string, priceCop: number) => ({
+      presentationId,
+      establishmentId,
+      reportId: crypto.randomUUID(),
+      priceCop,
+      priceType: 'normal',
+      observedAt,
+      receivedAt: observedAt,
+    });
+    await db.insert(priceCurrent).values([at(storeId, 2000), at(otherStore, 2500)]);
+
+    const response = await compare().expect(200);
+
+    // $2.000 frente a $2.500 por los mismos 500 g: 20 % menos.
+    expect(response.body).toMatchObject({ savingsPercent: 20 });
+  });
+
   // EC-08 y RF-005 RN5: la ubicación del usuario no se guarda, no se registra ni se expone.
   it('la ubicación consultada no aparece en la respuesta ni en el log, y no se guarda', async () => {
     const preciseLocation = { lat: '4.53387654', lng: '-75.68123456' };
@@ -401,20 +429,3 @@ describe('GET /v1/products/{productId}/comparison', () => {
     expect(afterDecision.body).toMatchObject({ results: [{ priceCop: 4000 }] });
   });
 });
-
-// Total de filas en todas las tablas de la aplicación (sin las de PostgreSQL y PostGIS).
-async function countAllRows(db: Database): Promise<number> {
-  const tables = await db.execute<{ name: string }>(
-    sql`select format('%I.%I', table_schema, table_name) as name from information_schema.tables
-        where table_type = 'BASE TABLE'
-          and table_schema not in ('pg_catalog', 'information_schema', 'public', 'topology')`,
-  );
-  let total = 0;
-  for (const { name } of tables.rows) {
-    const result = await db.execute<{ count: string }>(
-      sql.raw(`select count(*) as count from ${name}`),
-    );
-    total += Number(result.rows[0]?.count ?? 0);
-  }
-  return total;
-}

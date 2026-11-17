@@ -15,6 +15,12 @@ export class DrizzleCurrentPrices implements CurrentPrices {
     return this.find(eq(priceCurrent.establishmentId, establishmentId));
   }
 
+  // B#131: el conteo de precios de las tiendas de una lista.
+  async findByEstablishments(establishmentIds: string[]): Promise<CurrentPrice[]> {
+    if (establishmentIds.length === 0) return [];
+    return this.find(inArray(priceCurrent.establishmentId, establishmentIds));
+  }
+
   // B#120: la canasta básica filtra por municipio con la consulta pública de establishments.
   findAll(): Promise<CurrentPrice[]> {
     return this.find();
