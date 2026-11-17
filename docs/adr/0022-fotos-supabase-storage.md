@@ -1,7 +1,7 @@
 # ADR-022: Fotos subidas en Supabase Storage
 
-- **Estado:** Propuesto (16-nov-2026)
-- **Fecha:** 2026-11-16
+- **Estado:** Aceptado (17-nov-2026; propuesto el 16-nov-2026)
+- **Fecha:** 2026-11-17
 - **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo. Redactado con apoyo de IA (Claude Code).
 - **Escenarios relacionados:** EC-01 (reconocer el producto), EC-08 (privacidad)
 - **Requisitos relacionados:** RF-003; ADR-012 (despliegue), ADR-020 (imágenes)
