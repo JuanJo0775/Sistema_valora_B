@@ -133,7 +133,7 @@ Las filas solo se cargan cuando el producto también está verificado en `produc
 
 ## `precios-iniciales.csv` («Dato inicial», #135)
 
-Precios tomados de la página pública de una cadena (hoy, D1). `pnpm db:seed` pone cada fila en **todas las tiendas revisadas de esa cadena** en `tiendas.csv` (una tienda es de la cadena si su nombre trae el nombre de la cadena como palabra: «D1» sí, «Panadería D10» no). Se guardan con la fuente `siembra` («Dato inicial»):
+Precios tomados de la página pública de una cadena (hoy, D1 y Carulla). `pnpm db:seed` pone cada fila en **todas las tiendas revisadas de esa cadena** en `tiendas.csv` (una tienda es de la cadena si su nombre trae el nombre de la cadena como palabra: «D1» sí, «Panadería D10» no). Se guardan con la fuente `siembra` («Dato inicial»):
 
 - **Nunca reemplazan un precio de la comunidad.** Si la tienda ya tiene uno, el dato inicial no se guarda. Si la comunidad reporta después, su precio lo reemplaza.
 - **No son reportes:** no suben la confianza ni la reputación de nadie, no entran a la moderación ni al historial, y vencen con la vigencia de siempre (7 o 14 días desde `fecha_consulta`).
@@ -153,6 +153,7 @@ Precios tomados de la página pública de una cadena (hoy, D1). `pnpm db:seed` p
 | `verificar`, `responsable`                                    | Como en `productos.csv`: solo se cargan las filas con `verificar = no` y un responsable.     | `no`, `Nombre`                           |
 
 - Si una fila tiene un error, no se carga ningún dato inicial y el comando dice qué fila corregir. Una prueba revisa este archivo en cada pull request.
+- Carulla (#142): la página no deja elegir Armenia sin entrar a rutas que su `robots.txt` prohíbe, así que su precio es el nacional. Un precio de otro tamaño nunca se pone en una presentación distinta: daría un precio por unidad falso. Por eso se agregaron a `productos.csv` las presentaciones que vende Carulla (papa pastusa 2500 g, aceite Premier 900 ml y chocolate Corona 200 g). Las ofertas no se cargan.
 - Ara no publica precios que se puedan leer sin entrar a rutas que su `robots.txt` prohíbe. Éxito bloquea las consultas automáticas. No se usan imágenes de las cadenas (ADR-020, punto 8).
 
 ## `muestra-exactitud.csv` (PR-22, #93)
