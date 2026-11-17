@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { CatalogModule, ImportCatalog } from '../catalog';
 import { EstablishmentsModule, ImportEstablishments } from '../establishments';
 import { AccuracySample } from './application/accuracy-sample';
+import { SeedInitialPrices } from './application/initial-prices';
 import { RunSeed } from './application/run-seed';
 import { SEED_SOURCE, type SeedSource } from './application/seed-source';
 import { CsvSeedSource } from './infrastructure/csv-seed-source';
@@ -27,11 +28,16 @@ import { CsvSeedSource } from './infrastructure/csv-seed-source';
     },
     // PR-22 (#93): la muestra de exactitud del equipo.
     {
+      provide: SeedInitialPrices,
+      inject: [SEED_SOURCE],
+      useFactory: (source: SeedSource): SeedInitialPrices => new SeedInitialPrices(source),
+    },
+    {
       provide: AccuracySample,
       inject: [SEED_SOURCE],
       useFactory: (source: SeedSource): AccuracySample => new AccuracySample(source),
     },
   ],
-  exports: [RunSeed, AccuracySample],
+  exports: [RunSeed, AccuracySample, SeedInitialPrices],
 })
 export class ImportsModule {}

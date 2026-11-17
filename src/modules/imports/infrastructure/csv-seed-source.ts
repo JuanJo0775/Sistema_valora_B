@@ -1,5 +1,6 @@
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { INITIAL_PRICES_FILE } from '../application/initial-prices';
 import type { SeedRow, SeedSource } from '../application/seed-source';
 
 // Lee seed/productos.csv y seed/tiendas.csv tal como los guarda Excel (grill de la #51, pregunta 1):
@@ -23,6 +24,11 @@ export class CsvSeedSource implements SeedSource {
   // PR-22 (#93): la muestra de exactitud también es opcional.
   readSample(): Promise<SeedRow[]> {
     return this.readOptional('muestra-exactitud.csv');
+  }
+
+  // B#135: los precios iniciales también son opcionales.
+  readInitialPrices(): Promise<SeedRow[]> {
+    return this.readOptional(INITIAL_PRICES_FILE);
   }
 
   private async readOptional(file: string): Promise<SeedRow[]> {

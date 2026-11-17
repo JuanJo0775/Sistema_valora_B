@@ -1,6 +1,6 @@
 import { at, isValidDate, isVerifiedProduct, isVerifiedStore, text } from './seed-rows';
 import { presentationId, storeId } from './seed-ids';
-import type { SeedRow } from './seed-source';
+import type { SeedRow, SeedSource } from './seed-source';
 import { stableId } from './stable-id';
 
 export const INITIAL_PRICES_FILE = 'precios-iniciales.csv';
@@ -107,4 +107,20 @@ export function initialPricesFrom(
     }));
   });
   return { ok: true, prices, skipped: priceRows.length - verified.length };
+}
+
+// B#135: lee precios-iniciales.csv con los productos y las tiendas de la semilla, y devuelve los
+// precios listos para comparison (que los guarda) o todos los errores.
+export class SeedInitialPrices {
+  constructor(
+    private readonly source: Pick<SeedSource, 'readInitialPrices' | 'readProducts' | 'readStores'>,
+  ) {}
+
+  async read(): Promise<InitialPricesResult> {
+    return initialPricesFrom(
+      await this.source.readInitialPrices(),
+      await this.source.readProducts(),
+      await this.source.readStores(),
+    );
+  }
 }

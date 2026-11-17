@@ -2,7 +2,8 @@ import 'reflect-metadata';
 import { Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { ImportsModule, RunSeed } from './modules/imports';
+import { ComparisonModule, ImportInitialPrices } from './modules/comparison';
+import { ImportsModule, RunSeed, SeedInitialPrices } from './modules/imports';
 import { validateEnv } from './shared/config/env.validation';
 import { DatabaseModule } from './shared/database/database.module';
 import { EventsModule } from './shared/events';
@@ -15,9 +16,26 @@ import { EventsModule } from './shared/events';
     // Desde la #26, catalog depende de identity, que publica eventos.
     EventsModule,
     ImportsModule,
+    // B#135: los datos iniciales se guardan en comparison (imports no conoce al núcleo).
+    ComparisonModule,
   ],
 })
 export class SeedModule {}
+
+export type InitialPricesSummary =
+  { ok: true; saved: number; kept: number; skipped: number } | { ok: false; errors: string[] };
+
+// B#135: imports prepara los datos iniciales de precios-iniciales.csv (uno por tienda de su cadena)
+// y comparison los guarda solo donde la comunidad no ha reportado. Todo o nada si hay un error.
+export async function seedInitialPrices(
+  initial: Pick<SeedInitialPrices, 'read'>,
+  load: Pick<ImportInitialPrices, 'execute'>,
+): Promise<InitialPricesSummary> {
+  const read = await initial.read();
+  if (!read.ok) return read;
+  const { saved, kept } = await load.execute(read.prices);
+  return { ok: true, saved, kept, skipped: read.skipped };
+}
 
 async function seed(): Promise<void> {
   const logger = new Logger('Semilla');
@@ -41,6 +59,21 @@ async function seed(): Promise<void> {
     );
     logger.log(
       `Referencias SIPSA: ${String(references.saved)} guardadas, ${String(references.skipped)} pendientes de verificar.`,
+    );
+    const initial = await seedInitialPrices(
+      context.get(SeedInitialPrices),
+      context.get(ImportInitialPrices),
+    );
+    if (!initial.ok) {
+      logger.error(
+        `No se cargaron los datos iniciales: ${String(initial.errors.length)} filas con errores.`,
+      );
+      for (const error of initial.errors) logger.error(error);
+      process.exitCode = 1;
+      return;
+    }
+    logger.log(
+      `Datos iniciales: ${String(initial.saved)} guardados, ${String(initial.kept)} donde ya había precio de la comunidad, ${String(initial.skipped)} filas pendientes de verificar.`,
     );
     if (notInFiles.stores + notInFiles.products > 0) {
       logger.warn(
