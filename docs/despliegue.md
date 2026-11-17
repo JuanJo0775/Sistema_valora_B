@@ -115,6 +115,15 @@ Es el riesgo más serio del reenvío (ADR-012): con `TRUST_PROXY` mal puesto, to
 2. Mientras tanto, desde otra red (por ejemplo, un celular con datos), inicia sesión con una cuenta de prueba: debe entrar (no 429).
 3. Si el celular también recibe 429, la API ve la IP del proxy: cambia `TRUST_PROXY` (prueba 1 o 3) y repite. `SUPUESTO:` 2 es el valor correcto (Vercel y Render); la prueba `src/app.setup.spec.ts` demuestra el comportamiento con esa cadena, pero solo este paso lo confirma contra la infraestructura real.
 
+## Versionado al pasar de dev a main
+
+Cada vez que `dev` se lleva a `main` (pull request con merge commit) es una versión nueva, en los dos repositorios:
+
+1. Antes del merge, decidir el número con SemVer: cambio de contrato o ruptura sube la mayor, funcionalidad nueva la menor, corrección la de parche (la última es `v0.2.0`).
+2. Hacer el merge de `dev` a `main`. El push dispara `Despliegue`, que pide aprobación en el entorno `produccion`.
+3. Cuando el despliegue termine bien y `GET /v1/health` responda, crear la etiqueta y la publicación sobre ese commit de `main`: `gh release create vX.Y.Z --target main --generate-notes --title "vX.Y.Z — resumen corto"`.
+4. En el frontend se hace lo mismo con su propia numeración.
+
 ## Reversa
 
 - **API:** Render, «Deploys», «Rollback» al despliegue anterior. Las migraciones deben ser compatibles hacia atrás: mientras Render construye, la versión vieja atiende contra el esquema ya migrado. Una migración que borra o renombra columnas necesita dos despliegues.
