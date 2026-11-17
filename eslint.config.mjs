@@ -24,6 +24,16 @@ export default tseslint.config(
     },
   },
   {
+    // Scripts de k6 (#35): JavaScript que corre en k6, no en Node ni en tsc. Sin reglas con tipos y con
+    // las variables globales que pone k6.
+    files: ['test/load/**/*.js'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      parserOptions: { projectService: false },
+      globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly' },
+    },
+  },
+  {
     files: ['**/*.spec.ts'],
     ...jest.configs['flat/recommended'],
     rules: {

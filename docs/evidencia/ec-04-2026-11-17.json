@@ -1,0 +1,34 @@
+{
+  "fecha": "2026-11-17T12:08:02.094Z",
+  "escenario": {
+    "usuariosVirtuales": 500,
+    "duracion": "10m",
+    "rampaSubida": "1m"
+  },
+  "meta": {
+    "p95Ms": 2000,
+    "tasaErrorMax": 0.01
+  },
+  "latenciaMs": {
+    "p50": 199.173609,
+    "p90": 9708.3730544,
+    "p95": 12599.650148499999,
+    "p99": 18873.76616182999,
+    "promedio": 2148.1088127096577,
+    "maximo": 21740.149039
+  },
+  "tasaError": 0.7113374048962269,
+  "totalPeticiones": 77284,
+  "peticionesPorSegundo": 114.49481481481482,
+  "errores": {
+    "http429": 0,
+    "http5xx": 54975,
+    "tiempoAgotado": 0,
+    "otros4xx": 0
+  },
+  "umbrales": {
+    "http_req_duration{escenario:carga}": false,
+    "http_req_failed{escenario:carga}": false,
+    "http_reqs{escenario:carga}": true
+  }
+}

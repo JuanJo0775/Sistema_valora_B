@@ -1,0 +1,69 @@
+name: Carga
+
+# Prueba de carga de la comparación contra el entorno desplegado (EC-04, RNF-004, PR-12, issue #35).
+# No corre en cada pull request ni en dev: carga Render y Neon (plan gratuito, ADR-012). Solo se lanza a
+# mano (Actions → Carga → Run workflow), para que ningún push dispare una carga sin querer.
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: URL base de la API, terminada en /v1 (sin secretos).
+        required: false
+        default: https://valora-api-e9ep.onrender.com/v1
+      vus:
+        description: Usuarios virtuales de la carga.
+        required: false
+        default: '500'
+      duration:
+        description: Duración de la carga sostenida (formato de k6, por ejemplo 10m).
+        required: false
+        default: 10m
+
+permissions:
+  contents: read
+
+# Nunca dos cargas a la vez contra el mismo despliegue.
+concurrency:
+  group: carga
+  cancel-in-progress: false
+
+jobs:
+  carga:
+    name: Carga k6
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # La URL es pública (vercel.json del frontend la usa). Se puede cambiar con la variable del
+      # repositorio LOAD_API_URL o con el input al lanzarlo a mano.
+      API_URL: ${{ inputs.api_url || vars.LOAD_API_URL || 'https://valora-api-e9ep.onrender.com/v1' }}
+      LOAD_VUS: ${{ inputs.vus || '500' }}
+      LOAD_DURATION: ${{ inputs.duration || '10m' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: grafana/setup-k6-action@c47136d33d365efbeb9ae7266908b5dcf98cdece # v1.3.0
+        with:
+          k6-version: '1.8.3'
+
+      # Render gratuito se duerme: una sola petición lo despierta antes del calentamiento de k6.
+      - name: Despertar la API
+        run: |
+          curl --fail --silent --show-error --retry 10 --retry-delay 10 --retry-all-errors \
+            --max-time 90 --output /dev/null --write-out 'categories: %{http_code} en %{time_total} s\n' \
+            "$API_URL/categories"
+
+      - name: Correr k6
+        run: |
+          k6 run --no-color \
+            -e API_URL="$API_URL" -e LOAD_VUS="$LOAD_VUS" -e LOAD_DURATION="$LOAD_DURATION" \
+            -e SUMMARY_PATH=summary-ec04.json \
+            test/load/comparison.k6.js
+
+      # Se guarda aunque los umbrales fallen: el resultado se registra tal como salió (EC-04).
+      - name: Guardar el resumen
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: resumen-carga-ec04
+          path: summary-ec04.json
+          if-no-files-found: warn
