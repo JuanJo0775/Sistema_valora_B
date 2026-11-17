@@ -1,8 +1,8 @@
 name: Carga
 
 # Prueba de carga de la comparación contra el entorno desplegado (EC-04, RNF-004, PR-12, issue #35).
-# No corre en cada pull request ni en dev: carga Render y Neon (plan gratuito, ADR-012). Se lanza a mano
-# o con un push a una rama perf/** para medir antes de mezclar.
+# No corre en cada pull request ni en dev: carga Render y Neon (plan gratuito, ADR-012). Solo se lanza a
+# mano (Actions → Carga → Run workflow), para que ningún push dispare una carga sin querer.
 on:
   workflow_dispatch:
     inputs:
@@ -18,8 +18,6 @@ on:
         description: Duración de la carga sostenida (formato de k6, por ejemplo 10m).
         required: false
         default: 10m
-  push:
-    branches: ['perf/**']
 
 permissions:
   contents: read
