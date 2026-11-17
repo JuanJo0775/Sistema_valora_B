@@ -43,6 +43,20 @@ En «Settings», «Environments», crea el entorno **`produccion`** con revisore
 | Secreto | `RENDER_DEPLOY_HOOK_URL` | Se obtiene en el paso 4 |
 | Variable | `API_URL` | La dirección pública de Render, sin barra final (paso 4) |
 
+Sin los tres valores el workflow «Despliegue» falla en el primer paso (`url: ''`: la cadena de Neon llega vacía) y no llega a Render. Se pueden cargar desde la consola de GitHub o con `gh`, sin pegar secretos en el chat (la cadena sale del estado de Terraform y el hook se copia del panel de Render al portapapeles):
+
+```bash
+R=<dueño>/Sistema_valora_B
+(cd infra/neon && terraform output -raw database_url) | gh secret set NEON_DATABASE_URL --env produccion --repo $R
+gh variable set API_URL --env produccion --repo $R --body "https://<servicio>.onrender.com"
+# Deploy Hook: Render, servicio, Settings, Deploy Hook, «Copy»; después:
+gh secret set RENDER_DEPLOY_HOOK_URL --env produccion --repo $R < <(powershell -c "Get-Clipboard")
+# Revisores obligatorios del entorno (una persona aprueba cada despliegue):
+gh api -X PUT repos/$R/environments/produccion -F "reviewers[][type]=User" -F "reviewers[][id]=$(gh api users/<usuario> --jq .id)"
+```
+
+La aprobación de cada despliegue la da una persona: es el control de liberación y no se automatiza. Se aprueba en Actions, en la corrida en espera, con «Review deployments».
+
 ### 3. Migraciones y semilla (en este orden)
 
 La semilla (`seed/*.csv`, issue #51) tiene un solo camino de entrada a producción, para que nadie apunte a Neon desde su equipo por accidente:
@@ -110,7 +124,7 @@ Es el riesgo más serio del reenvío (ADR-012): con `TRUST_PROXY` mal puesto, to
 
 ## Riesgos conocidos (ADR-012)
 
-- **Fotos:** Render borra el disco en cada despliegue; por eso las fotos subidas van a Supabase Storage (ADR-022, `Propuesto`). Riesgos: la pausa del plan gratuito tras 7 días sin actividad (mitigada con `keepalive.yml`, `SUPUESTO:` que el ping cuenta como actividad) y una clave secreta más que custodiar. `PENDIENTE (equipo)`: subir una foto real en el despliegue y comprobar que sigue visible tras un redespliegue.
+- **Fotos:** Render borra el disco en cada despliegue; por eso las fotos subidas van a Supabase Storage (ADR-022, aceptado el 17-nov-2026). Riesgos: la pausa del plan gratuito tras 7 días sin actividad (mitigada con `keepalive.yml`, `SUPUESTO:` que el ping cuenta como actividad) y una clave secreta más que custodiar. `PENDIENTE (equipo)`: subir una foto real en el despliegue y comprobar que sigue visible tras un redespliegue.
 - **Latencia:** cada petición pasa por Vercel antes de Render; suma tiempo al p95 de EC-04. Se mide en la prueba de carga.
 - **Una sola instancia:** el outbox corre dentro del proceso (ADR-015). No subas `numInstances`.
 - **Límites en memoria:** se reinician con cada despliegue o cuando Render duerme el servicio.
