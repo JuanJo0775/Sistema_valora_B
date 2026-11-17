@@ -146,6 +146,8 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
       get('/featured-products').query({ municipality: 'armenia' }),
     );
     await check('GET /featured-products', get('/featured-products'));
+    // B#128: con la ubicación, la más barata trae su distancia.
+    await check('GET /featured-products', get('/featured-products').query(userLocation));
     await check('GET /establishments/nearby', get('/establishments/nearby').query(userLocation));
     await check('GET /establishments', get('/establishments').query({ municipality: 'armenia' }));
     await check('GET /establishments', get('/establishments'));
@@ -160,7 +162,7 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
 
     const statuses = checked.map(({ status }) => status);
     expect(statuses).toEqual([
-      200, 200, 200, 200, 400, 200, 404, 200, 400, 404, 200, 200, 400, 200, 200, 400, 200, 404,
+      200, 200, 200, 200, 400, 200, 404, 200, 400, 404, 200, 200, 400, 200, 200, 200, 400, 200, 404,
     ]);
     expect(
       checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),

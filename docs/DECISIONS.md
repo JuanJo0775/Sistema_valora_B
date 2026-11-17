@@ -465,6 +465,19 @@ Aplicación de RF-008, RF-009, EC-04, EC-06 y EC-08 para la pantalla de Inicio d
 - **Caché:** pública de 60 s con ETag (EC-04). Sin `reportId` ni datos de quién reportó (EC-08).
 - **Por revisar si crece:** el caso de uso lee todo `price_current` y filtra por municipio en memoria. Con pocos miles de filas basta; si crece, se filtra en la consulta.
 
+## Canasta del Inicio por ubicación, por categoría y con el ahorro (issue #128, 16 de noviembre de 2026)
+
+Aplicación de RF-005, RF-008, RF-009, EC-04, EC-06 y EC-08 para el rediseño del Inicio y del detalle (decisión de la usuaria: ubicación real y el ahorro lo calcula el backend).
+
+- **Área:** como la comparación (#106): `municipality`, `lat` y `lng` con `radiusKm`, o las dos cosas. `radiusKm` va de 0,5 a 3 km con **1,5 km por defecto** (la comparación usa 2 km por defecto; el Inicio del prototipo muestra 1,5 km). Sin ubicación el radio no se usa.
+- **Privacidad (EC-08):** con la ubicación, `Cache-Control: no-store`; la ubicación solo elige las tiendas del radio, no se guarda, no va al log ni a la respuesta (prueba de integración con el registro real de NestJS). La respuesta solo trae `distanceM` de la tienda. Sin ubicación sigue la caché pública de 60 s con ETag (EC-04).
+- **Categoría:** `category=<code>` filtra por el código de la lista cerrada. Un código desconocido responde la lista vacía (no 400): ningún otro filtro de lectura valida códigos de categoría contra el catálogo y así no hace falta consultarlo.
+- **Ahorro (EC-06):** regla `savingsPercent` en `src/domain/savings.ts`: (más caro − más barato) / más caro × 100 por precio por unidad, con los valores exactos (`UnitPrice.percentBelow`) y redondeado al entero con la mitad hacia arriba. Solo con dos tiendas distintas o más; con bases que no se comparan no sale.
+  - En la canasta, cada producto trae `priciest` (el más caro, con su tienda) y `savingsPercent`, entre sus precios vigentes del área.
+  - En la comparación, `savingsPercent` a nivel de respuesta, entre los resultados que pueden ser el más barato: los mismos de `isCheapest` (vigentes y por confirmar, sin desactualizados ni en revisión). Así el porcentaje habla del mismo «más barato» que se muestra.
+- **`storesWithPrices`:** tiendas del área con algún precio vigente, de cualquier categoría (no cambia con el filtro de categoría), para «Precios de 7 tiendas a menos de 1,5 km».
+- **Módulos:** las tiendas del radio salen de `EstablishmentsWithinRadius.find`, la misma consulta pública de la comparación; ningún módulo lee tablas de otro.
+
 ## Fotos de Open Food Facts para la semilla (issue #119, 16 de noviembre de 2026)
 
 Aplicación de ADR-020 (punto 1: Open Food Facts primero, citando la fuente; punto 8: nada de sitios de cadenas) y RF-003.
