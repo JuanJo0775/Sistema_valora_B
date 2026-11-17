@@ -365,3 +365,7 @@ Cada módulo de `src/modules/` expone solo su `index.ts`. Los demás módulos se
 
 - Backend: [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B)
 - Frontend: [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F)
+
+## Licencia
+
+Uso académico y no comercial; no se permite reproducirlo ni redistribuirlo sin autorización de los titulares (el equipo del proyecto y JuanJo0775). El texto completo está en [LICENSE](LICENSE). No es una licencia de código abierto.
