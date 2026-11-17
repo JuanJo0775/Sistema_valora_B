@@ -14,6 +14,8 @@ export interface ActiveSession {
   sessionId: string;
   accountId: string;
   role: Role;
+  // ADR-029: registrar precios exige el correo verificado.
+  emailVerified: boolean;
   // Grill de la #71, pregunta 5: solo si la cuenta está suspendida; la sesión queda limitada.
   suspendedUntil?: Date;
 }
@@ -32,6 +34,7 @@ export class ResolveSession {
       sessionId: session.id,
       accountId: session.accountId,
       role: session.role,
+      emailVerified: session.accountEmailVerifiedAt !== null,
       ...(suspendedUntil && suspendedUntil > now ? { suspendedUntil } : {}),
     };
   }

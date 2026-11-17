@@ -190,6 +190,13 @@
       "when": 1794890688235,
       "tag": "0026_comparison-price-source",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794925320849,
+      "tag": "0027_identity-email-verification",
+      "breakpoints": true
     }
   ]
 }

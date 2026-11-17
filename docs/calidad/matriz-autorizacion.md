@@ -18,6 +18,8 @@
 
 «Permitido» significa que la ruta pasa el control de sesión y rol (la respuesta puede ser 2xx, 400 o 404 según el cuerpo, nunca 401 ni 403).
 
+Desde ADR-029, `POST /v1/reports` también exige el correo verificado: un reportante sin verificar recibe 403 `EMAIL_NOT_VERIFIED`. La matriz usa cuentas ya verificadas.
+
 | Ruta | Sin sesión | Reportante | Moderador | Comercio | Suspendida |
 |---|---|---|---|---|---|
 | `POST /v1/reports` | 401 | Permitido | 403 | 403 | 403 |

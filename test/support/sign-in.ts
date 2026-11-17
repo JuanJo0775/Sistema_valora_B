@@ -9,7 +9,7 @@ export interface SignedIn {
   accountId: string;
 }
 
-// Crea una cuenta con el rol indicado (moderador y comercio no se crean por la API), inicia sesión y
+// Crea una cuenta (con el correo ya verificado) con el rol indicado (moderador y comercio no se crean por la API), inicia sesión y
 // pide el token CSRF, como lo hará el frontend.
 export async function signIn(
   server: Parameters<typeof request>[0],
@@ -18,13 +18,18 @@ export async function signIn(
   role = 'reportante',
   // #133: el registro pide un nombre visible.
   displayName = 'Persona de Prueba',
+  // ADR-029: registrar precios exige el correo verificado; por defecto la cuenta ya lo está. Con
+  // false queda sin verificar, para probar ese caso.
+  verified = true,
 ): Promise<SignedIn> {
   const password = 'una-clave-larga';
   await request(server)
     .post('/v1/auth/register')
     .send({ email, displayName, password, acceptedPolicyVersion: '2026-11' })
     .expect(201);
-  await db.execute(sql`update identity.accounts set role = ${role} where email = ${email}`);
+  await db.execute(
+    sql`update identity.accounts set role = ${role}, email_verified_at = ${verified ? sql`now()` : null} where email = ${email}`,
+  );
   const login = await request(server).post('/v1/auth/login').send({ email, password }).expect(204);
   const [setCookie] = login.headers['set-cookie'] as unknown as string[];
   const cookie = (setCookie ?? '').split(';')[0] ?? '';

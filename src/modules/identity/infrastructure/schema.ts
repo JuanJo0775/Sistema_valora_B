@@ -22,6 +22,8 @@ export const accounts = identitySchema.table(
     // solo conoce por ella. Pregunta 4: hasta cuándo está suspendida.
     reporterKey: text('reporter_key'),
     suspendedUntil: timestamp('suspended_until', { withTimezone: true }),
+    // ADR-029: cuándo verificó el correo (nulo = sin verificar). Registrar precios lo exige.
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
   },
   (table) => [
     uniqueIndex('accounts_email_idx').on(table.email),
@@ -66,5 +68,28 @@ export const roleChanges = identitySchema.table(
       'role_changes_roles_valid',
       sql`${table.fromRole} in ('reportante', 'comercio', 'moderador') and ${table.toRole} in ('reportante', 'comercio', 'moderador')`,
     ),
+  ],
+);
+
+// ADR-029: enlaces de verificación de correo. Se guarda el hash SHA-256 del token, nunca el token (como
+// las sesiones). Vive en identity: el correo y lo que lo comprueba no salen de este módulo (EC-08).
+export const emailVerifications = identitySchema.table(
+  'email_verifications',
+  {
+    id: uuid('id').primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id),
+    tokenHash: text('token_hash').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('email_verifications_token_hash_idx').on(table.tokenHash),
+    // Un solo enlace vigente (sin usar) por cuenta.
+    uniqueIndex('email_verifications_pending_idx')
+      .on(table.accountId)
+      .where(sql`used_at is null`),
   ],
 );

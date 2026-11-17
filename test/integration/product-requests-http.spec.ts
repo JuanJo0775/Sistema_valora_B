@@ -34,7 +34,9 @@ describe('propuestas de productos por HTTP (RF-003, #26)', () => {
     await app.init();
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
-    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    await db.execute(
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+    );
     reporter = await signIn(server, db, 'propone-producto@correo.com');
     moderator = await signIn(server, db, 'moderador-catalogo@correo.com', 'moderador');
   });

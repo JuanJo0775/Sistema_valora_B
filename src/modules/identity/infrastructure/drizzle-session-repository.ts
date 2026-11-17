@@ -29,6 +29,7 @@ export class DrizzleSessionRepository implements SessionRepository {
         revokedAt: sessions.revokedAt,
         role: accounts.role,
         accountSuspendedUntil: accounts.suspendedUntil,
+        accountEmailVerifiedAt: accounts.emailVerifiedAt,
       })
       .from(sessions)
       .innerJoin(accounts, eq(sessions.accountId, accounts.id))

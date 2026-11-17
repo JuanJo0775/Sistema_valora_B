@@ -42,7 +42,9 @@ describe('moderación por HTTP (RF-013)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     // Pocas cuentas para todo el archivo: los límites de inicio de sesión cuentan por IP.
-    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    await db.execute(
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+    );
     reporter = await signIn(server, db, 'reportante@correo.com');
     moderator = await signIn(server, db, 'moderadora@correo.com', 'moderador');
   });

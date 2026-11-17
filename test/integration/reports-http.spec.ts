@@ -39,7 +39,9 @@ describe('POST /v1/reports', () => {
     db = app.get<Database>(DATABASE);
     // Una sola cuenta de reportante para todo el archivo: los límites de inicio de sesión cuentan
     // por IP.
-    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    await db.execute(
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+    );
     reporter = await signIn(server, db, 'reportante@correo.com');
   });
 
@@ -114,6 +116,34 @@ describe('POST /v1/reports', () => {
       expect(response.body).toEqual({
         code: 'CSRF_TOKEN_INVALID',
         message: 'Falta el token CSRF o no coincide con la sesión.',
+      });
+      const saved = await db.execute(sql`select id from pricing.reports`);
+      expect(saved.rows).toHaveLength(0);
+    });
+
+    // ADR-029: registrar precios exige el correo verificado, con un código estable para el frontend.
+    it('con el correo sin verificar responde 403 EMAIL_NOT_VERIFIED y no guarda nada', async () => {
+      const unverified = await signIn(
+        server,
+        db,
+        'sin-verificar@correo.com',
+        'reportante',
+        undefined,
+        false,
+      );
+
+      const response = await request(server)
+        .post('/v1/reports')
+        .set('Cookie', unverified.cookie)
+        .set('X-CSRF-Token', unverified.csrfToken)
+        .set('Idempotency-Key', idempotencyKey)
+        .send(body())
+        .expect(403);
+
+      expect(response.body).toEqual({
+        code: 'EMAIL_NOT_VERIFIED',
+        message:
+          'Verifica tu correo para registrar precios. Revisa tu bandeja o pide un enlace nuevo.',
       });
       const saved = await db.execute(sql`select id from pricing.reports`);
       expect(saved.rows).toHaveLength(0);
