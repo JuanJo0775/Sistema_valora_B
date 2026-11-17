@@ -42,7 +42,9 @@ describe('acceso por rol (RF-002)', () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    await db.execute(
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+    );
   });
 
   const cookieFor = async (email: string, role: string): Promise<string> =>

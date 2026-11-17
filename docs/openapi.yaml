@@ -587,7 +587,7 @@ paths:
         Idempotente por la cabecera Idempotency-Key: un reintento con la misma clave y el mismo cuerpo
         devuelve la respuesta original y no crea duplicados (EC-01, EC-07). El precio vigente se
         actualiza segundos después con el evento PriceReported; la confianza se calcula después (ADR-004).
-        Exige sesión de reportante y la cabecera X-CSRF-Token (issue #16); el reporte guarda la cuenta,
+        Exige sesión de reportante con el correo verificado (ADR-029) y la cabecera X-CSRF-Token (issue #16); el reporte guarda la cuenta,
         que nunca sale en respuestas ni eventos (EC-08). La misma Idempotency-Key usada por otra cuenta
         responde 409.
 
@@ -623,7 +623,17 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '403':
+          description: >-
+            code FORBIDDEN, CSRF_TOKEN_INVALID o ACCOUNT_SUSPENDED, como en toda ruta con sesión. code
+            EMAIL_NOT_VERIFIED (ADR-029): la cuenta aún no verificó su correo; el frontend avisa y ofrece
+            POST /auth/resend-verification. Se responde antes de validar el cuerpo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                code: EMAIL_NOT_VERIFIED
+                message: Verifica tu correo para registrar precios. Revisa tu bandeja o pide un enlace nuevo.
         '409':
           description: >-
             Conflicto. code IDEMPOTENCY_KEY_REUSED: la misma Idempotency-Key ya se usó con otro cuerpo o por otra cuenta.
@@ -919,7 +929,7 @@ paths:
       operationId: register
       summary: Crear cuenta de reportante con consentimiento de datos (RF-001, Ley 1581)
       description: >-
-        La cuenta nueva siempre es reportante y no inicia sesión. Si el correo ya tiene cuenta, responde
+        La cuenta nueva siempre es reportante, no inicia sesión y recibe por correo el enlace de verificación (ADR-029); si el envío falla, el registro no falla. Si el correo ya tiene cuenta, responde
         201 igual y no cambia nada, para no revelar qué correos están registrados (EC-08). El correo se
         guarda sin espacios y en minúsculas. El nombre visible (#133) se guarda sin espacios sobrantes y
         solo lo devuelve GET /auth/session de la propia cuenta; ninguna otra respuesta lo incluye (EC-08).
@@ -1024,10 +1034,17 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [role, csrfToken]
+                required: [role, emailVerified, csrfToken]
                 description: Sin correo ni id de la cuenta (EC-08).
                 properties:
                   role: { type: string, enum: [reportante, comercio, moderador] }
+                  emailVerified:
+                    type: boolean
+                    description: >-
+                      ADR-029: si la cuenta ya verificó su correo. Sin verificar puede iniciar sesión y
+                      consultar, pero POST /reports responde 403 EMAIL_NOT_VERIFIED. Solo la propia
+                      sesión lo dice; ninguna respuesta pública lo incluye (EC-08). Las cuentas anteriores
+                      a ADR-029 empiezan en false.
                   displayName:
                     type: string
                     description: >-
@@ -1045,6 +1062,71 @@ paths:
                       Solo si la cuenta está suspendida: la sesión está limitada a ver el estado de
                       sus reportes y apelar (#71).
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/verify-email:
+    post:
+      tags: [Autenticación]
+      operationId: verifyEmail
+      summary: Verificar el correo con el token del enlace (ADR-029)
+      description: >-
+        Pública: el token del enlace que llegó por correo es la credencial, así que no pide sesión ni
+        CSRF. Es un POST y no un GET para que los antivirus y las vistas previas de los enlaces no
+        gasten el token. El token vale 24 horas y un solo uso; solo se guarda su hash. Un token
+        desconocido, vencido o ya usado responde igual (422 INVALID_VERIFICATION_TOKEN), sin decir cuál.
+        Si la cuenta ya estaba verificada, un token vigente responde 204 y no cambia la fecha original.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  description: El valor de ?token= del enlace (43 caracteres en base64url).
+      responses:
+        '204': { description: Correo verificado (o la cuenta ya lo estaba) }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422':
+          description: >-
+            code INVALID_VERIFICATION_TOKEN: el enlace no es válido, venció o ya se usó. Hay que pedir
+            uno nuevo con POST /auth/resend-verification.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Más de 20 intentos por IP en 15 minutos (valores provisionales).
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /auth/resend-verification:
+    post:
+      tags: [Autenticación]
+      operationId: resendVerification
+      summary: Reenviar el correo de verificación a la cuenta de la sesión (ADR-029)
+      description: >-
+        Sin cuerpo: el correo sale a la cuenta de la sesión, nunca a una dirección recibida, así que no
+        revela qué correos existen (EC-08). Un enlace nuevo deja sin efecto los anteriores sin usar.
+        Responde 202 igual si la cuenta ya estaba verificada (no se envía nada) o si el envío se
+        encola. Una cuenta suspendida también puede usarla.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        '202': { description: Solicitud aceptada }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429':
+          description: Más de 3 reenvíos por cuenta en una hora (valores provisionales).
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /moderation/queue:
     get:
       tags: [Moderación]
@@ -1553,7 +1635,8 @@ components:
       description: >-
         code FORBIDDEN: el rol no tiene permiso. code CSRF_TOKEN_INVALID: falta la cabecera
         X-CSRF-Token o no coincide con la sesión. code ACCOUNT_SUSPENDED: la cuenta está suspendida y
-        su sesión solo sirve para ver el estado de sus reportes, apelar y cerrar sesión (#71).
+        su sesión solo sirve para ver el estado de sus reportes, apelar y cerrar sesión (#71). code
+        EMAIL_NOT_VERIFIED: solo en POST /reports, la cuenta aún no verificó su correo (ADR-029).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -1599,10 +1682,10 @@ components:
       description: >-
         Única forma de error de la API (issue #41). Solo tiene code y message; la única excepción es
         availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84). Valores de code:
-        VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), NOT_FOUND (404),
+        VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), NOT_FOUND (404),
         CONFLICT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, INVALID_TTL y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, INVALID_TTL, INVALID_VERIFICATION_TOKEN y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:

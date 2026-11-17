@@ -6,7 +6,10 @@
 //   pnpm smoke -- --solo-lectura  solo consultas públicas (para el sistema desplegado)
 //
 // Variables: SMOKE_URL (por defecto http://localhost:3000). Para probar la moderación:
-// SMOKE_MODERATOR_EMAIL y SMOKE_MODERATOR_PASSWORD de una cuenta moderadora.
+// SMOKE_MODERATOR_EMAIL y SMOKE_MODERATOR_PASSWORD de una cuenta moderadora. Registrar precios exige el
+// correo verificado (ADR-029): para el recorrido completo, SMOKE_REPORTER_EMAIL y
+// SMOKE_REPORTER_PASSWORD de una cuenta reportante ya verificada; sin ellas, la cuenta nueva que crea la
+// prueba recibe 403 EMAIL_NOT_VERIFIED al reportar.
 
 const BASE = `${(process.env['SMOKE_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')}/v1`;
 const READ_ONLY = process.argv.includes('--solo-lectura');
@@ -140,7 +143,12 @@ async function main(): Promise<void> {
   // 2. Un reportante registra un precio.
   const stamp = Date.now();
   const password = 'clave-de-humo-larga';
-  const author = await signIn(`humo-${String(stamp)}-a@valora.test`, password, true);
+  const reporterEmail = process.env['SMOKE_REPORTER_EMAIL'];
+  const reporterPassword = process.env['SMOKE_REPORTER_PASSWORD'];
+  const author =
+    reporterEmail && reporterPassword
+      ? await signIn(reporterEmail, reporterPassword, false)
+      : await signIn(`humo-${String(stamp)}-a@valora.test`, password, true);
   const flagger = await signIn(`humo-${String(stamp)}-b@valora.test`, password, true);
   record('Dos reportantes se registran e inician sesión', author !== null && flagger !== null);
   if (!author || !flagger) return;

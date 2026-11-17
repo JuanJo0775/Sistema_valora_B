@@ -18,6 +18,8 @@
 |---|---|---|
 | Correo | `identity.accounts.email` | Iniciar sesión. |
 | Nombre visible | `identity.accounts.display_name` (vacío en las cuentas creadas antes de la #133) | Saludar a la persona en su propia sesión («Hola, Sara»). Solo lo devuelve `GET /v1/auth/session` de esa cuenta; ninguna otra respuesta, ni la moderación, lo incluye (`privacy-public-responses.spec.ts`). |
+| Fecha de verificación del correo | `identity.accounts.email_verified_at` (vacía = sin verificar) | Exigir correo comprobado para registrar precios (ADR-029). Solo la dice `GET /v1/auth/session` de esa cuenta (`emailVerified`, un booleano); ninguna otra respuesta. |
+| Enlaces de verificación (hash del token, cuenta, vencimiento y uso) | `identity.email_verifications` | Comprobar que la persona controla el correo (ADR-029). Se guarda el SHA-256 del token, nunca el token; vale 24 horas y un solo uso. No repite el correo: se une a la cuenta por `account_id`. |
 | Hash de la contraseña (argon2id) | `identity.accounts.password_hash` | Iniciar sesión; nunca la contraseña. |
 | Versión y fecha de la política aceptada | `identity.accounts` | Consentimiento (Ley 1581). |
 | Sesiones (hash del token) | `identity.sessions` | Sesión de servidor; no guarda IP ni navegador. |
@@ -38,14 +40,17 @@
 | `GET /v1/establishments/nearby` | Ninguno. `no-store` por la misma razón. |
 | `GET /v1/establishments` | Ninguno (solo el directorio de tiendas). Sirve para elegir la tienda sin compartir la ubicación (#116). |
 | `GET /v1/establishments/{establishmentId}/prices` | Ninguno. Lleva `reportId`, sin autor. |
-| `POST /v1/auth/register`, `POST /v1/auth/login` | No dicen si un correo existe (#16). |
+| `POST /v1/auth/register`, `POST /v1/auth/login` | No dicen si un correo existe (#16). Con un correo ya registrado el registro no envía ningún mensaje y responde igual (EC-08). |
+| `POST /v1/auth/verify-email` | Ninguno. Un token desconocido, vencido o usado responde igual (422 `INVALID_VERIFICATION_TOKEN`); no devuelve el correo ni la cuenta (ADR-029). |
+| `POST /v1/auth/resend-verification` | Ninguno. Reenvía a la cuenta de la sesión, nunca a un correo recibido, y responde igual si ya estaba verificada (ADR-029). |
 
-Las rutas con sesión tampoco devuelven el correo: `GET /v1/auth/session` da el rol y el token CSRF; la cola de moderación y el estado de un aporte no dicen quién reportó, quién marcó ni quién decidió (#32, #71, #76). Los eventos internos llevan solo la clave seudónima (#31, #33, #29).
+Las rutas con sesión tampoco devuelven el correo: `GET /v1/auth/session` da el rol, si el correo está verificado (`emailVerified`) y el token CSRF; la cola de moderación y el estado de un aporte no dicen quién reportó, quién marcó ni quién decidió (#32, #71, #76). Los eventos internos llevan solo la clave seudónima (#31, #33, #29).
 
 ## Qué guardan los registros
 
 - No hay registro de peticiones: ni la URL (con la ubicación) ni la IP se escriben.
 - Se registran los errores inesperados con su traza (filtro de errores y repartidor del outbox), sin el cuerpo de la petición.
+- **Correo de verificación (ADR-029).** El mensaje lleva solo el enlace y un aviso, sin contraseña ni nombre. El proveedor de correo (Resend, con `EMAIL_PROVIDER=resend`) recibe el correo del destinatario para poder entregarlo: es un encargado más del tratamiento y se declara en la política (sección 5) y en `docs/privacidad.md`. Los avisos de error del envío no llevan el correo, el token ni la clave. Con `EMAIL_PROVIDER=console`, solo en desarrollo y pruebas, el enlace y el destinatario salen en el registro del servidor; en producción `ConsoleEmailSender` no escribe ni el enlace ni el destinatario.
 - Los comandos del administrador escriben en su consola: `pnpm db:seed` (filas del CSV) e `identity:set-role`, que muestra el correo de la cuenta cambiada. Es la consola de quien administra el servidor, no un registro público.
 
 ## Hallazgos
@@ -57,3 +62,4 @@ Las rutas con sesión tampoco devuelven el correo: `GET /v1/auth/session` da el 
 
 - `privacy-schema.spec.ts` falla si una migración agrega correo o contraseña fuera de `identity`, una columna de coordenadas fuera de la tienda, una columna de IP o una referencia a la cuenta fuera de `identity` y `pricing.reports`.
 - `privacy-public-responses.spec.ts` recorre las rutas públicas con una cuenta que reportó y otra que marcó, y falla si alguna respuesta trae su correo, su id, su clave seudónima o la ubicación consultada. Una ruta pública nueva debe agregarse a esa lista.
+- `email-verification-http.spec.ts` y `privacy-schema.spec.ts` (ADR-029) fallan si el token de verificación se guarda en claro en alguna columna de `identity`, si la tabla `identity.email_verifications` gana otras columnas, o si alguna respuesta de las rutas de verificación y de la sesión trae el correo o el token.

@@ -67,7 +67,9 @@ describe('apelación de punta a punta (RF-013 RN4, #71)', () => {
     request(server).get(`/v1/products/${productId}/comparison`).query(userLocation);
 
   it('el autor suspendido apela con su sesión limitada, otra moderadora acepta y su precio vuelve', async () => {
-    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    await db.execute(
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+    );
     const relay = app.get(OutboxRelay);
     const ana = await signIn(server, db, 'ana@correo.com');
     const beto = await signIn(server, db, 'beto@correo.com');

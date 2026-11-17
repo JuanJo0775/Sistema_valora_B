@@ -23,6 +23,13 @@ const IsDisplayName = () =>
 const toNormalizedName = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? normalizeDisplayName(value) : value;
 
+// ADR-029: el token del enlace del correo (43 caracteres en base64url); se acota para no procesar basura.
+export class VerifyEmailDto {
+  @IsString({ message: 'debe ser texto' })
+  @Length(1, 200, { message: 'debe tener entre 1 y 200 caracteres' })
+  token!: string;
+}
+
 export class RegisterDto {
   @Transform(toNormalizedEmail)
   @MaxLength(254, { message: 'debe tener como máximo 254 caracteres' })

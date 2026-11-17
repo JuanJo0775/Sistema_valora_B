@@ -28,7 +28,9 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
     await app.init();
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
-    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    await db.execute(
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+    );
   });
 
   afterEach(async () => {
@@ -163,6 +165,8 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
         role: 'reportante',
         // #133: el nombre visible, sin espacios sobrantes; solo en la propia sesión.
         displayName: 'Ana María',
+        // ADR-029: la cuenta recién registrada aún no verificó su correo.
+        emailVerified: false,
         csrfToken: expect.stringMatching(/^[\w-]{43}$/) as unknown,
       });
     });

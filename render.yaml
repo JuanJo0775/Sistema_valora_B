@@ -53,3 +53,19 @@ services:
         sync: false
       - key: SUPABASE_BUCKET
         value: productos
+      # Correo de verificación (ADR-029). Con EMAIL_PROVIDER=resend las otras tres son obligatorias; con
+      # «console» (por defecto) no se entrega ningún correo. La clave nunca va en Git.
+      # Mientras no haya proveedor de correo, false: con «console» nadie recibe el enlace y se bloquearían
+      # todos los reportes (la API ni arranca en producción con true y console). Se cambia a true al
+      # configurar EMAIL_PROVIDER=resend, EMAIL_API_KEY, EMAIL_FROM y APP_URL.
+      - key: REQUIRE_VERIFIED_EMAIL
+        value: 'false'
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # Dirección pública de la PWA (https://...), sin barra final: base del enlace /verificar-correo.
+      - key: APP_URL
+        sync: false

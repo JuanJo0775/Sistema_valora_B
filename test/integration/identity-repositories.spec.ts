@@ -50,7 +50,9 @@ describe('repositorios de identity', () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate identity.sessions, identity.accounts, identity.role_changes`);
+    await db.execute(
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
+    );
   });
 
   it('guarda una cuenta, la encuentra por correo y no deja repetir el correo', async () => {
@@ -93,6 +95,7 @@ describe('repositorios de identity', () => {
       revokedAt: null,
       role: 'reportante',
       accountSuspendedUntil: null,
+      accountEmailVerifiedAt: null,
     });
     await sessions.touch(session.id, later);
     await sessions.revoke(session.id, later);

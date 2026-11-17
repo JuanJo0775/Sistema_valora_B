@@ -21,7 +21,9 @@ import { InvalidCredentialsError, Login } from '../application/login';
 import { Logout } from '../application/logout';
 import { OwnDisplayName } from '../application/own-display-name';
 import { RegisterAccount } from '../application/register-account';
-import { LoginDto, RegisterDto } from './auth.dto';
+import { ResendVerification } from '../application/resend-verification';
+import { VerifyEmail } from '../application/verify-email';
+import { LoginDto, RegisterDto, VerifyEmailDto } from './auth.dto';
 import { clearedSessionCookie, sessionCookie } from './session-cookie';
 import {
   AllowSuspended,
@@ -35,6 +37,8 @@ export interface SessionResponse {
   role: Role;
   // #133: el nombre con el que la app saluda; solo en la propia sesión y si la cuenta lo tiene.
   displayName?: string;
+  // ADR-029: si la cuenta ya verificó su correo; registrar precios lo exige. Solo en la propia sesión.
+  emailVerified: boolean;
   csrfToken: string;
   suspendedUntil?: string;
 }
@@ -64,6 +68,8 @@ export class AuthController {
     private readonly login: Login,
     private readonly logout: Logout,
     private readonly ownDisplayName: OwnDisplayName,
+    private readonly verifyEmail: VerifyEmail,
+    private readonly resendVerification: ResendVerification,
     private readonly config: ConfigService<Env, true>,
   ) {}
 
@@ -120,10 +126,39 @@ export class AuthController {
     return {
       role: session.role,
       ...(displayName ? { displayName } : {}),
+      emailVerified: session.emailVerified,
       csrfToken: csrfTokenFor(session.token, secret),
       // Grill de la #71, pregunta 5: el frontend muestra que la sesión está limitada.
       ...(session.suspendedUntil ? { suspendedUntil: session.suspendedUntil.toISOString() } : {}),
     };
+  }
+
+  // ADR-029: POST y no GET, para que los antivirus y las vistas previas no gasten el enlace. Pública:
+  // lleva el token, no la sesión. Un token inválido, vencido o usado responde igual (422).
+  @Post('verify-email')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async verify(@Body() body: VerifyEmailDto, @Req() request: ClientRequest): Promise<void> {
+    try {
+      await this.verifyEmail.execute({ token: body.token, ip: request.ip ?? 'desconocida' });
+    } catch (error) {
+      if (error instanceof TooManyAttemptsError) throw tooManyRequests(error);
+      throw error;
+    }
+  }
+
+  // ADR-029: reenvía el enlace a la cuenta de la SESIÓN (nunca a un correo recibido en el cuerpo), así
+  // no revela qué correos existen. Responde 202 igual si la cuenta ya estaba verificada.
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @UseGuards(SessionGuard)
+  @AllowSuspended()
+  async resend(@CurrentSession() session: AuthenticatedSession): Promise<void> {
+    try {
+      await this.resendVerification.execute({ accountId: session.accountId });
+    } catch (error) {
+      if (error instanceof TooManyAttemptsError) throw tooManyRequests(error);
+      throw error;
+    }
   }
 
   // Grill de la #16, pregunta 3: revoca la sesión en el servidor y borra la cookie. El guard exige

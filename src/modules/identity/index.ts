@@ -11,3 +11,5 @@ export {
   Roles,
   SessionGuard,
 } from './http/session.guard';
+// ADR-029: pricing exige el correo verificado para registrar precios.
+export { VerifiedEmailGuard } from './http/verified-email.guard';
