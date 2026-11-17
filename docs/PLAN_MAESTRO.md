@@ -3,7 +3,7 @@
 **Proyecto:** Seminario Nuclear 4 — Proyecto Nuclear VI, periodo II-2026  
 **Producto:** Plataforma colaborativa de comparación de precios entre tiendas de barrio, minimercados y supermercados, con foco inicial en Armenia y el Quindío.  
 **Documento de referencia:** alcance, coordinación y decisiones estructurales de Valora  
-**Estado:** Repositorios privados inicializados, documentación base publicada y backlog de épicas creado. No equivale a implementación ni a cumplimiento total de H1-01.
+**Estado:** Ambos repositorios oficiales son públicos y contienen implementación funcional, documentación, pruebas automatizadas y CI. El estado de cada épica se verifica con issues y PR; no equivale a cierre global ni a aceptación académica.
 
 ---
 
@@ -11,10 +11,10 @@
 
 | Repositorio | Responsabilidad | Visibilidad | Estado |
 |---|---|---|---|
-| [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B) | Backend: API, dominio, reglas, persistencia y seguridad | Privado | Inicializado con documentación base |
-| [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F) | Frontend: aplicación web responsiva/PWA, flujos y experiencia | Privado | Inicializado con documentación base |
+| [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B) | Backend: API, dominio, reglas, persistencia y seguridad | Público | Implementación NestJS, módulos, migraciones, pruebas y CI integradas |
+| [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F) | Frontend: aplicación web responsiva/PWA, flujos y experiencia | Público | PWA React + Vite, módulos funcionales, pruebas y CI integradas |
 
-Ambos repositorios estaban vacíos al comenzar esta organización. Se crearon commits iniciales en `main` con README, .gitignore, contribución y documentos de arquitectura/alcance.
+Los repositorios comenzaron con documentación base; desde entonces incorporaron código, migraciones, contratos, pruebas, workflows y despliegue. El historial Git y los PR constituyen la evidencia de implementación y contribución.
 
 ### Estructura del backend
 
@@ -70,7 +70,7 @@ Las fechas anteriores reproducen el campo **Fecha de decisión** de cada ADR. En
 ### Otras restricciones de alcance vigentes
 
 - **Lenguaje principal:** TypeScript.
-- **Despliegue:** con Docker (ADR-012, 15 de noviembre de 2026): una imagen descrita por un `Dockerfile` en el repositorio. Proveedores (16 de noviembre de 2026): imagen en Render, base PostgreSQL + PostGIS en Neon y PWA en Vercel, que reenvía `/v1/*` a Render.
+- **Despliegue:** ADR-012 aceptado: imagen Docker en Render, PostgreSQL + PostGIS en Neon y PWA en Vercel, que reenvía `/v1/*` a Render. PR #125 confirma que Render es la orquestación elegida por el equipo; no queda pendiente confirmación con el docente. El workflow automatizado sigue pendiente de validación reproducible (B#23).
 - **Alertas:** RF-019 es opcional/futuro y queda fuera del MVP; no comprometer infraestructura de alertas.
 - **Frameworks:** aceptados el 8 de noviembre de 2026. Frontend: React + TypeScript + Vite con vite-plugin-pwa (ADR-017), que reemplaza la propuesta de Next.js + Serwist. Backend: NestJS sobre Express (ADR-018).
 - **Autenticación:** la estrategia general está aceptada, pero la expiración, rotación y revocación de sesiones deben concretarse como trabajo de diseño/implementación, sin reinterpretar la decisión ya aceptada.
@@ -193,44 +193,57 @@ La actividad H1-01 pide: equipo conformado, repositorio Git con historial por in
 
 ### Evidencia ya preparada
 
-- [x] Repositorio backend privado creado: [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B).
-- [x] Repositorio frontend privado creado: [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F).
+- [x] Repositorio backend público con implementación, migraciones, pruebas y CI: [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B).
+- [x] Repositorio frontend público con PWA, módulos, pruebas y CI: [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F).
 - [x] README y reglas de contribución en ambos.
 - [x] Plantilla ADR en backend.
-- [x] Épicas registradas como issues GitHub: 8 backend y 8 frontend.
-- [x] Documentación inicial de arquitectura, API, UX y offline-first.
+- [x] Épicas registradas como issues GitHub: 9 backend (B00–B08) y 8 frontend (F01–F08).
+- [x] Documentación de arquitectura, API, UX, offline-first, despliegue, decisiones y calidad, actualizada a la implementación vigente.
 
 ### Pendiente para declarar H1-01 entregado
 
-- [ ] Cada integrante debe aceptar/acceder a ambos repositorios y realizar commits propios; no se debe simular autoría.
-- [ ] Elegir formalmente la herramienta C4 (por ejemplo, Structurizr, Mermaid u otra) y dejar la decisión registrada.
-- [ ] Crear/configurar un tablero de trabajo (GitHub Projects u otra herramienta acordada) y vincular los issues.
-- [ ] Confirmar los integrantes y responsables en el calendario de Notion.
+- [ ] Confirmar que cada integrante aceptó la invitación y puede trabajar en ambos repositorios; relacionar cuentas reales con commits/PR. La auditoría anterior no encontró contribuciones atribuibles a `lauvel19`; verificar antes de concluir.
+- [ ] Elegir formalmente la herramienta C4. Existe una propuesta Structurizr DSL versionada, pero no se considera aprobada hasta que el equipo la confirme y valide su render.
+- [x] Tablero de seguimiento de Notion creado con 17 épicas y actividades de cierre, dependencias, criterios y evidencias; no se requiere duplicarlo en GitHub Projects salvo acuerdo del equipo.
+- [ ] Confirmar los integrantes y responsables reales en el calendario y tablero; no inventar asignaciones.
 - [ ] Verificar permisos y que cada integrante pueda abrir PR.
 
-**Estado recomendado de H1-01:** En progreso. La estructura Git y el backlog están preparados, pero aún no hay historial de contribución de todos los integrantes ni herramienta C4/tablero confirmados. No marcar Entregado todavía.
+**Estado recomendado de H1-01:** En progreso. Los repositorios, código, tablero y backlog ya existen; siguen pendientes la confirmación de la herramienta C4, la validación de accesos/identidades y la evidencia de contribución individual de todos los integrantes. No marcar Entregado todavía.
 
 ---
 
 ## 8. Próximos pasos sugeridos
 
-1. Invitar a los demás integrantes como colaboradores en ambos repositorios.
-2. Confirmar herramienta C4 y crear el tablero con las 16 épicas.
-3. Resolver las propuestas de framework frontend/backend mediante sus ADR; la persistencia PostgreSQL + PostGIS ya está aceptada en ADR-003.
-4. Desglosar cada épica en historias pequeñas y pruebas de aceptación.
-5. Elaborar el contrato OpenAPI preliminar antes de implementar endpoints, manteniéndolo alineado con ADR-002.
-6. Comenzar por el flujo vertical mínimo: catálogo → establecimiento → reporte → comparación.
-7. Ejecutar TDD sobre normalización por unidad, dinero, idempotencia, vigencia y orden neutral.
+1. Confirmar aceptación de invitaciones, permisos de escritura e identidad de los colaboradores; documentar commits/PR por integrante.
+2. Acordar la herramienta C4 y validar el diagrama fuente; el tablero Notion ya contiene las 17 épicas.
+3. Completar el registro de fuentes/hallazgos de H1-02, la fuente local de H1-03 y la validación del equipo de H1-04/H1-05.
+4. Cerrar la prueba E2E B#17/F#27 y la automatización de despliegue B#23 antes de declarar el núcleo reproducible.
+5. Ejecutar la prueba de usabilidad y auditoría WCAG F#28, y la prueba de carga k6 B#35.
+6. Curar catálogo/SIPSA y completar la muestra local de exactitud antes de declarar verificada la calidad de datos.
+7. Mantener el módulo comercial B08/F07/F08 en Corte 3; no adelantar su implementación sin el análisis de impacto y alcance aprobado.
 
 ---
 
 ## 9. Historial de organización
 
-- Se verificó que ambos repositorios existían, estaban vacíos y ya eran privados.
-- Se inicializó `main` con documentación base en cada repositorio.
-- Se añadieron guías de contribución y reglas de alcance.
-- Se registraron 8 épicas backend y 8 épicas frontend como issues.
+- 17-nov-2026: ambos repositorios públicos contienen implementación funcional, pruebas, CI y documentación técnica; los 17 issues principales siguen abiertos porque hay criterios globales o validaciones pendientes.
+- Se amplió la documentación para reflejar el estado vigente de arquitectura, decisiones, entregables, despliegue y calidad.
+- Se integraron módulos funcionales de catálogo, establecimientos, identidad, reportes, confiabilidad, comparación, PWA, moderación e historial.
+- Se registran 9 épicas backend (B00–B08) y 8 frontend (F01–F08); el tablero Notion también incluye tareas transversales y una fila vacía preservada.
 - Se actualizaron los índices de épicas con sus enlaces.
-- No se subió código de aplicación, secretos, datos personales ni credenciales.
-- No se cambió el calendario ni se marcó H1-01 como entregado.
+- Los secretos no se almacenan en Git; la infraestructura usa variables protegidas y configuración documentada.
+- Se revisó el calendario y se ajustaron estados con evidencia; H1-01 continúa En progreso y no se declara entregado.
 - La base de datos ADRs de Notion se establece como fuente única de verdad para estados y fechas; este plan conserva solo la línea base transversal y evita duplicar estados cambiantes.
+
+
+## Estado técnico verificado — 17 de noviembre de 2026
+
+- **Gobierno de arquitectura:** 22 ADR numerados en Notion; 16 aceptados y 6 propuestos. ADR-004 se aceptó el 12-nov-2026 (PR B#58) y se alineó en Notion. ADR-022 (fotos en Supabase Storage) aceptado el 17-nov-2026; el adaptador está implementado y falta la prueba de una foto real tras un redespliegue.
+- **Backend:** CI #105, 816 pruebas aprobadas y 96,3 % de cobertura de líneas; SonarQube Quality Gate aprobado. Smoke local: 22/22 pasos con semilla y 7/7 en solo lectura (PR B#113).
+- **Frontend:** CI #81, 330 pruebas aprobadas y 98,65 % de cobertura; Quality Gate aprobado con un hallazgo MAJOR de mantenibilidad en `RoleChange.tsx:14`.
+- **Despliegue:** topología Render/Neon/Vercel seleccionada; existe workflow `.github/workflows/deploy.yml` y runbook. La corrida #43999270545 falló porque `DATABASE_URL` llegó vacía. B#23 sigue abierto; se requieren tres despliegues consecutivos correctos y prueba de humo pública.
+- **Datos:** catálogo inicial de 31 productos y 37 presentaciones; los CSV conservan `verificar=no`. SIPSA tiene cuatro referencias marcadas `verificar=no`; la muestra de exactitud sigue vacía. B#118 y evaluación de exactitud pendientes.
+- **Validación integral:** B#17 y F#27 Playwright E2E pendientes; B#35 k6 pendiente; F#28 auditoría WCAG 2.2 AA y prueba de usabilidad pendientes.
+- **Corte 3:** B08/F07/F08 y H2-05 siguen documentados como alcance futuro; no se detectó implementación funcional del módulo comercial.
+
+Los estados «implementado», «integrado», «probado», «desplegado» y «aceptado» no son intercambiables. El cierre de cada épica requiere cumplir su issue padre y los criterios de aceptación asociados.
