@@ -21,7 +21,7 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | ADR-020 | Imágenes de productos (aceptado el 15 de noviembre de 2026) | Una imagen por producto: Open Food Facts, foto del equipo o ilustración genérica. En el Corte 2 solo el moderador sube fotos (JPEG, PNG o WebP hasta 2 MB; WebP de 800 px como máximo, sin metadatos). Almacenamiento detrás de un puerto: carpeta del servidor hasta ADR-012. Ver [docs/adr/0020-imagenes-productos.md](adr/0020-imagenes-productos.md). |
 | ADR-021 | Acceso a datos: Drizzle ORM con migraciones SQL versionadas (aceptado el 11 de noviembre de 2026) | Tablas en `infrastructure/schema.ts` con un `pgSchema` por módulo; migraciones generadas con `drizzle-kit`, revisadas y versionadas; driver `pg`; solo `infrastructure/` y `shared/database` importan Drizzle. Ver [docs/adr/0021-acceso-datos-drizzle.md](adr/0021-acceso-datos-drizzle.md). |
 | Proyecto | TypeScript como lenguaje principal | Backend desarrollado en TypeScript sobre NestJS (ADR-018). |
-| Proyecto | Docker para el despliegue (ADR-012; el proveedor sigue en discusión) | **Cambio del 15 de noviembre de 2026:** el backend se despliega como una imagen descrita por un `Dockerfile` en el repositorio (contenedores como código, RNF-009 RN1). Reemplaza la regla «sin Docker en el MVP» del 11 de noviembre. Se mantiene: los integrantes no necesitan Docker para desarrollar (PostgreSQL local) y la CI usa contenedores de servicio con PostgreSQL + PostGIS. Sin Testcontainers. Pendiente: proveedor y orquestación (confirmar RDA3 con el docente). |
+| ADR-012 | Despliegue: Docker en Render, base en Neon y PWA en Vercel (aceptado el 16 de noviembre de 2026) | El backend se despliega como una imagen descrita por un `Dockerfile` en el repositorio (contenedores como código, RNF-009 RN1; cambio del 15 de noviembre, que reemplaza «sin Docker en el MVP»). Render construye y corre la imagen y la orquesta (salud con `GET /v1/health`, reinicio, despliegue sin corte), descrito en `render.yaml`. La base es Neon (PostgreSQL administrado con PostGIS). Vercel sirve la PWA y **reenvía `/v1/*` a Render** (rewrite en `vercel.json`): el navegador ve un solo origen, la cookie de sesión no cambia y no hay CORS. La API debe configurar `trust proxy` para leer la IP real del cliente; si no, todos comparten los límites de intentos. Una sola copia en Render mientras el outbox corra dentro del proceso. Se mantiene: sin Docker para desarrollar (PostgreSQL local) y la CI con contenedores de servicio de PostgreSQL + PostGIS; sin Testcontainers. Pendiente: dónde guardar las fotos (Render borra el disco en cada despliegue) y confirmar con el docente que la orquestación de Render cuenta para RDA3. |
 | Proyecto | Dos repositorios separados (backend y frontend) | Este repositorio es responsable de API y dominio; el frontend consume su contrato. |
 
 ## Pendientes de decisión
@@ -29,7 +29,8 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | Tema | Estado actual | No asumir |
 |---|---|---|
 | Valores de vigencia y score | ADR-005 aceptado; valores provisionales | TTL 7/14 días, corroboración 5 % y umbral de anomalía 40 % son hipótesis/provisionales y parametrizables. |
-| Despliegue | ADR-012 en discusión | Proveedor, modelo de servicio y orquestación por definir; confirmar RDA3 con el docente. |
+| Fotos en el despliegue | ADR-012 aceptado; almacenamiento sin decidir | Render borra el disco en cada despliegue: disco persistente (de pago) o almacenamiento de objetos detrás del puerto `ImageStorage` (ADR-020). |
+| Orquestación para RDA3 | ADR-012 usa la de Render | Confirmar con el docente; si exige Kubernetes o Terraform, un ADR nuevo reemplaza esa parte. |
 | Herramientas de pruebas y calidad | Jest y Supertest en uso desde H2-01 | SonarQube y el resto del plan de calidad siguen por confirmar. |
 
 ## Versiones fijadas del entorno (H2-01, paso 1)
@@ -197,7 +198,7 @@ Aplicación de RF-001, RF-002, ADR-014 y EC-08. El detalle está en `docs/decisi
 
 - **Sesión de servidor:** tabla `identity.sessions`; la cookie `valora_session` lleva un token aleatorio de 256 bits y la base guarda su SHA-256.
 - **Ciclo de vida** (`src/domain/session-lifetime.ts`, valores provisionales): vence tras 7 días sin uso o 30 desde el inicio; `last_seen_at` se escribe como mucho cada 5 minutos; cada inicio de sesión crea una sesión y un token nuevos; cerrar sesión la revoca. Sin limpieza de sesiones vencidas por ahora.
-- **Cookie:** `HttpOnly`, `Secure` siempre, `SameSite=Lax`, `Path=/`, `Max-Age` de 30 días. Mismo origen y sin CORS hasta decidir el despliegue (ADR-012).
+- **Cookie:** `HttpOnly`, `Secure` siempre, `SameSite=Lax`, `Path=/`, `Max-Age` de 30 días. Mismo origen y sin CORS: en producción Vercel reenvía `/v1/*` a Render (ADR-012).
 - **CSRF:** `HMAC-SHA256(SESSION_SECRET, token de sesión)`, sin guardarlo; lo entrega `GET /auth/session` y lo exigen las rutas con sesión y `POST`, `PUT`, `PATCH` o `DELETE` (403 `CSRF_TOKEN_INVALID`).
 - **Roles:** uno por cuenta (`reportante`, `comercio`, `moderador`); el registro siempre crea un `reportante`. Solo el `reportante` podrá registrar precios. Guard `SessionGuard` con `@Roles(...)`: 401 sin sesión y 403 `FORBIDDEN` con otro rol.
 - **No revelar cuentas:** el inicio de sesión fallido responde siempre el mismo 401 y verifica un hash de relleno si la cuenta no existe; el registro con un correo existente responde 201 igual y no cambia nada.
@@ -397,7 +398,7 @@ Aplicación de ADR-020 (aceptado ese día), RF-003 y EC-08. El detalle está en 
 
 - **Ruta:** `PUT /v1/moderation/products/{productId}/image`, solo moderador; `multipart/form-data` con `file`. 400 sin archivo o si no es JPEG, PNG o WebP; 413 `PAYLOAD_TOO_LARGE` con más de 2 MB; 404 si el producto no existe.
 - **Proceso:** `sharp` la reduce a 800 px como máximo, la guarda en WebP y descarta los metadatos (también la ubicación).
-- **Almacenamiento:** puerto `ImageStorage`; hoy una carpeta del servidor (`MEDIA_DIR`) servida en `MEDIA_PUBLIC_URL` con caché de un año (el nombre cambia con la foto). El proveedor llega con ADR-012.
+- **Almacenamiento:** puerto `ImageStorage`; hoy una carpeta del servidor (`MEDIA_DIR`) servida en `MEDIA_PUBLIC_URL` con caché de un año (el nombre cambia con la foto). En Render el disco se borra en cada despliegue (ADR-012): el adaptador del almacenamiento definitivo está pendiente.
 - **Semilla:** si `productos.csv` no trae imagen, ya no borra la foto subida.
 - **Pendiente:** borrar el archivo anterior al reemplazar una foto; fotos del comercio (Corte 3).
 
