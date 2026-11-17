@@ -52,6 +52,22 @@ describe('enviar correo con Resend (ADR-029)', () => {
     expect(error.message).not.toContain('ana@correo.com');
   });
 
+  it('al rechazar, cancela el cuerpo de la respuesta sin leerlo', async () => {
+    let cancelled = false;
+    const body = new ReadableStream({
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const fetchImpl: typeof fetch = () => Promise.resolve(new Response(body, { status: 500 }));
+
+    await sender(fetchImpl)
+      .send(message)
+      .catch(() => undefined);
+
+    expect(cancelled).toBe(true);
+  });
+
   it('si la red falla, el error tampoco revela la clave', async () => {
     const fetchImpl: typeof fetch = () =>
       Promise.reject(new Error(`connect ECONNREFUSED con ${apiKey}`));

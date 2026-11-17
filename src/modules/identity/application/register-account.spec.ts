@@ -181,5 +181,7 @@ describe('registrar una cuenta', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).not.toContain('ana@correo.com');
     expect(warnings[0]).not.toContain('abc');
+    // Un error que no es del proveedor deja solo su nombre, no su mensaje.
+    expect(warnings[0]).toContain('Error');
   });
 });

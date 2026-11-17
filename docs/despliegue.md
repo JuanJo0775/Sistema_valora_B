@@ -85,7 +85,8 @@ Registrar precios exige el correo verificado, así que producción necesita envi
 
 | Variable | Valor | Notas |
 |---|---|---|
-| `EMAIL_PROVIDER` | `console` (por defecto) o `resend` | `console` no entrega ningún mensaje: solo sirve en desarrollo y pruebas. En producción no escribe ni el enlace ni el destinatario en el registro. |
+| `REQUIRE_VERIFIED_EMAIL` | `true` (por defecto) o `false` | Si registrar precios exige el correo verificado. **En producción, con `EMAIL_PROVIDER=console` y `true` la API no arranca** (nadie recibiría el enlace y se bloquearían todos los reportes). `render.yaml` la deja en `false`: se cambia a `true` al configurar el proveedor, el remitente y `APP_URL`. Con `false` el resto del flujo (registro, verificación, reenvío, `emailVerified`) sigue igual; solo `POST /reports` deja de exigir la verificación. |
+| `EMAIL_PROVIDER` | `console` (por defecto) o `resend` | `console` no entrega ningún mensaje: solo sirve en desarrollo y pruebas. Escribe el enlace y el destinatario en el registro solo si `NODE_ENV` es exactamente `development` o `test`; con cualquier otro valor no escribe ninguno de los dos. |
 | `EMAIL_API_KEY` | clave de Resend (`re_...`) | Obligatoria con `resend`. Solo en el panel de Render, nunca en Git. |
 | `EMAIL_FROM` | `Valora <no-responder@tu-dominio>` | Obligatoria con `resend`. Debe ser un remitente verificado en Resend. |
 | `APP_URL` | `https://<dirección de la PWA>` | Obligatoria con `resend`. Base del enlace `${APP_URL}/verificar-correo?token=...`; sin barra final. |
@@ -101,7 +102,7 @@ Si falta alguna con `resend`, la API no arranca y el mensaje nombra la variable.
    - `REPORTER_KEY_SECRET`: un valor aleatorio propio (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`). **No lo cambies una vez en uso**: las reputaciones quedan asociadas a esa clave.
    - `MEDIA_PUBLIC_URL`: `https://<dirección de Render>/media` (con Supabase no se usa, pero la validación la exige).
    - `SUPABASE_URL` y `SUPABASE_SECRET_KEY`: los del paso 3 bis. `SUPABASE_BUCKET` ya viene en `render.yaml`.
-   - `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM` y `APP_URL`: los del paso 3 ter.
+   - `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM` y `APP_URL`: los del paso 3 ter. `REQUIRE_VERIFIED_EMAIL` viene en `false` en `render.yaml`; cámbiala a `true` cuando el correo funcione.
 3. Copia la dirección pública del servicio (por defecto `https://valora-api.onrender.com`) y el **Deploy Hook** («Settings», «Deploy Hook») a los secretos del paso 2.
 4. `SESSION_SECRET` lo genera Render (`generateValue`). `TRUST_PROXY=2` ya viene en `render.yaml`.
 

@@ -27,8 +27,8 @@ export class SendVerificationEmail {
   async execute(input: SendVerificationEmailInput): Promise<void> {
     const token = newVerificationToken();
     const now = this.ports.clock.now();
-    await this.ports.verifications.deleteUnusedOf(input.accountId);
-    await this.ports.verifications.create({
+    // Guardar y invalidar es una transacción; el envío va después, fuera de ella.
+    await this.ports.verifications.replaceUnused(input.accountId, {
       id: randomUUID(),
       accountId: input.accountId,
       tokenHash: hashVerificationToken(token),

@@ -51,7 +51,7 @@ function emailSender(config: ConfigService<Env, true>): EmailSender {
   }
   const logger = new Logger('ConsoleEmailSender');
   return new ConsoleEmailSender({
-    production: config.get('NODE_ENV', { infer: true }) === 'production',
+    showLink: ['development', 'test'].includes(config.get('NODE_ENV', { infer: true })),
     log: (line) => {
       logger.log(line);
     },

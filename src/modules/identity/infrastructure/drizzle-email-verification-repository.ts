@@ -1,9 +1,8 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
   EmailVerificationRepository,
   NewEmailVerification,
-  StoredEmailVerification,
   VerificationTarget,
 } from '../application/email-verification-repository';
 import { accounts, emailVerifications } from './schema';
@@ -11,51 +10,38 @@ import { accounts, emailVerifications } from './schema';
 export class DrizzleEmailVerificationRepository implements EmailVerificationRepository {
   constructor(private readonly db: NodePgDatabase) {}
 
-  async deleteUnusedOf(accountId: string): Promise<void> {
-    await this.db
-      .delete(emailVerifications)
-      .where(and(eq(emailVerifications.accountId, accountId), isNull(emailVerifications.usedAt)));
-  }
-
-  async create(verification: NewEmailVerification): Promise<void> {
-    await this.db.insert(emailVerifications).values(verification);
-  }
-
-  async findByTokenHash(
-    tokenHash: string,
-  ): Promise<(StoredEmailVerification & { accountVerified: boolean }) | null> {
-    const [found] = await this.db
-      .select({
-        id: emailVerifications.id,
-        accountId: emailVerifications.accountId,
-        tokenHash: emailVerifications.tokenHash,
-        createdAt: emailVerifications.createdAt,
-        expiresAt: emailVerifications.expiresAt,
-        usedAt: emailVerifications.usedAt,
-        verifiedAt: accounts.emailVerifiedAt,
-      })
-      .from(emailVerifications)
-      .innerJoin(accounts, eq(emailVerifications.accountId, accounts.id))
-      .where(eq(emailVerifications.tokenHash, tokenHash));
-    if (!found) return null;
-    const { verifiedAt, ...verification } = found;
-    return { ...verification, accountVerified: verifiedAt !== null };
-  }
-
-  // El token se gasta solo si sigue sin usar (dos peticiones a la vez no lo usan dos veces) y la
-  // fecha de verificación se fija solo la primera vez.
-  async complete(input: { verificationId: string; accountId: string; at: Date }): Promise<void> {
+  async replaceUnused(accountId: string, verification: NewEmailVerification): Promise<void> {
     await this.db.transaction(async (tx) => {
+      // Candado de la cuenta hasta el final de la transacción: dos reenvíos a la vez se turnan y el
+      // índice único parcial nunca se viola. Es un candado de aplicación, no de filas ni de tablas.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${accountId}, 0))`);
       await tx
+        .delete(emailVerifications)
+        .where(and(eq(emailVerifications.accountId, accountId), isNull(emailVerifications.usedAt)));
+      await tx.insert(emailVerifications).values(verification);
+    });
+  }
+
+  // Un solo UPDATE atómico gasta el token: solo uno de dos intentos simultáneos recibe la fila.
+  async consume(input: { tokenHash: string; at: Date }): Promise<{ accountId: string } | null> {
+    return this.db.transaction(async (tx) => {
+      const [used] = await tx
         .update(emailVerifications)
         .set({ usedAt: input.at })
         .where(
-          and(eq(emailVerifications.id, input.verificationId), isNull(emailVerifications.usedAt)),
-        );
+          and(
+            eq(emailVerifications.tokenHash, input.tokenHash),
+            isNull(emailVerifications.usedAt),
+            gt(emailVerifications.expiresAt, input.at),
+          ),
+        )
+        .returning({ accountId: emailVerifications.accountId });
+      if (!used) return null;
       await tx
         .update(accounts)
         .set({ emailVerifiedAt: input.at })
-        .where(and(eq(accounts.id, input.accountId), isNull(accounts.emailVerifiedAt)));
+        .where(and(eq(accounts.id, used.accountId), isNull(accounts.emailVerifiedAt)));
+      return used;
     });
   }
 

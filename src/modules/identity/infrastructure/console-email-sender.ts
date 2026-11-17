@@ -1,8 +1,9 @@
 import type { EmailMessage, EmailSender } from '../application/email-sender';
 
 export interface ConsoleEmailSenderOptions {
-  // En producción nunca se escribe el enlace (es una credencial de un solo uso) ni el destinatario.
-  production: boolean;
+  // Solo con NODE_ENV development o test se escribe el enlace (una credencial de un solo uso) y el
+  // destinatario; con cualquier otro valor, ninguno de los dos.
+  showLink: boolean;
   log: (line: string) => void;
 }
 
@@ -12,7 +13,7 @@ export class ConsoleEmailSender implements EmailSender {
   constructor(private readonly options: ConsoleEmailSenderOptions) {}
 
   send(message: EmailMessage): Promise<void> {
-    if (this.options.production) {
+    if (!this.options.showLink) {
       this.options.log(
         `Correo «${message.subject}» no enviado: EMAIL_PROVIDER=console no entrega mensajes. Configura EMAIL_PROVIDER=resend.`,
       );

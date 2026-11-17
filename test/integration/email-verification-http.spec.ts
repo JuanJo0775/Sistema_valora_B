@@ -151,6 +151,43 @@ describe('verificación de correo por HTTP (ADR-029)', () => {
     expect(sender.sent).toEqual([]);
   });
 
+  // Un solo uso real: dos peticiones a la vez con el mismo token no lo consumen dos veces. Se decide
+  // que gana una (204) y la otra recibe el mismo 422 genérico, aunque la cuenta ya esté verificada.
+  it('dos verificaciones simultáneas con el mismo token: una responde 204 y la otra 422', async () => {
+    await registerAndLogin();
+    await mailsSent(1);
+    const token = sender.lastToken();
+
+    const results = await Promise.all([
+      request(server).post('/v1/auth/verify-email').send({ token }),
+      request(server).post('/v1/auth/verify-email').send({ token }),
+    ]);
+
+    expect(results.map((r) => r.status).sort()).toEqual([204, 422]);
+    const rows = await db.execute(
+      sql`select used_at from identity.email_verifications where used_at is not null`,
+    );
+    expect(rows.rows).toHaveLength(1);
+  });
+
+  it('dos reenvíos simultáneos dejan un solo token vigente', async () => {
+    const { cookie, csrfToken } = await registerAndLogin();
+    await mailsSent(1);
+    const resend = () =>
+      request(server)
+        .post('/v1/auth/resend-verification')
+        .set('Cookie', cookie)
+        .set('X-CSRF-Token', csrfToken);
+
+    const results = await Promise.all([resend(), resend()]);
+
+    expect(results.map((r) => r.status)).toEqual([202, 202]);
+    const pending = await db.execute(
+      sql`select id from identity.email_verifications where used_at is null`,
+    );
+    expect(pending.rows).toHaveLength(1);
+  });
+
   describe('POST /v1/auth/resend-verification', () => {
     it('exige sesión y el token CSRF', async () => {
       const { cookie } = await registerAndLogin();

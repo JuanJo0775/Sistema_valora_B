@@ -12,35 +12,22 @@ export class InMemoryVerifications implements EmailVerificationRepository {
   // Cuentas conocidas: id -> correo y cuándo verificó (null: sin verificar).
   readonly accounts = new Map<string, { email: string; verifiedAt: Date | null }>();
 
-  deleteUnusedOf(accountId: string): Promise<void> {
+  replaceUnused(accountId: string, verification: NewEmailVerification): Promise<void> {
     for (let i = this.rows.length - 1; i >= 0; i -= 1) {
       const row = this.rows[i];
       if (row?.accountId === accountId && row.usedAt === null) this.rows.splice(i, 1);
     }
-    return Promise.resolve();
-  }
-
-  create(verification: NewEmailVerification): Promise<void> {
     this.rows.push({ ...verification, usedAt: null });
     return Promise.resolve();
   }
 
-  findByTokenHash(tokenHash: string) {
-    const found = this.rows.find((row) => row.tokenHash === tokenHash);
-    if (!found) return Promise.resolve(null);
-    const account = this.accounts.get(found.accountId);
-    return Promise.resolve({
-      ...found,
-      accountVerified: account !== undefined && account.verifiedAt !== null,
-    });
-  }
-
-  complete(input: { verificationId: string; accountId: string; at: Date }): Promise<void> {
-    const row = this.rows.find((candidate) => candidate.id === input.verificationId);
-    if (row) row.usedAt = input.at;
-    const account = this.accounts.get(input.accountId);
+  consume(input: { tokenHash: string; at: Date }): Promise<{ accountId: string } | null> {
+    const row = this.rows.find((candidate) => candidate.tokenHash === input.tokenHash);
+    if (!row || row.usedAt !== null || row.expiresAt <= input.at) return Promise.resolve(null);
+    row.usedAt = input.at;
+    const account = this.accounts.get(row.accountId);
     if (account && account.verifiedAt === null) account.verifiedAt = input.at;
-    return Promise.resolve();
+    return Promise.resolve({ accountId: row.accountId });
   }
 
   targetOf(accountId: string): Promise<VerificationTarget | null> {

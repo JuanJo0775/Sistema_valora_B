@@ -37,18 +37,13 @@ export class VerifyEmail {
     if (wait !== null) throw new TooManyAttemptsError(wait);
     this.ports.limiter.record(ipKey, VERIFICATIONS_PER_IP);
 
-    const found = await this.ports.verifications.findByTokenHash(
-      hashVerificationToken(input.token),
-    );
-    const now = this.ports.clock.now();
-    if (!found || found.usedAt !== null || found.expiresAt <= now) {
-      throw new InvalidVerificationTokenError();
-    }
-    // Si la cuenta ya estaba verificada, el token se gasta igual y la fecha original no cambia.
-    await this.ports.verifications.complete({
-      verificationId: found.id,
-      accountId: found.accountId,
-      at: now,
+    // Un solo paso atómico: dos peticiones a la vez con el mismo token no lo consumen dos veces; la
+    // que pierde recibe el mismo error genérico. Si la cuenta ya estaba verificada, el token se gasta
+    // igual y la fecha original no cambia.
+    const consumed = await this.ports.verifications.consume({
+      tokenHash: hashVerificationToken(input.token),
+      at: this.ports.clock.now(),
     });
+    if (!consumed) throw new InvalidVerificationTokenError();
   }
 }

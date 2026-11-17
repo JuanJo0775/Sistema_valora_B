@@ -254,6 +254,9 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     await check('POST /auth/resend-verification', resend(unverified));
     // El reenvío invalidó los enlaces anteriores: se guarda uno propio para probar el 204.
     await db.execute(
+      sql`delete from identity.email_verifications where account_id = ${unverified.accountId}`,
+    );
+    await db.execute(
       sql`insert into identity.email_verifications (id, account_id, token_hash, created_at, expires_at)
           values (${crypto.randomUUID()}, ${unverified.accountId}, ${createHash('sha256').update(token).digest('hex')}, now(), now() + interval '1 hour')`,
     );

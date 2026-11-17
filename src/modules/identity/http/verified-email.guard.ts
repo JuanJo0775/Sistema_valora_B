@@ -4,6 +4,8 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Env } from '../../../shared/config/env.validation';
 import type { AuthenticatedSession } from './session.guard';
 
 // Lo que el guard lee de la petición, sin depender de los tipos de Express.
@@ -15,7 +17,11 @@ interface SessionRequest {
 // (`@UseGuards(SessionGuard, VerifiedEmailGuard)`), que es quien resuelve la sesión.
 @Injectable()
 export class VerifiedEmailGuard implements CanActivate {
+  constructor(private readonly config: ConfigService<Env, true>) {}
+
   canActivate(context: ExecutionContext): boolean {
+    // REQUIRE_VERIFIED_EMAIL=false apaga solo la exigencia; el resto del flujo sigue igual.
+    if (!this.config.get('REQUIRE_VERIFIED_EMAIL', { infer: true })) return true;
     const session = context.switchToHttp().getRequest<SessionRequest>().session;
     if (!session?.emailVerified) {
       throw new ForbiddenException({

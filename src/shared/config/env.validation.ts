@@ -1,6 +1,7 @@
 import 'reflect-metadata';
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -96,6 +97,16 @@ export class Env {
   @IsNotEmpty()
   EMAIL_FROM?: string;
 
+  // Si registrar precios exige el correo verificado. Se pone en false mientras no haya proveedor de
+  // correo (en producción, con EMAIL_PROVIDER=console, nadie recibiría el enlace).
+  // Se lee el valor original: la conversión implícita volvería true el texto «false».
+  @Transform(({ obj }: { obj: Record<string, unknown> }) => {
+    const raw = obj['REQUIRE_VERIFIED_EMAIL'];
+    return raw === undefined || raw === 'true' ? true : raw === 'false' ? false : raw;
+  })
+  @IsBoolean()
+  REQUIRE_VERIFIED_EMAIL: boolean = true;
+
   // Base pública de los enlaces del correo: la dirección de la PWA, sin barra final.
   @ValidateIf((env: Env) => env.EMAIL_PROVIDER === 'resend' || env.APP_URL !== undefined)
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
@@ -111,6 +122,17 @@ export function validateEnv(raw: Record<string, unknown>): Env {
       (error) => `${error.property}: ${Object.values(error.constraints ?? {}).join(', ')}`,
     );
     throw new Error(`Variables de entorno inválidas:\n- ${detalle.join('\n- ')}`);
+  }
+
+  // Exigir verificación sin poder enviar el enlace bloquearía todos los reportes.
+  if (
+    env.NODE_ENV === 'production' &&
+    env.REQUIRE_VERIFIED_EMAIL &&
+    env.EMAIL_PROVIDER === 'console'
+  ) {
+    throw new Error(
+      'Variables de entorno inválidas:\n- REQUIRE_VERIFIED_EMAIL: en producción con EMAIL_PROVIDER=console nadie recibiría el enlace; configura el proveedor de correo o pon REQUIRE_VERIFIED_EMAIL=false',
+    );
   }
 
   return env;

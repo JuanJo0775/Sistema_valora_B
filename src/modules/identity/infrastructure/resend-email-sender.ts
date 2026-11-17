@@ -37,6 +37,8 @@ export class ResendEmailSender implements EmailSender {
       // Se descarta el error original: su texto podría traer datos de la petición.
       throw new EmailSendError('no se pudo conectar con el proveedor de correo');
     }
+    // No se lee el cuerpo (podría traer datos): se cancela para liberar la conexión.
+    await response.body?.cancel();
     if (!response.ok) {
       throw new EmailSendError(`el proveedor de correo respondió ${String(response.status)}`);
     }

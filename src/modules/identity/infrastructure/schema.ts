@@ -85,5 +85,11 @@ export const emailVerifications = identitySchema.table(
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     usedAt: timestamp('used_at', { withTimezone: true }),
   },
-  (table) => [uniqueIndex('email_verifications_token_hash_idx').on(table.tokenHash)],
+  (table) => [
+    uniqueIndex('email_verifications_token_hash_idx').on(table.tokenHash),
+    // Un solo enlace vigente (sin usar) por cuenta.
+    uniqueIndex('email_verifications_pending_idx')
+      .on(table.accountId)
+      .where(sql`used_at is null`),
+  ],
 );

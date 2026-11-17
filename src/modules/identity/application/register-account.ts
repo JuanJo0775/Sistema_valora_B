@@ -67,7 +67,10 @@ export class RegisterAccount {
   // la persona puede pedir el reenvío desde su sesión.
   private sendVerificationInBackground(accountId: string, email: string): void {
     this.ports.verification.execute({ accountId, email }).catch((error: unknown) => {
-      const reason = error instanceof EmailSendError ? error.message : 'error inesperado';
+      const reason =
+        error instanceof EmailSendError
+          ? error.message
+          : `error inesperado (${error instanceof Error ? error.name : 'desconocido'})`;
       this.ports.log.warn(`No se pudo enviar el correo de verificación: ${reason}.`);
     });
   }

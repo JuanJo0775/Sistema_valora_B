@@ -1,5 +1,5 @@
 {
-  "id": "40f736bb-e0fa-45aa-ac88-e5dfc0b89d1b",
+  "id": "e26cc0ad-41c8-4fc9-ac06-868bdc23c1f8",
   "prevId": "9bdd8bc3-e8dc-46a0-98dc-1a86cd6a0a4f",
   "version": "7",
   "dialect": "postgresql",
@@ -963,6 +963,22 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "email_verifications_pending_idx": {
+          "name": "email_verifications_pending_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "used_at is null",
           "concurrently": false,
           "method": "btree",
           "with": {}

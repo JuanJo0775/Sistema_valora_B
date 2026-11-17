@@ -149,3 +149,40 @@ describe('validateEnv con el correo de verificación (ADR-029)', () => {
     );
   });
 });
+
+describe('validateEnv con REQUIRE_VERIFIED_EMAIL (ADR-029)', () => {
+  const produccion = { ...validEnv, NODE_ENV: 'production' };
+
+  it('por defecto es true y acepta true y false como texto', () => {
+    expect(validateEnv(validEnv).REQUIRE_VERIFIED_EMAIL).toBe(true);
+    expect(
+      validateEnv({ ...validEnv, REQUIRE_VERIFIED_EMAIL: 'false' }).REQUIRE_VERIFIED_EMAIL,
+    ).toBe(false);
+    expect(
+      validateEnv({ ...validEnv, REQUIRE_VERIFIED_EMAIL: 'true' }).REQUIRE_VERIFIED_EMAIL,
+    ).toBe(true);
+  });
+
+  it('rechaza un valor que no es booleano', () => {
+    expect(() => validateEnv({ ...validEnv, REQUIRE_VERIFIED_EMAIL: 'quizas' })).toThrow(
+      /REQUIRE_VERIFIED_EMAIL/,
+    );
+  });
+
+  it('en producción, exigir la verificación con EMAIL_PROVIDER=console no arranca', () => {
+    expect(() => validateEnv(produccion)).toThrow(/REQUIRE_VERIFIED_EMAIL/);
+  });
+
+  it('en producción arranca si no se exige la verificación, o si hay un proveedor real', () => {
+    expect(() => validateEnv({ ...produccion, REQUIRE_VERIFIED_EMAIL: 'false' })).not.toThrow();
+    expect(() =>
+      validateEnv({
+        ...produccion,
+        EMAIL_PROVIDER: 'resend',
+        EMAIL_API_KEY: 're_x',
+        EMAIL_FROM: 'Valora <a@valora.example>',
+        APP_URL: 'https://valora.example',
+      }),
+    ).not.toThrow();
+  });
+});

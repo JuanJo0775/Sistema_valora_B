@@ -7,21 +7,19 @@ const message = {
 };
 
 describe('correo en consola (ADR-029)', () => {
-  it('fuera de producción muestra el asunto y el enlace', async () => {
+  it('con showLink (development y test) muestra el asunto y el enlace', async () => {
     const lines: string[] = [];
 
-    await new ConsoleEmailSender({ production: false, log: (line) => lines.push(line) }).send(
-      message,
-    );
+    await new ConsoleEmailSender({ showLink: true, log: (line) => lines.push(line) }).send(message);
 
     expect(lines.join('\n')).toContain(message.subject);
     expect(lines.join('\n')).toContain('verificar-correo?token=abc');
   });
 
-  it('en producción no escribe el enlace ni el destinatario en el registro', async () => {
+  it('sin showLink (cualquier otro NODE_ENV) no escribe el enlace ni el destinatario en el registro', async () => {
     const lines: string[] = [];
 
-    await new ConsoleEmailSender({ production: true, log: (line) => lines.push(line) }).send(
+    await new ConsoleEmailSender({ showLink: false, log: (line) => lines.push(line) }).send(
       message,
     );
 
