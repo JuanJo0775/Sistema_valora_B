@@ -64,8 +64,10 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
   });
 
   it('el correo y la contraseña solo están en identity.accounts', () => {
+    // ADR-029: email_verified_at es solo la fecha en que se comprobó el correo, no el correo.
     expect(named(/email|correo|password|contrasena/)).toEqual([
       'identity.accounts.email',
+      'identity.accounts.email_verified_at',
       'identity.accounts.password_hash',
     ]);
   });
@@ -100,5 +102,23 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     ).toEqual(['pricing.reports.reporter_id']);
     // Grill de la #36, pregunta 1: reporter_id es una referencia interna de pricing (idempotencia,
     // duplicado y ráfaga); privacy-public-responses.spec.ts verifica que nunca sale.
+  });
+
+  // ADR-029: la verificación de correo vive en identity y no guarda el token en claro.
+  it('la tabla de verificación de correo está en identity y solo guarda el hash del token', () => {
+    const verification = columns
+      .filter((column) => column.table_name === 'email_verifications')
+      .map((column) => `${column.table_schema}.${column.column_name}`)
+      .sort();
+
+    expect(verification).toEqual([
+      'identity.account_id',
+      'identity.created_at',
+      'identity.expires_at',
+      'identity.id',
+      'identity.token_hash',
+      'identity.used_at',
+    ]);
+    expect(named(/^token$|^verification_token$|^plain_token$/)).toEqual([]);
   });
 });

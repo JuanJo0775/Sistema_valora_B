@@ -34,7 +34,9 @@ describe('propuestas de tiendas por HTTP (RF-005, #27)', () => {
     await app.init();
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
-    await db.execute(sql`truncate identity.sessions, identity.accounts`);
+    await db.execute(
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+    );
     reporter = await signIn(server, db, 'propone@correo.com');
     moderator = await signIn(server, db, 'moderadora@correo.com', 'moderador');
   });

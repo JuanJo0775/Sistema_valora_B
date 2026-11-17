@@ -11,7 +11,13 @@ import {
 } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { RequestValidationError } from '../../../shared/http/validation';
-import { type AuthenticatedSession, CurrentSession, Roles, SessionGuard } from '../../identity';
+import {
+  type AuthenticatedSession,
+  CurrentSession,
+  Roles,
+  SessionGuard,
+  VerifiedEmailGuard,
+} from '../../identity';
 import {
   DuplicateReportError,
   IdempotencyKeyReusedError,
@@ -38,9 +44,10 @@ export class ReportsController {
 
   // EC-07: 201 la primera vez; 200 con el recibo original si es un reintento con la misma clave.
   @Post()
-  @UseGuards(SessionGuard)
+  @UseGuards(SessionGuard, VerifiedEmailGuard)
   // Grill de la #16, pregunta 5: solo el reportante aporta precios de la comunidad (EC-06).
   @Roles('reportante')
+  // ADR-029: y con el correo verificado (403 EMAIL_NOT_VERIFIED).
   async create(
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: ReportCreateDto,

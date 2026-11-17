@@ -15,6 +15,8 @@ export interface StoredSession extends NewSession {
   role: Role;
   // Grill de la #33, pregunta 4: la suspensión de la cuenta dueña de la sesión.
   accountSuspendedUntil: Date | null;
+  // ADR-029: cuándo verificó su correo la cuenta dueña de la sesión (null: sin verificar).
+  accountEmailVerifiedAt: Date | null;
 }
 
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.

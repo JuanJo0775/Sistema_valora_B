@@ -45,17 +45,44 @@ const limiterBlocking = (blocked: Record<string, number>): AttemptLimiter => ({
   reset: () => undefined,
 });
 
+// Doble del envío del correo de verificación (ADR-029): guarda a quién se le pidió enviar.
+class FakeVerificationMailer {
+  readonly requests: { accountId: string; email: string }[] = [];
+  failWith: Error | null = null;
+
+  execute(input: { accountId: string; email: string }): Promise<void> {
+    if (this.failWith) return Promise.reject(this.failWith);
+    this.requests.push(input);
+    return Promise.resolve();
+  }
+}
+
 function setup(blocked: Record<string, number> = {}) {
   const accounts = new InMemoryAccountRepository();
   const hasher = new FakeHasher();
+  const mailer = new FakeVerificationMailer();
+  const warnings: string[] = [];
   const register = new RegisterAccount({
     accounts,
     hasher,
     limiter: limiterBlocking(blocked),
     clock: { now: () => now },
+    verification: mailer,
+    log: { warn: (message) => warnings.push(message) },
   });
-  return { accounts, hasher, register };
+  return { accounts, hasher, mailer, warnings, register };
 }
+
+// El envío corre en segundo plano (no cambia el tiempo de respuesta, EC-08): se espera a que termine.
+const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+const newAccount = {
+  email: 'ana@correo.com',
+  displayName: 'Ana',
+  password: 'una-clave-larga',
+  acceptedPolicyVersion: '2026-11',
+  ip: '203.0.113.7',
+};
 
 describe('registrar una cuenta', () => {
   it('crea un reportante con el correo normalizado, el hash de la contraseña y el consentimiento', async () => {
@@ -118,5 +145,41 @@ describe('registrar una cuenta', () => {
     await expect(attempt).rejects.toThrow(TooManyAttemptsError);
     await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 300 });
     expect(accounts.accounts).toHaveLength(0);
+  });
+
+  // ADR-029: la cuenta nueva recibe el enlace; el correo ya registrado no recibe nada.
+  it('tras crear la cuenta pide el correo de verificación para esa cuenta', async () => {
+    const { accounts, mailer, register } = setup();
+
+    await register.execute({ ...newAccount, email: ' Ana@Correo.com ' });
+    await flush();
+
+    expect(mailer.requests).toEqual([
+      { accountId: accounts.accounts[0]?.id, email: 'ana@correo.com' },
+    ]);
+  });
+
+  it('con un correo ya registrado no envía nada', async () => {
+    const { mailer, register } = setup();
+    await register.execute(newAccount);
+    await flush();
+
+    await register.execute({ ...newAccount, password: 'otra-clave-distinta' });
+    await flush();
+
+    expect(mailer.requests).toHaveLength(1);
+  });
+
+  it('si el envío falla, el registro no falla y el aviso no trae el correo ni el token', async () => {
+    const { accounts, mailer, warnings, register } = setup();
+    mailer.failWith = new Error('boom ana@correo.com token=abc');
+
+    await expect(register.execute(newAccount)).resolves.toBeUndefined();
+    await flush();
+
+    expect(accounts.accounts).toHaveLength(1);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).not.toContain('ana@correo.com');
+    expect(warnings[0]).not.toContain('abc');
   });
 });

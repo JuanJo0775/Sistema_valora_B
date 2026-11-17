@@ -22,9 +22,15 @@ const PUBLIC_ROUTES = new Set([
   'GET /establishments/:establishmentId/prices',
   'POST /auth/register',
   'POST /auth/login',
+  // ADR-029: el token del correo es la credencial; no lleva sesión.
+  'POST /auth/verify-email',
 ]);
 // Con sesión, pero para cualquier rol.
-const ANY_ROLE_ROUTES = new Set(['GET /auth/session', 'POST /auth/logout']);
+const ANY_ROLE_ROUTES = new Set([
+  'GET /auth/session',
+  'POST /auth/logout',
+  'POST /auth/resend-verification',
+]);
 
 describe('guardián de rutas (RNF-010)', () => {
   let app: INestApplication;

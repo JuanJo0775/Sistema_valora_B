@@ -110,3 +110,42 @@ describe('validateEnv con Supabase Storage (ADR-022)', () => {
     ).toThrow(/SUPABASE_URL/);
   });
 });
+
+describe('validateEnv con el correo de verificación (ADR-029)', () => {
+  const conResend = {
+    ...validEnv,
+    EMAIL_PROVIDER: 'resend',
+    EMAIL_API_KEY: 're_clave-de-prueba',
+    EMAIL_FROM: 'Valora <no-responder@valora.example>',
+    APP_URL: 'https://valora.example',
+  };
+
+  it('por defecto el correo va a la consola y no pide nada más', () => {
+    const env = validateEnv(validEnv);
+
+    expect(env.EMAIL_PROVIDER).toBe('console');
+    expect(env.EMAIL_API_KEY).toBeUndefined();
+  });
+
+  it('con resend acepta la configuración completa', () => {
+    const env = validateEnv(conResend);
+
+    expect(env.EMAIL_PROVIDER).toBe('resend');
+    expect(env.APP_URL).toBe('https://valora.example');
+  });
+
+  it.each(['EMAIL_API_KEY', 'EMAIL_FROM', 'APP_URL'])('con resend exige %s', (name) => {
+    expect(() => validateEnv({ ...conResend, [name]: undefined })).toThrow(new RegExp(name));
+  });
+
+  it('rechaza un proveedor desconocido', () => {
+    expect(() => validateEnv({ ...validEnv, EMAIL_PROVIDER: 'otro' })).toThrow(/EMAIL_PROVIDER/);
+  });
+
+  it('APP_URL, si se da, debe ser una dirección http o https', () => {
+    expect(() => validateEnv({ ...validEnv, APP_URL: 'ftp://x' })).toThrow(/APP_URL/);
+    expect(validateEnv({ ...validEnv, APP_URL: 'http://localhost:5173' }).APP_URL).toBe(
+      'http://localhost:5173',
+    );
+  });
+});

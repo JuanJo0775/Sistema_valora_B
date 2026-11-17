@@ -16,6 +16,7 @@ const session = (change: Partial<StoredSession> = {}): StoredSession => ({
   expiresAt: new Date('2026-12-11T14:00:00Z'),
   revokedAt: null,
   accountSuspendedUntil: null,
+  accountEmailVerifiedAt: null,
   ...change,
 });
 
@@ -57,6 +58,7 @@ describe('resolver la sesión de una petición', () => {
       sessionId: 'sesion-1',
       accountId: 'cuenta-1',
       role: 'reportante',
+      emailVerified: false,
     });
     await older.resolve.execute(token);
 
@@ -87,12 +89,21 @@ describe('resolver la sesión de una petición', () => {
       sessionId: 'sesion-1',
       accountId: 'cuenta-1',
       role: 'reportante',
+      emailVerified: false,
       suspendedUntil: until,
     });
     await expect(finished.resolve.execute(token)).resolves.toEqual({
       sessionId: 'sesion-1',
       accountId: 'cuenta-1',
       role: 'reportante',
+      emailVerified: false,
     });
+  });
+
+  // ADR-029: registrar precios exige correo verificado; la sesión lo dice sin consultas extra.
+  it('la sesión dice si la cuenta ya verificó su correo', async () => {
+    const verified = setup(session({ accountEmailVerifiedAt: minutesAgo(30) }));
+
+    await expect(verified.resolve.execute(token)).resolves.toMatchObject({ emailVerified: true });
   });
 });

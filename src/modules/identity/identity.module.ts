@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../shared/config/env.validation';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
@@ -7,6 +7,11 @@ import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/accoun
 import type { AttemptLimiter } from './application/attempt-limiter';
 import { ChangeRole } from './application/change-role';
 import type { Clock } from './application/clock';
+import { EMAIL_SENDER, type EmailSender } from './application/email-sender';
+import {
+  EMAIL_VERIFICATION_REPOSITORY,
+  type EmailVerificationRepository,
+} from './application/email-verification-repository';
 import type { PasswordHasher } from './application/password-hasher';
 import { LiftSuspension } from './application/lift-suspension';
 import { Login } from './application/login';
@@ -14,20 +19,47 @@ import { Logout } from './application/logout';
 import { OwnDisplayName } from './application/own-display-name';
 import { RegisterAccount } from './application/register-account';
 import { ReporterIdentity } from './application/reporter-identity';
+import { ResendVerification } from './application/resend-verification';
 import { ResolveSession } from './application/resolve-session';
 import { SESSION_REPOSITORY, type SessionRepository } from './application/session-repository';
+import { SendVerificationEmail } from './application/send-verification-email';
 import { SuspendReporter } from './application/suspend-reporter';
+import { VerifyEmail } from './application/verify-email';
 import { AuthController } from './http/auth.controller';
 import { RolesController } from './http/roles.controller';
 import { SessionGuard } from './http/session.guard';
+import { VerifiedEmailGuard } from './http/verified-email.guard';
 import { Argon2PasswordHasher } from './infrastructure/argon2-password-hasher';
+import { ConsoleEmailSender } from './infrastructure/console-email-sender';
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository';
+import { DrizzleEmailVerificationRepository } from './infrastructure/drizzle-email-verification-repository';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository';
 import { InMemoryAttemptLimiter } from './infrastructure/in-memory-attempt-limiter';
+import { ResendEmailSender } from './infrastructure/resend-email-sender';
 
 const PASSWORD_HASHER = Symbol('PASSWORD_HASHER');
 const ATTEMPT_LIMITER = Symbol('ATTEMPT_LIMITER');
 const CLOCK = Symbol('CLOCK');
+
+// ADR-029: elige el proveedor de correo según el entorno, como ImageStorage (ADR-022). La validación
+// de las variables ya exigió la clave, el remitente y APP_URL con «resend».
+function emailSender(config: ConfigService<Env, true>): EmailSender {
+  const apiKey = config.get('EMAIL_API_KEY', { infer: true });
+  const from = config.get('EMAIL_FROM', { infer: true });
+  if (config.get('EMAIL_PROVIDER', { infer: true }) === 'resend' && apiKey && from) {
+    return new ResendEmailSender({ apiKey, from });
+  }
+  const logger = new Logger('ConsoleEmailSender');
+  return new ConsoleEmailSender({
+    production: config.get('NODE_ENV', { infer: true }) === 'production',
+    log: (line) => {
+      logger.log(line);
+    },
+  });
+}
+
+// Dirección de la PWA para los enlaces; en desarrollo, la de Vite.
+const DEFAULT_APP_URL = 'http://localhost:5173';
 
 @Module({
   controllers: [AuthController, RolesController],
@@ -45,14 +77,76 @@ const CLOCK = Symbol('CLOCK');
       useFactory: (db: Database): AccountRepository => new DrizzleAccountRepository(db),
     },
     {
+      provide: EMAIL_SENDER,
+      inject: [ConfigService],
+      useFactory: emailSender,
+    },
+    {
+      provide: EMAIL_VERIFICATION_REPOSITORY,
+      inject: [DATABASE],
+      useFactory: (db: Database): EmailVerificationRepository =>
+        new DrizzleEmailVerificationRepository(db),
+    },
+    {
+      provide: SendVerificationEmail,
+      inject: [EMAIL_VERIFICATION_REPOSITORY, EMAIL_SENDER, CLOCK, ConfigService],
+      useFactory: (
+        verifications: EmailVerificationRepository,
+        sender: EmailSender,
+        clock: Clock,
+        config: ConfigService<Env, true>,
+      ): SendVerificationEmail => {
+        const appUrl: string | undefined = config.get('APP_URL', { infer: true });
+        return new SendVerificationEmail({
+          verifications,
+          sender,
+          clock,
+          appUrl: appUrl ?? DEFAULT_APP_URL,
+        });
+      },
+    },
+    {
+      provide: VerifyEmail,
+      inject: [EMAIL_VERIFICATION_REPOSITORY, ATTEMPT_LIMITER, CLOCK],
+      useFactory: (
+        verifications: EmailVerificationRepository,
+        limiter: AttemptLimiter,
+        clock: Clock,
+      ): VerifyEmail => new VerifyEmail({ verifications, limiter, clock }),
+    },
+    {
+      provide: ResendVerification,
+      inject: [EMAIL_VERIFICATION_REPOSITORY, ATTEMPT_LIMITER, SendVerificationEmail],
+      useFactory: (
+        verifications: EmailVerificationRepository,
+        limiter: AttemptLimiter,
+        send: SendVerificationEmail,
+      ): ResendVerification => new ResendVerification({ verifications, limiter, send }),
+    },
+    {
       provide: RegisterAccount,
-      inject: [ACCOUNT_REPOSITORY, PASSWORD_HASHER, ATTEMPT_LIMITER, CLOCK],
+      inject: [ACCOUNT_REPOSITORY, PASSWORD_HASHER, ATTEMPT_LIMITER, CLOCK, SendVerificationEmail],
       useFactory: (
         accounts: AccountRepository,
         hasher: PasswordHasher,
         limiter: AttemptLimiter,
         clock: Clock,
-      ): RegisterAccount => new RegisterAccount({ accounts, hasher, limiter, clock }),
+        verification: SendVerificationEmail,
+      ): RegisterAccount => {
+        const logger = new Logger(RegisterAccount.name);
+        return new RegisterAccount({
+          accounts,
+          hasher,
+          limiter,
+          clock,
+          verification,
+          log: {
+            warn: (message) => {
+              logger.warn(message);
+            },
+          },
+        });
+      },
     },
     // #133: el nombre visible, solo para la propia sesión (EC-08).
     {
@@ -108,9 +202,10 @@ const CLOCK = Symbol('CLOCK');
       ): ChangeRole => new ChangeRole({ accounts, limiter, clock }),
     },
     SessionGuard,
+    VerifiedEmailGuard,
   ],
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
-  exports: [ResolveSession, SessionGuard, ReporterIdentity, ChangeRole],
+  exports: [ResolveSession, SessionGuard, VerifiedEmailGuard, ReporterIdentity, ChangeRole],
 })
 export class IdentityModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}

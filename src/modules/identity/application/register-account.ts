@@ -3,6 +3,7 @@ import { normalizeDisplayName } from '../../../domain/display-name';
 import type { AccountRepository } from './account-repository';
 import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
 import type { Clock } from './clock';
+import { EmailSendError } from './email-sender';
 import type { PasswordHasher } from './password-hasher';
 
 export interface RegisterAccountPorts {
@@ -10,6 +11,10 @@ export interface RegisterAccountPorts {
   hasher: PasswordHasher;
   limiter: AttemptLimiter;
   clock: Clock;
+  // ADR-029: envía el enlace de verificación a la cuenta nueva.
+  verification: { execute(input: { accountId: string; email: string }): Promise<void> };
+  // Aviso cuando el envío falla: el mensaje nunca lleva el correo ni el token.
+  log: { warn(message: string): void };
 }
 
 export interface RegisterAccountInput {
@@ -43,8 +48,9 @@ export class RegisterAccount {
     // lo mismo; si ya existe, no se cambia nada y el resultado es igual.
     const passwordHash = await this.ports.hasher.hash(input.password);
     if (await this.ports.accounts.findByEmail(email)) return;
+    const id = randomUUID();
     await this.ports.accounts.create({
-      id: randomUUID(),
+      id,
       email,
       displayName: normalizeDisplayName(input.displayName),
       passwordHash,
@@ -52,6 +58,17 @@ export class RegisterAccount {
       role: 'reportante',
       policyVersion: input.acceptedPolicyVersion,
       policyAcceptedAt: this.ports.clock.now(),
+    });
+    this.sendVerificationInBackground(id, email);
+  }
+
+  // ADR-029: el registro no espera al proveedor de correo ni falla por él. Así tarda lo mismo con un
+  // correo nuevo que con uno ya registrado (EC-08) y una caída del proveedor no impide crear cuentas;
+  // la persona puede pedir el reenvío desde su sesión.
+  private sendVerificationInBackground(accountId: string, email: string): void {
+    this.ports.verification.execute({ accountId, email }).catch((error: unknown) => {
+      const reason = error instanceof EmailSendError ? error.message : 'error inesperado';
+      this.ports.log.warn(`No se pudo enviar el correo de verificación: ${reason}.`);
     });
   }
 }

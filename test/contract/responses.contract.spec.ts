@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
@@ -40,7 +41,7 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
+      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
     );
     reporter = await signIn(server, db, 'contrato@correo.com');
     const today = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -201,6 +202,76 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     );
 
     expect(checked.map(({ status }) => status)).toEqual([201, 200, 400, 401, 409, 200, 200]);
+    expect(
+      checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
+    ).toEqual([]);
+  });
+
+  // ADR-029: la verificación de correo y el 403 de /reports responden como dice el contrato.
+  it('verificar el correo, reenviarlo y exigirlo para reportar responden como dice el contrato', async () => {
+    checked.length = 0;
+    const unverified = await signIn(
+      server,
+      db,
+      'sin-verificar-contrato@correo.com',
+      'reportante',
+      undefined,
+      false,
+    );
+    const token = 'token-del-contrato-0123456789abcdefghijklmnopq';
+    const resend = (as: SignedIn | null) => {
+      const call = request(server).post('/v1/auth/resend-verification');
+      return as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call;
+    };
+
+    await check(
+      'POST /reports',
+      request(server)
+        .post('/v1/reports')
+        .set('Cookie', unverified.cookie)
+        .set('X-CSRF-Token', unverified.csrfToken)
+        .set('Idempotency-Key', crypto.randomUUID())
+        .send({
+          presentationId,
+          establishmentId: storeId,
+          priceCop: 2600,
+          observedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+        }),
+    );
+    await check(
+      'GET /auth/session',
+      request(server).get('/v1/auth/session').set('Cookie', unverified.cookie),
+    );
+    await check('POST /auth/verify-email', request(server).post('/v1/auth/verify-email').send({}));
+    await check(
+      'POST /auth/verify-email',
+      request(server).post('/v1/auth/verify-email').send({ token: 'no-existe' }),
+    );
+    await check('POST /auth/resend-verification', resend(null));
+    await check('POST /auth/resend-verification', resend(unverified));
+    await check('POST /auth/resend-verification', resend(unverified));
+    await check('POST /auth/resend-verification', resend(unverified));
+    await check('POST /auth/resend-verification', resend(unverified));
+    // El reenvío invalidó los enlaces anteriores: se guarda uno propio para probar el 204.
+    await db.execute(
+      sql`insert into identity.email_verifications (id, account_id, token_hash, created_at, expires_at)
+          values (${crypto.randomUUID()}, ${unverified.accountId}, ${createHash('sha256').update(token).digest('hex')}, now(), now() + interval '1 hour')`,
+    );
+    await check(
+      'POST /auth/verify-email',
+      request(server).post('/v1/auth/verify-email').send({ token }),
+    );
+    await check(
+      'GET /auth/session',
+      request(server).get('/v1/auth/session').set('Cookie', unverified.cookie),
+    );
+
+    expect(checked.map(({ status }) => status)).toEqual([
+      403, 200, 400, 422, 401, 202, 202, 202, 429, 204, 200,
+    ]);
+    expect(checked[0]?.body).toMatchObject({ code: 'EMAIL_NOT_VERIFIED' });
+    expect(checked[1]?.body).toMatchObject({ emailVerified: false });
+    expect(checked[10]?.body).toMatchObject({ emailVerified: true });
     expect(
       checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
     ).toEqual([]);

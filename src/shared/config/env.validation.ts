@@ -79,6 +79,27 @@ export class Env {
   @IsString()
   @IsNotEmpty()
   SUPABASE_BUCKET: string = 'productos';
+
+  // ADR-029: correo de verificación. Con «console» (por defecto) el mensaje solo se muestra en el
+  // registro de desarrollo; con «resend» se envía de verdad y las otras tres variables son
+  // obligatorias. La clave solo vive en el entorno de la API.
+  @IsIn(['console', 'resend'])
+  EMAIL_PROVIDER: string = 'console';
+
+  @ValidateIf((env: Env) => env.EMAIL_PROVIDER === 'resend')
+  @IsString()
+  @IsNotEmpty()
+  EMAIL_API_KEY?: string;
+
+  @ValidateIf((env: Env) => env.EMAIL_PROVIDER === 'resend')
+  @IsString()
+  @IsNotEmpty()
+  EMAIL_FROM?: string;
+
+  // Base pública de los enlaces del correo: la dirección de la PWA, sin barra final.
+  @ValidateIf((env: Env) => env.EMAIL_PROVIDER === 'resend' || env.APP_URL !== undefined)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
+  APP_URL?: string;
 }
 
 export function validateEnv(raw: Record<string, unknown>): Env {
