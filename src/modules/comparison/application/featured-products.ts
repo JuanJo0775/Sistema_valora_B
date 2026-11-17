@@ -2,51 +2,81 @@ import { rankFeaturedProducts } from '../../../domain/featured-products';
 import { ttlDaysFor } from '../../../domain/freshness';
 import type { Municipality } from '../../../domain/municipality';
 import { type RankableOffer, rankOffers } from '../../../domain/neutral-ranking';
+import { savingsPercent } from '../../../domain/savings';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import type { PresentationForPricing, ProductSummaryView } from '../../catalog';
-import type { EstablishmentDetail, InMunicipalityQuery } from '../../establishments';
-import { freshnessAt } from './compare-product';
+import type {
+  EstablishmentDetail,
+  InMunicipalityQuery,
+  NearbyEstablishment,
+  WithinRadiusQuery,
+} from '../../establishments';
+import { freshnessAt, MissingAreaError } from './compare-product';
 import type { CurrentPrice, CurrentPrices } from './current-prices';
 
 // Puertos hacia las consultas públicas de establishments y catalog (por su index.ts).
 export interface FeaturedProductsPorts {
   prices: Pick<CurrentPrices, 'findAll'>;
-  stores: { findInMunicipality(query: InMunicipalityQuery): Promise<EstablishmentDetail[]> };
+  stores: {
+    // B#128: con la ubicación del usuario, las tiendas del radio con su distancia.
+    find(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
+    findInMunicipality(query: InMunicipalityQuery): Promise<EstablishmentDetail[]>;
+  };
   presentations: { of(presentationIds: string[]): Promise<Map<string, PresentationForPricing>> };
   products: { of(productIds: string[]): Promise<Map<string, ProductSummaryView>> };
   clock: { now(): Date };
 }
 
+// B#128: como la comparación, se envía el municipio, la ubicación o las dos cosas. La ubicación
+// solo sirve para elegir las tiendas del radio: no se guarda ni sale en la respuesta (EC-08).
 export interface FeaturedProductsInput {
-  municipality: Municipality;
+  municipality?: Municipality;
+  lat?: number;
+  lng?: number;
+  radiusKm: number;
+  // Código de la lista cerrada de categorías; uno desconocido deja la lista vacía.
+  category?: string;
   limit: number;
 }
 
-// El precio más bajo por unidad del producto en el municipio, con la tienda donde está.
-export interface CheapestPrice {
+// Un precio vigente del producto en el área, con la tienda donde está.
+export interface FeaturedPrice {
   presentationId: string;
   label: string;
   priceCop: number;
   unitPrice: UnitPrice;
-  establishment: { id: string; name: string };
+  // distanceM solo con la ubicación del usuario.
+  establishment: { id: string; name: string; distanceM?: number };
 }
 
 export interface FeaturedProduct extends Omit<ProductSummaryView, 'id'> {
   productId: string;
   storeCount: number;
-  cheapest: CheapestPrice;
+  cheapest: FeaturedPrice;
+  // B#128: con dos tiendas o más, el más caro y cuánto menos cuesta el más barato (EC-06).
+  priciest?: FeaturedPrice;
+  savingsPercent?: number;
 }
 
 export interface FeaturedProductsResult {
-  // El orden declarado al usuario (EC-06).
-  criteria: { municipality: Municipality; sort: 'store_count' };
+  // El orden y el área declarados al usuario (EC-06).
+  criteria: {
+    municipality?: Municipality;
+    radiusKm?: number;
+    category?: string;
+    sort: 'store_count';
+  };
+  // Tiendas del área con algún precio vigente, de cualquier categoría.
+  storesWithPrices: number;
   items: FeaturedProduct[];
 }
+
+type Store = EstablishmentDetail & { distanceM?: number };
 
 interface Offer extends RankableOffer {
   price: CurrentPrice;
   presentation: PresentationForPricing;
-  establishment: EstablishmentDetail;
+  establishment: Store;
 }
 
 function groupByProduct(offers: Offer[]): Map<string, Offer[]> {
@@ -59,28 +89,62 @@ function groupByProduct(offers: Offer[]): Map<string, Offer[]> {
   return groups;
 }
 
-// B#120 (RF-008, RF-009): la canasta básica de hoy, leída de price_current.
+const toPrice = (offer: Offer): FeaturedPrice => ({
+  presentationId: offer.presentationId,
+  label: offer.presentation.label,
+  priceCop: offer.price.priceCop,
+  unitPrice: offer.unitPrice,
+  establishment: {
+    id: offer.establishment.id,
+    name: offer.establishment.name,
+    ...(offer.establishment.distanceM === undefined
+      ? {}
+      : { distanceM: offer.establishment.distanceM }),
+  },
+});
+
+// El más barato y el más caro con la misma cadena de desempates de la comparación (#21), y el
+// ahorro entre los dos cuando hay dos tiendas o más.
+function pricesOf(offers: Offer[]) {
+  const ranked = rankOffers(offers, 'unit_price').offers;
+  const cheapest = ranked[0] as Offer;
+  const savings = savingsPercent(offers);
+  const priciest = ranked.at(-1);
+  return {
+    storeCount: new Set(offers.map((offer) => offer.establishmentId)).size,
+    unitPrice: cheapest.unitPrice,
+    cheapest,
+    ...(savings === undefined || !priciest ? {} : { priciest, savingsPercent: savings }),
+  };
+}
+
+// B#120 y B#128 (RF-008, RF-009): la canasta básica de hoy, leída de price_current.
 export class FeaturedProducts {
   constructor(private readonly ports: FeaturedProductsPorts) {}
 
   async of(input: FeaturedProductsInput): Promise<FeaturedProductsResult> {
-    const candidates = [...groupByProduct(await this.offersIn(input.municipality))].map(
-      ([productId, offers]) => {
-        // El más barato con la misma cadena de desempates de la comparación (#21).
-        const [cheapest] = rankOffers(offers, 'unit_price').offers as [Offer];
-        return {
-          productId,
-          storeCount: new Set(offers.map((offer) => offer.establishmentId)).size,
-          unitPrice: cheapest.unitPrice,
-          cheapest,
-        };
-      },
-    );
+    const located = input.lat !== undefined && input.lng !== undefined;
+    if (!located && input.municipality === undefined) throw new MissingAreaError();
+    const offers = await this.offersIn(input);
+    const groups = groupByProduct(offers);
+    const summaries = await this.ports.products.of([...groups.keys()]);
+    const candidates = [...groups]
+      .filter(
+        ([productId]) =>
+          input.category === undefined ||
+          summaries.get(productId)?.category.code === input.category,
+      )
+      .map(([productId, group]) => ({ productId, ...pricesOf(group) }));
     const ranked = rankFeaturedProducts(candidates, input.limit);
-    const summaries = await this.ports.products.of(ranked.map(({ productId }) => productId));
     return {
-      criteria: { municipality: input.municipality, sort: 'store_count' },
-      items: ranked.flatMap(({ productId, storeCount, cheapest }) => {
+      criteria: {
+        ...(input.municipality === undefined ? {} : { municipality: input.municipality }),
+        ...(located ? { radiusKm: input.radiusKm } : {}),
+        ...(input.category === undefined ? {} : { category: input.category }),
+        sort: 'store_count',
+      },
+      storesWithPrices: new Set(offers.map((offer) => offer.establishmentId)).size,
+      items: ranked.flatMap(({ productId, storeCount, cheapest, priciest, savingsPercent }) => {
         const summary = summaries.get(productId);
         if (!summary) return [];
         return [
@@ -90,31 +154,41 @@ export class FeaturedProducts {
             ...(summary.brand === undefined ? {} : { brand: summary.brand }),
             category: summary.category,
             storeCount,
-            cheapest: {
-              presentationId: cheapest.presentationId,
-              label: cheapest.presentation.label,
-              priceCop: cheapest.price.priceCop,
-              unitPrice: cheapest.unitPrice,
-              establishment: { id: cheapest.establishment.id, name: cheapest.establishment.name },
-            },
+            cheapest: toPrice(cheapest),
+            ...(priciest === undefined || savingsPercent === undefined
+              ? {}
+              : { priciest: toPrice(priciest), savingsPercent }),
           },
         ];
       }),
     };
   }
 
-  // Los precios de las tiendas del municipio, con su presentación y su precio por unidad.
-  private async offersIn(municipality: Municipality): Promise<Offer[]> {
-    const { prices, stores, presentations } = this.ports;
+  // Las tiendas del área: las del radio si hay ubicación (con su distancia), o las del municipio.
+  private storesIn(ids: string[], input: FeaturedProductsInput): Promise<Store[]> {
+    const { lat, lng, municipality } = input;
+    if (lat !== undefined && lng !== undefined) {
+      return this.ports.stores.find({
+        ids,
+        lat,
+        lng,
+        radiusMeters: input.radiusKm * 1000,
+        ...(municipality === undefined ? {} : { municipality }),
+      });
+    }
+    if (municipality === undefined) throw new MissingAreaError();
+    return this.ports.stores.findInMunicipality({ ids, municipality });
+  }
+
+  // Los precios vigentes de las tiendas del área, con su presentación y su precio por unidad.
+  private async offersIn(input: FeaturedProductsInput): Promise<Offer[]> {
+    const { prices, presentations } = this.ports;
     const current = await prices.findAll();
-    const [inMunicipality, known] = await Promise.all([
-      stores.findInMunicipality({
-        ids: [...new Set(current.map((price) => price.establishmentId))],
-        municipality,
-      }),
+    const [inArea, known] = await Promise.all([
+      this.storesIn([...new Set(current.map((price) => price.establishmentId))], input),
       presentations.of([...new Set(current.map((price) => price.presentationId))]),
     ]);
-    const storesById = new Map(inMunicipality.map((store) => [store.id, store]));
+    const storesById = new Map(inArea.map((store) => [store.id, store]));
     const now = this.ports.clock.now();
     return current.flatMap((price) => {
       const establishment = storesById.get(price.establishmentId);
@@ -132,7 +206,7 @@ export class FeaturedProducts {
           presentationId: price.presentationId,
           unitPrice: calculateUnitPrice(price.priceCop, presentation),
           // Sin ubicación del usuario todas empatan en distancia.
-          distanceMeters: 0,
+          distanceMeters: establishment.distanceM ?? 0,
           observedAt: price.observedAt,
         },
       ];

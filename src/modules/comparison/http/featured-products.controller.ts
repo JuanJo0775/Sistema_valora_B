@@ -33,17 +33,24 @@ export class FeaturedProductsController {
   @Get()
   @Header('Cache-Control', 'public, max-age=60')
   async list(@Query() query: FeaturedProductsQueryDto): Promise<FeaturedProductsResponse> {
-    const result = await this.featured.of({ municipality: query.municipality, limit: query.limit });
+    // Sin lat y lng el radio no se usa.
+    const result = await this.featured.of({
+      municipality: query.municipality,
+      radiusKm: 1.5,
+      limit: query.limit,
+    });
     return {
-      criteria: result.criteria,
-      items: result.items.map(({ cheapest, ...item }) => ({
-        ...item,
-        cheapest: {
-          ...cheapest,
-          // Se muestra redondeado; el valor exacto no sale de la aplicación.
-          unitPrice: { valueCop: cheapest.unitPrice.displayCop, per: cheapest.unitPrice.per },
-        },
-      })),
+      criteria: { municipality: query.municipality, sort: result.criteria.sort },
+      items: result.items.map(
+        ({ cheapest, priciest: _priciest, savingsPercent: _savings, ...item }) => ({
+          ...item,
+          cheapest: {
+            ...cheapest,
+            // Se muestra redondeado; el valor exacto no sale de la aplicación.
+            unitPrice: { valueCop: cheapest.unitPrice.displayCop, per: cheapest.unitPrice.per },
+          },
+        }),
+      ),
     };
   }
 }
