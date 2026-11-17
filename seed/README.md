@@ -5,7 +5,7 @@ Esta carpeta tiene los datos iniciales de Valora (issue #51, RF-014). Los revisa
 | Archivo                 | Qué tiene                                                                         | De dónde sale                                                     |
 | ----------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `tiendas.csv`           | Tiendas de Armenia con nombre, tipo, dirección y coordenadas                      | OpenStreetMap (una consulta autorizada, 12-nov-2026)              |
-| `productos.csv`         | Productos y presentaciones de la canasta                                          | Propuesta de Claude Code que el equipo verifica en tienda         |
+| `productos.csv`         | Productos y presentaciones de la canasta                                          | Revisión del equipo en tienda y en olimpica.com (#118)            |
 | `muestra-exactitud.csv` | Precios que el equipo vio en la tienda, para medir la exactitud (PR-22, opcional) | Visitas del equipo (#93)                                          |
 | `sipsa.csv`             | Precios mayoristas por kilo de referencia (opcional)                              | Boletín SIPSA del DANE, copiado a mano por el equipo (#34)        |
 | `precios-iniciales.csv` | Precios de la página de una cadena, como «Dato inicial» (opcional)                | Páginas públicas de las cadenas, consultadas por el equipo (#135) |
@@ -71,9 +71,9 @@ Si un producto se vende en varios tamaños, se repite el producto en varias fila
 | `household-cleaning` | Aseo del hogar     | no       |
 | `personal-care`      | Cuidado personal   | no       |
 
-### Por qué los códigos de barras están vacíos
+### De dónde salen los códigos de barras
 
-No se inventan: un código falso podría coincidir con otro producto real. Se copian del empaque al verificar en la tienda. Al sembrar, cada código se revisa con su dígito de control (EAN-13), y uno mal escrito se rechaza con un mensaje que dice en qué fila está.
+No se inventan: un código falso podría coincidir con otro producto real. Se copian del empaque al verificar en la tienda o de la ficha del producto en la página de la cadena. Si no se tiene a la vista, la columna queda vacía. Al sembrar, cada código se revisa con su dígito de control (EAN-13), y uno mal escrito se rechaza con un mensaje que dice en qué fila está.
 
 ### Fotos de Open Food Facts (`pnpm seed:imagenes`, #119)
 
@@ -89,7 +89,7 @@ pnpm seed:imagenes
 - Consulta con un nombre genérico del proyecto, sin correo ni datos de nadie, y con una pausa entre consultas (Open Food Facts pide no pasar de 100 por minuto). No usa la base ni corre en el servidor. Nunca toma fotos de sitios de cadenas.
 - Después se revisa el CSV y se corre `pnpm db:seed` para cargarlas.
 
-Hoy la semilla no tiene códigos de barras (los llena el equipo, #118), así que el comando dice «0 productos con código de barras y sin imagen».
+Hoy la semilla tiene 85 productos y 93 presentaciones. Las 56 presentaciones que vienen de olimpica.com (16-nov-2026, #118) traen código de barras; las 37 primeras todavía no (los llena el equipo).
 
 ### Qué revisar en la tienda
 
