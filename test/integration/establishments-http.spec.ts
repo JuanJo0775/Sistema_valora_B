@@ -6,6 +6,7 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { establishments } from '../../src/modules/establishments/infrastructure/schema';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { countAllRows } from '../support/count-rows';
 
 // Punto de consulta en el centro de Armenia. Cada 0,0009° de latitud son unos 100 m.
 const center = { lat: 4.5339, lng: -75.6811 };
@@ -114,20 +115,3 @@ describe('GET /v1/establishments/nearby', () => {
     expect(await countAllRows(db)).toBe(rowsBefore);
   });
 });
-
-// Total de filas en todas las tablas de la aplicación (sin las de PostgreSQL y PostGIS).
-async function countAllRows(db: Database): Promise<number> {
-  const tables = await db.execute<{ name: string }>(
-    sql`select format('%I.%I', table_schema, table_name) as name from information_schema.tables
-        where table_type = 'BASE TABLE'
-          and table_schema not in ('pg_catalog', 'information_schema', 'public', 'topology')`,
-  );
-  let total = 0;
-  for (const { name } of tables.rows) {
-    const result = await db.execute<{ count: string }>(
-      sql.raw(`select count(*) as count from ${name}`),
-    );
-    total += Number(result.rows[0]?.count ?? 0);
-  }
-  return total;
-}
