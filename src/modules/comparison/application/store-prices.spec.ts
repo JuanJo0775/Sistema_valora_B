@@ -35,6 +35,7 @@ const price = (
   change: Partial<CurrentPrice> = {},
 ): CurrentPrice => ({
   reportId: `reporte-${presentationId}`,
+  source: 'comunidad',
   presentationId,
   establishmentId: store.id,
   priceCop,

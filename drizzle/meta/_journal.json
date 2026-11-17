@@ -183,6 +183,13 @@
       "when": 1794887596784,
       "tag": "0025_identity-display-name",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794890688235,
+      "tag": "0026_comparison-price-source",
+      "breakpoints": true
     }
   ]
 }

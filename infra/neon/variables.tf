@@ -4,6 +4,12 @@ variable "project_name" {
   default     = "valora"
 }
 
+variable "org_id" {
+  description = "Identificador de la organización de Neon (org-...), visible en la dirección de la consola. Null en una cuenta personal sin organización."
+  type        = string
+  default     = null
+}
+
 variable "region_id" {
   description = "Región de Neon. Igual que la de Render (virginia) para tener poca latencia entre la API y la base."
   type        = string

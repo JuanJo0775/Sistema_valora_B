@@ -32,6 +32,8 @@ export async function onPriceAssessed(event: DomainEvent, tx: Transaction): Prom
     observedAt: new Date(payload.observedAt),
     receivedAt: new Date(payload.receivedAt),
     status: suspicious ? 'en_revision' : 'vigente',
+    // B#135: un reporte vuelve el precio de la comunidad, aunque reemplace un dato inicial.
+    source: 'comunidad',
   };
 
   const inserted = await tx

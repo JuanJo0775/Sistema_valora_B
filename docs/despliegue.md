@@ -43,6 +43,20 @@ En «Settings», «Environments», crea el entorno **`produccion`** con revisore
 | Secreto | `RENDER_DEPLOY_HOOK_URL` | Se obtiene en el paso 4 |
 | Variable | `API_URL` | La dirección pública de Render, sin barra final (paso 4) |
 
+Sin los tres valores el workflow «Despliegue» falla en el primer paso (`url: ''`: la cadena de Neon llega vacía) y no llega a Render. Se pueden cargar desde la consola de GitHub o con `gh`, sin pegar secretos en el chat (la cadena sale del estado de Terraform y el hook se copia del panel de Render al portapapeles):
+
+```bash
+R=<dueño>/Sistema_valora_B
+(cd infra/neon && terraform output -raw database_url) | gh secret set NEON_DATABASE_URL --env produccion --repo $R
+gh variable set API_URL --env produccion --repo $R --body "https://<servicio>.onrender.com"
+# Deploy Hook: Render, servicio, Settings, Deploy Hook, «Copy»; después:
+gh secret set RENDER_DEPLOY_HOOK_URL --env produccion --repo $R < <(powershell -c "Get-Clipboard")
+# Revisores obligatorios del entorno (una persona aprueba cada despliegue):
+gh api -X PUT repos/$R/environments/produccion -F "reviewers[][type]=User" -F "reviewers[][id]=$(gh api users/<usuario> --jq .id)"
+```
+
+La aprobación de cada despliegue la da una persona: es el control de liberación y no se automatiza. Se aprueba en Actions, en la corrida en espera, con «Review deployments».
+
 ### 3. Migraciones y semilla (en este orden)
 
 La semilla (`seed/*.csv`, issue #51) tiene un solo camino de entrada a producción, para que nadie apunte a Neon desde su equipo por accidente:
@@ -101,6 +115,15 @@ Es el riesgo más serio del reenvío (ADR-012): con `TRUST_PROXY` mal puesto, to
 2. Mientras tanto, desde otra red (por ejemplo, un celular con datos), inicia sesión con una cuenta de prueba: debe entrar (no 429).
 3. Si el celular también recibe 429, la API ve la IP del proxy: cambia `TRUST_PROXY` (prueba 1 o 3) y repite. `SUPUESTO:` 2 es el valor correcto (Vercel y Render); la prueba `src/app.setup.spec.ts` demuestra el comportamiento con esa cadena, pero solo este paso lo confirma contra la infraestructura real.
 
+## Versionado al pasar de dev a main
+
+Cada vez que `dev` se lleva a `main` (pull request con merge commit) es una versión nueva, en los dos repositorios:
+
+1. Antes del merge, decidir el número con SemVer: cambio de contrato o ruptura sube la mayor, funcionalidad nueva la menor, corrección la de parche (la última es `v0.2.0`).
+2. Hacer el merge de `dev` a `main`. El push dispara `Despliegue`, que pide aprobación en el entorno `produccion`.
+3. Cuando el despliegue termine bien y `GET /v1/health` responda, crear la etiqueta y la publicación sobre ese commit de `main`: `gh release create vX.Y.Z --target main --generate-notes --title "vX.Y.Z — resumen corto"`.
+4. En el frontend se hace lo mismo con su propia numeración.
+
 ## Reversa
 
 - **API:** Render, «Deploys», «Rollback» al despliegue anterior. Las migraciones deben ser compatibles hacia atrás: mientras Render construye, la versión vieja atiende contra el esquema ya migrado. Una migración que borra o renombra columnas necesita dos despliegues.
@@ -110,7 +133,7 @@ Es el riesgo más serio del reenvío (ADR-012): con `TRUST_PROXY` mal puesto, to
 
 ## Riesgos conocidos (ADR-012)
 
-- **Fotos:** Render borra el disco en cada despliegue; por eso las fotos subidas van a Supabase Storage (ADR-022, `Propuesto`). Riesgos: la pausa del plan gratuito tras 7 días sin actividad (mitigada con `keepalive.yml`, `SUPUESTO:` que el ping cuenta como actividad) y una clave secreta más que custodiar. `PENDIENTE (equipo)`: subir una foto real en el despliegue y comprobar que sigue visible tras un redespliegue.
+- **Fotos:** Render borra el disco en cada despliegue; por eso las fotos subidas van a Supabase Storage (ADR-022, aceptado el 17-nov-2026). Riesgos: la pausa del plan gratuito tras 7 días sin actividad (mitigada con `keepalive.yml`, `SUPUESTO:` que el ping cuenta como actividad) y una clave secreta más que custodiar. `PENDIENTE (equipo)`: subir una foto real en el despliegue y comprobar que sigue visible tras un redespliegue.
 - **Latencia:** cada petición pasa por Vercel antes de Render; suma tiempo al p95 de EC-04. Se mide en la prueba de carga.
 - **Una sola instancia:** el outbox corre dentro del proceso (ADR-015). No subas `numInstances`.
 - **Límites en memoria:** se reinician con cada despliegue o cuando Render duerme el servicio.

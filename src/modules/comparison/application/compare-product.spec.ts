@@ -91,6 +91,7 @@ const store = (id: string, distanceM = 500): NearbyEstablishment => ({
 // Precio de 500 g, por defecto $2.000 visto hace un día.
 const price = (establishmentId: string, priceCop = 2000, daysAgo = 1): CurrentPrice => ({
   reportId: `reporte-${establishmentId}`,
+  source: 'comunidad',
   presentationId: 'p-500g',
   establishmentId,
   priceCop,

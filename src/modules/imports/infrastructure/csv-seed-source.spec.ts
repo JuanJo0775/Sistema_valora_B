@@ -41,4 +41,16 @@ describe('lector de los CSV de la semilla', () => {
       { line: 2, values: { producto: 'Arroz', precio_kg: '3200' } },
     ]);
   });
+
+  // B#135: precios-iniciales.csv también es opcional; sin el archivo no hay datos iniciales.
+  it('lee los precios iniciales de precios-iniciales.csv y, si el archivo no está, no hay ninguno', async () => {
+    const source = new CsvSeedSource(folder);
+    await expect(source.readInitialPrices()).resolves.toEqual([]);
+
+    writeFileSync(join(folder, 'precios-iniciales.csv'), 'cadena;precio\nD1;1990\n');
+
+    await expect(source.readInitialPrices()).resolves.toEqual([
+      { line: 2, values: { cadena: 'D1', precio: '1990' } },
+    ]);
+  });
 });

@@ -1,3 +1,4 @@
+import type { PriceSource } from '../../../domain/initial-price';
 import { type Freshness, freshnessOf, ttlDaysFor } from '../../../domain/freshness';
 import {
   type RankableOffer,
@@ -94,8 +95,8 @@ export interface ComparisonItem {
   presentationId: string;
   priceCop: number;
   unitPrice: UnitPrice;
-  // Grill de la #15, pregunta 7: hoy todo precio viene de reportes de la comunidad.
-  source: 'comunidad';
+  // Grill de la #15, pregunta 7; B#135: de la comunidad o un dato inicial de la semilla.
+  source: PriceSource;
   freshness: Freshness;
   // Grill de la #15, pregunta 6: el precio por unidad más bajo entre los no desactualizados.
   isCheapest: boolean;
@@ -280,7 +281,7 @@ export class CompareProduct {
         presentationId: price.presentationId,
         priceCop: price.priceCop,
         unitPrice: calculateUnitPrice(price.priceCop, presentation),
-        source: 'comunidad',
+        source: price.source,
         freshness: freshnessAt(price.observedAt, now, ttlDays),
         observedAt: price.observedAt,
       };

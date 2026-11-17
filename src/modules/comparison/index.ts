@@ -5,3 +5,4 @@ export {
   PRICE_HISTORY_EVENTS,
 } from './comparison.module';
 export { CurrentPriceOf } from './application/current-price-of';
+export { ImportInitialPrices, type NewInitialPrice } from './application/import-initial-prices';

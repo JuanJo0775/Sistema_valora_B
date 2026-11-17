@@ -2,14 +2,15 @@
 
 Esta carpeta tiene los datos iniciales de Valora (issue #51, RF-014). Los revisa el equipo en Excel y los carga `pnpm db:seed` en la base de `DATABASE_URL`.
 
-| Archivo                 | Qué tiene                                                                         | De dónde sale                                              |
-| ----------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `tiendas.csv`           | Tiendas de Armenia con nombre, tipo, dirección y coordenadas                      | OpenStreetMap (una consulta autorizada, 12-nov-2026)       |
-| `productos.csv`         | Productos y presentaciones de la canasta                                          | Propuesta de Claude Code que el equipo verifica en tienda  |
-| `muestra-exactitud.csv` | Precios que el equipo vio en la tienda, para medir la exactitud (PR-22, opcional) | Visitas del equipo (#93)                                   |
-| `sipsa.csv`             | Precios mayoristas por kilo de referencia (opcional)                              | Boletín SIPSA del DANE, copiado a mano por el equipo (#34) |
+| Archivo                 | Qué tiene                                                                         | De dónde sale                                                     |
+| ----------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `tiendas.csv`           | Tiendas de Armenia con nombre, tipo, dirección y coordenadas                      | OpenStreetMap (una consulta autorizada, 12-nov-2026)              |
+| `productos.csv`         | Productos y presentaciones de la canasta                                          | Revisión del equipo en tienda y en olimpica.com (#118)            |
+| `muestra-exactitud.csv` | Precios que el equipo vio en la tienda, para medir la exactitud (PR-22, opcional) | Visitas del equipo (#93)                                          |
+| `sipsa.csv`             | Precios mayoristas por kilo de referencia (opcional)                              | Boletín SIPSA del DANE, copiado a mano por el equipo (#34)        |
+| `precios-iniciales.csv` | Precios de la página de una cadena, como «Dato inicial» (opcional)                | Páginas públicas de las cadenas, consultadas por el equipo (#135) |
 
-Ninguno trae precios: los precios llegan con los reportes (paso 5).
+Los precios de verdad llegan con los reportes de la comunidad (paso 5). `precios-iniciales.csv` solo llena tiendas que todavía no tienen precio, para la demo, y se ve como «Dato inicial».
 
 ## Cómo funciona la carga
 
@@ -70,9 +71,9 @@ Si un producto se vende en varios tamaños, se repite el producto en varias fila
 | `household-cleaning` | Aseo del hogar     | no       |
 | `personal-care`      | Cuidado personal   | no       |
 
-### Por qué los códigos de barras están vacíos
+### De dónde salen los códigos de barras
 
-No se inventan: un código falso podría coincidir con otro producto real. Se copian del empaque al verificar en la tienda. Al sembrar, cada código se revisa con su dígito de control (EAN-13), y uno mal escrito se rechaza con un mensaje que dice en qué fila está.
+No se inventan: un código falso podría coincidir con otro producto real. Se copian del empaque al verificar en la tienda o de la ficha del producto en la página de la cadena. Si no se tiene a la vista, la columna queda vacía. Al sembrar, cada código se revisa con su dígito de control (EAN-13), y uno mal escrito se rechaza con un mensaje que dice en qué fila está.
 
 ### Fotos de Open Food Facts (`pnpm seed:imagenes`, #119)
 
@@ -88,7 +89,7 @@ pnpm seed:imagenes
 - Consulta con un nombre genérico del proyecto, sin correo ni datos de nadie, y con una pausa entre consultas (Open Food Facts pide no pasar de 100 por minuto). No usa la base ni corre en el servidor. Nunca toma fotos de sitios de cadenas.
 - Después se revisa el CSV y se corre `pnpm db:seed` para cargarlas.
 
-Hoy la semilla no tiene códigos de barras (los llena el equipo, #118), así que el comando dice «0 productos con código de barras y sin imagen».
+Hoy la semilla tiene 85 productos y 93 presentaciones. Las 56 presentaciones que vienen de olimpica.com (16-nov-2026, #118) traen código de barras; las 37 primeras todavía no (los llena el equipo).
 
 ### Qué revisar en la tienda
 
@@ -129,6 +130,31 @@ Fuente: el ZIP **«Informes por ciudades»** de la página de SIPSA (<https://ww
 Equivalencias usadas: «Banano criollo» → Banano; «Cebolla cabezona blanca» → Cebolla cabezona; «Tomate chonto» → Tomate chonto; «Papa parda pastusa» → Papa pastusa.
 
 Las filas solo se cargan cuando el producto también está verificado en `productos.csv` (con responsable). Si no, la semilla dice qué fila corregir.
+
+## `precios-iniciales.csv` («Dato inicial», #135)
+
+Precios tomados de la página pública de una cadena (hoy, D1 y Carulla). `pnpm db:seed` pone cada fila en **todas las tiendas revisadas de esa cadena** en `tiendas.csv` (una tienda es de la cadena si su nombre trae el nombre de la cadena como palabra: «D1» sí, «Panadería D10» no). Se guardan con la fuente `siembra` («Dato inicial»):
+
+- **Nunca reemplazan un precio de la comunidad.** Si la tienda ya tiene uno, el dato inicial no se guarda. Si la comunidad reporta después, su precio lo reemplaza.
+- **No son reportes:** no suben la confianza ni la reputación de nadie, no entran a la moderación ni al historial, y vencen con la vigencia de siempre (7 o 14 días desde `fecha_consulta`).
+- **Nunca ofertas** (EC-06, ADR-009): `es_oferta` debe ser `no`.
+- Volver a sembrar actualiza el dato inicial, sin duplicarlo.
+
+| Columna                                                       | Qué va                                                                                       | Ejemplo                                  |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `producto`, `marca`, `cantidad`, `unidad`, `unidades_empaque` | Igual que en `productos.csv`: la presentación del catálogo.                                  | `Arroz blanco`, `Diana`, `500`, `g`, `1` |
+| `cadena`                                                      | El nombre de la cadena, como aparece en el nombre de sus tiendas.                            | `D1`                                     |
+| `precio`                                                      | En pesos, sin puntos.                                                                        | `1990`                                   |
+| `es_oferta`                                                   | Siempre `no`.                                                                                | `no`                                     |
+| `fecha_consulta`                                              | El día en que se vio la página (AAAA-MM-DD).                                                 | `2026-11-16`                             |
+| `url_fuente`                                                  | El enlace `https` de la ficha del producto.                                                  | `https://www.d1.com.co/…/p`              |
+| `coincidencia`                                                | `exacta` (misma marca y tamaño) o `equivalente` (por ejemplo, la marca propia de la cadena). | `equivalente`                            |
+| `marca_en_web`, `nota`                                        | Lo que dice la página y cualquier diferencia. Solo para el equipo.                           | `El Estío (marca propia D1)`             |
+| `verificar`, `responsable`                                    | Como en `productos.csv`: solo se cargan las filas con `verificar = no` y un responsable.     | `no`, `Nombre`                           |
+
+- Si una fila tiene un error, no se carga ningún dato inicial y el comando dice qué fila corregir. Una prueba revisa este archivo en cada pull request.
+- Carulla (#142): la página no deja elegir Armenia sin entrar a rutas que su `robots.txt` prohíbe, así que su precio es el nacional. Un precio de otro tamaño nunca se pone en una presentación distinta: daría un precio por unidad falso. Por eso se agregaron a `productos.csv` las presentaciones que vende Carulla (papa pastusa 2500 g, aceite Premier 900 ml y chocolate Corona 200 g). Las ofertas no se cargan.
+- Ara no publica precios que se puedan leer sin entrar a rutas que su `robots.txt` prohíbe. Éxito bloquea las consultas automáticas. No se usan imágenes de las cadenas (ADR-020, punto 8).
 
 ## `muestra-exactitud.csv` (PR-22, #93)
 

@@ -20,6 +20,7 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | ADR-018 | Backend: NestJS sobre Express (aceptado el 8 de noviembre de 2026) | Las reglas de `domain` se escriben en TypeScript puro; su validación práctica es el esqueleto H2-01. |
 | ADR-020 | Imágenes de productos (aceptado el 15 de noviembre de 2026) | Una imagen por producto: Open Food Facts, foto del equipo o ilustración genérica. En el Corte 2 solo el moderador sube fotos (JPEG, PNG o WebP hasta 2 MB; WebP de 800 px como máximo, sin metadatos). Almacenamiento detrás de `ImageStorage`: `SupabaseImageStorage` se implementó mediante PR #126 y se activa con `SUPABASE_URL`; `LocalImageStorage` queda para desarrollo. La decisión ADR-022 sigue Propuesta hasta aceptación explícita y prueba de una foto real tras redespliegue. Ver [docs/adr/0020-imagenes-productos.md](adr/0020-imagenes-productos.md). |
 | ADR-021 | Acceso a datos: Drizzle ORM con migraciones SQL versionadas (aceptado el 11 de noviembre de 2026) | Tablas en `infrastructure/schema.ts` con un `pgSchema` por módulo; migraciones generadas con `drizzle-kit`, revisadas y versionadas; driver `pg`; solo `infrastructure/` y `shared/database` importan Drizzle. Ver [docs/adr/0021-acceso-datos-drizzle.md](adr/0021-acceso-datos-drizzle.md). |
+| ADR-022 | Fotos subidas en Supabase Storage (aceptado el 17 de noviembre de 2026) | Las fotos que sube el moderador van a un bucket público de Supabase Storage (`productos`, solo WebP, hasta 2 MB) detrás del puerto `ImageStorage`, porque el disco de Render se borra en cada despliegue. Se activa con `SUPABASE_URL`; sin ella, carpeta local para desarrollo. El plan gratuito pausa el proyecto tras 7 días sin actividad; `keepalive.yml` lo evita (supuesto). Ver [docs/adr/0022-fotos-supabase-storage.md](adr/0022-fotos-supabase-storage.md) y `docs/despliegue.md`. |
 | Proyecto | TypeScript como lenguaje principal | Backend desarrollado en TypeScript sobre NestJS (ADR-018). |
 | ADR-012 | Despliegue: Docker en Render, base en Neon y PWA en Vercel (aceptado el 16 de noviembre de 2026) | El backend se despliega como una imagen descrita por un `Dockerfile` en el repositorio (contenedores como código, RNF-009 RN1; cambio del 15 de noviembre, que reemplaza «sin Docker en el MVP»). Render construye y corre la imagen y la orquesta (salud con `GET /v1/health`, reinicio, despliegue sin corte), descrito en `render.yaml`. La base es Neon (PostgreSQL administrado con PostGIS). Vercel sirve la PWA y **reenvía `/v1/*` a Render** (rewrite en `vercel.json`): el navegador ve un solo origen, la cookie de sesión no cambia y no hay CORS. La API debe configurar `trust proxy` para leer la IP real del cliente; si no, todos comparten los límites de intentos. Una sola copia en Render mientras el outbox corra dentro del proceso. Se mantiene: sin Docker para desarrollar (PostgreSQL local) y la CI con contenedores de servicio de PostgreSQL + PostGIS; sin Testcontainers. Almacenamiento de fotos: adaptador Supabase Storage implementado por PR #126; ADR-022 fue aceptado el 17-nov-2026; falta la prueba real de persistencia tras un redespliegue. La elección de Render como orquestación quedó confirmada por el equipo en PR #125. |
 | Proyecto | Dos repositorios separados (backend y frontend) | Este repositorio es responsable de API y dominio; el frontend consume su contrato. |
@@ -410,7 +411,7 @@ Aplicación de RF-014 (RN1 a RN5), ADR-011 y PR-20. El detalle está en `docs/de
 - **Dónde vive:** `catalog.wholesale_references` (migración `0022`); `imports` no puede depender del núcleo, así que la referencia es un dato del producto. `comparison` la lee con `WholesaleReferenceOf`.
 - **Comparable (RN2):** solo productos de peso (regla `acceptsWholesaleReference`); se muestra si su periodo terminó hace 30 días o menos (`isRecentReference`).
 - **Cómo se ve (RN3):** `wholesaleReference` aparte en la comparación; no entra al orden ni a `isCheapest`; no muestra al responsable de la carga.
-- **Fuera:** precios iniciales en la semilla (llegan como reportes) y la muestra de exactitud PR-22 (#93).
+- **Fuera:** precios iniciales en la semilla (llegan como reportes) y la muestra de exactitud PR-22 (#93). *Actualizado el 17-nov-2026: la #135 permite precios iniciales marcados como «Dato inicial»; ver abajo.*
 
 ## Muestra de exactitud (issue #93, 15 de noviembre de 2026)
 
@@ -506,6 +507,19 @@ Aplicación de ADR-020 (punto 1: Open Food Facts primero, citando la fuente; pun
 - **Red separada de la regla:** `fillProductImages` recibe la consulta como función; las pruebas usan respuestas simuladas y nunca llaman a Open Food Facts. `fetch` nativo de Node 22, sin dependencias nuevas.
 - **Cortesía con la API:** User-Agent `Valora/0.1 (proyecto universitario, semilla del catálogo)`, sin correo (EC-08), y 700 ms entre consultas (límite de 100 por minuto).
 - **Hoy no trae fotos:** la semilla no tiene códigos de barras hasta la #118.
+
+## Precios iniciales como «Dato inicial» (issue #135, 17 de noviembre de 2026)
+
+**Reemplaza** la decisión de la #34 de no cargar precios iniciales en la semilla. Decisión de la usuaria del 16-nov-2026: datos para la demo, tomados de la página pública de D1 (el arroz Diana exacto y 9 equivalentes de marca D1).
+
+- **Dónde:** `seed/precios-iniciales.csv`. `pnpm db:seed` pone cada fila en todas las tiendas revisadas de su cadena (27 tiendas D1 y 3 Carulla en Armenia; Carulla llegó con la #142). `imports` valida y reparte; `comparison` guarda (`ImportInitialPrices`). El comando une los dos, como `accuracy.ts`, porque `imports` no puede depender del núcleo.
+- **Fuente propia:** `price_current.source` (migración 0026) es `comunidad` o `siembra`. La comparación lo devuelve en `source` (el contrato ya tenía `siembra`) y el frontend lo muestra como «Dato inicial».
+- **Nunca reemplaza a la comunidad:** solo llena tiendas sin precio. Un reporte de la comunidad reemplaza al dato inicial. La escritura usa `setWhere source = 'siembra'`, para que una carrera no pise un precio de la comunidad.
+- **No es un reporte:** no pasa por `pricing` ni por `reliability`. No sube la confianza ni la reputación, no entra a la moderación ni a las ráfagas, y no va al historial de 30 días. Vence con la vigencia de siempre, desde la fecha de consulta.
+- **Sin cuenta de reportante (EC-08)** y **sin ofertas** (EC-06, ADR-009).
+- **Riesgo:** el precio de la página es nacional y puede no ser el de la tienda de Armenia. Por eso se ve marcado y vence solo.
+- **Carulla** (#142, 17-nov-2026): 20 precios de su página en las 3 tiendas Carulla de la semilla, con el mismo mecanismo. Se agregan 3 presentaciones que Carulla vende (papa pastusa 2500 g, aceite Premier 900 ml, chocolate Corona 200 g), porque ponerlas en otra presentación daría un precio por unidad falso. Quedan fuera las 3 ofertas, el banano y el plátano por unidad y la Coca-Cola sin tamaño.
+- **Ara** no publica precios legibles sin rutas que su `robots.txt` prohíbe. **Éxito** bloqueó las consultas automáticas (Cloudflare). No se evadió ninguno de los dos.
 
 ## Prueba de humo (15 de noviembre de 2026)
 

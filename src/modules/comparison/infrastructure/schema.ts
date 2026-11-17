@@ -27,10 +27,13 @@ export const priceCurrent = comparisonSchema.table(
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
     // Grill de la #31, pregunta 5: «en_revision» si el único precio de la tienda es sospechoso.
     status: text('status').notNull().default('vigente'),
+    // B#135: «comunidad» si lo reportó alguien; «siembra» si es un dato inicial de la semilla.
+    source: text('source').notNull().default('comunidad'),
   },
   (table) => [
     primaryKey({ columns: [table.presentationId, table.establishmentId] }),
     check('price_current_status_valid', sql`${table.status} in ('vigente', 'en_revision')`),
+    check('price_current_source_valid', sql`${table.source} in ('comunidad', 'siembra')`),
   ],
 );
 
