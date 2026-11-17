@@ -49,17 +49,17 @@ jobs:
 
       # La semilla (issue #51) es idempotente: actualiza por id fijo, no duplica y nunca borra.
       # Arranca la aplicación Nest, que valida todas las variables; los secretos de sesión no se usan
-      # aquí, por eso van con un valor fijo y no con los de producción.
+      # aquí: se generan al azar en el momento y no se parecen a los de producción.
       - name: Cargar la semilla en Neon (opcional)
         if: ${{ inputs.cargar_semilla }}
-        run: pnpm build && node dist/seed.js
+        run: |
+          export SESSION_SECRET="$(openssl rand -hex 16)" REPORTER_KEY_SECRET="$(openssl rand -hex 16)"
+          pnpm build && node dist/seed.js
         env:
           NODE_ENV: production
           PORT: '3000'
           DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
           DATABASE_URL_TEST: ${{ secrets.NEON_DATABASE_URL }}
-          SESSION_SECRET: no-se-usa-en-la-semilla
-          REPORTER_KEY_SECRET: no-se-usa-en-la-semilla
           OUTBOX_POLL_INTERVAL_MS: '5000'
           OUTBOX_MAX_ATTEMPTS: '5'
           MEDIA_DIR: media

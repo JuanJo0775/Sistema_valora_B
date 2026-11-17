@@ -20,7 +20,7 @@ function fakeFetch(status = 200): { fetch: typeof fetch; calls: Call[] } {
 const options = {
   url: 'https://abc123.supabase.co/',
   bucket: 'productos',
-  secretKey: 'sb_secret_de_prueba',
+  secretKey: 'clave-de-prueba',
 };
 
 describe('guardar fotos en Supabase Storage (ADR-022)', () => {
@@ -47,10 +47,10 @@ describe('guardar fotos en Supabase Storage (ADR-022)', () => {
     await storage.save('products/a.webp', Buffer.from('foto'));
 
     const headers = new Headers(calls[0]?.init.headers);
-    expect(headers.get('authorization')).toBe('Bearer sb_secret_de_prueba');
+    expect(headers.get('authorization')).toBe('Bearer clave-de-prueba');
     expect(headers.get('content-type')).toBe('image/webp');
     expect(headers.get('cache-control')).toBe('max-age=31536000');
-    expect(calls[0]?.url).not.toContain('sb_secret');
+    expect(calls[0]?.url).not.toContain('clave-de-prueba');
   });
 
   it('un nombre que intenta salir del bucket se rechaza sin llamar a Supabase', async () => {
@@ -74,6 +74,6 @@ describe('guardar fotos en Supabase Storage (ADR-022)', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toContain('403');
-    expect((error as Error).message).not.toContain('sb_secret');
+    expect((error as Error).message).not.toContain('clave-de-prueba');
   });
 });
