@@ -99,7 +99,7 @@ describe('validateEnv con Supabase Storage (ADR-022)', () => {
     const conUrl = { ...validEnv, SUPABASE_URL: 'https://abc123.supabase.co' };
 
     expect(() => validateEnv(conUrl)).toThrow(/SUPABASE_SECRET_KEY/);
-    expect(validateEnv({ ...conUrl, SUPABASE_SECRET_KEY: 'sb_secret_x' }).SUPABASE_URL).toBe(
+    expect(validateEnv({ ...conUrl, SUPABASE_SECRET_KEY: 'clave-x' }).SUPABASE_URL).toBe(
       'https://abc123.supabase.co',
     );
   });
