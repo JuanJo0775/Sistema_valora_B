@@ -94,4 +94,17 @@ describe('pnpm db:seed', () => {
     );
     expect(address.rows[0]?.address).toBe('Cra. 14 #20-30');
   });
+
+  // B#118: el catálogo real crece por partes; si una fila verificada queda mal (categoría,
+  // código de barras, bases de unidad), la CI lo dice antes de que pnpm db:seed falle.
+  it('los archivos reales de seed/ cargan sin errores', async () => {
+    const result = await new RunSeed(
+      new CsvSeedSource(join(process.cwd(), 'seed')),
+      app.get(ImportCatalog),
+      app.get(ImportEstablishments),
+    ).execute();
+
+    expect(result).toMatchObject({ ok: true });
+    expect(await count('catalog.presentations')).toBeGreaterThan(0);
+  });
 });
