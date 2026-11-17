@@ -72,3 +72,41 @@ describe('validateEnv con la carpeta de fotos (ADR-020, #88)', () => {
     expect(() => validateEnv({ ...validEnv, [variable]: undefined })).toThrow(variable);
   });
 });
+
+describe('validateEnv con TRUST_PROXY (ADR-012: Vercel y Render delante de la API)', () => {
+  it('es opcional y vale 0 (sin proxy) cuando falta', () => {
+    expect(validateEnv(validEnv).TRUST_PROXY).toBe(0);
+  });
+
+  it('convierte los saltos de proxy a número', () => {
+    expect(validateEnv({ ...validEnv, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2);
+  });
+
+  it.each(['-1', '6', 'si'])('rechaza TRUST_PROXY=%p', (valor) => {
+    expect(() => validateEnv({ ...validEnv, TRUST_PROXY: valor })).toThrow(/TRUST_PROXY/);
+  });
+});
+
+describe('validateEnv con Supabase Storage (ADR-022)', () => {
+  it('sin SUPABASE_URL las fotos siguen en la carpeta local', () => {
+    const env = validateEnv(validEnv);
+
+    expect(env.SUPABASE_URL).toBeUndefined();
+    expect(env.SUPABASE_BUCKET).toBe('productos');
+  });
+
+  it('con SUPABASE_URL exige la clave secreta', () => {
+    const conUrl = { ...validEnv, SUPABASE_URL: 'https://abc123.supabase.co' };
+
+    expect(() => validateEnv(conUrl)).toThrow(/SUPABASE_SECRET_KEY/);
+    expect(validateEnv({ ...conUrl, SUPABASE_SECRET_KEY: 'clave-x' }).SUPABASE_URL).toBe(
+      'https://abc123.supabase.co',
+    );
+  });
+
+  it('SUPABASE_URL debe ser una dirección https', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, SUPABASE_URL: 'ftp://x', SUPABASE_SECRET_KEY: 'k' }),
+    ).toThrow(/SUPABASE_URL/);
+  });
+});

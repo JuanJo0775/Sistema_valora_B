@@ -16,6 +16,10 @@ export function configureApp(app: INestApplication): void {
   // ADR-020 (#88): las fotos se sirven en solo lectura hasta decidir el proveedor (ADR-012). El
   // nombre cambia si cambia la foto, así que se guardan en caché por un año.
   const config = app.get<ConfigService<Env, true>>(ConfigService);
+  // ADR-012: detrás de Vercel y Render, request.ip sería la IP del proxy y los límites por IP (#16)
+  // bloquearían a todos a la vez. Con 0 saltos no se cree en X-Forwarded-For.
+  const trustProxy = config.get('TRUST_PROXY', { infer: true });
+  (app as NestExpressApplication).set('trust proxy', trustProxy);
   (app as NestExpressApplication).useStaticAssets(config.get('MEDIA_DIR', { infer: true }), {
     prefix: '/media/',
     index: false,

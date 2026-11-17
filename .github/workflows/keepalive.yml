@@ -1,0 +1,32 @@
+name: Mantener Supabase activo
+
+# El plan gratuito de Supabase pausa el proyecto tras 7 días sin actividad, y con él dejan de
+# responder las URL de las fotos (ADR-022). Esta petición periódica lo evita.
+# SUPUESTO: una petición a la API de Storage y a PostgREST cuenta como actividad; la definición
+# exacta no está confirmada en la documentación. Si el proyecto se pausa igual, se restaura desde el
+# panel de Supabase («Restore project») y se pasa a un plan de pago o se cambia de proveedor.
+on:
+  schedule:
+    - cron: '0 12 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Ping a Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Listar buckets y consultar la API
+        run: |
+          curl --fail --silent --show-error --output /dev/null \
+            --header "Authorization: Bearer $SUPABASE_SECRET_KEY" --header "apikey: $SUPABASE_SECRET_KEY" \
+            "$SUPABASE_URL/storage/v1/bucket"
+          curl --silent --output /dev/null \
+            --header "apikey: $SUPABASE_SECRET_KEY" "$SUPABASE_URL/rest/v1/"
+          echo "Supabase respondió."
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
