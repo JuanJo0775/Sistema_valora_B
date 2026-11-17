@@ -135,8 +135,9 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
       useFactory: (repository: ProductImportRepository, db: Database): ImportCatalog =>
         new ImportCatalog(repository, new DrizzleWholesaleReferenceRepository(db)),
     },
-    // ADR-022 (actualización): pnpm seed:espejo-fotos copia las fotos externas al bucket. Sin Supabase
-    // configurado no se arma: el comando lo avisa antes de llegar aquí.
+    // ADR-022 (actualización): pnpm seed:espejo-fotos copia las fotos externas al bucket. Esta pieza se
+    // arma siempre al arrancar (también en la API y en las pruebas, sin Supabase), así que NO puede
+    // fallar aquí: el comando exige SUPABASE_URL y la clave antes de llegar a usarla.
     {
       provide: MirrorProductImages,
       inject: [PRODUCT_IMPORT_REPOSITORY, ConfigService],
@@ -144,14 +145,12 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
         images: ProductImportRepository,
         config: ConfigService<Env, true>,
       ): MirrorProductImages => {
-        const supabaseUrl = config.get('SUPABASE_URL', { infer: true });
-        if (supabaseUrl === undefined) throw new Error('Falta SUPABASE_URL.');
         return new MirrorProductImages({
           images,
           downloader: new HttpImageDownloader(),
           processor: new SharpImageProcessor(),
           storage: imageStorage(config),
-          supabaseUrl,
+          supabaseUrl: config.get('SUPABASE_URL', { infer: true }),
         });
       },
     },
