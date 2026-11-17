@@ -465,6 +465,17 @@ Aplicación de RF-008, RF-009, EC-04, EC-06 y EC-08 para la pantalla de Inicio d
 - **Caché:** pública de 60 s con ETag (EC-04). Sin `reportId` ni datos de quién reportó (EC-08).
 - **Por revisar si crece:** el caso de uso lee todo `price_current` y filtra por municipio en memoria. Con pocos miles de filas basta; si crece, se filtra en la consulta.
 
+## Fotos de Open Food Facts para la semilla (issue #119, 16 de noviembre de 2026)
+
+Aplicación de ADR-020 (punto 1: Open Food Facts primero, citando la fuente; punto 8: nada de sitios de cadenas) y RF-003.
+
+- **Comando del equipo, no del servidor:** `pnpm seed:imagenes` escribe en `seed/productos.csv`; `pnpm db:seed` carga después las fotos revisadas. Así el CSV sigue siendo lo que el equipo revisa y no hay llamadas externas en el servidor.
+- **Solo el enlace:** `image_front_url` de la API v2 (`?fields=image_front_url`), con `imagen_fuente = open_food_facts` y `imagen_atribucion = Open Food Facts, CC BY-SA`. Un enlace que no es `https` cuenta como «sin foto», porque la semilla lo rechazaría.
+- **No pisa nada:** un producto con imagen en cualquiera de sus filas no se consulta; un producto toma la foto de su primera presentación que la tenga (la semilla solo usa la primera).
+- **Red separada de la regla:** `fillProductImages` recibe la consulta como función; las pruebas usan respuestas simuladas y nunca llaman a Open Food Facts. `fetch` nativo de Node 22, sin dependencias nuevas.
+- **Cortesía con la API:** User-Agent `Valora/0.1 (proyecto universitario, semilla del catálogo)`, sin correo (EC-08), y 700 ms entre consultas (límite de 100 por minuto).
+- **Hoy no trae fotos:** la semilla no tiene códigos de barras hasta la #118.
+
 ## Prueba de humo (15 de noviembre de 2026)
 
 Insumo de RNF-009 (el despliegue debe pasar pruebas de humo) y respuesta a «¿está todo conectado?».
