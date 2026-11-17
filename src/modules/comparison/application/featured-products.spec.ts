@@ -51,6 +51,11 @@ const summaries = new Map<string, ProductSummaryView>([
       name: 'Arroz',
       brand: 'Diana',
       category: { code: 'grains-groceries', name: 'Granos y abarrotes' },
+      image: {
+        url: 'https://images.openfoodfacts.org/arroz.jpg',
+        source: 'open_food_facts',
+        attribution: 'Open Food Facts, CC BY-SA',
+      },
     },
   ],
   [
@@ -290,5 +295,24 @@ describe('canasta básica de hoy cerca de ti, por categoría y con el ahorro (B#
     });
 
     expect(result.storesWithPrices).toBe(2);
+  });
+});
+
+describe('imagen del producto en la canasta básica', () => {
+  it('cada ítem trae la imagen del producto cuando la tiene y sale sin image cuando no', async () => {
+    const featured = setup([
+      price('arroz-500g', donJose.id, 2500),
+      price('leche-1l', donJose.id, 4800),
+    ]);
+
+    const result = await featured.of({ municipality: 'armenia', radiusKm: 1.5, limit: 5 });
+
+    const byId = new Map(result.items.map((item) => [item.productId, item]));
+    expect(byId.get('arroz')?.image).toEqual({
+      url: 'https://images.openfoodfacts.org/arroz.jpg',
+      source: 'open_food_facts',
+      attribution: 'Open Food Facts, CC BY-SA',
+    });
+    expect(byId.get('leche')).not.toHaveProperty('image');
   });
 });
