@@ -38,6 +38,25 @@ function toPresentationView(presentation: PresentationRow): PresentationView {
 }
 
 // Cada palabra debe aparecer; los comodines de LIKE que escribe el usuario se buscan como texto.
+interface ImageColumns {
+  imageUrl: string | null;
+  imageSource: string | null;
+  imageAttribution: string | null;
+}
+
+// Sin las tres columnas no hay imagen. La restricción CHECK de la tabla garantiza la fuente.
+function toImage(row: ImageColumns): { image?: ProductImage } {
+  return row.imageUrl && row.imageSource && row.imageAttribution
+    ? {
+        image: {
+          url: row.imageUrl,
+          source: row.imageSource as ProductImage['source'],
+          attribution: row.imageAttribution,
+        },
+      }
+    : {};
+}
+
 function wordConditions(text: string): SQL[] {
   return text
     .split(/\s+/)
@@ -162,6 +181,7 @@ export class DrizzleProductRepository implements ProductRepository {
           name: row.name,
           ...(row.brand === null ? {} : { brand: row.brand }),
           category: { code: row.categoryCode, name: row.categoryName },
+          ...toImage(row),
         },
       ]),
     );
@@ -218,16 +238,7 @@ export class DrizzleProductRepository implements ProductRepository {
       name: row.name,
       ...(row.brand === null ? {} : { brand: row.brand }),
       category: { code: row.categoryCode, name: row.categoryName },
-      ...(row.imageUrl && row.imageSource && row.imageAttribution
-        ? {
-            image: {
-              url: row.imageUrl,
-              // La restricción CHECK de la tabla garantiza la fuente.
-              source: row.imageSource as ProductImage['source'],
-              attribution: row.imageAttribution,
-            },
-          }
-        : {}),
+      ...toImage(row),
       presentations: presentationRows
         .filter((presentation) => presentation.productId === row.id)
         .map(toPresentationView),

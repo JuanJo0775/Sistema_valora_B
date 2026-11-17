@@ -20,6 +20,11 @@ const donJose = 'fa222222-2222-4222-8222-000000000001';
 const ara = 'fa222222-2222-4222-8222-000000000002';
 const calarca = 'fa222222-2222-4222-8222-000000000003';
 // Punto de consulta en el centro de Armenia; las tiendas de prueba están unos 120 m al norte.
+const riceImage = {
+  url: 'https://images.openfoodfacts.org/arroz.jpg',
+  source: 'open_food_facts',
+  attribution: 'Open Food Facts, CC BY-SA',
+} as const;
 const userLocation = { lat: '4.5339', lng: '-75.6811' };
 
 describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', () => {
@@ -43,6 +48,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
       name: 'Arroz',
       brand: 'Diana',
       categoryCode: 'grains-groceries',
+      image: riceImage,
       presentations: [
         { id: rice500g, quantity: 500, unit: 'g', packCount: 1 },
         { id: rice1kg, quantity: 1, unit: 'kg', packCount: 1 },
@@ -101,6 +107,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
           name: 'Arroz',
           brand: 'Diana',
           category: { code: 'grains-groceries', name: 'Granos y abarrotes' },
+          image: riceImage,
           storeCount: 2,
           cheapest: {
             presentationId: rice1kg,
