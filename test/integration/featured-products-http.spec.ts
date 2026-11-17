@@ -1,4 +1,4 @@
-import type { INestApplication } from '@nestjs/common';
+import { ConsoleLogger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
@@ -8,6 +8,7 @@ import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { countAllRows } from '../support/count-rows';
 
 // Productos, presentaciones y tiendas de prueba: solo existen dentro de esta prueba.
 const rice = 'fa111111-1111-4111-8111-111111111111';
@@ -18,8 +19,10 @@ const milk1l = 'fa111111-1111-4111-8111-bbbbbbbbbbb1';
 const donJose = 'fa222222-2222-4222-8222-000000000001';
 const ara = 'fa222222-2222-4222-8222-000000000002';
 const calarca = 'fa222222-2222-4222-8222-000000000003';
+// Punto de consulta en el centro de Armenia; las tiendas de prueba están unos 120 m al norte.
+const userLocation = { lat: '4.5339', lng: '-75.6811' };
 
-describe('GET /v1/featured-products: canasta básica de hoy (B#120)', () => {
+describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', () => {
   let app: INestApplication;
   let server: Parameters<typeof request>[0];
   let db: Database;
@@ -90,6 +93,8 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120)', () => {
     expect(response.headers['cache-control']).toBe('public, max-age=60');
     expect(response.body).toEqual({
       criteria: { municipality: 'armenia', sort: 'store_count' },
+      // Don José y Ara tienen precios vigentes en Armenia.
+      storesWithPrices: 2,
       items: [
         {
           productId: rice,
@@ -104,6 +109,15 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120)', () => {
             unitPrice: { valueCop: 440, per: '100g' },
             establishment: { id: ara, name: 'Ara Centro' },
           },
+          // 500 g a $2.500 es $500 por 100 g: el más caro. $440 frente a $500, 12 % menos.
+          priciest: {
+            presentationId: rice500g,
+            label: 'Arroz Diana · 500 g',
+            priceCop: 2500,
+            unitPrice: { valueCop: 500, per: '100g' },
+            establishment: { id: donJose, name: 'Tienda Don José' },
+          },
+          savingsPercent: 12,
         },
         {
           productId: milk,
@@ -133,6 +147,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120)', () => {
     ]);
     expect(empty.body).toEqual({
       criteria: { municipality: 'salento', sort: 'store_count' },
+      storesWithPrices: 0,
       items: [],
     });
   });
@@ -147,13 +162,106 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120)', () => {
       .expect(304);
   });
 
-  it('400 sin municipio, con un municipio que no es del Quindío o con un limit fuera de rango', async () => {
+  it('400 sin municipio ni ubicación, con un municipio que no es del Quindío, con un limit o un radio fuera de rango, o con lat sin lng', async () => {
     const responses = await Promise.all([
       featured({}),
       featured({ municipality: 'pereira' }),
       featured({ municipality: 'armenia', limit: '51' }),
+      featured({ ...userLocation, radiusKm: '4' }),
+      featured({ lat: userLocation.lat }),
     ]);
 
-    expect(responses.map((response) => response.status)).toEqual([400, 400, 400]);
+    expect(responses.map((response) => response.status)).toEqual([400, 400, 400, 400, 400]);
+  });
+
+  it('con la ubicación cuentan las tiendas del radio, la más barata trae su distancia y no se guarda en caché', async () => {
+    const response = await featured(userLocation).expect(200);
+
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toMatchObject({
+      criteria: { radiusKm: 1.5, sort: 'store_count' },
+      // La tienda de Calarcá de prueba está en el mismo punto: con la ubicación también cuenta.
+      storesWithPrices: 3,
+      items: [
+        {
+          productId: rice,
+          storeCount: 3,
+          cheapest: {
+            priceCop: 1000,
+            establishment: { id: calarca, distanceM: expect.closeTo(122, -1) as unknown },
+          },
+        },
+        { productId: milk },
+      ],
+    });
+  });
+
+  it('con la ubicación y el municipio, el radio solo mira ese municipio', async () => {
+    const response = await featured({
+      ...userLocation,
+      municipality: 'armenia',
+      radiusKm: '3',
+    }).expect(200);
+
+    expect(response.body).toMatchObject({
+      criteria: { municipality: 'armenia', radiusKm: 3, sort: 'store_count' },
+      storesWithPrices: 2,
+    });
+  });
+
+  it('con una categoría, solo sus productos; con una categoría desconocida, la lista vacía', async () => {
+    const [dairy, unknown] = await Promise.all([
+      featured({ municipality: 'armenia', category: 'dairy-eggs' }).expect(200),
+      featured({ municipality: 'armenia', category: 'no-existe' }).expect(200),
+    ]);
+
+    expect(dairy.body).toMatchObject({
+      criteria: { municipality: 'armenia', category: 'dairy-eggs', sort: 'store_count' },
+      items: [{ productId: milk }],
+    });
+    expect((dairy.body as { items: unknown[] }).items).toHaveLength(1);
+    expect((unknown.body as { items: unknown[] }).items).toEqual([]);
+  });
+
+  // EC-08 y RF-005 RN5: la ubicación del usuario no se guarda, no se registra ni se expone.
+  it('la ubicación consultada no aparece en la respuesta ni en el log, y no se guarda', async () => {
+    const preciseLocation = { lat: '4.53387654', lng: '-75.68123456' };
+    const rowsBefore = await countAllRows(db);
+    const written: string[] = [];
+    const capture = (chunk: unknown): boolean => {
+      written.push(String(chunk));
+      return true;
+    };
+    const stdout = jest.spyOn(process.stdout, 'write').mockImplementation(capture);
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(capture);
+
+    // Con el registro real de NestJS, como en la prueba de la comparación. Pase lo que pase, la app
+    // se cierra y la salida vuelve a la consola.
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .setLogger(new ConsoleLogger())
+      .compile();
+    const loggedApp = moduleRef.createNestApplication({
+      logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    });
+    let response: request.Response;
+    try {
+      configureApp(loggedApp);
+      await loggedApp.init();
+      response = await request(loggedApp.getHttpServer() as Parameters<typeof request>[0])
+        .get('/v1/featured-products')
+        .query(preciseLocation);
+    } finally {
+      await loggedApp.close();
+      stdout.mockRestore();
+      stderr.mockRestore();
+    }
+
+    expect(response.status).toBe(200);
+
+    const output = written.join('') + JSON.stringify(response.body);
+    expect((response.body as { items: unknown[] }).items).not.toHaveLength(0);
+    expect(output).not.toContain(preciseLocation.lat);
+    expect(output).not.toContain(preciseLocation.lng);
+    expect(await countAllRows(db)).toBe(rowsBefore);
   });
 });
