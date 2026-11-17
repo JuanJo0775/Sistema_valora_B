@@ -1,5 +1,10 @@
 import type { PresentationForPricing, ProductSummaryView } from '../../catalog';
-import type { EstablishmentDetail, InMunicipalityQuery } from '../../establishments';
+import type {
+  EstablishmentDetail,
+  InMunicipalityQuery,
+  WithinRadiusQuery,
+} from '../../establishments';
+import { MissingAreaError } from './compare-product';
 import type { CurrentPrice } from './current-prices';
 import { FeaturedProducts } from './featured-products';
 
@@ -74,11 +79,28 @@ const price = (
   ...change,
 });
 
-function setup(prices: CurrentPrice[]) {
+// Distancia de cada tienda a la ubicación de prueba; las que no están, quedan fuera del radio.
+const distances = new Map([
+  [donJose.id, 350],
+  [ara.id, 900],
+]);
+
+function setup(prices: CurrentPrice[], asked: WithinRadiusQuery[] = []) {
   const stores = [donJose, ara, exito];
   return new FeaturedProducts({
     prices: { findAll: () => Promise.resolve(prices) },
     stores: {
+      find: (query: WithinRadiusQuery) => {
+        asked.push(query);
+        return Promise.resolve(
+          stores.flatMap((store) => {
+            const distanceM = distances.get(store.id);
+            return query.ids.includes(store.id) && distanceM !== undefined
+              ? [{ ...store, distanceM }]
+              : [];
+          }),
+        );
+      },
       findInMunicipality: ({ ids, municipality }: InMunicipalityQuery) =>
         Promise.resolve(
           stores.filter((store) => ids.includes(store.id) && store.municipality === municipality),
@@ -105,7 +127,7 @@ describe('canasta básica de hoy en un municipio (B#120)', () => {
       price('arroz-500g', exito.id, 1000),
     ]);
 
-    const result = await featured.of({ municipality: 'armenia', limit: 5 });
+    const result = await featured.of({ municipality: 'armenia', radiusKm: 1.5, limit: 5 });
 
     expect(result.criteria).toEqual({ municipality: 'armenia', sort: 'store_count' });
     expect(result.items.map(({ productId }) => productId)).toEqual(['arroz', 'leche']);
@@ -138,7 +160,7 @@ describe('canasta básica de hoy en un municipio (B#120)', () => {
       }),
     ]);
 
-    const result = await featured.of({ municipality: 'armenia', limit: 5 });
+    const result = await featured.of({ municipality: 'armenia', radiusKm: 1.5, limit: 5 });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
@@ -146,5 +168,126 @@ describe('canasta básica de hoy en un municipio (B#120)', () => {
       storeCount: 1,
       cheapest: { presentationId: 'arroz-500g', priceCop: 2500 },
     });
+  });
+});
+
+describe('canasta básica de hoy cerca de ti, por categoría y con el ahorro (B#128)', () => {
+  const near = { lat: 4.5339, lng: -75.6811, radiusKm: 1.5 };
+
+  it('con la ubicación cuentan solo las tiendas del radio y la más barata dice a qué distancia está', async () => {
+    const asked: WithinRadiusQuery[] = [];
+    const featured = setup(
+      [
+        price('arroz-500g', donJose.id, 2500),
+        price('arroz-1kg', ara.id, 4400),
+        // Fuera del radio: aunque es más barato, no cuenta.
+        price('arroz-500g', exito.id, 1000),
+      ],
+      asked,
+    );
+
+    const result = await featured.of({ ...near, limit: 5 });
+
+    expect(result.criteria).toEqual({ radiusKm: 1.5, sort: 'store_count' });
+    expect(asked[0]).toMatchObject({ lat: 4.5339, lng: -75.6811, radiusMeters: 1500 });
+    expect(result.items[0]).toMatchObject({
+      storeCount: 2,
+      cheapest: { establishment: { id: ara.id, name: 'Ara Centro', distanceM: 900 } },
+    });
+  });
+
+  it('con la ubicación y el municipio, el radio solo mira ese municipio', async () => {
+    const asked: WithinRadiusQuery[] = [];
+    const featured = setup([price('arroz-500g', donJose.id, 2500)], asked);
+
+    const result = await featured.of({ ...near, municipality: 'armenia', limit: 5 });
+
+    expect(asked[0]?.municipality).toBe('armenia');
+    expect(result.criteria).toEqual({
+      municipality: 'armenia',
+      radiusKm: 1.5,
+      sort: 'store_count',
+    });
+  });
+
+  it('sin ubicación ni municipio no sabe qué tiendas mirar', async () => {
+    const featured = setup([]);
+
+    await expect(featured.of({ radiusKm: 1.5, limit: 5 })).rejects.toThrow(MissingAreaError);
+  });
+
+  it('sin ubicación la tienda más barata no trae distancia', async () => {
+    const featured = setup([price('arroz-500g', donJose.id, 2500)]);
+
+    const result = await featured.of({ municipality: 'armenia', radiusKm: 1.5, limit: 5 });
+
+    expect(result.items[0]?.cheapest.establishment).toEqual({
+      id: donJose.id,
+      name: 'Tienda Don José',
+    });
+  });
+
+  it('con una categoría, solo los productos de esa categoría', async () => {
+    const featured = setup([
+      price('arroz-500g', donJose.id, 2500),
+      price('arroz-500g', ara.id, 2600),
+      price('leche-1l', donJose.id, 4800),
+    ]);
+
+    const result = await featured.of({
+      municipality: 'armenia',
+      radiusKm: 1.5,
+      category: 'dairy-eggs',
+      limit: 5,
+    });
+
+    expect(result.items.map(({ productId }) => productId)).toEqual(['leche']);
+    expect(result.criteria).toEqual({
+      municipality: 'armenia',
+      category: 'dairy-eggs',
+      sort: 'store_count',
+    });
+  });
+
+  it('dice cuánto menos cuesta el más barato que el más caro, y cuál es el más caro', async () => {
+    const featured = setup([
+      // $500 por 100 g frente a $440 por 100 g: 12 % menos.
+      price('arroz-500g', donJose.id, 2500),
+      price('arroz-1kg', ara.id, 4400),
+      price('leche-1l', donJose.id, 4800),
+    ]);
+
+    const result = await featured.of({ municipality: 'armenia', radiusKm: 1.5, limit: 5 });
+
+    const [arroz, leche] = result.items;
+    expect(arroz?.savingsPercent).toBe(12);
+    expect(arroz?.priciest).toMatchObject({
+      presentationId: 'arroz-500g',
+      label: 'Arroz Diana · 500 g',
+      priceCop: 2500,
+      establishment: { id: donJose.id, name: 'Tienda Don José' },
+    });
+    // Una sola tienda: no hay con qué comparar.
+    expect(leche).not.toHaveProperty('savingsPercent');
+    expect(leche).not.toHaveProperty('priciest');
+  });
+
+  it('dice cuántas tiendas del área tienen algún precio vigente, de cualquier categoría', async () => {
+    const featured = setup([
+      price('arroz-500g', donJose.id, 2500),
+      price('leche-1l', ara.id, 4800),
+      price('leche-1l', donJose.id, 4700, { status: 'en_revision' }),
+      // Calarcá no es Armenia.
+      price('arroz-500g', exito.id, 1000),
+    ]);
+
+    const result = await featured.of({
+      municipality: 'armenia',
+      radiusKm: 1.5,
+      category: 'dairy-eggs',
+      limit: 5,
+    });
+
+    expect(result.storesWithPrices).toBe(2);
   });
 });
