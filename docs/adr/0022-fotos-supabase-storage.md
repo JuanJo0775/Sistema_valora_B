@@ -35,6 +35,10 @@ Se elige **A**, a petición del equipo.
 - Negativas / riesgos: si el proyecto se pausa, las fotos subidas dejan de verse hasta restaurarlo desde el panel de Supabase (existe una ventana para restaurar; su duración no está confirmada, las fuentes dan entre 90 días y 1 año). `SUPUESTO:` el ping periódico cuenta como actividad. Un proveedor más y una clave secreta más que custodiar. Una foto reemplazada deja el archivo anterior en el bucket (ya ocurría con la carpeta local).
 - Trade-offs aceptados: el bucket se crea con un script y no con Terraform, así que esa parte es menos «como código» que Neon.
 
+## Actualización (17-nov-2026)
+
+Las fotos de Open Food Facts que enlaza la semilla también se copian al bucket `productos`, para no depender de un sitio externo. El comando `pnpm seed:espejo-fotos` (opción `copiar_fotos` del workflow de despliegue) descarga cada foto, la pasa por `ImageProcessor`, la sube con el hash del contenido y guarda la dirección de Supabase conservando `source` y `attribution` (CC BY-SA). Es idempotente y, si una foto falla, deja la URL original. La semilla ya no reemplaza una imagen que apunta al Storage de Supabase. La decisión no cambia.
+
 ## Verificación
 
 - Pruebas del adaptador (`supabase-image-storage.spec.ts`): sube al bucket, devuelve la dirección pública, envía la clave solo en cabeceras, rechaza nombres que salen del bucket y falla sin revelar la clave.
