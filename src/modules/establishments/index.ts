@@ -9,6 +9,8 @@ export { EstablishmentDetails } from './application/establishment-details';
 export { EstablishmentNames } from './application/establishment-names';
 export { EstablishmentsAround } from './application/establishments-around';
 export { EstablishmentsWithinRadius } from './application/establishments-within-radius';
+export { ListNearbyEstablishments } from './application/list-nearby-establishments';
+export { SearchEstablishments } from './application/search-establishments';
 export type {
   AroundQuery,
   EstablishmentDetail,

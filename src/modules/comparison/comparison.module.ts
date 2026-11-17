@@ -14,6 +14,8 @@ import {
   EstablishmentsModule,
   EstablishmentsWithinRadius,
 } from '../establishments';
+import { PriceCounts } from './application/price-counts';
+import { EstablishmentListsController } from './http/establishment-lists.controller';
 import { ReliabilityModule, ReliabilityOfPrices } from '../reliability';
 import { CompareProduct } from './application/compare-product';
 import { CurrentPriceOf } from './application/current-price-of';
@@ -40,6 +42,8 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
   controllers: [
+    // B#131: antes que StorePricesController, para que /establishments/nearby no se lea como un id.
+    EstablishmentListsController,
     ComparisonController,
     StorePricesController,
     PriceHistoryController,
@@ -119,6 +123,17 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
           stores,
           presentations,
           products,
+          clock: { now: () => new Date() },
+        }),
+    },
+    // B#131: cuántos precios vigentes tiene cada tienda de una lista.
+    {
+      provide: PriceCounts,
+      inject: [DATABASE, PresentationsForPricing],
+      useFactory: (db: Database, presentations: PresentationsForPricing): PriceCounts =>
+        new PriceCounts({
+          prices: new DrizzleCurrentPrices(db),
+          presentations,
           clock: { now: () => new Date() },
         }),
     },

@@ -1,6 +1,6 @@
-import type { NearbyEstablishment } from '../application/establishment-repository';
+import type { NearbyEstablishment } from '../../establishments';
 
-// DTO de salida explícito (regla api-rest): la forma del esquema Establishment de docs/openapi.yaml.
+// DTO de salida explícito (regla api-rest): la forma del esquema EstablishmentWithPrices (B#131).
 export interface EstablishmentResponse {
   id: string;
   name: string;
@@ -11,13 +11,17 @@ export interface EstablishmentResponse {
   // Grill de la #106.
   municipality: string;
   distanceM: number;
+  priceCount: number;
 }
 
 export interface NearbyResponse {
   items: EstablishmentResponse[];
 }
 
-export function toNearbyResponse(found: NearbyEstablishment[]): NearbyResponse {
+export function toNearbyResponse(
+  found: NearbyEstablishment[],
+  priceCounts: Map<string, number>,
+): NearbyResponse {
   return {
     items: found.map((store) => ({
       id: store.id,
@@ -28,6 +32,7 @@ export function toNearbyResponse(found: NearbyEstablishment[]): NearbyResponse {
       lng: store.lng,
       municipality: store.municipality,
       distanceM: store.distanceM,
+      priceCount: priceCounts.get(store.id) ?? 0,
     })),
   };
 }

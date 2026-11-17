@@ -58,6 +58,8 @@ describe('GET /v1/establishments/nearby', () => {
           lng: expect.closeTo(center.lng, 6) as unknown,
           municipality: 'armenia',
           distanceM: expect.any(Number) as unknown,
+          // B#131: sin precios en esta prueba.
+          priceCount: 0,
         },
       ],
     });

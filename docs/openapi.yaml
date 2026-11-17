@@ -378,7 +378,8 @@ paths:
         municipality»), para no devolver todo el directorio. Con q, cada palabra debe aparecer en el nombre
         de la tienda, en cualquier orden y también como pedazo, sin distinguir tildes ni mayúsculas (como la
         búsqueda de productos). Ordenadas por nombre. Sin ubicación no hay distancia: los items no traen
-        distanceM. Caché pública de 5 minutos (valor inicial calibrable, EC-04).
+        distanceM. Cada tienda dice cuántos precios vigentes tiene (priceCount, B#131). Caché pública de
+        5 minutos (valor inicial calibrable, EC-04).
       parameters:
         - name: q
           in: query
@@ -403,7 +404,7 @@ paths:
                 properties:
                   items:
                     type: array
-                    items: { $ref: '#/components/schemas/Establishment' }
+                    items: { $ref: '#/components/schemas/EstablishmentWithPrices' }
         '400': { $ref: '#/components/responses/BadRequest' }
   /establishments/nearby:
     get:
@@ -414,7 +415,8 @@ paths:
         La ubicación aproximada del usuario (lat, lng) se usa solo para calcular la cercanía: no se guarda,
         no se registra en los logs ni aparece en la respuesta (RF-005 RN5, EC-08). Por eso la respuesta
         lleva Cache-Control no-store, aunque es una lectura pública. Devuelve las tiendas registradas
-        dentro del radio, de la más cercana a la más lejana.
+        dentro del radio, de la más cercana a la más lejana, cada una con cuántos precios vigentes tiene
+        (priceCount, B#131).
       parameters:
         - name: lat
           in: query
@@ -443,7 +445,7 @@ paths:
                 properties:
                   items:
                     type: array
-                    items: { $ref: '#/components/schemas/Establishment' }
+                    items: { $ref: '#/components/schemas/EstablishmentWithPrices' }
         '400': { $ref: '#/components/responses/BadRequest' }
   /establishments/{establishmentId}/prices:
     get:
@@ -1652,6 +1654,32 @@ components:
           description: >-
             Metros desde el punto consultado; viene en GET /establishments/nearby y en la comparación
             cuando se envió la ubicación (#106).
+    EstablishmentWithPrices:
+      type: object
+      description: >-
+        Una tienda de las listas GET /establishments y GET /establishments/nearby: los campos de
+        Establishment más cuántos precios vigentes tiene (B#131). La comparación y los precios de una
+        tienda siguen usando Establishment. Va sin allOf porque las respuestas no admiten campos de más.
+      required: [id, name, type, lat, lng, municipality, priceCount]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+        address: { type: string, description: Opcional; muchas tiendas no tienen dirección formal. }
+        lat: { type: number, description: Latitud de la tienda (nunca la del usuario, RF-005 RN4). }
+        lng: { type: number, description: Longitud de la tienda. }
+        municipality: { $ref: '#/components/schemas/Municipality' }
+        distanceM:
+          type: integer
+          minimum: 0
+          description: Metros desde el punto consultado; solo en GET /establishments/nearby.
+        priceCount:
+          type: integer
+          minimum: 0
+          description: >-
+            Cuántas presentaciones tienen hoy un precio en la tienda, con el mismo criterio que
+            GET /establishments/{establishmentId}/prices con onlyCurrent=true: no cuentan los
+            desactualizados ni los que están en revisión; los por confirmar sí cuentan.
     Municipality:
       type: string
       description: Municipio del Quindío (#106). Las tiendas de la semilla son de Armenia.
