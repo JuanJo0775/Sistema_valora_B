@@ -5,11 +5,14 @@ const PHOTO = 'https://images.openfoodfacts.org/images/products/770/200/102/3456
 // fetch simulado: responde siempre lo mismo y anota cada pedido.
 function fakeFetch(reply: () => Promise<Response>) {
   const requests: { url: string; headers: Headers }[] = [];
-  const fetcher = (url: string | URL | Request, init?: RequestInit) => {
-    requests.push({ url: String(url), headers: new Headers(init?.headers) });
+  const fetcher: typeof fetch = (url, init) => {
+    requests.push({
+      url: url instanceof Request ? url.url : url.toString(),
+      headers: new Headers(init?.headers),
+    });
     return reply();
   };
-  return { fetcher: fetcher as typeof fetch, requests };
+  return { fetcher, requests };
 }
 
 const json = (status: number, body: unknown) =>
