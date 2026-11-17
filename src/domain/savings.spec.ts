@@ -1,10 +1,10 @@
 import { savingsPercent } from './savings';
-import { calculateUnitPrice } from './unit-price';
+import { calculateUnitPrice, type Presentation } from './unit-price';
 
-const KILO = { quantity: 1, unit: 'kg' } as const;
+const KILO: Presentation = { quantity: 1, unit: 'kg' };
 
 // Un precio vigente de una tienda, por kilo.
-const at = (establishmentId: string, priceCop: number, presentation = KILO) => ({
+const at = (establishmentId: string, priceCop: number, presentation: Presentation = KILO) => ({
   establishmentId,
   unitPrice: calculateUnitPrice(priceCop, presentation),
 });
