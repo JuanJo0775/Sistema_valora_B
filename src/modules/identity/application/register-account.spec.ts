@@ -63,6 +63,7 @@ describe('registrar una cuenta', () => {
 
     await register.execute({
       email: '  Ana@Correo.com ',
+      displayName: '  Ana   María ',
       password: 'una-clave-larga',
       acceptedPolicyVersion: '2026-11',
       ip: '203.0.113.7',
@@ -72,6 +73,8 @@ describe('registrar una cuenta', () => {
       {
         id: expect.any(String) as unknown,
         email: 'ana@correo.com',
+        // #133: el nombre visible, sin espacios sobrantes.
+        displayName: 'Ana María',
         passwordHash: 'hash:una-clave-larga',
         role: 'reportante',
         policyVersion: '2026-11',
@@ -84,6 +87,7 @@ describe('registrar una cuenta', () => {
     const { accounts, hasher, register } = setup();
     const first = {
       email: 'ana@correo.com',
+      displayName: 'Ana',
       password: 'la-primera-clave',
       acceptedPolicyVersion: '2026-11',
       ip: '203.0.113.7',
@@ -105,6 +109,7 @@ describe('registrar una cuenta', () => {
 
     const attempt = register.execute({
       email: 'ana@correo.com',
+      displayName: 'Ana',
       password: 'una-clave-larga',
       acceptedPolicyVersion: '2026-11',
       ip: '203.0.113.7',

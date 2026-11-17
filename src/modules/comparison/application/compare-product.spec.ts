@@ -211,6 +211,35 @@ describe('comparar los precios de un producto', () => {
     expect(idsOf(comparison)).toEqual(['nuevo-barato', 'nuevo-caro']);
   });
 
+  it('dice cuánto menos cuesta el más barato que la tienda más cara (B#128)', async () => {
+    // $2.000 frente a $2.500 por los mismos 500 g: 20 % menos.
+    const compare = setup({
+      prices: [price('t1', 2000), price('t2', 2500), price('t3', 2200)],
+      stores: [store('t1'), store('t2'), store('t3')],
+    });
+
+    const comparison = await compare.execute(input());
+
+    expect(comparison?.savingsPercent).toBe(20);
+  });
+
+  it('el ahorro solo compara los precios que pueden ser el más barato: ni desactualizados ni en revisión', async () => {
+    const compare = setup({
+      prices: [
+        price('nuevo', 2000),
+        // 40 días (TTL de 14): desactualizado.
+        price('viejo', 1000, 40),
+        { ...price('dudoso', 5000), status: 'en_revision' },
+      ],
+      stores: [store('nuevo'), store('viejo'), store('dudoso')],
+    });
+
+    const comparison = await compare.execute(input());
+
+    // Queda una sola tienda que cuenta: no hay con qué comparar.
+    expect(comparison).not.toHaveProperty('savingsPercent');
+  });
+
   it('isCheapest marca los precios más bajos por unidad entre los no desactualizados, también si empatan', async () => {
     const withTie = {
       prices: [...mixedAges.prices, price('empate-barato', 2000, 2)],

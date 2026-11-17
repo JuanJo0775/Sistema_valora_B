@@ -10,6 +10,8 @@ export const accounts = identitySchema.table(
     id: uuid('id').primaryKey(),
     // Sin espacios y en minúsculas (grill de la #16, pregunta 7).
     email: text('email').notNull(),
+    // #133: el nombre visible; vacío en las cuentas creadas antes. Solo lo ve la propia cuenta.
+    displayName: text('display_name'),
     passwordHash: text('password_hash').notNull(),
     role: text('role').notNull(),
     // Consentimiento de datos (RF-001, Ley 1581).

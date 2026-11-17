@@ -255,24 +255,47 @@ paths:
     get:
       tags: [Comparación]
       operationId: listFeaturedProducts
-      summary: Canasta básica de hoy en un municipio (RF-008, RF-009, B#120)
+      summary: Canasta básica de hoy cerca de ti o en un municipio (RF-008, RF-009, B#120, B#128)
       description: >-
-        Pública, sin cuenta. Los productos con más tiendas del municipio que tienen un precio vigente,
-        cada uno con su precio más bajo por unidad y la tienda donde está. Lee price_current (ADR-004)
-        con el mismo criterio que la comparación con onlyCurrent=true: solo precios vigentes (ni por
-        confirmar, ni desactualizados, ni en revisión). El más bajo se elige con el valor exacto del
-        precio por unidad y los desempates de la comparación (la fecha más reciente y luego los ids). Las
+        Pública, sin cuenta. Los productos con más tiendas del área que tienen un precio vigente, cada
+        uno con su precio más bajo por unidad y la tienda donde está. El área es un municipio, la
+        ubicación del usuario con un radio, o las dos cosas, como en la comparación (#106, B#128). Lee
+        price_current (ADR-004) con el mismo criterio que la comparación con onlyCurrent=true: solo
+        precios vigentes (ni por confirmar, ni desactualizados, ni en revisión). El más bajo y el más
+        caro se eligen con el valor exacto del precio por unidad y los desempates de la comparación. Las
         promociones no entran (ADR-009) y no hay datos de quién reportó (EC-08). Orden declarado en
         criteria (EC-06): más tiendas con precio vigente primero; en empate, el menor precio por unidad
         que se muestra (entre productos de bases distintas, 100 g o unidad, es solo un desempate) y al
-        final el id del producto. La ruta no cuelga de /products porque /products/{productId} tomaría
-        «featured» como un id. Caché pública de 60 segundos (valor provisional, EC-04) y ETag: con
-        If-None-Match igual al ETag responde 304.
+        final el id del producto. Con la ubicación, la respuesta lleva Cache-Control no-store: la
+        ubicación se usa solo para elegir las tiendas del radio, no se guarda, no se registra en los
+        logs ni aparece en la respuesta (RF-005 RN5, EC-08). Sin ubicación, caché pública de 60 segundos
+        (valor provisional, EC-04) y ETag: con If-None-Match igual al ETag responde 304. La ruta no
+        cuelga de /products porque /products/{productId} tomaría «featured» como un id.
       parameters:
         - name: municipality
           in: query
-          required: true
+          description: Obligatorio si no se envían lat y lng. Con la ubicación, el radio solo mira ese municipio.
           schema: { $ref: '#/components/schemas/Municipality' }
+        - name: lat
+          in: query
+          description: Obligatoria (con lng) si no se envía municipality.
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - name: lng
+          in: query
+          description: Obligatoria (con lat) si no se envía municipality.
+          schema: { type: number, minimum: -180, maximum: 180 }
+        - name: radiusKm
+          in: query
+          description: >-
+            Radio en kilómetros alrededor de la ubicación, con los mismos límites que la comparación
+            (ADR-019). Sin ubicación no se usa.
+          schema: { type: number, minimum: 0.5, maximum: 3, default: 1.5 }
+        - name: category
+          in: query
+          description: >-
+            Código de la lista cerrada de categorías (GET /v1/categories). Solo los productos de esa
+            categoría; un código que no existe responde la lista vacía.
+          schema: { type: string, minLength: 1 }
         - name: limit
           in: query
           description: Los mismos valores del parámetro común Limit, con 5 por defecto.
@@ -282,6 +305,7 @@ paths:
           description: Los productos de la canasta, en el orden declarado
           headers:
             Cache-Control:
+              description: public, max-age=60 sin ubicación; no-store con ubicación.
               schema: { type: string, example: 'public, max-age=60' }
             ETag:
               schema: { type: string }
@@ -289,21 +313,31 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [criteria, items]
+                required: [criteria, storesWithPrices, items]
                 properties:
                   criteria:
                     type: object
-                    description: Criterio declarado al usuario (EC-06).
-                    required: [municipality, sort]
+                    description: >-
+                      Criterio y área declarados al usuario (EC-06). municipality sale si se filtró por
+                      municipio; radiusKm, si se envió la ubicación; category, si se filtró por categoría.
+                    required: [sort]
                     properties:
                       municipality: { $ref: '#/components/schemas/Municipality' }
+                      radiusKm: { type: number }
+                      category: { type: string }
                       sort:
                         type: string
                         enum: [store_count]
                         description: Más tiendas con precio vigente primero.
+                  storesWithPrices:
+                    type: integer
+                    minimum: 0
+                    description: >-
+                      Tiendas del área (municipio o radio) con al menos un precio vigente, de cualquier
+                      categoría. Para «Precios de 7 tiendas a menos de 1,5 km».
                   items:
                     type: array
-                    description: Vacío si ninguna tienda del municipio tiene precios vigentes.
+                    description: Vacío si ninguna tienda del área tiene precios vigentes.
                     items:
                       type: object
                       required: [productId, name, category, storeCount, cheapest]
@@ -315,31 +349,23 @@ paths:
                         storeCount:
                           type: integer
                           minimum: 1
-                          description: Tiendas del municipio con al menos un precio vigente del producto.
+                          description: Tiendas del área con al menos un precio vigente del producto.
                         cheapest:
-                          type: object
-                          description: El precio vigente más bajo por unidad del producto en el municipio.
-                          required: [presentationId, label, priceCop, unitPrice, establishment]
-                          properties:
-                            presentationId: { type: string, format: uuid }
-                            label:
-                              type: string
-                              example: Arroz Diana · 500 g
-                              description: Producto y presentación, como label del historial.
-                            priceCop: { type: integer, minimum: 1 }
-                            unitPrice:
-                              type: object
-                              description: Redondeado al peso entero con la mitad hacia arriba (RF-004).
-                              required: [valueCop, per]
-                              properties:
-                                valueCop: { type: integer, minimum: 0 }
-                                per: { type: string, enum: [100g, 100ml, und] }
-                            establishment:
-                              type: object
-                              required: [id, name]
-                              properties:
-                                id: { type: string, format: uuid }
-                                name: { type: string }
+                          description: El precio vigente más bajo por unidad del producto en el área.
+                          allOf: [{ $ref: '#/components/schemas/FeaturedPrice' }]
+                        priciest:
+                          description: >-
+                            El precio vigente más alto por unidad del producto en el área. Sale junto con
+                            savingsPercent, solo cuando hay dos tiendas o más.
+                          allOf: [{ $ref: '#/components/schemas/FeaturedPrice' }]
+                        savingsPercent:
+                          type: integer
+                          minimum: 0
+                          maximum: 100
+                          description: >-
+                            Cuánto menos cuesta el más barato que el más caro, por precio por unidad:
+                            (más caro − más barato) / más caro × 100, con los valores exactos y redondeado
+                            al entero con la mitad hacia arriba (B#128, EC-06). Solo con dos tiendas o más.
         '400': { $ref: '#/components/responses/BadRequest' }
   /establishments:
     get:
@@ -352,7 +378,8 @@ paths:
         municipality»), para no devolver todo el directorio. Con q, cada palabra debe aparecer en el nombre
         de la tienda, en cualquier orden y también como pedazo, sin distinguir tildes ni mayúsculas (como la
         búsqueda de productos). Ordenadas por nombre. Sin ubicación no hay distancia: los items no traen
-        distanceM. Caché pública de 5 minutos (valor inicial calibrable, EC-04).
+        distanceM. Cada tienda dice cuántos precios vigentes tiene (priceCount, B#131). Caché pública de
+        5 minutos (valor inicial calibrable, EC-04).
       parameters:
         - name: q
           in: query
@@ -377,7 +404,7 @@ paths:
                 properties:
                   items:
                     type: array
-                    items: { $ref: '#/components/schemas/Establishment' }
+                    items: { $ref: '#/components/schemas/EstablishmentWithPrices' }
         '400': { $ref: '#/components/responses/BadRequest' }
   /establishments/nearby:
     get:
@@ -388,7 +415,8 @@ paths:
         La ubicación aproximada del usuario (lat, lng) se usa solo para calcular la cercanía: no se guarda,
         no se registra en los logs ni aparece en la respuesta (RF-005 RN5, EC-08). Por eso la respuesta
         lleva Cache-Control no-store, aunque es una lectura pública. Devuelve las tiendas registradas
-        dentro del radio, de la más cercana a la más lejana.
+        dentro del radio, de la más cercana a la más lejana, cada una con cuántos precios vigentes tiene
+        (priceCount, B#131).
       parameters:
         - name: lat
           in: query
@@ -417,7 +445,7 @@ paths:
                 properties:
                   items:
                     type: array
-                    items: { $ref: '#/components/schemas/Establishment' }
+                    items: { $ref: '#/components/schemas/EstablishmentWithPrices' }
         '400': { $ref: '#/components/responses/BadRequest' }
   /establishments/{establishmentId}/prices:
     get:
@@ -893,16 +921,25 @@ paths:
       description: >-
         La cuenta nueva siempre es reportante y no inicia sesión. Si el correo ya tiene cuenta, responde
         201 igual y no cambia nada, para no revelar qué correos están registrados (EC-08). El correo se
-        guarda sin espacios y en minúsculas.
+        guarda sin espacios y en minúsculas. El nombre visible (#133) se guarda sin espacios sobrantes y
+        solo lo devuelve GET /auth/session de la propia cuenta; ninguna otra respuesta lo incluye (EC-08).
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, password, acceptedPolicyVersion]
+              required: [email, displayName, password, acceptedPolicyVersion]
               properties:
                 email: { type: string, format: email, maxLength: 254 }
+                displayName:
+                  type: string
+                  minLength: 2
+                  maxLength: 40
+                  description: >-
+                    Nombre con el que la app saluda («Hola, Sara»). De 2 a 40 caracteres después de quitar
+                    los espacios sobrantes; solo letras (con tildes y ñ), espacios, apóstrofo y guion. Sin
+                    números, correos ni símbolos: responde 400 VALIDATION_ERROR.
                 password: { type: string, minLength: 10, maxLength: 128, writeOnly: true }
                 acceptedPolicyVersion:
                   type: string
@@ -991,6 +1028,11 @@ paths:
                 description: Sin correo ni id de la cuenta (EC-08).
                 properties:
                   role: { type: string, enum: [reportante, comercio, moderador] }
+                  displayName:
+                    type: string
+                    description: >-
+                      El nombre visible de la propia cuenta (#133). No viene en las cuentas creadas antes
+                      de que se pidiera. Es la única respuesta que lo incluye (EC-08).
                   csrfToken:
                     type: string
                     description: >-
@@ -1626,6 +1668,32 @@ components:
           description: >-
             Metros desde el punto consultado; viene en GET /establishments/nearby y en la comparación
             cuando se envió la ubicación (#106).
+    EstablishmentWithPrices:
+      type: object
+      description: >-
+        Una tienda de las listas GET /establishments y GET /establishments/nearby: los campos de
+        Establishment más cuántos precios vigentes tiene (B#131). La comparación y los precios de una
+        tienda siguen usando Establishment. Va sin allOf porque las respuestas no admiten campos de más.
+      required: [id, name, type, lat, lng, municipality, priceCount]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
+        address: { type: string, description: Opcional; muchas tiendas no tienen dirección formal. }
+        lat: { type: number, description: Latitud de la tienda (nunca la del usuario, RF-005 RN4). }
+        lng: { type: number, description: Longitud de la tienda. }
+        municipality: { $ref: '#/components/schemas/Municipality' }
+        distanceM:
+          type: integer
+          minimum: 0
+          description: Metros desde el punto consultado; solo en GET /establishments/nearby.
+        priceCount:
+          type: integer
+          minimum: 0
+          description: >-
+            Cuántas presentaciones tienen hoy un precio en la tienda, con el mismo criterio que
+            GET /establishments/{establishmentId}/prices con onlyCurrent=true: no cuentan los
+            desactualizados ni los que están en revisión; los por confirmar sí cuentan.
     Municipality:
       type: string
       description: Municipio del Quindío (#106). Las tiendas de la semilla son de Armenia.
@@ -1737,6 +1805,43 @@ components:
             periodStart: { type: string, format: date }
             periodEnd: { type: string, format: date }
             url: { type: string, format: uri, description: Boletín de donde salió el dato. }
+        savingsPercent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: >-
+            Cuánto menos cuesta el precio más bajo que el más alto, por precio por unidad, entre los
+            resultados que pueden ser el más barato (los mismos de isCheapest: ni desactualizados ni en
+            revisión): (más caro − más barato) / más caro × 100, con los valores exactos y redondeado al
+            entero con la mitad hacia arriba (B#128, EC-06). Solo sale con dos tiendas o más.
+    FeaturedPrice:
+      type: object
+      description: Un precio vigente de la canasta básica de hoy, con la tienda donde está (B#128).
+      required: [presentationId, label, priceCop, unitPrice, establishment]
+      properties:
+        presentationId: { type: string, format: uuid }
+        label:
+          type: string
+          example: Arroz Diana · 500 g
+          description: Producto y presentación, como label del historial.
+        priceCop: { type: integer, minimum: 1 }
+        unitPrice:
+          type: object
+          description: Redondeado al peso entero con la mitad hacia arriba (RF-004).
+          required: [valueCop, per]
+          properties:
+            valueCop: { type: integer, minimum: 0 }
+            per: { type: string, enum: [100g, 100ml, und] }
+        establishment:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            distanceM:
+              type: integer
+              minimum: 0
+              description: Metros desde la ubicación consultada; solo si se envió la ubicación.
     ReportCreate:
       type: object
       required: [presentationId, establishmentId, priceCop, observedAt]
