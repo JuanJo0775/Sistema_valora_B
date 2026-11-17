@@ -1,6 +1,17 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
-import { IsIn, IsInt, IsNotEmpty, IsString, Max, Min, validateSync } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsUrl,
+  IsString,
+  Max,
+  Min,
+  ValidateIf,
+  validateSync,
+} from 'class-validator';
 
 export class Env {
   @IsInt()
@@ -45,6 +56,29 @@ export class Env {
   @IsString()
   @IsNotEmpty()
   MEDIA_PUBLIC_URL!: string;
+
+  // ADR-012: cuántos proxies hay delante de la API para leer la IP real del cliente (request.ip).
+  // En producción son 2 (Vercel y Render); en desarrollo 0, donde X-Forwarded-For no se cree.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(5)
+  TRUST_PROXY: number = 0;
+
+  // ADR-022: Supabase Storage guarda las fotos que sube el moderador. Sin SUPABASE_URL se usa la
+  // carpeta local (desarrollo). La clave secreta solo vive en el entorno de la API (RN2).
+  @IsOptional()
+  @IsUrl({ protocols: ['https'], require_protocol: true, require_tld: true })
+  SUPABASE_URL?: string;
+
+  @ValidateIf((env: Env) => env.SUPABASE_URL !== undefined)
+  @IsString()
+  @IsNotEmpty()
+  SUPABASE_SECRET_KEY?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  SUPABASE_BUCKET: string = 'productos';
 }
 
 export function validateEnv(raw: Record<string, unknown>): Env {
