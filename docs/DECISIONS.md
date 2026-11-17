@@ -477,6 +477,15 @@ Aplicación de RF-005, RF-008, RF-009, EC-04, EC-06 y EC-08 para el rediseño de
 - **`storesWithPrices`:** tiendas del área con algún precio vigente, de cualquier categoría (no cambia con el filtro de categoría), para «Precios de 7 tiendas a menos de 1,5 km».
 - **Módulos:** las tiendas del radio salen de `EstablishmentsWithinRadius.find`, la misma consulta pública de la comparación; ningún módulo lee tablas de otro.
 
+## Cuántos precios tiene cada tienda en las listas (issue #131, 16 de noviembre de 2026)
+
+Para las tarjetas del mapa nuevo del frontend («9 precios»). RF-005, RF-008, EC-04 y EC-08.
+
+- **Qué cuenta `priceCount`:** las presentaciones con precio hoy en la tienda, con el mismo criterio que `GET /v1/establishments/{id}/prices?onlyCurrent=true`: no cuentan los desactualizados ni los que están en revisión; los por confirmar sí. Lo decide `PriceCounts` en `comparison`, con `price_current` y la consulta pública `PresentationsForPricing` de `catalog`.
+- **Dónde viven las rutas:** `GET /v1/establishments` y `GET /v1/establishments/nearby` pasan de `establishments` a `comparison` (`EstablishmentListsController`), como ya pasaba con los precios de una tienda (grill de la #28). Las tiendas salen de las consultas públicas `SearchEstablishments` y `ListNearbyEstablishments`. Así `establishments` no depende de `comparison` y no hay ciclo.
+- **Contrato:** un esquema nuevo, `EstablishmentWithPrices`, solo para las dos listas. `Establishment` no cambia, así que la comparación y los precios de una tienda siguen igual. Va sin `allOf` porque la prueba de contrato no admite campos de más.
+- **Caché y privacidad:** iguales que antes (5 minutos para la lista; `no-store` para las cercanas, que llevan la ubicación del usuario). Ningún dato del reportante.
+
 ## Fotos de Open Food Facts para la semilla (issue #119, 16 de noviembre de 2026)
 
 Aplicación de ADR-020 (punto 1: Open Food Facts primero, citando la fuente; punto 8: nada de sitios de cadenas) y RF-003.
