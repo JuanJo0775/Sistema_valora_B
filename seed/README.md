@@ -74,6 +74,22 @@ Si un producto se vende en varios tamaños, se repite el producto en varias fila
 
 No se inventan: un código falso podría coincidir con otro producto real. Se copian del empaque al verificar en la tienda. Al sembrar, cada código se revisa con su dígito de control (EAN-13), y uno mal escrito se rechaza con un mensaje que dice en qué fila está.
 
+### Fotos de Open Food Facts (`pnpm seed:imagenes`, #119)
+
+Cuando una fila tiene `codigo_barras`, este comando busca la foto frontal del producto en [Open Food Facts](https://world.openfoodfacts.org) (ADR-020) y la escribe en `productos.csv`:
+
+```bash
+pnpm seed:imagenes
+```
+
+- Llena `imagen_url` (solo el **enlace**: la foto no se descarga), `imagen_fuente = open_food_facts` e `imagen_atribucion = Open Food Facts, CC BY-SA`. Si faltan esas columnas, las agrega al final; el resto del archivo queda igual.
+- **No reemplaza** una imagen ya cargada (del equipo o de Open Food Facts), aunque esté en otra fila del mismo producto. Un producto toma una sola foto: la de su primera presentación que la tenga.
+- Escribe el archivo solo si encontró alguna foto, y al final dice cuántos consultó, cuáles quedaron con foto y cuáles **revisar a mano** (sin foto, que Open Food Facts no conoce o que no se pudieron consultar).
+- Consulta con un nombre genérico del proyecto, sin correo ni datos de nadie, y con una pausa entre consultas (Open Food Facts pide no pasar de 100 por minuto). No usa la base ni corre en el servidor. Nunca toma fotos de sitios de cadenas.
+- Después se revisa el CSV y se corre `pnpm db:seed` para cargarlas.
+
+Hoy la semilla no tiene códigos de barras (los llena el equipo, #118), así que el comando dice «0 productos con código de barras y sin imagen».
+
 ### Qué revisar en la tienda
 
 1. Las filas con `verificar = sí`: el tamaño exacto (por ejemplo, si la leche en bolsa trae 1100 ml) y que la marca exista con ese producto.

@@ -40,6 +40,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Prueba de contrato (#25)         | `test/contract/`: las rutas y las respuestas reales se validan contra `docs/openapi.yaml` en modo estricto (PR-09)            |
 | Exactitud (#93)                  | `pnpm quality:accuracy`: compara precios observados por el equipo con los publicados y escribe el informe PR-22               |
 | Referencia SIPSA (#34)           | `seed/sipsa.csv`: precio mayorista por kilo, aparte en la comparación y nunca como precio de una tienda (RF-014)              |
+| Fotos de Open Food Facts (#119)  | `pnpm seed:imagenes`: el enlace de la foto frontal por código de barras, con su atribución, en `seed/productos.csv` (ADR-020) |
 | Fotos de productos (#88)         | El moderador sube la foto (hasta 2 MB); se guarda en WebP de 800 px sin metadatos y se sirve en `/media` (ADR-020)            |
 | Historial de precios (#83)       | `GET /v1/products/{productId}/history`: 30 días por presentación y por día; `pnpm comparison:rebuild-history`                 |
 | Propuestas de productos (#26)    | Un reportante propone un producto; el moderador lo aprueba, lo fusiona (queda como alias) o lo rechaza; alias e imagen        |
@@ -288,6 +289,7 @@ La base de pruebas de la CI usa una contraseña distinta en cada corrida, genera
 | `pnpm db:generate`                  | Genera una migración en `drizzle/` a partir de los `schema.ts`.                               |
 | `pnpm db:migrate`                   | Aplica las migraciones pendientes en la base de `DATABASE_URL` (lee `.env`).                  |
 | `pnpm db:seed`                      | Carga las filas verificadas de `seed/` en la base de `DATABASE_URL` (sin duplicar ni borrar). |
+| `pnpm seed:imagenes`                | Llena en `seed/productos.csv` el enlace de la foto de Open Food Facts por código de barras.   |
 | `pnpm smoke`                        | Prueba de humo contra una API encendida (ver «Prueba de humo»).                               |
 
 Antes de abrir un pull request, corre `pnpm typecheck`, `pnpm lint`, `pnpm test:cov` y `pnpm depcheck`. La CI corre en cada pull request hacia `dev` o `main`, con dos jobs obligatorios: `Calidad` (`typecheck`, `lint`, `format:check`, `depcheck` y `build`) y `Pruebas` (`test:cov --ci`). Si una sola verificación falla, no se mezcla.
