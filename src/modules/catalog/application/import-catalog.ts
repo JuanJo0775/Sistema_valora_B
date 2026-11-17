@@ -25,6 +25,17 @@ export interface ProductImportRepository {
   save(product: ProductImport): Promise<void>;
   listProductIds(): Promise<string[]>;
   listCategoryCodes(): Promise<string[]>;
+  // ADR-022 (actualización): la dirección de la foto que el producto tiene hoy, si tiene.
+  imageUrlOf(productId: string): Promise<string | null>;
+  // Productos con foto, para el comando «espejo de fotos».
+  listImages(): Promise<{ id: string; image: ProductImage }[]>;
+  setImage(productId: string, image: ProductImage): Promise<void>;
+}
+
+// Una foto guardada en el Storage público de Supabase (ADR-022): la semilla no la reemplaza por la
+// dirección externa del CSV.
+export function isStoredImageUrl(url: string | null): boolean {
+  return url !== null && url.includes('/storage/v1/object/public/');
 }
 
 export const PRODUCT_IMPORT_REPOSITORY = Symbol('PRODUCT_IMPORT_REPOSITORY');
@@ -39,6 +50,13 @@ export class ImportCatalog {
   // Issue #59: la comparación (#15, #21) nunca recibe un producto con bases mezcladas.
   async save(product: ProductImport): Promise<void> {
     assertSameBase(product.presentations.map((presentation) => presentation.unit));
+    // La primera imagen vale, y una ya copiada a Supabase no se pisa al repetir la semilla.
+    if (product.image && isStoredImageUrl(await this.products.imageUrlOf(product.id))) {
+      const withoutImage: ProductImport = { ...product };
+      delete withoutImage.image;
+      await this.products.save(withoutImage);
+      return;
+    }
     await this.products.save(product);
   }
 

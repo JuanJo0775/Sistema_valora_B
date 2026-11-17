@@ -88,6 +88,36 @@ export class DrizzleProductImportRepository implements ProductImportRepository {
     return rows.map((row) => row.code);
   }
 
+  async imageUrlOf(productId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ url: products.imageUrl })
+      .from(products)
+      .where(eq(products.id, productId));
+    return row?.url ?? null;
+  }
+
+  async listImages(): Promise<{ id: string; image: ProductImage }[]> {
+    const rows = await this.db
+      .select({
+        id: products.id,
+        url: products.imageUrl,
+        source: products.imageSource,
+        attribution: products.imageAttribution,
+      })
+      .from(products)
+      .orderBy(asc(products.id));
+    return rows.flatMap((row) =>
+      row.url !== null && (row.source === 'open_food_facts' || row.source === 'equipo')
+        ? [
+            {
+              id: row.id,
+              image: { url: row.url, source: row.source, attribution: row.attribution ?? '' },
+            },
+          ]
+        : [],
+    );
+  }
+
   // ADR-020 (#88): la foto que sube el moderador reemplaza la imagen del producto.
   async setImage(productId: string, image: ProductImage): Promise<void> {
     await this.db
