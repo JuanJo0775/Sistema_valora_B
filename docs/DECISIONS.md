@@ -516,6 +516,7 @@ Aplicación de ADR-020 (punto 1: Open Food Facts primero, citando la fuente; pun
 - **No es un reporte:** no pasa por `pricing` ni por `reliability`. No sube la confianza ni la reputación, no entra a la moderación ni a las ráfagas, y no va al historial de 30 días. Vence con la vigencia de siempre, desde la fecha de consulta.
 - **Sin cuenta de reportante (EC-08)** y **sin ofertas** (EC-06, ADR-009).
 - **Riesgo:** el precio de la página es nacional y puede no ser el de la tienda de Armenia. Por eso se ve marcado y vence solo.
+- **Carulla** (#142, 17-nov-2026): 20 precios de su página en las 3 tiendas Carulla de la semilla, con el mismo mecanismo. Se agregan 3 presentaciones que Carulla vende (papa pastusa 2500 g, aceite Premier 900 ml, chocolate Corona 200 g), porque ponerlas en otra presentación daría un precio por unidad falso. Quedan fuera las 3 ofertas, el banano y el plátano por unidad y la Coca-Cola sin tamaño.
 - **Ara** no publica precios legibles sin rutas que su `robots.txt` prohíbe. **Éxito** bloqueó las consultas automáticas (Cloudflare). No se evadió ninguno de los dos.
 
 ## Prueba de humo (15 de noviembre de 2026)
