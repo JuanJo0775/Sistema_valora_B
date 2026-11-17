@@ -69,6 +69,12 @@ describe('verificación de correo por HTTP (ADR-029)', () => {
     return (session.body as { emailVerified: boolean }).emailVerified;
   };
 
+  it('la sesión dice si la verificación se exige (REQUIRE_VERIFIED_EMAIL)', async () => {
+    const { cookie } = await registerAndLogin();
+    const session = await request(server).get('/v1/auth/session').set('Cookie', cookie);
+    expect(session.body).toMatchObject({ emailVerificationRequired: true });
+  });
+
   it('el registro envía el enlace; verificarlo (204) deja la sesión con emailVerified true', async () => {
     const { cookie } = await registerAndLogin();
     await mailsSent(1);
