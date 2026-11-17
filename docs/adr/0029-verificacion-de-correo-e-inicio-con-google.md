@@ -1,11 +1,11 @@
 # ADR-029: Verificación de correo en el módulo de identidad propio e inicio con Google después
 
-- **Estado:** Propuesto (17-nov-2026)
+- **Estado:** Aceptado (17-nov-2026), a petición del equipo
 - **Fecha:** 2026-11-17
 - **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo. Redactado con apoyo de IA (Claude Code).
 - **Escenarios relacionados:** EC-03 (reportes maliciosos), EC-08 (privacidad), EC-05 (el núcleo se extiende sin rediseño)
 - **Requisitos relacionados:** RF-001 (registro), RF-002 (roles), RNF-007, RNF-010; ADR-013, ADR-014
-- **Registro oficial:** `PENDIENTE (equipo)`: registrarlo en la base ADRs de Notion; el estado lo decide el equipo.
+- **Registro oficial:** base ADRs de Notion (aceptado el 17-nov-2026).
 
 ## Contexto
 
@@ -19,7 +19,7 @@ Hoy cualquiera crea una cuenta con un correo que no se comprueba: se puede regis
 | B. Supabase Auth | Verificación y Google ya hechos; 50 mil usuarios activos gratis; ya usamos Supabase para fotos | La cuenta vive en la base de Supabase, no en Neon; el backend debe validar sus JWT; hay que rehacer `identity`, las sesiones, la clave seudónima y sus pruebas; el proyecto gratuito se pausa sin actividad y entonces nadie podría entrar |
 | C. Clerk | Lo más rápido: pantallas, verificación y Google listos; 10 mil usuarios activos gratis | Guarda correos y contraseñas en un tercero fuera de Colombia, nos ata a su servicio, sustituye `identity` y exige rehacer la política de datos, las pruebas de privacidad y el control de roles |
 
-## Decisión (propuesta)
+## Decisión
 
 Se elige **A**, en dos fases.
 
