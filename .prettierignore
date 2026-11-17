@@ -4,3 +4,6 @@ node_modules
 pnpm-lock.yaml
 docs
 drizzle
+infra/**/.terraform
+infra/**/*.tfstate
+infra/**/*.tfstate.backup
