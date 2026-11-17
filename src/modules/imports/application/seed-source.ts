@@ -12,6 +12,8 @@ export interface SeedSource {
   readReferences(): Promise<SeedRow[]>;
   // PR-22 (#93): precios observados por el equipo; sin archivo, ninguno.
   readSample(): Promise<SeedRow[]>;
+  // B#135: precios iniciales («Dato inicial»); sin archivo, ninguno.
+  readInitialPrices(): Promise<SeedRow[]>;
 }
 
 export const SEED_SOURCE = Symbol('SEED_SOURCE');

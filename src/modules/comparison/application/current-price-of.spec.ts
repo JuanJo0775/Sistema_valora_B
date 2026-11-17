@@ -4,6 +4,7 @@ import type { CurrentPrice } from './current-prices';
 const observedAt = new Date('2026-11-14T15:00:00Z');
 const price = (presentationId: string, priceCop: number): CurrentPrice => ({
   reportId: `reporte-${presentationId}`,
+  source: 'comunidad',
   presentationId,
   establishmentId: 'tienda-1',
   priceCop,

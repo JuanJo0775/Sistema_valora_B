@@ -409,7 +409,7 @@ Aplicación de RF-014 (RN1 a RN5), ADR-011 y PR-20. El detalle está en `docs/de
 - **Dónde vive:** `catalog.wholesale_references` (migración `0022`); `imports` no puede depender del núcleo, así que la referencia es un dato del producto. `comparison` la lee con `WholesaleReferenceOf`.
 - **Comparable (RN2):** solo productos de peso (regla `acceptsWholesaleReference`); se muestra si su periodo terminó hace 30 días o menos (`isRecentReference`).
 - **Cómo se ve (RN3):** `wholesaleReference` aparte en la comparación; no entra al orden ni a `isCheapest`; no muestra al responsable de la carga.
-- **Fuera:** precios iniciales en la semilla (llegan como reportes) y la muestra de exactitud PR-22 (#93).
+- **Fuera:** precios iniciales en la semilla (llegan como reportes) y la muestra de exactitud PR-22 (#93). *Actualizado el 17-nov-2026: la #135 permite precios iniciales marcados como «Dato inicial»; ver abajo.*
 
 ## Muestra de exactitud (issue #93, 15 de noviembre de 2026)
 
@@ -505,6 +505,18 @@ Aplicación de ADR-020 (punto 1: Open Food Facts primero, citando la fuente; pun
 - **Red separada de la regla:** `fillProductImages` recibe la consulta como función; las pruebas usan respuestas simuladas y nunca llaman a Open Food Facts. `fetch` nativo de Node 22, sin dependencias nuevas.
 - **Cortesía con la API:** User-Agent `Valora/0.1 (proyecto universitario, semilla del catálogo)`, sin correo (EC-08), y 700 ms entre consultas (límite de 100 por minuto).
 - **Hoy no trae fotos:** la semilla no tiene códigos de barras hasta la #118.
+
+## Precios iniciales como «Dato inicial» (issue #135, 17 de noviembre de 2026)
+
+**Reemplaza** la decisión de la #34 de no cargar precios iniciales en la semilla. Decisión de la usuaria del 16-nov-2026: datos para la demo, tomados de la página pública de D1 (el arroz Diana exacto y 9 equivalentes de marca D1).
+
+- **Dónde:** `seed/precios-iniciales.csv`. `pnpm db:seed` pone cada fila en todas las tiendas revisadas de su cadena (26 tiendas D1 en Armenia). `imports` valida y reparte; `comparison` guarda (`ImportInitialPrices`). El comando une los dos, como `accuracy.ts`, porque `imports` no puede depender del núcleo.
+- **Fuente propia:** `price_current.source` (migración 0026) es `comunidad` o `siembra`. La comparación lo devuelve en `source` (el contrato ya tenía `siembra`) y el frontend lo muestra como «Dato inicial».
+- **Nunca reemplaza a la comunidad:** solo llena tiendas sin precio. Un reporte de la comunidad reemplaza al dato inicial. La escritura usa `setWhere source = 'siembra'`, para que una carrera no pise un precio de la comunidad.
+- **No es un reporte:** no pasa por `pricing` ni por `reliability`. No sube la confianza ni la reputación, no entra a la moderación ni a las ráfagas, y no va al historial de 30 días. Vence con la vigencia de siempre, desde la fecha de consulta.
+- **Sin cuenta de reportante (EC-08)** y **sin ofertas** (EC-06, ADR-009).
+- **Riesgo:** el precio de la página es nacional y puede no ser el de la tienda de Armenia. Por eso se ve marcado y vence solo.
+- **Ara** no publica precios legibles sin rutas que su `robots.txt` prohíbe. **Éxito** bloqueó las consultas automáticas (Cloudflare). No se evadió ninguno de los dos.
 
 ## Prueba de humo (15 de noviembre de 2026)
 

@@ -1,3 +1,4 @@
+import type { PriceSource } from '../../../domain/initial-price';
 import { type Freshness, ttlDaysFor } from '../../../domain/freshness';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import type { PresentationForPricing } from '../../catalog';
@@ -23,7 +24,8 @@ export interface StorePriceItem {
   reportId: string;
   priceCop: number;
   unitPrice: UnitPrice;
-  source: 'comunidad';
+  // B#135: de la comunidad o un dato inicial de la semilla.
+  source: PriceSource;
   freshness: Freshness;
   reliability: 'alta' | 'media' | 'baja' | 'en_revision';
   confirmations: number;
@@ -69,7 +71,7 @@ export class StorePrices {
         reportId: price.reportId,
         priceCop: price.priceCop,
         unitPrice: calculateUnitPrice(price.priceCop, presentation),
-        source: 'comunidad' as const,
+        source: price.source,
         freshness: freshnessAt(price.observedAt, now, ttlDays),
         // Sin evaluación (precios anteriores a la #31) cuenta como baja, como en la comparación.
         reliability: inReview ? ('en_revision' as const) : (level?.level ?? 'baja'),

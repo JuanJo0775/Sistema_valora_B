@@ -1,3 +1,5 @@
+import type { PriceSource } from '../../../domain/initial-price';
+
 // Precio vigente de una presentación en una tienda, leído de price_current (ADR-004).
 export interface CurrentPrice {
   reportId: string;
@@ -7,6 +9,8 @@ export interface CurrentPrice {
   observedAt: Date;
   // Grill de la #31, pregunta 5: «en_revision» si el único precio de la tienda es sospechoso.
   status: 'vigente' | 'en_revision';
+  // B#135: «siembra» si es un dato inicial de la semilla.
+  source: PriceSource;
 }
 
 // Puerto hacia la tabla propia del módulo.

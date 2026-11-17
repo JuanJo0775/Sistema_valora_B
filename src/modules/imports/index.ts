@@ -6,3 +6,8 @@ export { AccuracySample } from './application/accuracy-sample';
 export { fetchSeedImages, imagesSummary } from './application/product-images';
 export { OpenFoodFactsImages } from './infrastructure/open-food-facts';
 export { ProductsCsvFile } from './infrastructure/products-csv-file';
+export {
+  type InitialPrice,
+  type InitialPricesResult,
+  SeedInitialPrices,
+} from './application/initial-prices';

@@ -1,0 +1,11 @@
+﻿producto;marca;cantidad;unidad;unidades_empaque;cadena;precio;es_oferta;fecha_consulta;url_fuente;coincidencia;marca_en_web;nota;verificar;responsable
+Arroz blanco;Diana;500;g;1;D1;1990;no;2026-11-16;https://www.d1.com.co/arroz-diana-500g-12002073/p;exacta;Diana;Precio nacional de la página de D1;no;Sara Sanchez
+Fríjol rojo;;500;g;1;D1;3690;no;2026-11-16;https://www.d1.com.co/frijol-rojo-el-estio-500-g-12004975/p;equivalente;El Estío (marca propia D1);Precio nacional de la página de D1;no;Sara Sanchez
+Lenteja;;500;g;1;D1;1490;no;2026-11-16;https://www.d1.com.co/lenteja-el-estio-500g-12000042/p;equivalente;El Estío (marca propia D1);Precio nacional de la página de D1;no;Sara Sanchez
+Panela;;500;g;1;D1;3990;no;2026-11-16;https://www.d1.com.co/panela-pulverizada-el-refugio-500g-12002415/p;equivalente;El Refugio (marca propia D1);Panela pulverizada, no en bloque;no;Sara Sanchez
+Pasta spaghetti;Doria;250;g;1;D1;2100;no;2026-11-16;https://www.d1.com.co/spaghetti-doria-pague-250g-lleve-275g-12007842/p;equivalente;Doria;Empaque pague 250 g lleve 275 g, sin descuento en el precio;no;Sara Sanchez
+Huevos rojos AA;;30;und;1;D1;15490;no;2026-11-16;https://www.d1.com.co/huevo-tipo-aa-30-und-12003315/p;equivalente;Sol Naciente (marca propia D1);La página no dice si son rojos;no;Sara Sanchez
+Huevos rojos AA;;12;und;1;D1;7490;no;2026-11-16;https://www.d1.com.co/huevo-tipo-aa-sol-naciente-12-und-12000291/p;equivalente;Sol Naciente (marca propia D1);La página no dice si son rojos;no;Sara Sanchez
+Tomate chonto;;1;kg;1;D1;4700;no;2026-11-16;https://www.d1.com.co/tomate-chonto-x-1000g-12005556/p;equivalente;La Huerta (marca propia D1);Precio nacional de la página de D1;no;Sara Sanchez
+Cebolla cabezona;;1;kg;1;D1;4550;no;2026-11-16;https://www.d1.com.co/cebolla-cabezona-x-1000g-12005767/p;equivalente;La Huerta (marca propia D1);Precio nacional de la página de D1;no;Sara Sanchez
+Crema dental;Colgate;75;ml;1;D1;9950;no;2026-11-16;https://www.d1.com.co/crema-dental-colgate-total-75ml-12002066/p;equivalente;Colgate Total;El catálogo no dice qué tipo de Colgate;no;Sara Sanchez

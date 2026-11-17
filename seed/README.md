@@ -2,14 +2,15 @@
 
 Esta carpeta tiene los datos iniciales de Valora (issue #51, RF-014). Los revisa el equipo en Excel y los carga `pnpm db:seed` en la base de `DATABASE_URL`.
 
-| Archivo                 | Qué tiene                                                                         | De dónde sale                                              |
-| ----------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `tiendas.csv`           | Tiendas de Armenia con nombre, tipo, dirección y coordenadas                      | OpenStreetMap (una consulta autorizada, 12-nov-2026)       |
-| `productos.csv`         | Productos y presentaciones de la canasta                                          | Propuesta de Claude Code que el equipo verifica en tienda  |
-| `muestra-exactitud.csv` | Precios que el equipo vio en la tienda, para medir la exactitud (PR-22, opcional) | Visitas del equipo (#93)                                   |
-| `sipsa.csv`             | Precios mayoristas por kilo de referencia (opcional)                              | Boletín SIPSA del DANE, copiado a mano por el equipo (#34) |
+| Archivo                 | Qué tiene                                                                         | De dónde sale                                                     |
+| ----------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `tiendas.csv`           | Tiendas de Armenia con nombre, tipo, dirección y coordenadas                      | OpenStreetMap (una consulta autorizada, 12-nov-2026)              |
+| `productos.csv`         | Productos y presentaciones de la canasta                                          | Propuesta de Claude Code que el equipo verifica en tienda         |
+| `muestra-exactitud.csv` | Precios que el equipo vio en la tienda, para medir la exactitud (PR-22, opcional) | Visitas del equipo (#93)                                          |
+| `sipsa.csv`             | Precios mayoristas por kilo de referencia (opcional)                              | Boletín SIPSA del DANE, copiado a mano por el equipo (#34)        |
+| `precios-iniciales.csv` | Precios de la página de una cadena, como «Dato inicial» (opcional)                | Páginas públicas de las cadenas, consultadas por el equipo (#135) |
 
-Ninguno trae precios: los precios llegan con los reportes (paso 5).
+Los precios de verdad llegan con los reportes de la comunidad (paso 5). `precios-iniciales.csv` solo llena tiendas que todavía no tienen precio, para la demo, y se ve como «Dato inicial».
 
 ## Cómo funciona la carga
 
@@ -129,6 +130,30 @@ Fuente: el ZIP **«Informes por ciudades»** de la página de SIPSA (<https://ww
 Equivalencias usadas: «Banano criollo» → Banano; «Cebolla cabezona blanca» → Cebolla cabezona; «Tomate chonto» → Tomate chonto; «Papa parda pastusa» → Papa pastusa.
 
 Las filas solo se cargan cuando el producto también está verificado en `productos.csv` (con responsable). Si no, la semilla dice qué fila corregir.
+
+## `precios-iniciales.csv` («Dato inicial», #135)
+
+Precios tomados de la página pública de una cadena (hoy, D1). `pnpm db:seed` pone cada fila en **todas las tiendas revisadas de esa cadena** en `tiendas.csv` (una tienda es de la cadena si su nombre trae el nombre de la cadena como palabra: «D1» sí, «Panadería D10» no). Se guardan con la fuente `siembra` («Dato inicial»):
+
+- **Nunca reemplazan un precio de la comunidad.** Si la tienda ya tiene uno, el dato inicial no se guarda. Si la comunidad reporta después, su precio lo reemplaza.
+- **No son reportes:** no suben la confianza ni la reputación de nadie, no entran a la moderación ni al historial, y vencen con la vigencia de siempre (7 o 14 días desde `fecha_consulta`).
+- **Nunca ofertas** (EC-06, ADR-009): `es_oferta` debe ser `no`.
+- Volver a sembrar actualiza el dato inicial, sin duplicarlo.
+
+| Columna                                                       | Qué va                                                                                       | Ejemplo                                  |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `producto`, `marca`, `cantidad`, `unidad`, `unidades_empaque` | Igual que en `productos.csv`: la presentación del catálogo.                                  | `Arroz blanco`, `Diana`, `500`, `g`, `1` |
+| `cadena`                                                      | El nombre de la cadena, como aparece en el nombre de sus tiendas.                            | `D1`                                     |
+| `precio`                                                      | En pesos, sin puntos.                                                                        | `1990`                                   |
+| `es_oferta`                                                   | Siempre `no`.                                                                                | `no`                                     |
+| `fecha_consulta`                                              | El día en que se vio la página (AAAA-MM-DD).                                                 | `2026-11-16`                             |
+| `url_fuente`                                                  | El enlace `https` de la ficha del producto.                                                  | `https://www.d1.com.co/…/p`              |
+| `coincidencia`                                                | `exacta` (misma marca y tamaño) o `equivalente` (por ejemplo, la marca propia de la cadena). | `equivalente`                            |
+| `marca_en_web`, `nota`                                        | Lo que dice la página y cualquier diferencia. Solo para el equipo.                           | `El Estío (marca propia D1)`             |
+| `verificar`, `responsable`                                    | Como en `productos.csv`: solo se cargan las filas con `verificar = no` y un responsable.     | `no`, `Nombre`                           |
+
+- Si una fila tiene un error, no se carga ningún dato inicial y el comando dice qué fila corregir. Una prueba revisa este archivo en cada pull request.
+- Ara no publica precios que se puedan leer sin entrar a rutas que su `robots.txt` prohíbe. Éxito bloquea las consultas automáticas. No se usan imágenes de las cadenas (ADR-020, punto 8).
 
 ## `muestra-exactitud.csv` (PR-22, #93)
 
