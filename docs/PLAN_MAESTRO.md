@@ -3,7 +3,7 @@
 **Proyecto:** Seminario Nuclear 4 — Proyecto Nuclear VI, periodo II-2026  
 **Producto:** Plataforma colaborativa de comparación de precios entre tiendas de barrio, minimercados y supermercados, con foco inicial en Armenia y el Quindío.  
 **Documento de referencia:** alcance, coordinación y decisiones estructurales de Valora  
-**Estado:** Repositorios privados inicializados, documentación base publicada y backlog de épicas creado. No equivale a implementación ni a cumplimiento total de H1-01.
+**Estado:** Ambos repositorios oficiales son públicos y contienen implementación funcional, documentación, pruebas automatizadas y CI. El estado de cada épica se verifica con issues y PR; no equivale a cierre global ni a aceptación académica.
 
 ---
 
@@ -11,10 +11,10 @@
 
 | Repositorio | Responsabilidad | Visibilidad | Estado |
 |---|---|---|---|
-| [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B) | Backend: API, dominio, reglas, persistencia y seguridad | Privado | Inicializado con documentación base |
-| [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F) | Frontend: aplicación web responsiva/PWA, flujos y experiencia | Privado | Inicializado con documentación base |
+| [Sistema_valora_B](https://github.com/JuanJo0775/Sistema_valora_B) | Backend: API, dominio, reglas, persistencia y seguridad | Público | Implementación NestJS, módulos, migraciones, pruebas y CI integradas |
+| [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F) | Frontend: aplicación web responsiva/PWA, flujos y experiencia | Público | PWA React + Vite, módulos funcionales, pruebas y CI integradas |
 
-Ambos repositorios estaban vacíos al comenzar esta organización. Se crearon commits iniciales en `main` con README, .gitignore, contribución y documentos de arquitectura/alcance.
+Los repositorios comenzaron con documentación base; desde entonces incorporaron código, migraciones, contratos, pruebas, workflows y despliegue. El historial Git y los PR constituyen la evidencia de implementación y contribución.
 
 ### Estructura del backend
 
@@ -70,7 +70,7 @@ Las fechas anteriores reproducen el campo **Fecha de decisión** de cada ADR. En
 ### Otras restricciones de alcance vigentes
 
 - **Lenguaje principal:** TypeScript.
-- **Despliegue:** con Docker (ADR-012, 15 de noviembre de 2026): una imagen descrita por un `Dockerfile` en el repositorio. Proveedores (16 de noviembre de 2026): imagen en Render, base PostgreSQL + PostGIS en Neon y PWA en Vercel, que reenvía `/v1/*` a Render. Falta confirmar con el docente que la orquestación de Render cuenta para RDA3.
+- **Despliegue:** ADR-012 aceptado: imagen Docker en Render, PostgreSQL + PostGIS en Neon y PWA en Vercel, que reenvía `/v1/*` a Render. PR #125 confirma que Render es la orquestación elegida por el equipo; no queda pendiente confirmación con el docente. El workflow automatizado sigue pendiente de validación reproducible (B#23).
 - **Alertas:** RF-019 es opcional/futuro y queda fuera del MVP; no comprometer infraestructura de alertas.
 - **Frameworks:** aceptados el 8 de noviembre de 2026. Frontend: React + TypeScript + Vite con vite-plugin-pwa (ADR-017), que reemplaza la propuesta de Next.js + Serwist. Backend: NestJS sobre Express (ADR-018).
 - **Autenticación:** la estrategia general está aceptada, pero la expiración, rotación y revocación de sesiones deben concretarse como trabajo de diseño/implementación, sin reinterpretar la decisión ya aceptada.
@@ -226,7 +226,7 @@ La actividad H1-01 pide: equipo conformado, repositorio Git con historial por in
 
 ## 9. Historial de organización
 
-- Se verificó que ambos repositorios existían, estaban vacíos y ya eran privados.
+- Estado verificado el 17-nov-2026: ambos repositorios son públicos, tienen implementación integrada y CI. Los issues principales de las 17 épicas siguen abiertos; no declarar cierre de épicas por el solo hecho de que sus funcionalidades estén implementadas.
 - Se inicializó `main` con documentación base en cada repositorio.
 - Se añadieron guías de contribución y reglas de alcance.
 - Se registraron 8 épicas backend y 8 épicas frontend como issues.
@@ -234,3 +234,16 @@ La actividad H1-01 pide: equipo conformado, repositorio Git con historial por in
 - No se subió código de aplicación, secretos, datos personales ni credenciales.
 - No se cambió el calendario ni se marcó H1-01 como entregado.
 - La base de datos ADRs de Notion se establece como fuente única de verdad para estados y fechas; este plan conserva solo la línea base transversal y evita duplicar estados cambiantes.
+
+
+## Estado técnico verificado — 17 de noviembre de 2026
+
+- **Gobierno de arquitectura:** 22 ADR numerados en Notion; 16 aceptados y 6 propuestos. ADR-004 se aceptó el 12-nov-2026 (PR B#58) y se alineó en Notion. ADR-022 sigue Propuesto aunque el adaptador Supabase esté implementado; falta prueba de foto real tras redespliegue.
+- **Backend:** CI #105, 816 pruebas aprobadas y 96,3 % de cobertura de líneas; SonarQube Quality Gate aprobado. Smoke local: 22/22 pasos con semilla y 7/7 en solo lectura (PR B#113).
+- **Frontend:** CI #81, 330 pruebas aprobadas y 98,65 % de cobertura; Quality Gate aprobado con un hallazgo MAJOR de mantenibilidad en `RoleChange.tsx:14`.
+- **Despliegue:** topología Render/Neon/Vercel seleccionada; existe workflow `.github/workflows/deploy.yml` y runbook. La corrida #43999270545 falló porque `DATABASE_URL` llegó vacía. B#23 sigue abierto; se requieren tres despliegues consecutivos correctos y prueba de humo pública.
+- **Datos:** catálogo inicial de 31 productos y 37 presentaciones; los CSV conservan `verificar=no`. SIPSA tiene cuatro referencias marcadas `verificar=no`; la muestra de exactitud sigue vacía. B#118 y evaluación de exactitud pendientes.
+- **Validación integral:** B#17 y F#27 Playwright E2E pendientes; B#35 k6 pendiente; F#28 auditoría WCAG 2.2 AA y prueba de usabilidad pendientes.
+- **Corte 3:** B08/F07/F08 y H2-05 siguen documentados como alcance futuro; no se detectó implementación funcional del módulo comercial.
+
+Los estados «implementado», «integrado», «probado», «desplegado» y «aceptado» no son intercambiables. El cierre de cada épica requiere cumplir su issue padre y los criterios de aceptación asociados.
