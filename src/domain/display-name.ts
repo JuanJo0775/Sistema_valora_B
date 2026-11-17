@@ -12,7 +12,8 @@ export function normalizeDisplayName(name: string): string {
 }
 
 export function isValidDisplayName(name: string): boolean {
-  const { length } = [...name];
+  // El patrón solo deja letras, así que basta el largo del texto.
+  const { length } = name;
   return (
     length >= DISPLAY_NAME_LENGTH.min && length <= DISPLAY_NAME_LENGTH.max && PATTERN.test(name)
   );
