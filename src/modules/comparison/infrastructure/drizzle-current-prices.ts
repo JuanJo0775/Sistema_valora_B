@@ -35,10 +35,15 @@ export class DrizzleCurrentPrices implements CurrentPrices {
         priceCop: priceCurrent.priceCop,
         observedAt: priceCurrent.observedAt,
         status: priceCurrent.status,
+        source: priceCurrent.source,
       })
       .from(priceCurrent)
       .where(where);
-    // La restricción CHECK de la tabla garantiza que es uno de los dos estados.
-    return rows.map((row) => ({ ...row, status: row.status as CurrentPrice['status'] }));
+    // Las restricciones CHECK de la tabla garantizan el estado y la fuente.
+    return rows.map((row) => ({
+      ...row,
+      status: row.status as CurrentPrice['status'],
+      source: row.source as CurrentPrice['source'],
+    }));
   }
 }

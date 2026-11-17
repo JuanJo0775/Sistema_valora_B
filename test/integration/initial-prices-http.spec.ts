@@ -75,7 +75,7 @@ describe('precios iniciales de la semilla en la comparación (B#135)', () => {
 
     const response = await compare();
 
-    expect(response.body.results).toEqual([
+    expect((response.body as { results: unknown[] }).results).toEqual([
       expect.objectContaining({
         reportId: initial(d1).id,
         priceCop: 1990,
@@ -101,7 +101,7 @@ describe('precios iniciales de la semilla en la comparación (B#135)', () => {
     await app.get(ImportInitialPrices).execute([initial(other)]);
 
     const response = await compare();
-    expect(response.body.results).toEqual([
+    expect((response.body as { results: unknown[] }).results).toEqual([
       expect.objectContaining({ priceCop: 2500, source: 'comunidad' }),
     ]);
   });

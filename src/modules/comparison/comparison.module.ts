@@ -19,6 +19,8 @@ import { EstablishmentListsController } from './http/establishment-lists.control
 import { ReliabilityModule, ReliabilityOfPrices } from '../reliability';
 import { CompareProduct } from './application/compare-product';
 import { CurrentPriceOf } from './application/current-price-of';
+import { ImportInitialPrices } from './application/import-initial-prices';
+import { DrizzleInitialPrices } from './infrastructure/drizzle-initial-prices';
 import { FeaturedProducts } from './application/featured-products';
 import { PriceHistory } from './application/price-history';
 import { StorePrices } from './application/store-prices';
@@ -137,6 +139,13 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
           clock: { now: () => new Date() },
         }),
     },
+    // B#135: los datos iniciales de la semilla (pnpm db:seed).
+    {
+      provide: ImportInitialPrices,
+      inject: [DATABASE],
+      useFactory: (db: Database): ImportInitialPrices =>
+        new ImportInitialPrices(new DrizzleInitialPrices(db)),
+    },
     // PR-22 (#93): el precio publicado, para el informe de exactitud.
     {
       provide: CurrentPriceOf,
@@ -145,7 +154,7 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
         new CurrentPriceOf(new DrizzleCurrentPrices(db)),
     },
   ],
-  exports: [CurrentPriceOf],
+  exports: [CurrentPriceOf, ImportInitialPrices],
 })
 export class ComparisonModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}

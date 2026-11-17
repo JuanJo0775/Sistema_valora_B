@@ -1,0 +1,2 @@
+ALTER TABLE "comparison"."price_current" ADD COLUMN "source" text DEFAULT 'comunidad' NOT NULL;--> statement-breakpoint
+ALTER TABLE "comparison"."price_current" ADD CONSTRAINT "price_current_source_valid" CHECK ("comparison"."price_current"."source" in ('comunidad', 'siembra'));
