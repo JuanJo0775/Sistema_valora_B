@@ -26,6 +26,7 @@ import { ProductRequestsQueue } from './application/product-requests-queue';
 import { RequestProduct } from './application/request-product';
 import { SearchProducts } from './application/search-products';
 import { WholesaleReferenceOf } from './application/wholesale-reference-of';
+import type { ImageStorage } from './application/product-image';
 import { SetProductImage } from './application/set-product-image';
 import { CategoriesController } from './http/categories.controller';
 import { ProductImageController } from './http/product-image.controller';
@@ -36,6 +37,7 @@ import { DrizzleProductRepository } from './infrastructure/drizzle-product-repos
 import { DrizzleProductRequestRepository } from './infrastructure/drizzle-product-request-repository';
 import { DrizzleWholesaleReferenceRepository } from './infrastructure/drizzle-wholesale-reference-repository';
 import { LocalImageStorage } from './infrastructure/local-image-storage';
+import { SupabaseImageStorage } from './infrastructure/supabase-image-storage';
 import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
 
 @Module({
@@ -61,10 +63,8 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
             exists: async (productId) => (await products.findById(productId)) !== null,
           },
           processor: new SharpImageProcessor(),
-          storage: new LocalImageStorage(
-            config.get('MEDIA_DIR', { infer: true }),
-            config.get('MEDIA_PUBLIC_URL', { infer: true }),
-          ),
+          // ADR-022: con SUPABASE_URL las fotos van a Supabase Storage; sin ella, a la carpeta local.
+          storage: imageStorage(config),
           images: new DrizzleProductImportRepository(db),
         }),
     },
@@ -189,3 +189,20 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
   ],
 })
 export class CatalogModule {}
+
+// Elige dónde se guardan las fotos subidas según el entorno (ADR-022).
+function imageStorage(config: ConfigService<Env, true>): ImageStorage {
+  const supabaseUrl = config.get('SUPABASE_URL', { infer: true });
+  const secretKey = config.get('SUPABASE_SECRET_KEY', { infer: true });
+  if (supabaseUrl !== undefined && secretKey !== undefined) {
+    return new SupabaseImageStorage({
+      url: supabaseUrl,
+      secretKey,
+      bucket: config.get('SUPABASE_BUCKET', { infer: true }),
+    });
+  }
+  return new LocalImageStorage(
+    config.get('MEDIA_DIR', { infer: true }),
+    config.get('MEDIA_PUBLIC_URL', { infer: true }),
+  );
+}
