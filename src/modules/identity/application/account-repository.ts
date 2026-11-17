@@ -12,6 +12,8 @@ export interface Account {
 
 // Consentimiento de datos (RF-001, Ley 1581): qué versión aceptó y cuándo.
 export interface NewAccount extends Omit<Account, 'suspendedUntil'> {
+  // #133: el nombre visible, ya normalizado. Solo lo ve la propia cuenta (EC-08).
+  displayName: string | null;
   policyVersion: string;
   policyAcceptedAt: Date;
 }

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { normalizeDisplayName } from '../../../domain/display-name';
 import type { AccountRepository } from './account-repository';
 import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
 import type { Clock } from './clock';
@@ -13,6 +14,8 @@ export interface RegisterAccountPorts {
 
 export interface RegisterAccountInput {
   email: string;
+  // #133: ya validado por el DTO con la regla de domain/display-name.
+  displayName?: string;
   password: string;
   acceptedPolicyVersion: string;
   ip: string;
@@ -43,6 +46,7 @@ export class RegisterAccount {
     await this.ports.accounts.create({
       id: randomUUID(),
       email,
+      displayName: input.displayName === undefined ? null : normalizeDisplayName(input.displayName),
       passwordHash,
       // Grill de la #16, pregunta 5: el registro siempre crea un reportante.
       role: 'reportante',
