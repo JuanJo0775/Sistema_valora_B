@@ -44,7 +44,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Historial de precios (#83)       | `GET /v1/products/{productId}/history`: 30 días por presentación y por día; `pnpm comparison:rebuild-history`                 |
 | Propuestas de productos (#26)    | Un reportante propone un producto; el moderador lo aprueba, lo fusiona (queda como alias) o lo rechaza; alias e imagen        |
 
-Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** hace falta para desarrollar: la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas y el despliegue usará una imagen Docker (ADR-012, proveedor por definir).
+Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** hace falta para desarrollar: la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas y el despliegue usará una imagen Docker en Render, con la base en Neon y la PWA en Vercel (ADR-012).
 
 ## Primeros pasos (desde cero)
 
@@ -174,7 +174,7 @@ El cambio queda en la bitácora `identity.role_changes` como hecho por el sistem
 
 ### Fotos de productos
 
-Las fotos que sube un moderador (`PUT /v1/moderation/products/{productId}/image`, ADR-020) se guardan en la carpeta `MEDIA_DIR` (por defecto `media/`, fuera de Git) y la API las sirve en `MEDIA_PUBLIC_URL`. Agrega las dos variables a tu `.env` (están en `.env.example`). Cuando se decida el proveedor de despliegue (ADR-012), la carpeta se cambia por su almacenamiento.
+Las fotos que sube un moderador (`PUT /v1/moderation/products/{productId}/image`, ADR-020) se guardan en la carpeta `MEDIA_DIR` (por defecto `media/`, fuera de Git) y la API las sirve en `MEDIA_PUBLIC_URL`. Agrega las dos variables a tu `.env` (están en `.env.example`). En Render el disco se borra en cada despliegue (ADR-012): la carpeta se cambiará por un almacenamiento persistente, todavía sin decidir.
 
 ### Llenar el historial de precios
 

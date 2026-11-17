@@ -65,7 +65,7 @@ El backend es la fuente de verdad del contrato OpenAPI. El frontend consume ese 
 ## No incluido en el MVP
 
 - Microservicios, broker distribuido o Kubernetes.
-- Docker obligatorio en el desarrollo local y Testcontainers. El despliegue **sí** usa una imagen Docker (ADR-012, 15 de noviembre de 2026) y la CI usa contenedores de servicio de PostgreSQL + PostGIS para las pruebas.
+- Docker obligatorio en el desarrollo local y Testcontainers. El despliegue **sí** usa una imagen Docker en Render, con la base en Neon y la PWA en Vercel (ADR-012, aceptado el 16 de noviembre de 2026) y la CI usa contenedores de servicio de PostgreSQL + PostGIS para las pruebas.
 - Integración automática completa con SIPSA.
 - Scraping de catálogos de cadenas.
 - Sistema de alertas de bajada de precio.
