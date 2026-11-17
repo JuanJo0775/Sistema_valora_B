@@ -1,4 +1,10 @@
-import { fillProductImages, type ImageLookup, type ImageResult } from './product-images';
+import {
+  fetchSeedImages,
+  fillProductImages,
+  type ImageLookup,
+  type ImageResult,
+  imagesSummary,
+} from './product-images';
 
 // Fila de productos.csv tal como la deja el equipo, sin imagen.
 const productRow = (values: Partial<Record<string, string>> = {}): Record<string, string> => ({
@@ -119,5 +125,63 @@ describe('fotos de Open Food Facts para la semilla (ADR-020, #119)', () => {
     expect(asked).toEqual(['7702001023456', '7702001023463']);
     expect(result.rows.map((row) => row.imagen_url ?? '')).toEqual(['', OFF_PHOTO, '']);
     expect(result.report).toEqual({ withBarcode: 2, found: ['Arroz blanco Diana'], review: [] });
+  });
+});
+
+// pnpm seed:imagenes: lee productos.csv, consulta y escribe el archivo solo si encontró fotos.
+describe('comando de fotos de la semilla (#119)', () => {
+  function fakeTable(rows: Record<string, string>[]) {
+    const written: Record<string, string>[][] = [];
+    return {
+      table: {
+        read: () => Promise.resolve(rows),
+        write: (next: Record<string, string>[]) => {
+          written.push(next);
+          return Promise.resolve();
+        },
+      },
+      written,
+    };
+  }
+
+  it('escribe el archivo cuando encontró alguna foto', async () => {
+    const { table, written } = fakeTable([productRow({ codigo_barras: '7702001023456' })]);
+    const { lookup } = fakeLookup({ '7702001023456': { status: 'found', url: OFF_PHOTO } });
+
+    const report = await fetchSeedImages(table, lookup);
+
+    expect(report.found).toEqual(['Arroz blanco Diana']);
+    expect(written).toHaveLength(1);
+    expect(written[0]?.[0]?.imagen_url).toBe(OFF_PHOTO);
+  });
+
+  it('sin fotos nuevas no toca el archivo', async () => {
+    const { table, written } = fakeTable([productRow()]);
+
+    await fetchSeedImages(table, fakeLookup({}).lookup);
+
+    expect(written).toEqual([]);
+  });
+
+  it('el informe dice cuántos se consultaron, cuáles quedaron con foto y cuáles revisar a mano', () => {
+    expect(
+      imagesSummary({
+        withBarcode: 2,
+        found: ['Arroz blanco Diana'],
+        review: ['Sal Refisal (7702001000002): no está en Open Food Facts'],
+      }),
+    ).toEqual([
+      'Productos con código de barras y sin imagen: 2.',
+      'Con foto de Open Food Facts: 1.',
+      '- Arroz blanco Diana',
+      'Por revisar a mano: 1.',
+      '- Sal Refisal (7702001000002): no está en Open Food Facts',
+    ]);
+  });
+
+  it('sin códigos de barras el informe lo dice', () => {
+    expect(imagesSummary({ withBarcode: 0, found: [], review: [] })).toEqual([
+      '0 productos con código de barras y sin imagen: no hay nada que consultar.',
+    ]);
   });
 });
