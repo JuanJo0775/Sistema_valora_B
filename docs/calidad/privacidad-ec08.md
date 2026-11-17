@@ -17,6 +17,7 @@
 | Dato | Dónde | Para qué |
 |---|---|---|
 | Correo | `identity.accounts.email` | Iniciar sesión. |
+| Nombre visible | `identity.accounts.display_name` (vacío en las cuentas creadas antes de la #133) | Saludar a la persona en su propia sesión («Hola, Sara»). Solo lo devuelve `GET /v1/auth/session` de esa cuenta; ninguna otra respuesta, ni la moderación, lo incluye (`privacy-public-responses.spec.ts`). |
 | Hash de la contraseña (argon2id) | `identity.accounts.password_hash` | Iniciar sesión; nunca la contraseña. |
 | Versión y fecha de la política aceptada | `identity.accounts` | Consentimiento (Ley 1581). |
 | Sesiones (hash del token) | `identity.sessions` | Sesión de servidor; no guarda IP ni navegador. |

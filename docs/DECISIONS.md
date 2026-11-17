@@ -486,6 +486,15 @@ Para las tarjetas del mapa nuevo del frontend («9 precios»). RF-005, RF-008, E
 - **Contrato:** un esquema nuevo, `EstablishmentWithPrices`, solo para las dos listas. `Establishment` no cambia, así que la comparación y los precios de una tienda siguen igual. Va sin `allOf` porque la prueba de contrato no admite campos de más.
 - **Caché y privacidad:** iguales que antes (5 minutos para la lista; `no-store` para las cercanas, que llevan la ubicación del usuario). Ningún dato del reportante.
 
+## Nombre visible de la cuenta (issue #133, 16 de noviembre de 2026)
+
+Para el «Hola, Sara» del «Yo» del frontend. RF-001, RF-002, EC-08 y ADR-014.
+
+- **Obligatorio al registrarse:** `displayName`, de 2 a 40 caracteres después de quitar los espacios sobrantes; solo letras (con tildes y ñ), espacios, apóstrofo y guion. Sin números, correos ni símbolos, así no cabe un teléfono ni un correo. La regla vive en `domain/display-name.ts`; el DTO responde 400 con un solo mensaje.
+- **Cuentas que ya existen:** quedan sin nombre (columna `display_name` nullable, migración 0025). La sesión no trae `displayName` hasta que haya una forma de ponerlo (no se pidió).
+- **Solo en la propia sesión:** `GET /v1/auth/session` lo devuelve; ninguna otra respuesta lo incluye. Se lee con un puerto aparte (`DisplayNames`), no viaja en la sesión que reciben los demás módulos. `privacy-public-responses.spec.ts` lo verifica en las rutas públicas, la cola de moderación y los aportes propios.
+- **Consentimiento:** la política de datos sigue en la versión provisional `2026-11` sin texto (grill de la #16). Cuando el equipo escriba el texto, debe mencionar el nombre visible entre los datos tratados.
+
 ## Fotos de Open Food Facts para la semilla (issue #119, 16 de noviembre de 2026)
 
 Aplicación de ADR-020 (punto 1: Open Food Facts primero, citando la fuente; punto 8: nada de sitios de cadenas) y RF-003.

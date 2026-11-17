@@ -921,16 +921,25 @@ paths:
       description: >-
         La cuenta nueva siempre es reportante y no inicia sesión. Si el correo ya tiene cuenta, responde
         201 igual y no cambia nada, para no revelar qué correos están registrados (EC-08). El correo se
-        guarda sin espacios y en minúsculas.
+        guarda sin espacios y en minúsculas. El nombre visible (#133) se guarda sin espacios sobrantes y
+        solo lo devuelve GET /auth/session de la propia cuenta; ninguna otra respuesta lo incluye (EC-08).
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, password, acceptedPolicyVersion]
+              required: [email, displayName, password, acceptedPolicyVersion]
               properties:
                 email: { type: string, format: email, maxLength: 254 }
+                displayName:
+                  type: string
+                  minLength: 2
+                  maxLength: 40
+                  description: >-
+                    Nombre con el que la app saluda («Hola, Sara»). De 2 a 40 caracteres después de quitar
+                    los espacios sobrantes; solo letras (con tildes y ñ), espacios, apóstrofo y guion. Sin
+                    números, correos ni símbolos: responde 400 VALIDATION_ERROR.
                 password: { type: string, minLength: 10, maxLength: 128, writeOnly: true }
                 acceptedPolicyVersion:
                   type: string
@@ -1019,6 +1028,11 @@ paths:
                 description: Sin correo ni id de la cuenta (EC-08).
                 properties:
                   role: { type: string, enum: [reportante, comercio, moderador] }
+                  displayName:
+                    type: string
+                    description: >-
+                      El nombre visible de la propia cuenta (#133). No viene en las cuentas creadas antes
+                      de que se pidiera. Es la única respuesta que lo incluye (EC-08).
                   csrfToken:
                     type: string
                     description: >-

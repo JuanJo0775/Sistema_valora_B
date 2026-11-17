@@ -11,6 +11,7 @@ import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
 const ana: NewAccount = {
   id: 'c5555555-5555-4555-8555-111111111111',
   email: 'ana@correo.com',
+  displayName: 'Ana María',
   passwordHash: 'hash-de-prueba',
   role: 'reportante',
   policyVersion: '2026-11',
@@ -69,6 +70,17 @@ describe('repositorios de identity', () => {
       sql`select count(*) as count from identity.accounts`,
     );
     expect(count.rows[0]?.count).toBe('1');
+  });
+
+  it('guarda el nombre visible y lo devuelve solo con displayNameOf (#133)', async () => {
+    await accounts.create(ana);
+
+    await expect(accounts.displayNameOf(ana.id)).resolves.toBe('Ana María');
+    await expect(
+      accounts.displayNameOf('c5555555-5555-4555-8555-999999999999'),
+    ).resolves.toBeNull();
+    // findByEmail sirve al inicio de sesión: no necesita el nombre.
+    expect(await accounts.findByEmail(ana.email)).not.toHaveProperty('displayName');
   });
 
   it('guarda una sesión, la encuentra por el hash del token con el rol, marca su uso y la revoca', async () => {

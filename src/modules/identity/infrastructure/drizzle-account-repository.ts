@@ -9,9 +9,10 @@ import type {
   Role,
   RoleChange,
 } from '../application/account-repository';
+import type { DisplayNames } from '../application/own-display-name';
 import { accounts, roleChanges } from './schema';
 
-export class DrizzleAccountRepository implements AccountRepository, AccountCreation {
+export class DrizzleAccountRepository implements AccountRepository, AccountCreation, DisplayNames {
   // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
   constructor(private readonly db: NodePgDatabase | Transaction) {}
 
@@ -28,6 +29,15 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
       .where(eq(accounts.email, email));
     // La restricción CHECK de la tabla garantiza que es uno de los 3 roles.
     return found ? { ...found, role: found.role as Role } : null;
+  }
+
+  // #133: solo para la sesión de la propia cuenta (EC-08).
+  async displayNameOf(accountId: string): Promise<string | null> {
+    const [found] = await this.db
+      .select({ displayName: accounts.displayName })
+      .from(accounts)
+      .where(eq(accounts.id, accountId));
+    return found?.displayName ?? null;
   }
 
   // Grill de la #31, pregunta 2: el día de creación de la cuenta, para la identidad seudónima.
