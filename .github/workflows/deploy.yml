@@ -1,0 +1,86 @@
+name: Despliegue
+
+# ADR-012: Render construye la imagen del Dockerfile y Neon guarda la base. Render no despliega solo
+# (autoDeployTrigger: off en render.yaml): este pipeline aplica las migraciones y luego lo dispara.
+on:
+  workflow_dispatch:
+    inputs:
+      cargar_semilla:
+        description: Cargar la semilla de seed/ en Neon después de migrar (tiendas, productos y SIPSA verificados)
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Un despliegue a la vez; uno nuevo no cancela al que está aplicando migraciones.
+concurrency:
+  group: despliegue-produccion
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    name: Migrar y desplegar
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Entorno con aprobación manual: se configura en Settings > Environments (docs/despliegue.md).
+    environment: produccion
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      # Las migraciones van antes que el código nuevo. Deben ser compatibles hacia atrás: mientras
+      # Render construye, la versión anterior sigue atendiendo contra el esquema ya migrado.
+      - name: Aplicar migraciones en Neon
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+
+      # La semilla (issue #51) es idempotente: actualiza por id fijo, no duplica y nunca borra.
+      # Arranca la aplicación Nest, que valida todas las variables; los secretos de sesión no se usan
+      # aquí, por eso van con un valor fijo y no con los de producción.
+      - name: Cargar la semilla en Neon (opcional)
+        if: ${{ inputs.cargar_semilla }}
+        run: pnpm build && node dist/seed.js
+        env:
+          NODE_ENV: production
+          PORT: '3000'
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          DATABASE_URL_TEST: ${{ secrets.NEON_DATABASE_URL }}
+          SESSION_SECRET: no-se-usa-en-la-semilla
+          REPORTER_KEY_SECRET: no-se-usa-en-la-semilla
+          OUTBOX_POLL_INTERVAL_MS: '5000'
+          OUTBOX_MAX_ATTEMPTS: '5'
+          MEDIA_DIR: media
+          MEDIA_PUBLIC_URL: http://localhost/media
+
+      - name: Disparar el despliegue en Render
+        run: curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+      # En el plan gratuito Render puede tardar cerca de un minuto en despertar y construir.
+      - name: Esperar a que la API responda
+        run: |
+          for intento in $(seq 1 30); do
+            if curl --fail --silent --max-time 20 "$API_URL/v1/health" > /dev/null; then
+              echo "La API responde (intento $intento)."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "La API no respondió en 10 minutos." >&2
+          exit 1
+        env:
+          API_URL: ${{ vars.API_URL }}

@@ -18,6 +18,11 @@ services:
         value: production
       - key: PORT
         value: '10000'
+      # Saltos de proxy delante de la API (ADR-012): Vercel y Render. Con 2, request.ip es la IP real
+      # del cliente y los límites por IP (#16) no agrupan a todos. Verificar tras el primer despliegue
+      # (docs/despliegue.md, paso 8).
+      - key: TRUST_PROXY
+        value: '2'
       # Cadena de conexión de Neon.
       - key: DATABASE_URL
         sync: false
@@ -35,6 +40,16 @@ services:
         value: '5'
       - key: MEDIA_DIR
         value: media
-      # Dirección pública de las fotos (ADR-020).
+      # Dirección pública de las fotos en el disco local (ADR-020). Con Supabase (ADR-022) no se usa,
+      # pero la validación de la configuración la exige.
       - key: MEDIA_PUBLIC_URL
         sync: false
+      # Fotos que sube el moderador: bucket público de Supabase Storage (ADR-022). El disco de Render
+      # se borra en cada despliegue, por eso no se usa en producción.
+      - key: SUPABASE_URL
+        sync: false
+      # Clave secreta del servidor (sb_secret_...): solo en el panel de Render, nunca en Git (RN2).
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: productos

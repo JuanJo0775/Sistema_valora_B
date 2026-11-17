@@ -1,0 +1,37 @@
+name: Infraestructura
+
+# Valida el Terraform de Neon en cada cambio. Aplicarlo es manual (docs/despliegue.md): el estado
+# contiene la contraseña de la base y todavía no hay un backend remoto cifrado.
+on:
+  pull_request:
+    paths: ['infra/**', '.github/workflows/infra.yml']
+  push:
+    branches: [dev, main]
+    paths: ['infra/**', '.github/workflows/infra.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    name: Validar Terraform
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/neon
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Formato
+        run: terraform fmt -check -recursive
+
+      - name: Inicializar sin backend
+        run: terraform init -backend=false -input=false
+
+      - name: Validar
+        run: terraform validate
