@@ -40,6 +40,8 @@ export interface ComparisonResponse {
     periodEnd: string;
     url: string;
   };
+  // B#128 (EC-06): cuánto menos cuesta el más barato que la tienda más cara.
+  savingsPercent?: number;
 }
 
 export function toComparisonResponse(comparison: Comparison): ComparisonResponse {
@@ -73,5 +75,8 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
     ...(comparison.wholesaleReference === undefined
       ? {}
       : { wholesaleReference: { ...comparison.wholesaleReference } }),
+    ...(comparison.savingsPercent === undefined
+      ? {}
+      : { savingsPercent: comparison.savingsPercent }),
   };
 }

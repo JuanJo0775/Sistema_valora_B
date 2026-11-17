@@ -6,8 +6,10 @@ import {
   IsLatitude,
   IsLongitude,
   IsOptional,
+  IsString,
   Max,
   Min,
+  MinLength,
   ValidateIf,
 } from 'class-validator';
 import { type Municipality, MUNICIPALITY_CODES } from '../../../domain/municipality';
@@ -69,11 +71,40 @@ export class StorePricesQueryDto {
   onlyCurrent = false;
 }
 
-// Parámetros de GET /v1/featured-products (B#120).
+// Sin municipio, la ubicación es obligatoria; con municipio, solo si se manda una de las dos.
+const featuredNeedsLocation = (dto: FeaturedProductsQueryDto): boolean =>
+  dto.municipality === undefined || dto.lat !== undefined || dto.lng !== undefined;
+
+// Parámetros de GET /v1/featured-products (B#120 y B#128): como la comparación, el municipio, la
+// ubicación o las dos cosas.
 export class FeaturedProductsQueryDto {
-  // Uno de los 12 municipios del Quindío; obligatorio.
+  @ValidateIf(featuredNeedsLocation)
+  @Type(() => Number)
+  @IsLatitude({ message: 'debe estar entre -90 y 90' })
+  lat?: number;
+
+  @ValidateIf(featuredNeedsLocation)
+  @Type(() => Number)
+  @IsLongitude({ message: 'debe estar entre -180 y 180' })
+  lng?: number;
+
+  // Uno de los 12 municipios del Quindío.
+  @IsOptional()
   @IsIn(MUNICIPALITY_CODES, { message: 'debe ser un municipio del Quindío' })
-  municipality!: Municipality;
+  municipality?: Municipality;
+
+  // Los mismos límites del radio de la comparación (ADR-019); 1,5 km por defecto, como el Inicio.
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0.5, { message: 'debe estar entre 0,5 y 3' })
+  @Max(3, { message: 'debe estar entre 0,5 y 3' })
+  radiusKm = 1.5;
+
+  // Código de la lista cerrada de categorías; uno desconocido deja la lista vacía.
+  @IsOptional()
+  @IsString({ message: 'debe ser un texto' })
+  @MinLength(1, { message: 'no puede estar vacío' })
+  category?: string;
 
   // Mismos valores que el parámetro común Limit del contrato, con 5 por defecto.
   @IsOptional()
