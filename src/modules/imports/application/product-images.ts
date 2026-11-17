@@ -72,3 +72,34 @@ export async function fillProductImages(
   }
   return { rows: filled, report: { withBarcode, found, review: [...pending.values()].flat() } };
 }
+
+// Puerto: el archivo productos.csv como filas de columnas con nombre.
+export interface ProductsTable {
+  read(): Promise<Record<string, string>[]>;
+  write(rows: Record<string, string>[]): Promise<void>;
+}
+
+// pnpm seed:imagenes: consulta las fotos y solo escribe el archivo si encontró alguna.
+export async function fetchSeedImages(
+  table: ProductsTable,
+  lookup: ImageLookup,
+): Promise<ImagesReport> {
+  const { rows, report } = await fillProductImages(await table.read(), lookup);
+  if (report.found.length > 0) await table.write(rows);
+  return report;
+}
+
+const listed = (items: string[]): string[] => items.map((item) => `- ${item}`);
+
+export function imagesSummary(report: ImagesReport): string[] {
+  if (report.withBarcode === 0) {
+    return ['0 productos con código de barras y sin imagen: no hay nada que consultar.'];
+  }
+  return [
+    `Productos con código de barras y sin imagen: ${String(report.withBarcode)}.`,
+    `Con foto de Open Food Facts: ${String(report.found.length)}.`,
+    ...listed(report.found),
+    `Por revisar a mano: ${String(report.review.length)}.`,
+    ...listed(report.review),
+  ];
+}
