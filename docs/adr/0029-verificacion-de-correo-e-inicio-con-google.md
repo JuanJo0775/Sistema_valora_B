@@ -26,8 +26,8 @@ Se elige **A**, en dos fases.
 ### Fase 1: verificación de correo
 
 1. **Datos.** Columna `identity.accounts.email_verified_at` (nula = sin verificar) y tabla `identity.email_verifications` con el **hash** del token, la cuenta, `expires_at` (24 h) y `used_at`. Nunca se guarda el token en claro.
-2. **Puerto `EmailSender`** en `identity/application`, con un adaptador de producción por HTTP (`fetch`, sin dependencias nuevas) y `ConsoleEmailSender` para desarrollo y pruebas. El proveedor se elige por entorno (`EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM`), como `ImageStorage` en ADR-022.
-3. **Flujo.** El registro crea la cuenta y envía un enlace a la PWA (`/verificar-correo?token=…`). La PWA hace `POST /v1/auth/verify-email` con el token (un `GET` con efectos lo consumirían los antivirus y las vistas previas). `POST /v1/auth/resend-verification` reenvía, con límite por cuenta y por IP, y responde igual exista o no el correo (EC-08, como el registro).
+2. **Puerto `EmailSender`** en `identity/application`, con un adaptador de producción por HTTP (`fetch`, sin dependencias nuevas) y `ConsoleEmailSender` para desarrollo y pruebas. El proveedor se elige por entorno (`EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM`, más `APP_URL` para armar el enlace), como `ImageStorage` en ADR-022. `EMAIL_PROVIDER` es `console` por defecto y en producción `ConsoleEmailSender` no escribe el enlace en el registro. El registro envía el correo en segundo plano: si el proveedor falla, el registro no falla, y así tarda lo mismo con un correo nuevo que con uno ya registrado (EC-08).
+3. **Flujo.** El registro crea la cuenta y envía un enlace a la PWA (`/verificar-correo?token=…`). La PWA hace `POST /v1/auth/verify-email` con el token (un `GET` con efectos lo consumirían los antivirus y las vistas previas). `POST /v1/auth/resend-verification` reenvía el enlace a **la cuenta de la sesión** (no recibe un correo), con límite de 3 por hora por cuenta, y responde igual si la cuenta ya estaba verificada. El reenvío es por sesión y no por correo porque la persona acaba de registrarse y puede iniciar sesión sin verificar (punto 4): una ruta pública que recibiera un correo revelaría qué correos existen y serviría para enviar correo a terceros (EC-08, como el registro); por sesión no hay nada que enumerar y el límite es por cuenta, no por IP. `POST /v1/auth/verify-email` es pública, con límite por IP, y un token desconocido, vencido o usado responde el mismo 422 `INVALID_VERIFICATION_TOKEN`.
 4. **Efecto.** La cuenta puede iniciar sesión sin verificar, pero **registrar precios (RF-006) exige correo verificado**. Comparar, ver el mapa y la canasta siguen sin cuenta. Las cuentas anteriores quedan sin verificar y reciben el aviso al entrar. `DECISIÓN DEL EQUIPO:` si exigir verificación también para iniciar sesión.
 5. **Privacidad.** El proveedor de correo es un encargado más (sección 5 de la política); los mensajes no llevan datos sensibles; se agrega a la política y a `docs/privacidad.md`. Cambiar la política de fondo sube su versión y vuelve a pedir la aceptación.
 
@@ -46,15 +46,15 @@ Se elige **A**, en dos fases.
 
 ## Verificación
 
-- Pruebas de `register-account`, `verify-email` y `resend-verification` (token expirado, usado, ajeno, repetido, sin enumeración de correos).
+- Pruebas de `register-account`, `verify-email` y `resend-verification` (token expirado, usado, ajeno, repetido, sin enumeración de correos), en `identity/application` y en `test/integration/email-verification-http.spec.ts`.
 - La prueba guardiana de esquema falla si `email_verifications` guarda un token en claro; la de respuestas públicas, si alguna ruta devuelve el correo.
 - Prueba de integración: sin correo verificado, `POST /v1/reports` responde 403 con un código estable.
 - Fase 2: pruebas con un proveedor OIDC simulado (`state` inválido, `nonce` repetido, correo sin verificar).
 
 ## Plan de trabajo
 
-1. Migración y tabla; puerto `EmailSender` y adaptadores; casos de uso y rutas (backend).
-2. Contrato OpenAPI y pruebas de contrato; exigir verificación en el registro de reportes.
+1. Migración y tabla; puerto `EmailSender` y adaptadores; casos de uso y rutas (backend). **Hecho** (migración 0027).
+2. Contrato OpenAPI y pruebas de contrato; exigir verificación en el registro de reportes. **Hecho**: `POST /v1/reports` responde 403 `EMAIL_NOT_VERIFIED` y `GET /v1/auth/session` trae `emailVerified`.
 3. PWA: aviso «Verifica tu correo», página `/verificar-correo`, reenvío.
 4. Política de datos y `docs/privacidad.md` con el proveedor de correo.
 5. Fase 2 (Google), cuando la fase 1 esté en producción.

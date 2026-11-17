@@ -79,6 +79,19 @@ Las fotos que sube el moderador no pueden quedar en el disco de Render (se borra
 
 Si Supabase pausa el proyecto (7 días sin actividad), las URL de las fotos subidas dejan de responder: se restaura desde el panel («Restore project»). Hay una ventana de tiempo para hacerlo; su duración no está confirmada (las fuentes dan entre 90 días y 1 año), así que no conviene dejarlo pausado.
 
+### 3 ter. Correo de verificación (ADR-029)
+
+Registrar precios exige el correo verificado, así que producción necesita enviar correo. El puerto `EmailSender` tiene dos adaptadores, elegidos con `EMAIL_PROVIDER`:
+
+| Variable | Valor | Notas |
+|---|---|---|
+| `EMAIL_PROVIDER` | `console` (por defecto) o `resend` | `console` no entrega ningún mensaje: solo sirve en desarrollo y pruebas. En producción no escribe ni el enlace ni el destinatario en el registro. |
+| `EMAIL_API_KEY` | clave de Resend (`re_...`) | Obligatoria con `resend`. Solo en el panel de Render, nunca en Git. |
+| `EMAIL_FROM` | `Valora <no-responder@tu-dominio>` | Obligatoria con `resend`. Debe ser un remitente verificado en Resend. |
+| `APP_URL` | `https://<dirección de la PWA>` | Obligatoria con `resend`. Base del enlace `${APP_URL}/verificar-correo?token=...`; sin barra final. |
+
+Si falta alguna con `resend`, la API no arranca y el mensaje nombra la variable. `PENDIENTE` (ADR-029): elegir el proveedor y conseguir un dominio o remitente verificable (SPF y DKIM); sin dominio propio los proveedores gratuitos limitan a quién se puede escribir. Si el envío falla, el registro no falla: la persona puede pedir el reenvío desde su sesión (3 por hora). Las cuentas creadas antes de ADR-029 quedan sin verificar y piden su enlace al entrar.
+
 ### 4. Crear el servicio en Render
 
 1. «New», «Blueprint», elige el repositorio del backend: Render lee `render.yaml` y crea `valora-api`.
@@ -88,6 +101,7 @@ Si Supabase pausa el proyecto (7 días sin actividad), las URL de las fotos subi
    - `REPORTER_KEY_SECRET`: un valor aleatorio propio (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`). **No lo cambies una vez en uso**: las reputaciones quedan asociadas a esa clave.
    - `MEDIA_PUBLIC_URL`: `https://<dirección de Render>/media` (con Supabase no se usa, pero la validación la exige).
    - `SUPABASE_URL` y `SUPABASE_SECRET_KEY`: los del paso 3 bis. `SUPABASE_BUCKET` ya viene en `render.yaml`.
+   - `EMAIL_PROVIDER`, `EMAIL_API_KEY`, `EMAIL_FROM` y `APP_URL`: los del paso 3 ter.
 3. Copia la dirección pública del servicio (por defecto `https://valora-api.onrender.com`) y el **Deploy Hook** («Settings», «Deploy Hook») a los secretos del paso 2.
 4. `SESSION_SECRET` lo genera Render (`generateValue`). `TRUST_PROXY=2` ya viene en `render.yaml`.
 
