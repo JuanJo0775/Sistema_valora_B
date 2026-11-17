@@ -39,6 +39,9 @@ export interface SessionResponse {
   displayName?: string;
   // ADR-029: si la cuenta ya verificó su correo; registrar precios lo exige. Solo en la propia sesión.
   emailVerified: boolean;
+  // ADR-029: si el servidor exige la verificación (REQUIRE_VERIFIED_EMAIL). Con false no se pide al
+  // usuario que verifique: la app no muestra el aviso.
+  emailVerificationRequired: boolean;
   csrfToken: string;
   suspendedUntil?: string;
 }
@@ -127,6 +130,7 @@ export class AuthController {
       role: session.role,
       ...(displayName ? { displayName } : {}),
       emailVerified: session.emailVerified,
+      emailVerificationRequired: this.config.get('REQUIRE_VERIFIED_EMAIL', { infer: true }),
       csrfToken: csrfTokenFor(session.token, secret),
       // Grill de la #71, pregunta 5: el frontend muestra que la sesión está limitada.
       ...(session.suspendedUntil ? { suspendedUntil: session.suspendedUntil.toISOString() } : {}),

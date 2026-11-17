@@ -1034,7 +1034,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [role, emailVerified, csrfToken]
+                required: [role, emailVerified, emailVerificationRequired, csrfToken]
                 description: Sin correo ni id de la cuenta (EC-08).
                 properties:
                   role: { type: string, enum: [reportante, comercio, moderador] }
@@ -1045,6 +1045,11 @@ paths:
                       consultar, pero POST /reports responde 403 EMAIL_NOT_VERIFIED. Solo la propia
                       sesión lo dice; ninguna respuesta pública lo incluye (EC-08). Las cuentas anteriores
                       a ADR-029 empiezan en false.
+                  emailVerificationRequired:
+                    type: boolean
+                    description: >-
+                      ADR-029: si el servidor exige el correo verificado para registrar precios
+                      (REQUIRE_VERIFIED_EMAIL). Con false la app no muestra el aviso de verificación.
                   displayName:
                     type: string
                     description: >-

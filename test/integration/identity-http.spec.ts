@@ -167,6 +167,7 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
         displayName: 'Ana María',
         // ADR-029: la cuenta recién registrada aún no verificó su correo.
         emailVerified: false,
+        emailVerificationRequired: true,
         csrfToken: expect.stringMatching(/^[\w-]{43}$/) as unknown,
       });
     });
