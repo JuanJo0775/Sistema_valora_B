@@ -33,6 +33,7 @@
 | `GET /v1/health` | Ninguno. |
 | `GET /v1/products`, `GET /v1/products/{productId}` | Ninguno (solo catálogo). |
 | `GET /v1/products/{productId}/comparison` | Ninguno. Lleva `reportId` del precio, sin autor. `no-store` porque la URL lleva la ubicación. |
+| `GET /v1/featured-products` | Ninguno. Solo el producto, su precio más bajo y el nombre de la tienda; sin `reportId` ni autor (B#120). |
 | `GET /v1/establishments/nearby` | Ninguno. `no-store` por la misma razón. |
 | `GET /v1/establishments` | Ninguno (solo el directorio de tiendas). Sirve para elegir la tienda sin compartir la ubicación (#116). |
 | `GET /v1/establishments/{establishmentId}/prices` | Ninguno. Lleva `reportId`, sin autor. |

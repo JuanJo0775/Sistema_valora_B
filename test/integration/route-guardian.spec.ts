@@ -13,6 +13,8 @@ const PUBLIC_ROUTES = new Set([
   'GET /products/:productId/comparison',
   // Grill de la #83, pregunta 7: el historial es público (RF-008 RN3).
   'GET /products/:productId/history',
+  // B#120: la canasta básica de hoy es una lectura pública, como la comparación.
+  'GET /featured-products',
   // #116: buscar tiendas sin ubicación es una lectura pública, como /nearby.
   'GET /establishments',
   'GET /establishments/nearby',

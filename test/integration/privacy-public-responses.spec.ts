@@ -101,11 +101,12 @@ describe('privacidad de las respuestas públicas (EC-08, #36)', () => {
       request(server).get('/v1/establishments/nearby').query(userLocation),
       request(server).get(`/v1/establishments/${storeId}/prices`),
       request(server).get(`/v1/products/${productId}/history`),
+      request(server).get('/v1/featured-products').query({ municipality: 'armenia' }),
     ];
     const responses = await Promise.all(publicRoutes);
 
     expect(responses.map((response) => response.status)).toEqual([
-      200, 200, 200, 200, 200, 200, 200, 200,
+      200, 200, 200, 200, 200, 200, 200, 200, 200,
     ]);
     const everything = JSON.stringify(
       responses.map((response): unknown[] => [response.headers, response.body]),

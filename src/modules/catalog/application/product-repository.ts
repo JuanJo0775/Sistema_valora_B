@@ -30,7 +30,10 @@ export interface ProductView {
   presentations: PresentationView[];
 }
 
-// Lo que la comparación necesita: las presentaciones y si la categoría es fresca (TTL, ADR-005).
+// B#120: lo que la canasta básica muestra de cada producto, sin sus presentaciones.
+export type ProductSummaryView = Omit<ProductView, 'image' | 'presentations'>;
+
+// Lo que la comparación necesita:las presentaciones y si la categoría es fresca (TTL, ADR-005).
 export interface ProductForComparisonView {
   id: string;
   isFresh: boolean;
@@ -62,6 +65,8 @@ export interface ProductRepository {
   isFreshPresentation(presentationId: string): Promise<boolean | null>;
   labelsOf(presentationIds: string[]): Promise<Map<string, string>>;
   pricingOf(presentationIds: string[]): Promise<Map<string, PresentationForPricing>>;
+  // B#120: nombre, marca y categoría de varios productos.
+  summariesOf(productIds: string[]): Promise<Map<string, ProductSummaryView>>;
   // #111: la lista cerrada de categorías, por nombre.
   listCategories(): Promise<CategoryView[]>;
 }

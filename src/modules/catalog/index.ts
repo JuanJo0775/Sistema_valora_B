@@ -10,8 +10,10 @@ export { PresentationFreshness } from './application/presentation-freshness';
 export { PresentationLabels } from './application/presentation-labels';
 export { PresentationsForPricing } from './application/presentations-for-pricing';
 export { ProductForComparison } from './application/product-for-comparison';
+export { ProductSummaries } from './application/product-summaries';
 export { WholesaleReferenceOf } from './application/wholesale-reference-of';
 export type {
   PresentationForPricing,
   ProductForComparisonView,
+  ProductSummaryView,
 } from './application/product-repository';

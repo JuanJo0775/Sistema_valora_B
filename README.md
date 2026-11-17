@@ -32,6 +32,7 @@ Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
 | Validaciones y ráfagas (#29)     | Observaciones de hasta 24 h, un reporte por presentación y tienda por hora, y 20 por hora por cuenta (lo demás, a la cola)    |
 | Bases de unidad (#59)            | Un producto no mezcla bases (100 g, 100 ml o unidad): el catálogo lo rechaza y `pnpm db:seed` nombra la fila                  |
 | Precios por tienda (#28)         | `GET /v1/establishments/{establishmentId}/prices`: precios de una tienda con vigencia y confiabilidad, caché de 60 s y ETag   |
+| Canasta básica (B#120)           | `GET /v1/featured-products`: los productos con más tiendas con precio vigente en un municipio y su precio más bajo            |
 | Privacidad (#36)                 | Pruebas guardianas del esquema y de las respuestas públicas, e informe en `docs/calidad/privacidad-ec08.md` (EC-08)           |
 | Sincronización (#30)             | 50 reportes de la cola sin pérdida ni duplicados (p95 ~1 s); los límites cuentan por la hora de observación                   |
 | Propuestas de tiendas (#27)      | Un reportante propone una tienda; el moderador la aprueba, la fusiona o la rechaza, con duplicados sugeridos a 50 m           |

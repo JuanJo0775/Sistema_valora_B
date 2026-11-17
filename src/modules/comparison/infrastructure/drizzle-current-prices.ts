@@ -15,7 +15,12 @@ export class DrizzleCurrentPrices implements CurrentPrices {
     return this.find(eq(priceCurrent.establishmentId, establishmentId));
   }
 
-  private async find(where: SQL): Promise<CurrentPrice[]> {
+  // B#120: la canasta básica filtra por municipio con la consulta pública de establishments.
+  findAll(): Promise<CurrentPrice[]> {
+    return this.find();
+  }
+
+  private async find(where?: SQL): Promise<CurrentPrice[]> {
     const rows = await this.db
       .select({
         reportId: priceCurrent.reportId,
