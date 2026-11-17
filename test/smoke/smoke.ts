@@ -73,7 +73,7 @@ async function waitFor(check: () => Promise<boolean>): Promise<boolean> {
 async function signIn(email: string, password: string, register: boolean): Promise<Session | null> {
   if (register) {
     const created = await call('POST', '/auth/register', {
-      body: { email, password, acceptedPolicyVersion: '2026-11' },
+      body: { email, displayName: 'Prueba de Humo', password, acceptedPolicyVersion: '2026-11' },
     });
     if (created.status !== 201) return null;
   }

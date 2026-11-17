@@ -8,9 +8,12 @@ import { DATABASE, type Database } from '../../src/shared/database/database.modu
 
 const newAccount = () => ({
   email: 'Ana@Correo.com',
+  displayName: '  Ana   María ',
   password: 'una-clave-larga',
   acceptedPolicyVersion: '2026-11',
 });
+
+const NAME_MESSAGE = 'displayName: debe tener de 2 a 40 letras, sin números, correos ni símbolos';
 
 describe('rutas de identity: registro, sesión y CSRF', () => {
   let app: INestApplication;
@@ -60,6 +63,11 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
         'acceptedPolicyVersion: debe ser la versión vigente de la política (2026-11)',
       ],
       ['un rol en el cuerpo', { role: 'moderador' }, 'role: no está permitido'],
+      // #133: el nombre visible es obligatorio y solo lleva letras, espacios, apóstrofo y guion.
+      ['sin nombre', { displayName: undefined }, NAME_MESSAGE],
+      ['un teléfono como nombre', { displayName: '3001234567' }, NAME_MESSAGE],
+      ['un correo como nombre', { displayName: 'ana@correo.com' }, NAME_MESSAGE],
+      ['un nombre de una letra', { displayName: 'A' }, NAME_MESSAGE],
     ])('con %s responde 400', async (_case, change, message) => {
       const response = await request(server)
         .post('/v1/auth/register')
@@ -153,8 +161,22 @@ describe('rutas de identity: registro, sesión y CSRF', () => {
 
       expect(response.body).toEqual({
         role: 'reportante',
+        // #133: el nombre visible, sin espacios sobrantes; solo en la propia sesión.
+        displayName: 'Ana María',
         csrfToken: expect.stringMatching(/^[\w-]{43}$/) as unknown,
       });
+    });
+
+    it('una cuenta creada antes del nombre visible no trae displayName', async () => {
+      const cookie = await signedIn();
+      await db.execute(sql`update identity.accounts set display_name = null`);
+
+      const response = await request(server)
+        .get('/v1/auth/session')
+        .set('Cookie', cookie)
+        .expect(200);
+
+      expect(response.body).not.toHaveProperty('displayName');
     });
 
     it('sin cookie o con una cookie desconocida responde 401', async () => {
