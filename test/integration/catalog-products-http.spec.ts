@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { eq, sql } from 'drizzle-orm';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import { CACHE_CATALOG, CACHE_SEARCH } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { presentations, products } from '../../src/modules/catalog/infrastructure/schema';
@@ -48,7 +49,7 @@ describe('GET /v1/products/{productId}', () => {
   it('responde el producto con su categoría y presentaciones, y una caché pública de 5 minutos', async () => {
     const response = await request(server).get(`/v1/products/${riceId}`).expect(200);
 
-    expect(response.headers['cache-control']).toBe('public, max-age=300');
+    expect(response.headers['cache-control']).toBe(CACHE_CATALOG);
     expect(response.body).toEqual({
       id: riceId,
       name: 'Arroz blanco',
@@ -125,7 +126,7 @@ describe('GET /v1/products/{productId}', () => {
         .query({ q: 'arroz DIANA' })
         .expect(200);
 
-      expect(response.headers['cache-control']).toBe('public, max-age=30');
+      expect(response.headers['cache-control']).toBe(CACHE_SEARCH);
       expect(response.body).toEqual({
         items: [
           {

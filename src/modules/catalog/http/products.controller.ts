@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
+import { CACHE_CATALOG, CACHE_SEARCH } from '../../../shared/http/cache-control';
 import { RequestValidationError } from '../../../shared/http/validation';
 import { GetProduct, ProductNotFoundError } from '../application/get-product';
 import { SearchProducts } from '../application/search-products';
@@ -22,7 +23,7 @@ export class ProductsController {
 
   // Grill de la #52, pregunta 4: caché pública de 30 segundos (valor inicial calibrable, EC-04).
   @Get()
-  @Header('Cache-Control', 'public, max-age=30')
+  @Header('Cache-Control', CACHE_SEARCH)
   async search(@Query() query: SearchProductsQueryDto): Promise<{ items: ProductResponse[] }> {
     // Grill de la #52, pregunta 3: se escribe o se escanea, nunca las dos cosas ni ninguna.
     const { q, barcode, limit } = query;
@@ -38,7 +39,7 @@ export class ProductsController {
 
   // Grill de la #49, pregunta 7: caché pública de 5 minutos (valor inicial calibrable, EC-04).
   @Get(':productId')
-  @Header('Cache-Control', 'public, max-age=300')
+  @Header('Cache-Control', CACHE_CATALOG)
   async findOne(
     @Param(
       'productId',

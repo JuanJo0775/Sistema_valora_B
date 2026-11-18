@@ -8,6 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { IsOptional, IsUUID } from 'class-validator';
+import { CACHE_PRICE_HISTORY } from '../../../shared/http/cache-control';
 import { RequestValidationError } from '../../../shared/http/validation';
 import { PriceHistory, type ProductPriceHistory } from '../application/price-history';
 
@@ -26,7 +27,7 @@ export class PriceHistoryController {
   // Pregunta 7: pública y sin la ubicación del usuario, así que se guarda en caché (EC-04).
   // Express agrega el ETag y responde 304 con If-None-Match.
   @Get(':productId/history')
-  @Header('Cache-Control', 'public, max-age=300')
+  @Header('Cache-Control', CACHE_PRICE_HISTORY)
   async of(
     @Param(
       'productId',

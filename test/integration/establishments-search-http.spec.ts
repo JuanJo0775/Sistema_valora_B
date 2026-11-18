@@ -2,6 +2,7 @@ import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
+import { CACHE_CATALOG } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { establishments } from '../../src/modules/establishments/infrastructure/schema';
@@ -63,7 +64,7 @@ describe('GET /v1/establishments', () => {
       .query({ q: 'PEPE don' })
       .expect(200);
 
-    expect(response.headers['cache-control']).toBe('public, max-age=300');
+    expect(response.headers['cache-control']).toBe(CACHE_CATALOG);
     expect(response.body).toEqual({
       items: [
         {

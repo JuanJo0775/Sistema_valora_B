@@ -1,4 +1,5 @@
 import { Controller, Get, Header, Query } from '@nestjs/common';
+import { CACHE_CATALOG } from '../../../shared/http/cache-control';
 import { RequestValidationError } from '../../../shared/http/validation';
 import { ListNearbyEstablishments, SearchEstablishments } from '../../establishments';
 import { PriceCounts } from '../application/price-counts';
@@ -23,7 +24,7 @@ export class EstablishmentListsController {
 
   // #116: el directorio cambia poco; caché pública de 5 minutos (valor inicial calibrable, EC-04).
   @Get()
-  @Header('Cache-Control', 'public, max-age=300')
+  @Header('Cache-Control', CACHE_CATALOG)
   async search(
     @Query() query: SearchEstablishmentsQueryDto,
   ): Promise<{ items: EstablishmentDetailResponse[] }> {

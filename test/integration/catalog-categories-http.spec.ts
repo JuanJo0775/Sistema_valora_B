@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import { CACHE_STATIC } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 
@@ -25,7 +26,7 @@ describe('GET /v1/categories', () => {
   it('lista las 8 categorías de la migración por nombre, sin sesión y con caché pública de una hora', async () => {
     const response = await request(server).get('/v1/categories').expect(200);
 
-    expect(response.headers['cache-control']).toBe('public, max-age=3600');
+    expect(response.headers['cache-control']).toBe(CACHE_STATIC);
     expect(response.body).toEqual({
       items: [
         { code: 'household-cleaning', name: 'Aseo del hogar' },

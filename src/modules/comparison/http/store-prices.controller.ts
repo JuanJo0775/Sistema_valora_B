@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
+import { CACHE_PRICES } from '../../../shared/http/cache-control';
 import { RequestValidationError } from '../../../shared/http/validation';
 import type { EstablishmentDetail } from '../../establishments';
 import { StorePrices } from '../application/store-prices';
@@ -38,7 +39,7 @@ export class StorePricesController {
   // Pregunta 3: la URL no lleva la ubicación del usuario, así que se puede guardar en caché (EC-04).
   // Express agrega el ETag y responde 304 con If-None-Match.
   @Get(':establishmentId/prices')
-  @Header('Cache-Control', 'public, max-age=60')
+  @Header('Cache-Control', CACHE_PRICES)
   async list(
     @Param(
       'establishmentId',
