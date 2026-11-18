@@ -14,6 +14,8 @@ import {
   EstablishmentsModule,
   EstablishmentsWithinRadius,
 } from '../establishments';
+import { PeerPrices } from './application/peer-prices';
+import { DrizzlePeerPrices } from './infrastructure/drizzle-peer-prices';
 import { PriceCounts } from './application/price-counts';
 import { EstablishmentListsController } from './http/establishment-lists.controller';
 import { ReliabilityModule, ReliabilityOfPrices } from '../reliability';
@@ -35,11 +37,12 @@ import {
   onPriceAssessedForHistory,
   onPriceWithdrawnForHistory,
 } from './infrastructure/price-history-handlers';
+import { onPriceFlagged, onPriceFlaggedForHistory } from './infrastructure/price-flagged-handler';
 import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
 
 // Grill de la #83, pregunta 6: el receptor del historial y los eventos que lo llenan, para reconstruirlo.
 export const PRICE_HISTORY_CONSUMER = 'comparison.price_history';
-export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
+export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFlagged'];
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
@@ -146,6 +149,12 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
       useFactory: (db: Database): ImportInitialPrices =>
         new ImportInitialPrices(new DrizzleInitialPrices(db)),
     },
+    // ADR-030: los precios vigentes de otras tiendas, como referencia de plausibilidad.
+    {
+      provide: PeerPrices,
+      inject: [DATABASE],
+      useFactory: (db: Database): PeerPrices => new PeerPrices(new DrizzlePeerPrices(db)),
+    },
     // PR-22 (#93): el precio publicado, para el informe de exactitud.
     {
       provide: CurrentPriceOf,
@@ -154,7 +163,7 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn'];
         new CurrentPriceOf(new DrizzleCurrentPrices(db)),
     },
   ],
-  exports: [CurrentPriceOf, ImportInitialPrices],
+  exports: [CurrentPriceOf, ImportInitialPrices, PeerPrices],
 })
 export class ComparisonModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}
@@ -165,6 +174,9 @@ export class ComparisonModule implements OnModuleInit {
   onModuleInit(): void {
     this.bus.subscribe('comparison.price_current', 'PriceAssessed', onPriceAssessed);
     this.bus.subscribe('comparison.price_current', 'PriceWithdrawn', onPriceWithdrawn);
+    // EC-03: un reporte marcado por una cuenta deja de ser el precio vigente mientras se revisa.
+    this.bus.subscribe('comparison.price_current', 'PriceFlagged', onPriceFlagged);
+    this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceFlagged', onPriceFlaggedForHistory);
     // Grill de la #83: el historial de precios, con los mismos eventos.
     this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceAssessed', onPriceAssessedForHistory);
     this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceWithdrawn', onPriceWithdrawnForHistory);

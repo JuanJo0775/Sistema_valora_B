@@ -1,0 +1,1 @@
+ALTER TABLE "establishments"."establishments" ADD COLUMN "neighborhood" text;

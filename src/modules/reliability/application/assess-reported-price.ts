@@ -1,6 +1,7 @@
 import { assessAnomaly } from '../../../domain/anomaly';
 import { ttlDaysFor } from '../../../domain/freshness';
 import { RELIABILITY_PARAMS, updateReputation } from '../../../domain/reliability';
+import type { FallbackReference } from '../../../domain/price-plausibility';
 import { comparableReports, type ScoredReport } from '../../../domain/report-window';
 import { createEvent, type DomainEvent } from '../../../shared/events';
 import { isDiscarded, isReliable, isUnderReview } from './standing';
@@ -17,6 +18,9 @@ export interface PriceReportedV2 {
   receivedAt: string;
   reporterKey: string;
   reporterSince: string;
+  // ADR-030: otras tiendas del municipio y SIPSA al momento de reportar, para el arranque en frío.
+  // Opcional: los PriceReported anteriores no lo traen.
+  plausibility?: FallbackReference;
 }
 
 export interface AssessReportedPricePorts {
@@ -78,6 +82,7 @@ export class AssessReportedPrice {
       others: inStore.filter(isReliable).map(toScored),
       flagged: inStore.filter(isUnderReview).map(toScored),
       zone: inZone.map(toScored),
+      ...(reported.plausibility ? { fallback: reported.plausibility } : {}),
       now: observation.receivedAt,
       ttlDays,
       accountCreatedAt: (key) => since.get(key) ?? observation.reporterSince,

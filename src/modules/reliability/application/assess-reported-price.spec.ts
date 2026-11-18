@@ -239,4 +239,44 @@ describe('evaluar un precio reportado (reliability)', () => {
       references: 4,
     });
   });
+  // ADR-030: arranque en frío con el contexto que pricing guardó en PriceReported.
+  describe('arranque en frío', () => {
+    const plausibility = { peerPricesCop: [1900, 1990, 2100], wholesaleTotalCop: null };
+
+    it('sin cuentas de referencia, $12 frente a tiendas de 1.990 queda sospechoso y lo dice PriceAssessed', async () => {
+      const { assess, published, observations } = setup();
+
+      await assess.execute(reported('ana', 12, { plausibility }));
+
+      expect(published[0]?.payload).toMatchObject({ verdict: 'sospechoso', reason: 'rango' });
+      expect(observations.saved[0]?.verdict).toMatchObject({
+        status: 'sospechoso',
+        reference: 'tiendas',
+      });
+    });
+
+    it('un precio normal frente a las tiendas pasa', async () => {
+      const { assess, published } = setup();
+
+      await assess.execute(reported('ana', 2000, { plausibility }));
+
+      expect(published[0]?.payload).toMatchObject({ verdict: 'normal' });
+    });
+
+    it('sin contexto (eventos anteriores) sigue siendo sin_datos', async () => {
+      const { assess, published } = setup();
+
+      await assess.execute(reported('ana', 12));
+
+      expect(published[0]?.payload).toMatchObject({ verdict: 'sin_datos' });
+    });
+
+    it('un sospechoso por arranque en frío no da reputación ni la recibe', async () => {
+      const { assess, reputations } = setup();
+
+      await assess.execute(reported('ana', 12, { plausibility }));
+
+      expect(reputations.claimed.size).toBe(0);
+    });
+  });
 });

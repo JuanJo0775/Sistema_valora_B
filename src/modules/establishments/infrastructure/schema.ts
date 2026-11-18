@@ -24,6 +24,8 @@ export const establishments = establishmentsSchema.table(
     name: text('name').notNull(),
     type: text('type').notNull(),
     address: text('address'),
+    // H-06: barrio, opcional; distingue tiendas de la misma cadena.
+    neighborhood: text('neighborhood'),
     location: geographyPoint('location').notNull(),
     // Grill de la #106: municipio del Quindío; las tiendas de la semilla son de Armenia (#51).
     municipality: text('municipality').notNull().default('armenia'),

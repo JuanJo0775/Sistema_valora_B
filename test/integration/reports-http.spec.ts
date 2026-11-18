@@ -173,6 +173,34 @@ describe('POST /v1/reports', () => {
     expect(retry.body).toEqual(created.body);
   });
 
+  // Auditoría de UX: el primer envío se aplicó pero el cliente no vio la respuesta (corte de red).
+  // El reintento con la MISMA clave y el mismo cuerpo, aunque pase el tiempo y el reporte ya se haya
+  // evaluado, devuelve el recibo original (200) y no pasa por la regla de duplicados (409).
+  it('el reintento con la misma clave, tras una pausa y con el reporte ya procesado, devuelve el mismo recibo y no DUPLICATE_REPORT', async () => {
+    const report = body();
+    const created = await post(report).expect(201);
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await app.get(OutboxRelay).runOnce();
+    await app.get(OutboxRelay).runOnce();
+    const retry = await post(report).expect(200);
+
+    expect(retry.body).toEqual(created.body);
+    const saved = await db.execute(sql`select id from pricing.reports`);
+    expect(saved.rows).toHaveLength(1);
+  });
+
+  // Contraparte: con una clave NUEVA el mismo precio sí es un duplicado. Si el cliente regenera la
+  // clave al reintentar, ve DUPLICATE_REPORT aunque el primer envío haya llegado.
+  it('el mismo cuerpo con una clave nueva responde 409 DUPLICATE_REPORT', async () => {
+    const report = body();
+    await post(report).expect(201);
+
+    const response = await post(report, crypto.randomUUID()).expect(409);
+
+    expect((response.body as { code: string }).code).toBe('DUPLICATE_REPORT');
+  });
+
   it('la misma clave con otro cuerpo responde 409 IDEMPOTENCY_KEY_REUSED', async () => {
     const report = body();
     await post(report).expect(201);
@@ -258,6 +286,8 @@ describe('POST /v1/reports', () => {
     expect(Object.keys(reported?.payload ?? {}).sort()).toEqual([
       'establishmentId',
       'observedAt',
+      // ADR-030: precios de otras tiendas y SIPSA, sin datos de nadie.
+      'plausibility',
       'presentationId',
       'priceCop',
       'priceType',

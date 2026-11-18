@@ -1,7 +1,12 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
 import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
-import { CatalogModule, PresentationFreshness, PresentationLabels } from '../catalog';
+import {
+  CatalogModule,
+  PresentationFreshness,
+  PresentationLabels,
+  PresentationsForPricing,
+} from '../catalog';
 import { EstablishmentNames, EstablishmentsAround, EstablishmentsModule } from '../establishments';
 import { IdentityModule } from '../identity';
 import { AssessReportedPrice, type PriceReportedV2 } from './application/assess-reported-price';
@@ -11,7 +16,7 @@ import {
   type ModerationDecider,
 } from './application/decide-moderation';
 import { AppealReport } from './application/appeal-report';
-import { FlagReport } from './application/flag-report';
+import { FlagReport, REPORT_FLAGGER, type ReportFlagger } from './application/flag-report';
 import { ModerationQueue } from './application/moderation-queue';
 import { MyReports } from './application/my-reports';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
@@ -40,14 +45,19 @@ const ZONE_RADIUS_METERS = 1000;
         }),
     },
     {
-      provide: FlagReport,
-      inject: [DATABASE],
-      useFactory: (db: Database): FlagReport =>
-        new FlagReport({
-          moderation: new DrizzleModerationStore(db),
-          observations: new DrizzleObservationStore(db),
-          clock: { now: () => new Date() },
-        }),
+      provide: REPORT_FLAGGER,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ReportFlagger => ({
+        execute: (request) =>
+          db.transaction((tx) =>
+            new FlagReport({
+              moderation: new DrizzleModerationStore(tx),
+              observations: new DrizzleObservationStore(tx),
+              events: { publish: (event) => outbox.publish(tx, event) },
+              clock: { now: () => new Date() },
+            }).execute(request),
+          ),
+      }),
     },
     {
       provide: AppealReport,
@@ -71,15 +81,15 @@ const ZONE_RADIUS_METERS = 1000;
     },
     {
       provide: MyReports,
-      inject: [DATABASE, PresentationLabels, EstablishmentNames],
+      inject: [DATABASE, PresentationsForPricing, EstablishmentNames],
       useFactory: (
         db: Database,
-        labels: PresentationLabels,
+        presentations: PresentationsForPricing,
         names: EstablishmentNames,
       ): MyReports =>
         new MyReports({
           moderation: new DrizzleModerationStore(db),
-          labels,
+          presentations,
           names,
           clock: { now: () => new Date() },
         }),

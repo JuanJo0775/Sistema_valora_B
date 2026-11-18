@@ -4,6 +4,7 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
+  Inject,
   NotFoundException,
   Param,
   ParseUUIDPipe,
@@ -18,14 +19,19 @@ import {
   Roles,
   SessionGuard,
 } from '../../identity';
-import { AlreadyFlaggedError, FlagReport, ReportNotFoundError } from '../application/flag-report';
+import {
+  AlreadyFlaggedError,
+  REPORT_FLAGGER,
+  type ReportFlagger,
+  ReportNotFoundError,
+} from '../application/flag-report';
 import { FlagDto } from './flag.dto';
 
 // Grill de la #32: la ruta cuelga de /reports, pero las marcas son de reliability.
 @Controller('reports')
 export class FlagsController {
   constructor(
-    private readonly flagReport: FlagReport,
+    @Inject(REPORT_FLAGGER) private readonly flagReport: ReportFlagger,
     private readonly reporters: ReporterIdentity,
   ) {}
 

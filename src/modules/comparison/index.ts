@@ -6,3 +6,4 @@ export {
 } from './comparison.module';
 export { CurrentPriceOf } from './application/current-price-of';
 export { ImportInitialPrices, type NewInitialPrice } from './application/import-initial-prices';
+export { PeerPrices, type PeerPrice } from './application/peer-prices';

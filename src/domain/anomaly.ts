@@ -1,3 +1,4 @@
+import { assessAgainstFallback, type FallbackReference, median } from './price-plausibility';
 import {
   comparableReports,
   DAY_IN_MILLISECONDS,
@@ -26,28 +27,30 @@ export interface AnomalyInput extends ReportWindow {
   // Calibración de la #67: reportes de la tienda que ya están en revisión. Cuentan para formar un
   // grupo coordinado, pero nunca entran a la mediana (un ataque anterior no la mueve).
   flagged?: ScoredReport[];
+  // ADR-030: otras tiendas del municipio y SIPSA; solo se usan si las cuentas no alcanzan.
+  fallback?: FallbackReference;
 }
 
+// ADR-030: de dónde salió la referencia cuando no son las cuentas de la tienda.
+export type ReferenceSource = 'tiendas' | 'sipsa';
+
 export type AnomalyResult =
-  | { status: 'normal'; median: number; deviation: number; references: number }
+  | {
+      status: 'normal';
+      median: number;
+      deviation: number;
+      references: number;
+      reference?: ReferenceSource;
+    }
   | {
       status: 'sospechoso';
       reason: 'rango' | 'coordinacion';
       median: number;
       deviation: number;
       references: number;
+      reference?: ReferenceSource;
     }
   | { status: 'sin_datos'; references: number };
-
-// Pregunta 4: con un número par de valores, el promedio de los dos del medio. Se llama con al menos
-// minReferences valores.
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  const upper = sorted[middle] ?? 0;
-  if (sorted.length % 2 === 1) return upper;
-  return ((sorted[middle - 1] ?? upper) + upper) / 2;
-}
 
 // Pregunta 5: reportes de cuentas nuevas con «el mismo precio» del candidato, cerca en el tiempo.
 function coordinatedWith(
@@ -94,7 +97,11 @@ export function assessAnomaly(
     notEnough(inStore) && input.zone
       ? comparableReports({ ...input, others: [...input.others, ...input.zone] })
       : inStore;
-  if (notEnough(references)) return { status: 'sin_datos', references: references.length };
+  if (notEnough(references)) {
+    // ADR-030: arranque en frío; sin otra referencia, no se puede evaluar.
+    const cold = input.fallback && assessAgainstFallback(input.candidate.priceCop, input.fallback);
+    return cold ?? { status: 'sin_datos', references: references.length };
+  }
 
   // Pregunta 5: la mediana se mide sin el grupo, para que no la mueva hacia su propio precio. Varias
   // cuentas nuevas de acuerdo no son sospechosas por sí solas: el precio también debe ser raro.

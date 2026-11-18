@@ -51,6 +51,8 @@ describe('GET /v1/products/{productId}/comparison', () => {
       id: storeId,
       name: 'Tienda de prueba',
       type: 'barrio',
+      address: 'Cra. 14 # 20-30',
+      neighborhood: 'Centro',
       lat: 4.535,
       lng: -75.6811,
     });
@@ -83,6 +85,8 @@ describe('GET /v1/products/{productId}/comparison', () => {
             id: storeId,
             name: 'Tienda de prueba',
             type: 'barrio',
+            address: 'Cra. 14 # 20-30',
+            neighborhood: 'Centro',
             lat: 4.535,
             lng: -75.6811,
             municipality: 'armenia',
