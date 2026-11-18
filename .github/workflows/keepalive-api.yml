@@ -29,4 +29,4 @@ jobs:
             --output /dev/null "$API_URL/v1/health"
           echo "La API respondió."
         env:
-          API_URL: https://valora-api-e9ep.onrender.com
+          API_URL: https://valora-api-faau.onrender.com
