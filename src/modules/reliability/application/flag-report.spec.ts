@@ -1,4 +1,5 @@
-import { AlreadyFlaggedError, FlagReport, ReportNotFoundError } from './flag-report';
+import type { DomainEvent } from '../../../shared/events';
+import { AlreadyFlaggedError, FlagReport, PRICE_FLAGGED, ReportNotFoundError } from './flag-report';
 import type { ModerationStore, NewFlag, Observation, PendingItem } from './stores';
 
 const now = new Date('2026-11-14T14:00:00Z');
@@ -63,15 +64,22 @@ class InMemoryModeration implements ModerationStore {
 
 function setup(known: Observation[] = [observation('reporte-1')]) {
   const moderation = new InMemoryModeration();
+  const published: DomainEvent[] = [];
   const flagReport = new FlagReport({
     moderation,
     observations: {
       byReportId: (reportId) =>
         Promise.resolve(known.find((seen) => seen.reportId === reportId) ?? null),
     },
+    events: {
+      publish: (event) => {
+        published.push(event);
+        return Promise.resolve();
+      },
+    },
     clock: { now: () => now },
   });
-  return { moderation, flagReport };
+  return { moderation, flagReport, published };
 }
 
 describe('marcar un reporte como dudoso (RF-013)', () => {
@@ -114,5 +122,46 @@ describe('marcar un reporte como dudoso (RF-013)', () => {
       flagReport.execute({ reportId: 'no-existe', flaggerKey: 'vecina', reason: 'otro' }),
     ).rejects.toThrow(ReportNotFoundError);
     expect(moderation.flags).toEqual([]);
+  });
+  // EC-03: un reporte marcado deja de ser el precio titular mientras un moderador lo revisa.
+  describe('aviso a comparison (PriceFlagged)', () => {
+    it('al marcar un reporte sin decisión avisa su presentación y tienda, sin la cuenta', async () => {
+      const { flagReport, published } = setup();
+
+      await flagReport.execute({ reportId: 'reporte-1', flaggerKey: 'vecina', reason: 'otro' });
+
+      expect(published).toHaveLength(1);
+      expect(published[0]).toMatchObject({
+        type: PRICE_FLAGGED,
+        version: 1,
+        payload: {
+          reportId: 'reporte-1',
+          presentationId: 'arroz-500g',
+          establishmentId: 'tienda-centro',
+        },
+      });
+      expect(JSON.stringify(published[0])).not.toContain('vecina');
+      expect(JSON.stringify(published[0])).not.toContain('autor');
+    });
+
+    it('no avisa si la cuenta ya lo había marcado', async () => {
+      const { flagReport, published } = setup();
+      await flagReport.execute({ reportId: 'reporte-1', flaggerKey: 'vecina', reason: 'otro' });
+
+      await expect(
+        flagReport.execute({ reportId: 'reporte-1', flaggerKey: 'vecina', reason: 'otro' }),
+      ).rejects.toThrow(AlreadyFlaggedError);
+
+      expect(published).toHaveLength(1);
+    });
+
+    it('no avisa si el moderador ya decidió: no volvería a la cola', async () => {
+      const decided: Observation = { ...observation('reporte-1'), moderation: 'aprobado' };
+      const { flagReport, published } = setup([decided]);
+
+      await flagReport.execute({ reportId: 'reporte-1', flaggerKey: 'vecina', reason: 'otro' });
+
+      expect(published).toEqual([]);
+    });
   });
 });

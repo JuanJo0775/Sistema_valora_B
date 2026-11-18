@@ -597,6 +597,13 @@ paths:
         que nunca sale en respuestas ni eventos (EC-08). La misma Idempotency-Key usada por otra cuenta
         responde 409.
 
+        Plausibilidad (ADR-030, EC-03): un precio fuera del piso y el techo absolutos se rechaza con 422
+        IMPLAUSIBLE_PRICE. Uno dentro de ellos pero muy lejos de lo habitual (menos del 40 % o más del
+        250 % de la mediana de las cuentas, de otras tiendas del municipio o, si no hay, del mayorista
+        SIPSA; valores provisionales) se recibe igual con 201 y estado recibido, pero reliability lo deja
+        en_revision: no es el precio vigente, no entra al orden ni a «Más barato» y va a la cola de
+        moderación. El estado final se lee en GET /me/reports (status en_revision), no en esta respuesta.
+
         Reintentos (EC-07): la Idempotency-Key se reconoce antes que la regla de duplicados. Si el primer
         envío se aplicó pero el cliente no recibió la respuesta (corte de red), repetir la MISMA clave con
         el MISMO cuerpo devuelve 200 con el recibo original, sin importar cuánto tiempo pase, y nunca
@@ -661,6 +668,9 @@ paths:
             Regla de negocio incumplida. code INVALID_OBSERVATION_DATE: observedAt está más de 5 minutos
             en el futuro o es de hace más de 24 horas, aunque venga de la cola sin conexión (#29). code
             UNKNOWN_PRESENTATION o UNKNOWN_ESTABLISHMENT: la presentación o el establecimiento no existen.
+            code IMPLAUSIBLE_PRICE (ADR-030, EC-03): el precio es menor que $100 o mayor que $5.000.000
+            (valores provisionales); no se guarda nada. El mensaje viene en español, por ejemplo «El
+            precio parece incompleto: ningún producto cuesta menos de $100. Revisa si faltan ceros».
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -682,7 +692,10 @@ paths:
       summary: Marcar un precio como dudoso (RF-013)
       description: >-
         Solo el rol reportante. Una marca por cuenta y reporte (RN1); el reporte entra a la cola de
-        moderación con el motivo marcado. Quién marca no se muestra a nadie (EC-08).
+        moderación con el motivo marcado. Quién marca no se muestra a nadie (EC-08). Si el reporte era
+        el precio vigente de esa tienda, pasa a en_revision (EC-03, ADR-030): deja de ser el precio
+        mostrado y de ser «Más barato» hasta que un moderador lo apruebe (vuelve a vigente) o lo
+        descarte.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -1708,7 +1721,7 @@ components:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), NOT_FOUND (404),
         CONFLICT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, INVALID_TTL, INVALID_VERIFICATION_TOKEN y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:
@@ -1968,7 +1981,13 @@ components:
       properties:
         presentationId: { type: string, format: uuid }
         establishmentId: { type: string, format: uuid }
-        priceCop: { type: integer, minimum: 1, maximum: 10000000 }
+        priceCop:
+          type: integer
+          minimum: 1
+          maximum: 10000000
+          description: >-
+            Precio total en pesos. Menos de $100 o más de $5.000.000 se rechaza con 422
+            IMPLAUSIBLE_PRICE (ADR-030, valores provisionales).
         priceType:
           type: string
           enum: [normal, oferta]
@@ -1985,7 +2004,12 @@ components:
       required: [id, status, receivedAt]
       properties:
         id: { type: string, format: uuid }
-        status: { type: string, enum: [recibido, en_revision, vigente, descartado] }
+        status:
+          type: string
+          enum: [recibido, en_revision, vigente, descartado]
+          description: >-
+            Hoy siempre recibido: el veredicto llega después (ADR-004). Un precio atípico (ADR-030)
+            aparece como en_revision en GET /me/reports.
         receivedAt: { type: string, format: date-time }
     ModerationItem:
       type: object

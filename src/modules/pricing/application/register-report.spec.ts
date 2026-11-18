@@ -1,4 +1,6 @@
 import { InvalidObservationDateError } from '../../../domain/freshness';
+import { ImplausiblePriceError } from '../../../domain/price-plausibility';
+import type { FallbackReference } from '../../../domain/price-plausibility';
 import type { DomainEvent } from '../../../shared/events';
 import type { NewReport, RecentReport, ReportRepository, SavedReport } from './report-repository';
 import {
@@ -50,7 +52,10 @@ class InMemoryReportRepository implements ReportRepository {
   }
 }
 
-function setup(clock = { now: () => now }) {
+function setup(
+  clock = { now: () => now },
+  context: FallbackReference = { peerPricesCop: [], wholesaleTotalCop: null },
+) {
   const reports = new InMemoryReportRepository();
   const registerReport = new RegisterReport({
     reports,
@@ -60,6 +65,7 @@ function setup(clock = { now: () => now }) {
     reporters: {
       of: () => Promise.resolve({ reporterKey: 'clave-seudonima', reporterSince: '2026-11-01' }),
     },
+    plausibility: { of: () => Promise.resolve(context) },
     clock,
   });
   return { reports, registerReport };
@@ -348,5 +354,57 @@ describe('registrar un reporte de precio', () => {
       created: false,
     });
     expect(reports.reports).toHaveLength(1);
+  });
+  describe('plausibilidad del precio (ADR-030)', () => {
+    it.each([12, 50, 99, 5_000_001])(
+      'rechaza $%i como IMPLAUSIBLE_PRICE, sin guardar nada',
+      async (priceCop) => {
+        const { reports, registerReport } = setup();
+
+        const attempt = registerReport.execute({
+          idempotencyKey: '99999999-9999-4999-8999-999999999990',
+          report: { ...report, priceCop },
+        });
+
+        await expect(attempt).rejects.toThrow(ImplausiblePriceError);
+        await expect(attempt).rejects.toMatchObject({ code: 'IMPLAUSIBLE_PRICE' });
+        expect(reports.reports).toHaveLength(0);
+        expect(reports.events).toHaveLength(0);
+      },
+    );
+
+    it('acepta el piso exacto de $100', async () => {
+      const { registerReport } = setup();
+
+      const result = await registerReport.execute({
+        idempotencyKey: '99999999-9999-4999-8999-999999999991',
+        report: { ...report, priceCop: 100 },
+      });
+
+      expect(result.created).toBe(true);
+    });
+
+    it('guarda en PriceReported el contexto de otras tiendas y SIPSA para reliability', async () => {
+      const context = { peerPricesCop: [1900, 1990, 2100], wholesaleTotalCop: 1500 };
+      const { reports, registerReport } = setup(undefined, context);
+
+      await registerReport.execute({
+        idempotencyKey: '99999999-9999-4999-8999-999999999992',
+        report: { ...report, priceCop: 1990 },
+      });
+
+      expect(reports.events[0]?.payload).toMatchObject({ plausibility: context });
+    });
+
+    it('el reintento de un reporte ya aceptado devuelve el recibo original', async () => {
+      const { reports, registerReport } = setup();
+      const command = { idempotencyKey: '99999999-9999-4999-8999-999999999993', report };
+      const first = await registerReport.execute(command);
+
+      const retry = await registerReport.execute(command);
+
+      expect(retry).toEqual({ receipt: first.receipt, created: false });
+      expect(reports.reports).toHaveLength(1);
+    });
   });
 });

@@ -286,6 +286,8 @@ describe('POST /v1/reports', () => {
     expect(Object.keys(reported?.payload ?? {}).sort()).toEqual([
       'establishmentId',
       'observedAt',
+      // ADR-030: precios de otras tiendas y SIPSA, sin datos de nadie.
+      'plausibility',
       'presentationId',
       'priceCop',
       'priceType',

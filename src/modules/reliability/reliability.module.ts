@@ -16,7 +16,7 @@ import {
   type ModerationDecider,
 } from './application/decide-moderation';
 import { AppealReport } from './application/appeal-report';
-import { FlagReport } from './application/flag-report';
+import { FlagReport, REPORT_FLAGGER, type ReportFlagger } from './application/flag-report';
 import { ModerationQueue } from './application/moderation-queue';
 import { MyReports } from './application/my-reports';
 import { ReliabilityOfPrices } from './application/reliability-of-prices';
@@ -45,14 +45,19 @@ const ZONE_RADIUS_METERS = 1000;
         }),
     },
     {
-      provide: FlagReport,
-      inject: [DATABASE],
-      useFactory: (db: Database): FlagReport =>
-        new FlagReport({
-          moderation: new DrizzleModerationStore(db),
-          observations: new DrizzleObservationStore(db),
-          clock: { now: () => new Date() },
-        }),
+      provide: REPORT_FLAGGER,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ReportFlagger => ({
+        execute: (request) =>
+          db.transaction((tx) =>
+            new FlagReport({
+              moderation: new DrizzleModerationStore(tx),
+              observations: new DrizzleObservationStore(tx),
+              events: { publish: (event) => outbox.publish(tx, event) },
+              clock: { now: () => new Date() },
+            }).execute(request),
+          ),
+      }),
     },
     {
       provide: AppealReport,

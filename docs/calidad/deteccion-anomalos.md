@@ -42,6 +42,23 @@
 - **24 de 67 honestos quedaron `sin_datos`:** al principio de cada tienda y presentación no hay con qué comparar. No es un error, pero muestra que la detección mejora con el volumen de reportes, y que conviene sembrar precios de referencia cuando existan (SIPSA, #34).
 - **Ofertas:** las 2 ofertas honestas quedaron `sin_datos` porque se comparan solo con otras ofertas, que son pocas.
 
+
+## Arranque en frío y plausibilidad (ADR-030, 17 de noviembre de 2026)
+
+Una auditoría vio que $12 por 1 kg de arroz se aceptó, fue vigente y titular «Más barato». Con datos iniciales de la semilla (sin cuenta reportante) no hay 3 cuentas de referencia, así que la regla de arriba respondía `sin_datos` y no marcaba nada. Comportamiento nuevo, en este orden:
+
+1. **Piso y techo absolutos:** menos de $100 o más de $5.000.000 se rechaza con 422 `IMPLAUSIBLE_PRICE` antes de guardar nada.
+2. **Referencia por cuentas** (la de arriba, ≥ 3 cuentas, desviación de 40 %).
+3. **Si no alcanza, otras tiendas:** la mediana del precio vigente de esa presentación en otras tiendas del mismo municipio (datos iniciales incluidos, al menos 3 tiendas). Menos del 40 % o más del 250 % de la mediana es sospechoso; el límite exacto es normal.
+4. **Si tampoco hay, SIPSA:** menos del 50 % del precio mayorista del mismo peso (precio por kilo por los kilos de la presentación, con el empaque) es sospechoso. Solo productos de peso y con referencia de 30 días o menos.
+5. **Sin ninguna referencia:** `sin_datos`; solo vale el piso.
+
+Un sospechoso por (3) o (4) usa el camino de siempre: queda `en_revision`, no reemplaza el precio vigente, no entra al orden ni a «Más barato», va a la cola del moderador (motivo `desviacion`, con la mediana de referencia) y a su autor le aparece «En revisión» en «Mis aportes». El resultado guarda de dónde salió la referencia (`reference: 'tiendas' | 'sipsa'`; las cuentas no llevan el campo).
+
+**Reporte marcado:** cuando una cuenta marca un reporte que es el precio vigente de su tienda, comparison lo pone `en_revision` (evento `PriceFlagged`) hasta que el moderador decida: aprobar lo devuelve a vigente, descartar lo retira. Antes seguía siendo titular durante la espera.
+
+Los parámetros (`PLAUSIBILITY_PARAMS`) son provisionales y se recalibran con la cola real; este conjunto etiquetado todavía no incluye casos de arranque en frío (pendiente de ampliar). Ver [ADR-030](../adr/0030-plausibilidad-de-precios.md).
+
 ## Límites de la medición
 
 - El conjunto es sintético: mide que las reglas hacen lo que se decidió, no cómo se comporta Valora con usuarios reales.

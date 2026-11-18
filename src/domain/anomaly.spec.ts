@@ -267,6 +267,55 @@ describe('garantías de la detección', () => {
     ).toMatchObject({ status: 'sospechoso', reason: 'rango' });
   });
 
+  // ADR-030: arranque en frío. Sin cuentas suficientes, la referencia son otras tiendas o SIPSA.
+  describe('arranque en frío (ADR-030)', () => {
+    const peers = { peerPricesCop: [1900, 1990, 2100] };
+
+    it('con 3 cuentas de referencia manda la mediana por cuentas, aunque haya tiendas', () => {
+      const result = assess(
+        report('ana', 4500),
+        [report('beto', 4900), report('caro', 5000), report('dani', 5100)],
+        { fallback: peers },
+      );
+
+      expect(result).toEqual({ status: 'normal', median: 5000, deviation: 0.1, references: 3 });
+    });
+
+    it('sin cuentas suficientes, $12 frente a tiendas de 1.990 es sospechoso por rango', () => {
+      expect(assess(report('ana', 12), [], { fallback: peers })).toEqual({
+        status: 'sospechoso',
+        reason: 'rango',
+        reference: 'tiendas',
+        median: 1990,
+        deviation: expect.closeTo(0.994, 3) as number,
+        references: 3,
+      });
+    });
+
+    it('un precio normal frente a las tiendas pasa', () => {
+      expect(assess(report('ana', 1800), [], { fallback: peers })).toMatchObject({
+        status: 'normal',
+        reference: 'tiendas',
+      });
+    });
+
+    it('sin tiendas suficientes usa SIPSA', () => {
+      const result = assess(report('ana', 500), [], {
+        fallback: { peerPricesCop: [1990], wholesaleTotalCop: 2000 },
+      });
+
+      expect(result).toMatchObject({ status: 'sospechoso', reference: 'sipsa', median: 2000 });
+    });
+
+    it('sin ninguna referencia sigue siendo sin_datos', () => {
+      expect(assess(report('ana', 12), [], { fallback: { peerPricesCop: [] } })).toEqual({
+        status: 'sin_datos',
+        references: 0,
+      });
+      expect(assess(report('ana', 12), [])).toEqual({ status: 'sin_datos', references: 0 });
+    });
+  });
+
   describe('escenarios de RF-012 (Notion)', () => {
     it('precio fuera de rango: con mediana de 5000, un reporte de 2500 queda en revisión', () => {
       expect(assess(report('ana', 2500), usual())).toMatchObject({ status: 'sospechoso' });
