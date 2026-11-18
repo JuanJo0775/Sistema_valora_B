@@ -4,7 +4,10 @@ import type { ModerationStore, Observation } from './stores';
 export interface MyReportsPorts {
   moderation: Pick<ModerationStore, 'authoredBy'>;
   // Consultas públicas de catalog y establishments (por su index.ts).
-  labels: { of(presentationIds: string[]): Promise<Map<string, string>> };
+  // Catalog dice el nombre y el producto de cada presentación (un lote, sin N+1).
+  presentations: {
+    of(presentationIds: string[]): Promise<Map<string, { label: string; productId: string }>>;
+  };
   names: { of(establishmentIds: string[]): Promise<Map<string, string>> };
   clock: { now(): Date };
 }
@@ -18,6 +21,8 @@ export interface MyReportsRequest {
 // quién marcó (EC-08).
 export interface MyReportItem {
   reportId: string;
+  // Para enlazar a /productos/:id; no viene si la presentación ya no existe en el catálogo.
+  productId?: string;
   productName: string;
   establishmentName: string;
   priceCop: number;
@@ -41,14 +46,14 @@ export class MyReports {
   constructor(private readonly ports: MyReportsPorts) {}
 
   async list(reporterKey: string, request: MyReportsRequest): Promise<MyReportsPage> {
-    const { moderation, labels, names, clock } = this.ports;
+    const { moderation, presentations, names, clock } = this.ports;
     const limit = request.limit ?? DEFAULT_MY_REPORTS_LIMIT;
     const reports = await moderation.authoredBy(reporterKey, {
       limit,
       ...(request.before ? { before: request.before } : {}),
     });
-    const [presentationNames, establishmentNames] = await Promise.all([
-      labels.of([...new Set(reports.map((report) => report.observation.presentationId))]),
+    const [known, establishmentNames] = await Promise.all([
+      presentations.of([...new Set(reports.map((report) => report.observation.presentationId))]),
       names.of([...new Set(reports.map((report) => report.observation.establishmentId))]),
     ]);
     const now = clock.now();
@@ -59,9 +64,11 @@ export class MyReports {
       ...(nextBefore ? { nextBefore } : {}),
       items: reports.map((report) => {
         const { observation } = report;
+        const presentation = known.get(observation.presentationId);
         return {
           reportId: observation.reportId,
-          productName: presentationNames.get(observation.presentationId) ?? UNNAMED,
+          ...(presentation ? { productId: presentation.productId } : {}),
+          productName: presentation?.label ?? UNNAMED,
           establishmentName: establishmentNames.get(observation.establishmentId) ?? UNNAMED,
           priceCop: observation.priceCop,
           priceType: observation.priceType,

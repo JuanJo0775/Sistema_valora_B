@@ -35,7 +35,14 @@ function setup(stored: AuthoredReport[]) {
         );
       },
     },
-    labels: { of: (ids) => Promise.resolve(new Map(ids.map((id) => [id, 'Arroz Diana · 500 g']))) },
+    presentations: {
+      of: (ids) =>
+        Promise.resolve(
+          new Map(
+            ids.map((id) => [id, { label: 'Arroz Diana · 500 g', productId: 'producto-arroz' }]),
+          ),
+        ),
+    },
     names: { of: (ids) => Promise.resolve(new Map(ids.map((id) => [id, 'Tienda Don José']))) },
     clock: { now: () => now },
   });
@@ -54,6 +61,7 @@ describe('mis aportes con su estado (RF-006, grill de la #76)', () => {
     expect(page.items).toEqual([
       {
         reportId: normal.observation.reportId,
+        productId: 'producto-arroz',
         productName: 'Arroz Diana · 500 g',
         establishmentName: 'Tienda Don José',
         priceCop: 2500,
@@ -63,6 +71,7 @@ describe('mis aportes con su estado (RF-006, grill de la #76)', () => {
       },
       {
         reportId: discarded.observation.reportId,
+        productId: 'producto-arroz',
         productName: 'Arroz Diana · 500 g',
         establishmentName: 'Tienda Don José',
         priceCop: 2500,
@@ -81,6 +90,23 @@ describe('mis aportes con su estado (RF-006, grill de la #76)', () => {
     const page = await myReports.list('autora', {});
 
     expect(page.items.map((item) => item.status)).toEqual(['en_revision']);
+  });
+
+  it('si la presentación ya no existe, el aporte sale sin productId y con «Sin nombre»', async () => {
+    const myReports = new MyReports({
+      moderation: { authoredBy: () => Promise.resolve([authored()]) },
+      presentations: { of: () => Promise.resolve(new Map()) },
+      names: { of: () => Promise.resolve(new Map()) },
+      clock: { now: () => now },
+    });
+
+    const page = await myReports.list('autora', {});
+
+    expect(page.items[0]).not.toHaveProperty('productId');
+    expect(page.items[0]).toMatchObject({
+      productName: 'Sin nombre',
+      establishmentName: 'Sin nombre',
+    });
   });
 
   it('sin aportes, la lista está vacía', async () => {
