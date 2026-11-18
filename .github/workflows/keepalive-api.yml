@@ -1,0 +1,32 @@
+name: Mantener la API despierta
+
+# El plan gratuito de Render duerme el servicio tras 15 minutos sin tráfico y la primera petición
+# tarda cerca de un minuto (Vercel puede cortarla). Un ping a GET /v1/health cada 10 minutos lo evita.
+# /v1/health no toca la base de datos, así que Neon sigue durmiendo cuando nadie usa la app.
+#
+# Límites del plan gratuito que se tienen en cuenta:
+# - Render da 750 horas de instancia al mes por cuenta; un servicio 24/7 gasta 720 a 744. Por eso solo
+#   se despierta de 07:00 a 23:00 hora de Colombia (12:00 a 04:00 UTC): unas 490 horas al mes.
+# - GitHub Actions es gratis y sin tope de minutos en repositorios públicos. Los cron pueden
+#   retrasarse varios minutos y se desactivan tras 60 días sin actividad en el repositorio.
+on:
+  schedule:
+    - cron: '*/10 0-4,12-23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Ping a la API
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Llamar a /v1/health
+        run: |
+          curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 --retry-all-errors \
+            --output /dev/null "$API_URL/v1/health"
+          echo "La API respondió."
+        env:
+          API_URL: https://valora-api-faau.onrender.com

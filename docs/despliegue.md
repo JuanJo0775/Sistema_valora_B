@@ -126,7 +126,7 @@ Un merge a `main` del backend (o «Run workflow» en la pestaña Actions) lanza 
 
 ### 7. Antes de cada demostración
 
-En el plan gratuito Render duerme el servicio. La primera petición tarda cerca de un minuto y Vercel puede cortar la espera con un error. Despiértalo antes:
+En el plan gratuito Render duerme el servicio. La primera petición tarda cerca de un minuto y Vercel puede cortar la espera con un error. Despiértalo antes (el workflow `keepalive-api.yml` ya lo hace cada 10 minutos entre las 07:00 y las 23:00 de Colombia; fuera de ese horario o si Render lo suspendió, hazlo a mano):
 
 ```bash
 curl https://<tu-dominio-vercel>/v1/health
