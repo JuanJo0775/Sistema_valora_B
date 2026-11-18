@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { assertObservedAtAccepted } from '../../../domain/observation-date';
+import { assertPlausiblePrice, type FallbackReference } from '../../../domain/price-plausibility';
 import { burstAt, nextAllowedObservation, REPORT_LIMITS } from '../../../domain/report-limits';
 import { createEvent } from '../../../shared/events';
 import type { NewReport, ReportInput, ReportRepository } from './report-repository';
@@ -19,11 +20,22 @@ export interface ReporterPseudonyms {
   of(accountId: string): Promise<{ reporterKey: string; reporterSince: string }>;
 }
 
+// ADR-030: puerto hacia comparison, establishments y catalog (por sus index.ts): lo que se sabe del
+// precio de esa presentación fuera de las cuentas, para que reliability evalúe el arranque en frío.
+export interface PlausibilityContext {
+  of(report: {
+    presentationId: string;
+    establishmentId: string;
+    priceType: 'normal' | 'oferta';
+  }): Promise<FallbackReference>;
+}
+
 export interface RegisterReportDependencies {
   reports: ReportRepository;
   presentations: ExistenceCheck;
   establishments: ExistenceCheck;
   reporters: ReporterPseudonyms;
+  plausibility: PlausibilityContext;
   clock: Clock;
 }
 
@@ -124,6 +136,8 @@ export class RegisterReport {
     const requestHash = hashOf(report);
     const existing = await this.deps.reports.findByIdempotencyKey(idempotencyKey);
     if (existing) return retryResult(existing, requestHash);
+    // ADR-030: el piso y el techo absolutos, antes de guardar nada (422 IMPLAUSIBLE_PRICE).
+    assertPlausiblePrice(report.priceCop);
     const receivedAt = this.deps.clock.now();
     assertObservedAtAccepted({ observedAt: report.observedAt, receivedAt });
     if (!(await this.deps.presentations.exists(report.presentationId))) {
@@ -150,6 +164,7 @@ export class RegisterReport {
       requestHash,
     };
     const { reporterKey, reporterSince } = await this.deps.reporters.of(report.reporterId);
+    const plausibility = await this.deps.plausibility.of(report);
     const saved = await this.deps.reports.save(
       newReport,
       // Versión 2 (#31): la clave seudónima y el día de la cuenta; nunca el id ni el correo (EC-08).
@@ -164,6 +179,7 @@ export class RegisterReport {
           receivedAt: newReport.receivedAt.toISOString(),
           reporterKey,
           reporterSince,
+          plausibility,
         }),
         // RF-012 RN2: el reporte que deja la cuenta en el límite avisa a moderación, solo con la
         // clave seudónima (EC-08).
