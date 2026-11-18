@@ -98,11 +98,13 @@ export class RunSeed {
 
 function toStore(row: SeedRow): EstablishmentImport {
   const address = text(row, 'direccion');
+  const neighborhood = text(row, 'barrio');
   return {
     id: storeId(row),
     name: text(row, 'nombre'),
     type: text(row, 'tipo') as EstablishmentType,
     ...(address === '' ? {} : { address }),
+    ...(neighborhood === '' ? {} : { neighborhood }),
     lat: Number(text(row, 'lat')),
     lng: Number(text(row, 'lng')),
   };

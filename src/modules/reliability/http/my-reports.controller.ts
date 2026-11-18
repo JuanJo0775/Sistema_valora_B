@@ -37,6 +37,7 @@ import { MyReportsQueryDto } from './my-reports.query';
 interface MyReportsResponse {
   items: {
     reportId: string;
+    productId?: string;
     productName: string;
     establishmentName: string;
     priceCop: number;

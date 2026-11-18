@@ -10,7 +10,13 @@ interface FeaturedPriceResponse {
   label: string;
   priceCop: number;
   unitPrice: { valueCop: number; per: string };
-  establishment: { id: string; name: string; distanceM?: number };
+  establishment: {
+    id: string;
+    name: string;
+    address?: string;
+    neighborhood?: string;
+    distanceM?: number;
+  };
 }
 
 // DTO de salida explícito: la forma de GET /v1/featured-products. Sin datos del reportante (EC-08).

@@ -8,6 +8,7 @@ import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
+import { OutboxRelay } from '../../src/shared/events';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { contractErrors } from '../support/contract';
 import { type SignedIn, signIn } from '../support/sign-in';
@@ -77,6 +78,8 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
       id: storeId,
       name: 'Tienda del contrato',
       type: 'barrio',
+      address: 'Cra. 14 # 20-30',
+      neighborhood: 'Centro',
       lat: 4.535,
       lng: -75.6811,
     });
@@ -196,10 +199,13 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
       'GET /auth/session',
       request(server).get('/v1/auth/session').set('Cookie', reporter.cookie),
     );
-    await check(
+    // reliability evalúa el reporte por el outbox; después aparece en «Mis aportes» con su productId.
+    await app.get(OutboxRelay).runOnce();
+    const mine = await check(
       'GET /me/reports',
       request(server).get('/v1/me/reports').set('Cookie', reporter.cookie),
     );
+    expect((mine.body as { items: { productId?: string }[] }).items[0]?.productId).toBe(productId);
 
     expect(checked.map(({ status }) => status)).toEqual([201, 200, 400, 401, 409, 200, 200]);
     expect(

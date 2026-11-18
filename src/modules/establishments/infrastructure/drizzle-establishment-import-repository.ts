@@ -15,6 +15,7 @@ export class DrizzleEstablishmentImportRepository implements EstablishmentImport
       name: establishment.name,
       type: establishment.type,
       address: establishment.address ?? null,
+      neighborhood: establishment.neighborhood ?? null,
       location: { lat: establishment.lat, lng: establishment.lng },
       // Grill de la #106: la semilla es de Armenia.
       municipality: establishment.municipality ?? 'armenia',
@@ -28,6 +29,7 @@ export class DrizzleEstablishmentImportRepository implements EstablishmentImport
           name: row.name,
           type: row.type,
           address: row.address,
+          neighborhood: row.neighborhood,
           location: row.location,
           municipality: row.municipality,
         },

@@ -7,6 +7,8 @@ export interface NearbyEstablishment {
   name: string;
   type: EstablishmentType;
   address?: string;
+  // H-06: barrio de la tienda, cuando el directorio lo tiene; dato público de la tienda (EC-08).
+  neighborhood?: string;
   // Ubicación de la tienda (pública). Nunca la del usuario (RF-005 RN4).
   lat: number;
   lng: number;
