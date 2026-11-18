@@ -61,10 +61,19 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
       presentations: [{ id: milk1l, quantity: 1, unit: 'l', packCount: 1 }],
     });
     const stores = app.get(ImportEstablishments);
-    const shop = (id: string, name: string, municipality: 'armenia' | 'calarca' = 'armenia') =>
-      stores.save({ id, name, type: 'barrio', lat: 4.535, lng: -75.6811, municipality });
-    await shop(donJose, 'Tienda Don José');
-    await shop(ara, 'Ara Centro');
+    const shop = (
+      id: string,
+      name: string,
+      municipality: 'armenia' | 'calarca' = 'armenia',
+      place: { address?: string; neighborhood?: string } = {},
+    ) =>
+      stores.save({ id, name, type: 'barrio', lat: 4.535, lng: -75.6811, municipality, ...place });
+    // H-06: la dirección y el barrio salen con la tienda; la de Calarcá no los tiene y no los muestra.
+    await shop(donJose, 'Tienda Don José', 'armenia', {
+      address: 'Cra. 14 # 20-30',
+      neighborhood: 'Centro',
+    });
+    await shop(ara, 'Ara Centro', 'armenia', { address: 'Cl. 21 # 15-10' });
     await shop(calarca, 'Tienda de Calarcá', 'calarca');
     const observedAt = new Date(Date.now() - 60 * 60 * 1000);
     const price = (presentationId: string, establishmentId: string, priceCop: number) => ({
@@ -114,7 +123,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
             label: 'Arroz Diana · 1 kg',
             priceCop: 4400,
             unitPrice: { valueCop: 440, per: '100g' },
-            establishment: { id: ara, name: 'Ara Centro' },
+            establishment: { id: ara, name: 'Ara Centro', address: 'Cl. 21 # 15-10' },
           },
           // 500 g a $2.500 es $500 por 100 g: el más caro. $440 frente a $500, 12 % menos.
           priciest: {
@@ -122,7 +131,12 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
             label: 'Arroz Diana · 500 g',
             priceCop: 2500,
             unitPrice: { valueCop: 500, per: '100g' },
-            establishment: { id: donJose, name: 'Tienda Don José' },
+            establishment: {
+              id: donJose,
+              name: 'Tienda Don José',
+              address: 'Cra. 14 # 20-30',
+              neighborhood: 'Centro',
+            },
           },
           savingsPercent: 12,
         },
@@ -136,7 +150,12 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
             label: 'Leche entera · 1 l',
             priceCop: 4800,
             unitPrice: { valueCop: 480, per: '100ml' },
-            establishment: { id: donJose, name: 'Tienda Don José' },
+            establishment: {
+              id: donJose,
+              name: 'Tienda Don José',
+              address: 'Cra. 14 # 20-30',
+              neighborhood: 'Centro',
+            },
           },
         },
       ],

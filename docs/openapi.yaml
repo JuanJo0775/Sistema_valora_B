@@ -493,6 +493,7 @@ paths:
                       name: { type: string }
                       type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
                       address: { type: string }
+                      neighborhood: { type: string, description: Opcional; barrio de la tienda (H-06). }
                       lat: { type: number }
                       lng: { type: number }
                       municipality: { $ref: '#/components/schemas/Municipality' }
@@ -602,6 +603,12 @@ paths:
         SIPSA; valores provisionales) se recibe igual con 201 y estado recibido, pero reliability lo deja
         en_revision: no es el precio vigente, no entra al orden ni a «Más barato» y va a la cola de
         moderación. El estado final se lee en GET /me/reports (status en_revision), no en esta respuesta.
+
+        Reintentos (EC-07): la Idempotency-Key se reconoce antes que la regla de duplicados. Si el primer
+        envío se aplicó pero el cliente no recibió la respuesta (corte de red), repetir la MISMA clave con
+        el MISMO cuerpo devuelve 200 con el recibo original, sin importar cuánto tiempo pase, y nunca
+        409 DUPLICATE_REPORT. El cliente debe guardar la clave con el reporte en la cola y reutilizarla;
+        si genera una clave nueva al reintentar, el mismo precio responde 409 DUPLICATE_REPORT.
 
         Cola sin conexión (ADR-010, #30): la PWA manda cada reporte de la cola por esta misma ruta, con
         su clave. Qué hacer con cada respuesta: 201 o 200, confirmado (sale de la cola); 400, 409 o 422,
@@ -860,6 +867,12 @@ paths:
                         ]
                       properties:
                         reportId: { type: string, format: uuid }
+                        productId:
+                          type: string
+                          format: uuid
+                          description: >-
+                            El producto del aporte, para enlazar a /productos/{id}. Falta solo si la
+                            presentación ya no existe en el catálogo (entonces productName es «Sin nombre»).
                         productName: { type: string }
                         establishmentName: { type: string }
                         priceCop: { type: integer, minimum: 1 }
@@ -1767,6 +1780,11 @@ components:
         name: { type: string }
         type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
         address: { type: string, description: Opcional; muchas tiendas no tienen dirección formal. }
+        neighborhood:
+          type: string
+          description: >-
+            Opcional (H-06): barrio de la tienda, cuando el directorio lo tiene. Junto con address distingue
+            tiendas de la misma cadena. Dato público de la tienda, no del usuario.
         lat: { type: number, description: Latitud de la tienda (nunca la del usuario, RF-005 RN4). }
         lng: { type: number, description: Longitud de la tienda. }
         municipality: { $ref: '#/components/schemas/Municipality' }
@@ -1788,6 +1806,11 @@ components:
         name: { type: string }
         type: { type: string, enum: [barrio, minimercado, supermercado, descuento] }
         address: { type: string, description: Opcional; muchas tiendas no tienen dirección formal. }
+        neighborhood:
+          type: string
+          description: >-
+            Opcional (H-06): barrio de la tienda, cuando el directorio lo tiene. Junto con address distingue
+            tiendas de la misma cadena. Dato público de la tienda, no del usuario.
         lat: { type: number, description: Latitud de la tienda (nunca la del usuario, RF-005 RN4). }
         lng: { type: number, description: Longitud de la tienda. }
         municipality: { $ref: '#/components/schemas/Municipality' }
@@ -1946,6 +1969,8 @@ components:
           properties:
             id: { type: string, format: uuid }
             name: { type: string }
+            address: { type: string, description: Opcional; dirección de la tienda cuando el directorio la tiene (H-06). }
+            neighborhood: { type: string, description: Opcional; barrio de la tienda cuando el directorio lo tiene (H-06). }
             distanceM:
               type: integer
               minimum: 0

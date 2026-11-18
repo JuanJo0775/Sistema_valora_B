@@ -1,7 +1,12 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
 import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
-import { CatalogModule, PresentationFreshness, PresentationLabels } from '../catalog';
+import {
+  CatalogModule,
+  PresentationFreshness,
+  PresentationLabels,
+  PresentationsForPricing,
+} from '../catalog';
 import { EstablishmentNames, EstablishmentsAround, EstablishmentsModule } from '../establishments';
 import { IdentityModule } from '../identity';
 import { AssessReportedPrice, type PriceReportedV2 } from './application/assess-reported-price';
@@ -76,15 +81,15 @@ const ZONE_RADIUS_METERS = 1000;
     },
     {
       provide: MyReports,
-      inject: [DATABASE, PresentationLabels, EstablishmentNames],
+      inject: [DATABASE, PresentationsForPricing, EstablishmentNames],
       useFactory: (
         db: Database,
-        labels: PresentationLabels,
+        presentations: PresentationsForPricing,
         names: EstablishmentNames,
       ): MyReports =>
         new MyReports({
           moderation: new DrizzleModerationStore(db),
-          labels,
+          presentations,
           names,
           clock: { now: () => new Date() },
         }),

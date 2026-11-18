@@ -6,6 +6,7 @@ export interface EstablishmentResponse {
   name: string;
   type: string;
   address?: string;
+  neighborhood?: string;
   lat: number;
   lng: number;
   // Grill de la #106.
@@ -28,6 +29,7 @@ export function toNearbyResponse(
       name: store.name,
       type: store.type,
       ...(store.address === undefined ? {} : { address: store.address }),
+      ...(store.neighborhood === undefined ? {} : { neighborhood: store.neighborhood }),
       lat: store.lat,
       lng: store.lng,
       municipality: store.municipality,
