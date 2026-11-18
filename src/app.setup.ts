@@ -2,14 +2,22 @@ import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import compression from 'compression';
 import type { Env } from './shared/config/env.validation';
 import { ErrorFilter } from './shared/http/error.filter';
 import { createValidationPipe } from './shared/http/validation';
 
 export const API_PREFIX = 'v1';
 
+// ADR-031: por debajo de 1 kB comprimir cuesta más CPU que lo que ahorra (y la cabecera gzip pesa).
+export const COMPRESSION_THRESHOLD_BYTES = 1024;
+
 // Configuración común de la aplicación, usada por main.ts y por las pruebas de integración.
 export function configureApp(app: INestApplication): void {
+  // ADR-031 (ahorro de ancho de banda): gzip o brotli según Accept-Encoding. El filtro por defecto solo
+  // comprime tipos de texto (JSON), así que las fotos de /media/ y lo ya comprimido pasan intactos, y
+  // agrega Vary: Accept-Encoding. Va antes de todo lo demás para cubrir también los errores.
+  (app as NestExpressApplication).use(compression({ threshold: COMPRESSION_THRESHOLD_BYTES }));
   app.setGlobalPrefix(API_PREFIX);
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new ErrorFilter(app.get(HttpAdapterHost)));

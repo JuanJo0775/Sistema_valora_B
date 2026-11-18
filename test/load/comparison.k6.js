@@ -1,8 +1,8 @@
 // Prueba de carga de la comparación de precios (EC-04, RNF-004, PR-12, issue #35).
 // Corre con k6, no con Jest: el archivo no termina en .spec.ts.
 //   k6 run -e API_URL=https://<api>/v1 -e SUMMARY_PATH=summary.json test/load/comparison.k6.js
-// Opcionales: LOAD_VUS (500), LOAD_DURATION (10m) y WARMUP_DURATION (90s), para ensayos cortos.
-// API_URL es obligatoria y no se escribe aquí: sale del workflow load.yml.
+// Opcionales: LOAD_VUS (50), LOAD_DURATION (2m) y WARMUP_DURATION (90s), para ensayos cortos.
+// API_URL es obligatoria y no se escribe aquí: sale del workflow load.yml. No la apuntes a producción (ADR-031).
 import http from 'k6/http';
 import { check, fail, sleep } from 'k6';
 import exec from 'k6/execution';
@@ -10,8 +10,8 @@ import { Counter } from 'k6/metrics';
 
 const API_URL = (__ENV.API_URL || '').replace(/\/+$/, '');
 const SUMMARY_PATH = __ENV.SUMMARY_PATH || 'summary.json';
-const LOAD_VUS = Number(__ENV.LOAD_VUS || 500);
-const LOAD_DURATION = __ENV.LOAD_DURATION || '10m';
+const LOAD_VUS = Number(__ENV.LOAD_VUS || 50);
+const LOAD_DURATION = __ENV.LOAD_DURATION || '2m';
 const WARMUP_DURATION = __ENV.WARMUP_DURATION || '90s';
 
 // Búsquedas de productos de consumo masivo de la semilla.
@@ -34,7 +34,7 @@ export const options = {
       duration: WARMUP_DURATION,
       tags: { escenario: 'calentamiento' },
     },
-    // 500 usuarios virtuales: rampa de 1 minuto y 10 minutos sostenidos.
+    // LOAD_VUS usuarios virtuales (50 por defecto): rampa de 1 minuto y LOAD_DURATION sostenidos.
     carga: {
       executor: 'ramping-vus',
       startTime: WARMUP_DURATION,
@@ -67,7 +67,7 @@ function productIds(body) {
 
 export function setup() {
   if (!API_URL) {
-    fail('Falta API_URL (por ejemplo, https://valora-api.onrender.com/v1).');
+    fail('Falta API_URL (un entorno local o efímero, por ejemplo http://localhost:3000/v1).');
   }
   const ids = new Set();
   for (const term of SEARCH_TERMS) {

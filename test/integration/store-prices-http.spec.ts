@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
+import { CACHE_PRICES } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
@@ -66,7 +67,7 @@ describe('GET /v1/establishments/{establishmentId}/prices (RF-008, #28)', () => 
   it('responde 200 con la tienda y sus precios, pública y con caché de 60 s', async () => {
     const response = await prices().expect(200);
 
-    expect(response.headers['cache-control']).toBe('public, max-age=60');
+    expect(response.headers['cache-control']).toBe(CACHE_PRICES);
     expect(response.body).toEqual({
       establishment: {
         id: storeId,

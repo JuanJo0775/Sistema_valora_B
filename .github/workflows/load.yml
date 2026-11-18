@@ -1,23 +1,37 @@
 name: Carga
 
-# Prueba de carga de la comparación contra el entorno desplegado (EC-04, RNF-004, PR-12, issue #35).
-# No corre en cada pull request ni en dev: carga Render y Neon (plan gratuito, ADR-012). Solo se lanza a
-# mano (Actions → Carga → Run workflow), para que ningún push dispare una carga sin querer.
+# Prueba de carga de la comparación (EC-04, RNF-004, PR-12, issue #35).
+# No corre en cada pull request ni en dev: solo se lanza a mano (Actions → Carga → Run workflow).
+#
+# NO se corre contra producción. El 17-nov-2026 una corrida de 500 usuarios y 10 minutos contra la API
+# de Render (plan gratuito) se sumó al tráfico normal y se pasó del límite de 5 GB de ancho de banda
+# de salida del mes (11 GB): Render suspendió el servicio (ADR-031). Lo normal es apuntar a un entorno
+# local o a un servicio efímero y borrarlo al terminar (docs/calidad/prueba-de-carga-ec04.md).
+#
+# Costo aproximado en ancho de banda de salida del servicio probado (una petición cada ~2 s por usuario):
+#   peticiones ≈ usuarios × 0,5 × segundos, y bytes ≈ peticiones × tamaño de la respuesta.
+#   Una comparación pesa unos 10-20 kB sin comprimir y 2-4 kB con gzip (ADR-031).
+#   Ejemplos sin comprimir: 50 usuarios × 2 min ≈ 0,1 GB; 500 usuarios × 10 min ≈ 3 GB por corrida.
+#   El plan gratuito de Render incluye 5 GB al mes en total, con el tráfico real incluido.
 on:
   workflow_dispatch:
     inputs:
       api_url:
-        description: URL base de la API, terminada en /v1 (sin secretos).
+        description: URL base de la API, terminada en /v1 (sin secretos). Un entorno local o efímero, no producción.
         required: false
-        default: https://valora-api-e9ep.onrender.com/v1
+        default: http://localhost:3000/v1
+      confirmar_produccion:
+        description: Solo si la URL es onrender.com o vercel.app, escribe exactamente CARGA-EN-PRODUCCION.
+        required: false
+        default: ''
       vus:
         description: Usuarios virtuales de la carga.
         required: false
-        default: '500'
+        default: '50'
       duration:
-        description: Duración de la carga sostenida (formato de k6, por ejemplo 10m).
+        description: Duración de la carga sostenida (formato de k6, por ejemplo 2m).
         required: false
-        default: 10m
+        default: 2m
 
 permissions:
   contents: read
@@ -33,19 +47,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      # La URL es pública (vercel.json del frontend la usa). Se puede cambiar con la variable del
-      # repositorio LOAD_API_URL o con el input al lanzarlo a mano.
-      API_URL: ${{ inputs.api_url || vars.LOAD_API_URL || 'https://valora-api-e9ep.onrender.com/v1' }}
-      LOAD_VUS: ${{ inputs.vus || '500' }}
-      LOAD_DURATION: ${{ inputs.duration || '10m' }}
+      # Sin valor de producción por defecto (ADR-031). Se pasan por el entorno, no dentro de run:.
+      API_URL: ${{ inputs.api_url || 'http://localhost:3000/v1' }}
+      CONFIRMAR_PRODUCCION: ${{ inputs.confirmar_produccion }}
+      LOAD_VUS: ${{ inputs.vus || '50' }}
+      LOAD_DURATION: ${{ inputs.duration || '2m' }}
     steps:
+      # Primer paso, antes de bajar nada: si la URL es de producción o de Vercel (que reenvía a
+      # Render), exige la frase exacta. Así una carga contra producción nunca es accidental.
+      - name: Guarda contra cargas en producción
+        run: |
+          if printf '%s' "$API_URL" | grep -Eiq 'onrender\.com|vercel\.app'; then
+            if [ "$CONFIRMAR_PRODUCCION" != "CARGA-EN-PRODUCCION" ]; then
+              echo "::error::La URL apunta a onrender.com o vercel.app (producción). Esa carga gasta el ancho de banda del plan gratuito de Render (5 GB al mes) y ya causó una suspensión. Usa un entorno local o efímero, o escribe exactamente CARGA-EN-PRODUCCION en confirmar_produccion."
+              exit 1
+            fi
+            echo "::warning::Carga confirmada contra producción: $LOAD_VUS usuarios, $LOAD_DURATION."
+          fi
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - uses: grafana/setup-k6-action@c47136d33d365efbeb9ae7266908b5dcf98cdece # v1.3.0
         with:
           k6-version: '1.8.3'
 
-      # Render gratuito se duerme: una sola petición lo despierta antes del calentamiento de k6.
+      # Un servicio gratuito se duerme: una sola petición lo despierta antes del calentamiento de k6.
       - name: Despertar la API
         run: |
           curl --fail --silent --show-error --retry 10 --retry-delay 10 --retry-all-errors \

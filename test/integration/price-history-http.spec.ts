@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
+import { CACHE_PRICE_HISTORY } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { historyWindow } from '../../src/domain/price-history';
@@ -76,7 +77,7 @@ describe('GET /v1/products/{productId}/history (RF-008 RN4, #83)', () => {
       .query({ establishmentId: otherStore })
       .expect(200);
 
-    expect(response.headers['cache-control']).toBe('public, max-age=300');
+    expect(response.headers['cache-control']).toBe(CACHE_PRICE_HISTORY);
     expect(response.headers['etag']).toBeDefined();
     expect(response.body).toEqual({
       from,

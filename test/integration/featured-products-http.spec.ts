@@ -2,6 +2,7 @@ import { ConsoleLogger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
+import { CACHE_PRICES } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
@@ -105,7 +106,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
   it('responde 200 con el criterio y los productos con más tiendas primero, pública y con caché de 60 s', async () => {
     const response = await featured({ municipality: 'armenia' }).expect(200);
 
-    expect(response.headers['cache-control']).toBe('public, max-age=60');
+    expect(response.headers['cache-control']).toBe(CACHE_PRICES);
     expect(response.body).toEqual({
       criteria: { municipality: 'armenia', sort: 'store_count' },
       // Don José y Ara tienen precios vigentes en Armenia.

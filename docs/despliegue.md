@@ -116,6 +116,15 @@ Si falta alguna con `resend`, la API no arranca y el mensaje nombra la variable.
 3. Copia la dirección pública del servicio (por defecto `https://valora-api.onrender.com`) y el **Deploy Hook** («Settings», «Deploy Hook») a los secretos del paso 2.
 4. `SESSION_SECRET` lo genera Render (`generateValue`). `TRUST_PROXY=2` ya viene en `render.yaml`.
 
+### 4 bis. Variables de producción: dónde sacar cada una
+
+`.env.production.example` lista todas las variables con comentarios. Se llenan en Render (servicio, «Environment», «Add from .env»), nunca en Git. Los secretos solo los copia una persona del equipo:
+
+- `DATABASE_URL`: Neon, proyecto `valora`, botón «Connect», cadena «Pooled connection».
+- `REPORTER_KEY_SECRET`: no cambia nunca (las reputaciones dependen de ella). Guárdala en el gestor de contraseñas del equipo.
+- `SUPABASE_SECRET_KEY`: Supabase, «Project Settings», «API Keys», «Secret keys».
+- Cambio de cuenta de Render: crear el servicio con el Blueprint `render.yaml` (rama `main`), pegar el `.env`, actualizar `vercel.json` del frontend, la variable `RENDER_DEPLOY_HOOK_URL` y el ping `keepalive-api.yml`.
+
 ### 5. Conectar Vercel (repositorio del frontend)
 
 Importa el repositorio, preset **Vite**, rama de producción `main`. `vercel.json` ya reenvía `/v1/*`. Si la dirección de Render **no** es `https://valora-api.onrender.com`, cambia el `destination` en `vercel.json` y vuelve a desplegar (la URL queda escrita ahí).
@@ -126,7 +135,7 @@ Un merge a `main` del backend (o «Run workflow» en la pestaña Actions) lanza 
 
 ### 7. Antes de cada demostración
 
-En el plan gratuito Render duerme el servicio. La primera petición tarda cerca de un minuto y Vercel puede cortar la espera con un error. Despiértalo antes:
+En el plan gratuito Render duerme el servicio. La primera petición tarda cerca de un minuto y Vercel puede cortar la espera con un error. Despiértalo antes (el workflow `keepalive-api.yml` ya lo hace cada 10 minutos entre las 07:00 y las 23:00 de Colombia; fuera de ese horario o si Render lo suspendió, hazlo a mano):
 
 ```bash
 curl https://<tu-dominio-vercel>/v1/health

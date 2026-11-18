@@ -155,6 +155,9 @@ export class ErrorFilter implements ExceptionFilter {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
       body: INTERNAL_ERROR,
     };
+    // ADR-031: un error nunca se guarda en caché, aunque la ruta ya hubiera puesto una cabecera pública
+    // antes de fallar (por ejemplo featured-products con un municipio faltante).
+    this.adapterHost.httpAdapter.setHeader(response, 'Cache-Control', 'no-store');
     const retryAfter = retryAfterOf(exception);
     if (retryAfter !== undefined) {
       this.adapterHost.httpAdapter.setHeader(response, 'Retry-After', String(retryAfter));
