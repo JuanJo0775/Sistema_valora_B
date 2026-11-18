@@ -7,6 +7,7 @@ export interface EstablishmentDetailResponse {
   name: string;
   type: string;
   address?: string;
+  neighborhood?: string;
   lat: number;
   lng: number;
   municipality: string;
@@ -22,6 +23,7 @@ export function toEstablishmentDetailResponse(
     name: store.name,
     type: store.type,
     ...(store.address === undefined ? {} : { address: store.address }),
+    ...(store.neighborhood === undefined ? {} : { neighborhood: store.neighborhood }),
     lat: store.lat,
     lng: store.lng,
     municipality: store.municipality,

@@ -46,7 +46,14 @@ export interface FeaturedPrice {
   priceCop: number;
   unitPrice: UnitPrice;
   // distanceM solo con la ubicación del usuario.
-  establishment: { id: string; name: string; distanceM?: number };
+  // H-06: la dirección y el barrio distinguen tiendas de la misma cadena.
+  establishment: {
+    id: string;
+    name: string;
+    address?: string;
+    neighborhood?: string;
+    distanceM?: number;
+  };
 }
 
 export interface FeaturedProduct extends Omit<ProductSummaryView, 'id'> {
@@ -97,6 +104,10 @@ const toPrice = (offer: Offer): FeaturedPrice => ({
   establishment: {
     id: offer.establishment.id,
     name: offer.establishment.name,
+    ...(offer.establishment.address === undefined ? {} : { address: offer.establishment.address }),
+    ...(offer.establishment.neighborhood === undefined
+      ? {}
+      : { neighborhood: offer.establishment.neighborhood }),
     ...(offer.establishment.distanceM === undefined
       ? {}
       : { distanceM: offer.establishment.distanceM }),

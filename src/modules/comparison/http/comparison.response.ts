@@ -7,6 +7,7 @@ export interface ComparisonItemResponse {
     name: string;
     type: string;
     address?: string;
+    neighborhood?: string;
     lat: number;
     lng: number;
     municipality: string;
@@ -54,6 +55,9 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
         name: establishment.name,
         type: establishment.type,
         ...(establishment.address === undefined ? {} : { address: establishment.address }),
+        ...(establishment.neighborhood === undefined
+          ? {}
+          : { neighborhood: establishment.neighborhood }),
         lat: establishment.lat,
         lng: establishment.lng,
         municipality: establishment.municipality,

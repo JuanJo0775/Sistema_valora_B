@@ -7,6 +7,7 @@ export interface EstablishmentImport {
   name: string;
   type: EstablishmentType;
   address?: string;
+  neighborhood?: string;
   lat: number;
   lng: number;
   // Grill de la #106: si no viene, la tienda es de Armenia.

@@ -20,6 +20,7 @@ const detailColumns = {
   name: establishments.name,
   type: establishments.type,
   address: establishments.address,
+  neighborhood: establishments.neighborhood,
   lat: sql<number>`ST_Y(${establishments.location}::geometry)`.mapWith(Number),
   lng: sql<number>`ST_X(${establishments.location}::geometry)`.mapWith(Number),
   municipality: establishments.municipality,
@@ -30,17 +31,25 @@ interface DetailRow {
   name: string;
   type: string;
   address: string | null;
+  neighborhood: string | null;
   lat: number;
   lng: number;
   municipality: string;
 }
 
 // Las restricciones CHECK de la tabla garantizan el tipo y el municipio.
-function toDetail({ address, type, municipality, ...rest }: DetailRow): EstablishmentDetail {
+function toDetail({
+  address,
+  neighborhood,
+  type,
+  municipality,
+  ...rest
+}: DetailRow): EstablishmentDetail {
   return {
     ...rest,
     type: type as EstablishmentType,
     ...(address === null ? {} : { address }),
+    ...(neighborhood === null ? {} : { neighborhood }),
     municipality: municipality as Municipality,
   };
 }
@@ -186,6 +195,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         name: establishments.name,
         type: establishments.type,
         address: establishments.address,
+        neighborhood: establishments.neighborhood,
         lat: sql<number>`ST_Y(${establishments.location}::geometry)`.mapWith(Number),
         lng: sql<number>`ST_X(${establishments.location}::geometry)`.mapWith(Number),
         municipality: establishments.municipality,
@@ -209,6 +219,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       // La restricción CHECK de la tabla garantiza que es uno de los 4 tipos.
       type: row.type as EstablishmentType,
       ...(row.address === null ? {} : { address: row.address }),
+      ...(row.neighborhood === null ? {} : { neighborhood: row.neighborhood }),
       lat: row.lat,
       lng: row.lng,
       // La restricción CHECK de la tabla garantiza que es un municipio de la lista.
