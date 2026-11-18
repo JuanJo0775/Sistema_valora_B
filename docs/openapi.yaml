@@ -8,6 +8,12 @@ info:
     Dos superficies: consumidor/reportante y moderación. La superficie de comercios
     (corte 3) se lista al final con el prefijo /v1/commerce y la marca x-corte: 3.
     Las respuestas públicas nunca incluyen correo, ubicación ni identificador del reportante (ADR-013).
+
+    Ancho de banda (ADR-031): con Accept-Encoding, las respuestas de más de 1 kB salen comprimidas con
+    gzip o brotli (Content-Encoding y Vary: Accept-Encoding). Las lecturas públicas sin ubicación
+    llevan Cache-Control con s-maxage para la caché compartida del CDN (60 s como máximo si traen
+    precios); las que llevan ubicación o sesión, las de reportes y moderación, y todos los errores
+    responden no-store.
 servers:
   - url: https://api.valora.example/v1
     description: Servidor de ejemplo; el proveedor se define en ADR-012.
@@ -33,6 +39,9 @@ paths:
       responses:
         '200':
           description: La API responde
+          headers:
+            Cache-Control:
+              schema: { type: string, example: no-store }
           content:
             application/json:
               schema:
@@ -67,7 +76,11 @@ paths:
           description: Productos encontrados, del más parecido al menos parecido
           headers:
             Cache-Control:
-              schema: { type: string, example: 'public, max-age=30' }
+              description: Caché del navegador 30 s; caché compartida (CDN) 60 s (ADR-031).
+              schema: { type: string, example: 'public, max-age=30, s-maxage=60, stale-while-revalidate=60' }
+            Vary:
+              description: Accept-Encoding; la respuesta se comprime con gzip o brotli si pesa más de 1 kB (ADR-031).
+              schema: { type: string, example: Accept-Encoding }
           content:
             application/json:
               schema:
@@ -92,7 +105,7 @@ paths:
           description: Todas las categorías, por nombre
           headers:
             Cache-Control:
-              schema: { type: string, example: 'public, max-age=3600' }
+              schema: { type: string, example: 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400' }
           content:
             application/json:
               schema:
@@ -117,7 +130,8 @@ paths:
           description: Producto con su categoría y sus presentaciones
           headers:
             Cache-Control:
-              schema: { type: string, example: 'public, max-age=300' }
+              description: Caché compartida de 5 minutos (ADR-031).
+              schema: { type: string, example: 'public, max-age=300, s-maxage=300, stale-while-revalidate=600' }
             ETag:
               schema: { type: string }
           content:
@@ -176,7 +190,12 @@ paths:
           description: Resultados y promociones separadas
           headers:
             Cache-Control:
-              schema: { type: string, example: no-store }
+              description: >-
+                no-store si la URL lleva lat o lng; con solo el municipio, caché compartida de 60 s como
+                máximo (ADR-031) y ETag.
+              schema: { type: string, example: 'public, max-age=30, s-maxage=60, stale-while-revalidate=30' }
+            ETag:
+              schema: { type: string }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Comparison' }
@@ -212,7 +231,8 @@ paths:
           description: Serie diaria por presentación
           headers:
             Cache-Control:
-              schema: { type: string, example: 'public, max-age=300' }
+              description: Caché del navegador 5 minutos; caché compartida 60 s, porque trae precios (ADR-031).
+              schema: { type: string, example: 'public, max-age=300, s-maxage=60, stale-while-revalidate=60' }
             ETag:
               schema: { type: string }
           content:
@@ -305,8 +325,8 @@ paths:
           description: Los productos de la canasta, en el orden declarado
           headers:
             Cache-Control:
-              description: public, max-age=60 sin ubicación; no-store con ubicación.
-              schema: { type: string, example: 'public, max-age=60' }
+              description: Sin ubicación, caché compartida de 60 s (ADR-031); no-store con ubicación.
+              schema: { type: string, example: 'public, max-age=30, s-maxage=60, stale-while-revalidate=30' }
             ETag:
               schema: { type: string }
           content:
@@ -400,7 +420,7 @@ paths:
           description: Tiendas encontradas, ordenadas por nombre
           headers:
             Cache-Control:
-              schema: { type: string, example: 'public, max-age=300' }
+              schema: { type: string, example: 'public, max-age=300, s-maxage=300, stale-while-revalidate=600' }
           content:
             application/json:
               schema:
@@ -476,7 +496,8 @@ paths:
           description: La tienda y sus precios
           headers:
             Cache-Control:
-              schema: { type: string, example: 'public, max-age=60' }
+              description: Caché compartida de 60 s como máximo, porque trae precios (ADR-031).
+              schema: { type: string, example: 'public, max-age=30, s-maxage=60, stale-while-revalidate=30' }
             ETag:
               schema: { type: string }
           content:
@@ -1061,6 +1082,10 @@ paths:
       responses:
         '200':
           description: Sesión activa
+          headers:
+            Cache-Control:
+              description: Lleva el token CSRF; nunca se guarda en caché.
+              schema: { type: string, example: no-store }
           content:
             application/json:
               schema:
@@ -1648,7 +1673,10 @@ components:
       schema: { type: string, format: uuid }
   headers:
     CacheControl:
-      schema: { type: string, example: 'public, max-age=30' }
+      description: >-
+        Caché del navegador (max-age) y de las cachés compartidas (s-maxage). Con ubicación, sesión o
+        error, no-store (ADR-031).
+      schema: { type: string, example: 'public, max-age=30, s-maxage=60, stale-while-revalidate=30' }
     RetryAfter:
       description: Segundos que faltan para poder intentar de nuevo.
       schema: { type: integer, minimum: 1 }
