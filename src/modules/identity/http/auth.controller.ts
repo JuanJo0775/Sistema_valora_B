@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   HttpCode,
   HttpException,
   HttpStatus,
@@ -120,7 +121,9 @@ export class AuthController {
   }
 
   // Grill de la #16, pregunta 4: el token CSRF se deriva de la sesión y no se guarda.
+  // no-store: lleva el token CSRF de esta sesión; ninguna caché, ni la del CDN, puede guardarla (ADR-031).
   @Get('session')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(SessionGuard)
   @AllowSuspended()
   async session(@CurrentSession() session: AuthenticatedSession): Promise<SessionResponse> {

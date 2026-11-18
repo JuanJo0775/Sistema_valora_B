@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
+import { CACHE_CATALOG } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
@@ -94,7 +95,7 @@ describe('las listas de tiendas dicen cuántos precios vigentes tiene cada una (
       .query({ municipality: 'armenia' })
       .expect(200);
 
-    expect(response.headers['cache-control']).toBe('public, max-age=300');
+    expect(response.headers['cache-control']).toBe(CACHE_CATALOG);
     expect(
       countsOf((response.body as { items: { id: string; priceCount: number }[] }).items),
     ).toEqual({ [donJose]: 3, [ara]: 0 });

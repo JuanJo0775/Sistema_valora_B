@@ -1,12 +1,13 @@
 import {
   Controller,
   Get,
-  Header,
   NotFoundException,
   Param,
   ParseUUIDPipe,
   Query,
+  Res,
 } from '@nestjs/common';
+import { CACHE_PRICES, NO_STORE } from '../../../shared/http/cache-control';
 import { RequestValidationError } from '../../../shared/http/validation';
 import {
   CompareProduct,
@@ -16,14 +17,19 @@ import {
 import { ComparisonQueryDto } from './comparison.query';
 import { type ComparisonResponse, toComparisonResponse } from './comparison.response';
 
+// Lo único que se usa de la respuesta HTTP: la cabecera de caché depende de si llegó la ubicación.
+interface HeaderTarget {
+  setHeader(name: string, value: string): unknown;
+}
+
 @Controller('products')
 export class ComparisonController {
   constructor(private readonly compareProduct: CompareProduct) {}
 
-  // no-store: la URL lleva la ubicación del usuario y no debe quedar en ninguna caché (EC-08,
-  // grill de la #15, pregunta 3).
+  // no-store cuando la URL lleva la ubicación del usuario (lat/lng): no debe quedar en ninguna caché
+  // (EC-08, grill de la #15, pregunta 3). Con solo el municipio no hay dato personal y se cachea
+  // 60 s como máximo en la caché compartida (ADR-031); Express agrega el ETag.
   @Get(':productId/comparison')
-  @Header('Cache-Control', 'no-store')
   async compare(
     @Param(
       'productId',
@@ -33,8 +39,12 @@ export class ComparisonController {
     )
     productId: string,
     @Query() query: ComparisonQueryDto,
+    @Res({ passthrough: true }) response: HeaderTarget,
   ): Promise<ComparisonResponse> {
     const { lat, lng, municipality, radiusKm, sort, onlyCurrent } = query;
+    // Cualquiera de las dos coordenadas basta para tratarla como ubicada: ante la duda, no-store.
+    const located = lat !== undefined || lng !== undefined;
+    response.setHeader('Cache-Control', located ? NO_STORE : CACHE_PRICES);
     try {
       const comparison = await this.compareProduct.execute({
         productId,

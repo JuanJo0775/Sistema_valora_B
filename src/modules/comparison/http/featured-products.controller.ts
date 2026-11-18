@@ -1,5 +1,6 @@
 import { Controller, Get, Query, Res } from '@nestjs/common';
 import type { Municipality } from '../../../domain/municipality';
+import { CACHE_PRICES, NO_STORE } from '../../../shared/http/cache-control';
 import { RequestValidationError } from '../../../shared/http/validation';
 import { MissingAreaError } from '../application/compare-product';
 import { type FeaturedPrice, FeaturedProducts } from '../application/featured-products';
@@ -67,7 +68,7 @@ export class FeaturedProductsController {
     const located = lat !== undefined && lng !== undefined;
     // Con la ubicación del usuario en la URL, ninguna caché la guarda (EC-08), como la comparación.
     // Sin ella, caché pública de 60 s (EC-04); Express agrega el ETag y responde 304 con If-None-Match.
-    response.setHeader('Cache-Control', located ? 'no-store' : 'public, max-age=60');
+    response.setHeader('Cache-Control', located ? NO_STORE : CACHE_PRICES);
     try {
       const result = await this.featured.of({
         ...(lat === undefined ? {} : { lat }),
