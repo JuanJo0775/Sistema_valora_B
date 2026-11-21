@@ -49,7 +49,9 @@ export class SignInWithGoogle {
         accountId: existing.id,
         subject: identity.subject,
         verifiedAt: this.ports.clock.now(),
-        forgetPassword: false,
+        // Grill de la #178, pregunta 4: si nadie había comprobado el correo, quien creó la cuenta pudo no
+        // ser su dueña; pierde la contraseña y las sesiones.
+        forgetPassword: !existing.emailVerified,
       });
       return { outcome: 'signed-in', ...(await startSession(this.ports, existing.id)) };
     }
