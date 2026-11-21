@@ -280,6 +280,18 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
       expect(account).toEqual({ password_hash: null, google_subject: google.identity.subject });
     });
 
+    // El mismo límite que POST /auth/register: 10 registros por IP en 15 minutos.
+    it('al undécimo registro desde la misma IP responde 429 con Retry-After', async () => {
+      const pending = await pendingSignUp();
+      const complete = () =>
+        request(server).post('/v1/auth/google/complete').set('Cookie', pending).send(body);
+      for (let attempt = 0; attempt < 10; attempt += 1) await complete().expect(204);
+
+      const response = await complete().expect(429);
+
+      expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+    });
+
     it('sin aceptar la política vigente o con un nombre inválido responde 400', async () => {
       const pending = await pendingSignUp();
 
