@@ -143,4 +143,16 @@ describe('Open Food Facts por código de barras (ADR-020, #119)', () => {
 
     expect(waits).toEqual([12_000]);
   });
+
+  it('si sigue frenado después de 4 intentos, se rinde con HTTP 429 y no espera para siempre', async () => {
+    const { fetcher, requests } = fakeFetch(() => json(429, {}));
+    const patient = new OpenFoodFactsImages(fetcher, () => Promise.resolve());
+
+    await expect(patient.find('7702001023456')).resolves.toEqual({
+      status: 'error',
+      message: 'HTTP 429',
+    });
+
+    expect(requests).toHaveLength(4);
+  });
 });
