@@ -12,6 +12,7 @@ import {
 } from '../../src/modules/identity/application/google-identity-provider';
 import type { GoogleIdentity } from '../../src/modules/identity/application/sign-in-with-google';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { signIn } from '../support/sign-in';
 
 // Google simulado: la URL lleva el state para poder volver con él, y solo acepta un código.
 class FakeGoogle implements GoogleIdentityProvider {
@@ -139,6 +140,35 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
       const response = await callback({ code: 'codigo-bueno', state }).expect(302);
 
       expect(response.headers['location']).toBe('/entrar?error=google');
+    });
+  });
+
+  describe('GET /v1/auth/google/callback con éxito', () => {
+    // Vuelve de Google con el código bueno y el state correcto, como el navegador.
+    async function returnFromGoogle() {
+      const { cookie, state } = await begin();
+      return callback({ code: 'codigo-bueno', state }, cookie).expect(302);
+    }
+    const sessionCookieOf = (response: request.Response) =>
+      ((response.headers['set-cookie'] as unknown as string[]) ?? [])
+        .find((cookie) => cookie.startsWith('valora_session='))
+        ?.split(';')[0];
+
+    it('una cuenta ya vinculada vuelve a / con la cookie de sesión de siempre, y la sesión sirve', async () => {
+      await signIn(server, db, 'ana@correo.com');
+      await db.execute(
+        sql`update identity.accounts set google_subject = ${google.identity.subject} where email = 'ana@correo.com'`,
+      );
+
+      const response = await returnFromGoogle();
+
+      expect(response.headers['location']).toBe('/');
+      const cookie = sessionCookieOf(response);
+      expect(cookie).toMatch(/^valora_session=[\w-]{43}$/);
+      await request(server)
+        .get('/v1/auth/session')
+        .set('Cookie', cookie ?? '')
+        .expect(200);
     });
   });
 });
