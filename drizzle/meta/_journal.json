@@ -218,6 +218,13 @@
       "when": 1795230269461,
       "tag": "0030_identity-password-optional",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795232586900,
+      "tag": "0031_identity-google-subject",
+      "breakpoints": true
     }
   ]
 }
