@@ -1,6 +1,7 @@
 import {
   AccountGoneError,
   DeleteOwnAccount,
+  InvalidConfirmationError,
   InvalidPasswordError,
   LastModeratorError,
   TooManyAttemptsError,
@@ -126,6 +127,22 @@ describe('eliminar la propia cuenta (ADR-032)', () => {
     expect(deletion.revoked).toEqual([ana.id]);
     expect(hasher.verified).toHaveLength(0);
     expect(limiter.resets).toEqual([`eliminar-cuenta:${ana.id}`]);
+  });
+
+  it('con un correo que no es el de la cuenta responde InvalidConfirmationError, cuenta el fallo y no marca nada', async () => {
+    const { deletion, limiter, useCase } = setup();
+    deletion.add({ ...ana, passwordHash: null });
+
+    const attempt = useCase.execute({
+      accountId: ana.id,
+      confirmEmail: 'otra@correo.com',
+      ip: '203.0.113.7',
+    });
+
+    await expect(attempt).rejects.toThrow(InvalidConfirmationError);
+    expect(deletion.accounts.get(ana.id)?.deletionScheduledFor).toBeNull();
+    expect(deletion.revoked).toHaveLength(0);
+    expect(limiter.recorded).toContain(`eliminar-cuenta:${ana.id}`);
   });
 
   it('una cuenta que ya no existe responde AccountGoneError', async () => {
