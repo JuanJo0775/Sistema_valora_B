@@ -30,6 +30,7 @@ export class ResendEmailSender implements EmailSender {
           to: [message.to],
           subject: message.subject,
           text: message.text,
+          ...(message.html === undefined ? {} : { html: message.html }),
         }),
         signal: AbortSignal.timeout(10_000),
       });

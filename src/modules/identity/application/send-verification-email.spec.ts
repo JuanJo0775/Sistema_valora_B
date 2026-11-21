@@ -106,4 +106,20 @@ describe('enviar el correo de verificación (ADR-029)', () => {
     expect(sender.sent[0]?.text).toContain('24 horas');
     expect(sender.sent[0]?.text).not.toContain('ana@correo.com');
   });
+
+  // El correo con estilo (aprobado por el equipo el 21-nov-2026): tarjeta con el logo, título y botón.
+  it('trae también la versión con estilo: el botón «Verificar mi correo» lleva al mismo enlace', async () => {
+    const { sender, send } = setup();
+
+    await send.execute({ accountId: 'cuenta-1', email: 'ana@correo.com' });
+
+    const html = sender.sent[0]?.html ?? '';
+    const link = `https://valora.example/verificar-correo?token=${sender.lastToken()}`;
+    expect(html).toContain(`<a href="${link}"`);
+    expect(html).toContain('Verificar mi correo');
+    expect(html).toContain('Confirma tu correo');
+    expect(html).toContain('<img src="https://valora.example/icon-192.png"');
+    expect(html).toContain('24 horas');
+    expect(html).not.toContain('ana@correo.com');
+  });
 });
