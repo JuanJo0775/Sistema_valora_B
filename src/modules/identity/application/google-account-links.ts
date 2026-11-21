@@ -1,4 +1,4 @@
-import type { Account } from './account-repository';
+import type { Account, Role } from './account-repository';
 
 // Una cuenta que se puede vincular con Google: además de lo de siempre, si ya verificó su correo.
 export interface LinkableAccount extends Account {
@@ -16,12 +16,26 @@ export interface GoogleLink {
   forgetPassword: boolean;
 }
 
+// RF-001 (#181): la cuenta de quien entró con Google y aceptó la política. Sin contraseña.
+export interface NewGoogleAccount {
+  id: string;
+  email: string;
+  displayName: string;
+  role: Role;
+  policyVersion: string;
+  policyAcceptedAt: Date;
+  googleSubject: string;
+  emailVerifiedAt: Date;
+}
+
 // ADR-029, fase 2 (#180): puerto propio del vínculo con Google, para no ensanchar AccountRepository.
 export interface GoogleAccountLinks {
   findBySubject(subject: string): Promise<Account | null>;
   findByEmail(email: string): Promise<LinkableAccount | null>;
   // Una sola transacción.
   link(link: GoogleLink): Promise<void>;
+  // false si el correo ya tiene cuenta (otra petición la creó mientras tanto); no cambia nada.
+  createLinked(account: NewGoogleAccount): Promise<boolean>;
 }
 
 export const GOOGLE_ACCOUNT_LINKS = Symbol('GOOGLE_ACCOUNT_LINKS');

@@ -5,6 +5,7 @@ import type {
   GoogleAccountLinks,
   GoogleLink,
   LinkableAccount,
+  NewGoogleAccount,
 } from '../application/google-account-links';
 import { accounts, sessions } from './schema';
 
@@ -75,5 +76,15 @@ export class DrizzleGoogleAccountLinks implements GoogleAccountLinks {
           .where(and(eq(sessions.accountId, link.accountId), isNull(sessions.revokedAt)));
       }
     });
+  }
+
+  // El índice único del correo decide si otra petición la creó primero.
+  async createLinked(account: NewGoogleAccount): Promise<boolean> {
+    const created = await this.db
+      .insert(accounts)
+      .values({ ...account, passwordHash: null })
+      .onConflictDoNothing({ target: accounts.email })
+      .returning({ id: accounts.id });
+    return created.length > 0;
   }
 }
