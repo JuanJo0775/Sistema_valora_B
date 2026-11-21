@@ -846,6 +846,68 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /me/account-deletion:
+    post:
+      tags: [Autenticación]
+      operationId: requestAccountDeletion
+      summary: Eliminar la propia cuenta, con 10 días de gracia (Ley 1581, art. 8; ADR-032)
+      description: >-
+        Derecho de supresión. Cualquier rol, también una cuenta suspendida. Pide la contraseña. No borra
+        todavía: marca la cuenta como pendiente de eliminación para dentro de 10 días, revoca todas sus
+        sesiones y limpia la cookie. Pedirla otra vez no mueve la fecha. Durante la gracia la persona no
+        puede iniciar sesión (403 ACCOUNT_PENDING_DELETION) salvo para restaurarla con POST
+        /auth/restore-account. Pasada la fecha, un trabajo interno (cada hora y al arrancar el servidor;
+        puede retrasarse unas horas, nunca se adelanta) borra la cuenta y todo lo que cuelga de ella. Los
+        reportes de precios, las propuestas y las marcas se conservan sin ningún dato personal.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, maxLength: 128, writeOnly: true }
+      responses:
+        '202':
+          description: Eliminación programada; la cookie de sesión se borra
+          headers:
+            Set-Cookie:
+              description: valora_session vacía y vencida (Max-Age=0).
+              schema: { type: string }
+            Cache-Control:
+              schema: { type: string, example: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scheduledFor]
+                description: Sin correo, nombre ni id de la cuenta (EC-08).
+                properties:
+                  scheduledFor:
+                    type: string
+                    format: date-time
+                    description: Momento desde el que la cuenta se puede borrar de forma definitiva (ahora más 10 días).
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: >-
+            code INVALID_PASSWORD (la contraseña no coincide; no se programa nada), code
+            LAST_MODERATOR_CANNOT_DELETE (es el único moderador activo) o code CSRF_TOKEN_INVALID.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: >-
+            Más de 5 contraseñas incorrectas por cuenta o 20 intentos por IP en 15 minutos.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /me/reports:
     get:
       tags: [Reportes]
@@ -1051,10 +1113,63 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: >-
+            code ACCOUNT_PENDING_DELETION: la contraseña es correcta, pero la cuenta tiene la eliminación
+            pendiente (ADR-032). No se crea sesión; scheduledFor dice cuándo se borra y POST
+            /auth/restore-account la restaura. Con una contraseña incorrecta el error es el 401 genérico:
+            no revela que la cuenta existe ni su estado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PendingDeletionError' }
         '429':
           description: >-
             Más de 5 fallos por correo o 20 intentos por IP en 15 minutos (valores provisionales). No
             revela si la cuenta existe.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /auth/restore-account:
+    post:
+      tags: [Autenticación]
+      operationId: restoreAccount
+      summary: Restaurar una cuenta con la eliminación pendiente e iniciar sesión (ADR-032)
+      description: >-
+        Pública, sin sesión (como el login, no lleva token CSRF). Si la cuenta tiene la eliminación
+        pendiente y la contraseña es correcta, cancela la eliminación y deja la sesión iniciada con la
+        misma respuesta y cookie que POST /auth/login. Si el correo no existe, la contraseña es mala o la
+        cuenta no estaba pendiente, responde el mismo 401 genérico del login. Comparte con el login el
+        límite de intentos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, maxLength: 128, writeOnly: true }
+      responses:
+        '204':
+          description: Eliminación cancelada y sesión iniciada
+          headers:
+            Set-Cookie:
+              description: >-
+                valora_session con HttpOnly, Secure, SameSite=Lax, Path=/ y Max-Age de 30 días.
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: >-
+            code UNAUTHORIZED con «Correo o contraseña incorrectos.», exista o no la cuenta y esté o no
+            pendiente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Mismo límite que el login (5 fallos por correo o 20 intentos por IP en 15 minutos).
           headers:
             Retry-After: { $ref: '#/components/headers/RetryAfter' }
           content:
@@ -1701,6 +1816,7 @@ components:
         X-CSRF-Token o no coincide con la sesión. code ACCOUNT_SUSPENDED: la cuenta está suspendida y
         su sesión solo sirve para ver el estado de sus reportes, apelar y cerrar sesión (#71). code
         EMAIL_NOT_VERIFIED: solo en POST /reports, la cuenta aún no verificó su correo (ADR-029).
+        INVALID_PASSWORD y LAST_MODERATOR_CANNOT_DELETE: solo en POST /me/account-deletion (ADR-032).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -1741,12 +1857,24 @@ components:
           type: string
           format: date-time
           description: Hora de observación desde la que se acepta otro reporte de esa presentación en esa tienda.
+    PendingDeletionError:
+      description: Error con scheduledFor, solo en el 403 ACCOUNT_PENDING_DELETION de POST /auth/login (ADR-032).
+      type: object
+      required: [code, message, scheduledFor]
+      additionalProperties: false
+      properties:
+        code: { type: string, example: ACCOUNT_PENDING_DELETION }
+        message: { type: string }
+        scheduledFor:
+          type: string
+          format: date-time
+          description: Cuándo se borra la cuenta de forma definitiva si no se restaura.
     Error:
       type: object
       description: >-
         Única forma de error de la API (issue #41). Solo tiene code y message; la única excepción es
-        availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84). Valores de code:
-        VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), NOT_FOUND (404),
+        availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84) y scheduledFor en el 403 ACCOUNT_PENDING_DELETION (PendingDeletionError, ADR-032). Valores de code:
+        VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
         CONFLICT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
         INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN y los que agreguen las reglas futuras.

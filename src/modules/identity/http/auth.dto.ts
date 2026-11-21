@@ -63,6 +63,13 @@ export class LoginDto {
   password!: string;
 }
 
+// ADR-032: la contraseña confirma que quien pide eliminar la cuenta es su dueño.
+export class DeleteAccountDto {
+  @IsString({ message: 'debe ser texto' })
+  @MaxLength(128, { message: 'debe tener como máximo 128 caracteres' })
+  password!: string;
+}
+
 // Grill de la #73, pregunta 1: comercio no se asigna hasta el Corte 3.
 const ASSIGNABLE_ROLES: Role[] = ['reportante', 'moderador'];
 const ROLE_NOTE_MESSAGE = `debe tener de ${String(ROLE_NOTE_LENGTH.min)} a ${String(ROLE_NOTE_LENGTH.max)} caracteres`;

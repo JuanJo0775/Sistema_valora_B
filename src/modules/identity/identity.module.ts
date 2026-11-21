@@ -3,9 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../shared/config/env.validation';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
 import { type DomainEvent, EventBus } from '../../shared/events';
+import {
+  ACCOUNT_DELETION_REPOSITORY,
+  type AccountDeletionRepository,
+} from './application/account-deletion-repository';
 import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/account-repository';
 import type { AttemptLimiter } from './application/attempt-limiter';
 import { ChangeRole } from './application/change-role';
+import { DeleteOwnAccount } from './application/delete-own-account';
+import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
+import { RestoreAccount } from './application/restore-account';
 import type { Clock } from './application/clock';
 import { EMAIL_SENDER, type EmailSender } from './application/email-sender';
 import {
@@ -26,11 +33,14 @@ import { SendVerificationEmail } from './application/send-verification-email';
 import { SuspendReporter } from './application/suspend-reporter';
 import { VerifyEmail } from './application/verify-email';
 import { AuthController } from './http/auth.controller';
+import { MeController } from './http/me.controller';
 import { RolesController } from './http/roles.controller';
 import { SessionGuard } from './http/session.guard';
 import { VerifiedEmailGuard } from './http/verified-email.guard';
+import { AccountPurgeScheduler } from './infrastructure/account-purge-scheduler';
 import { Argon2PasswordHasher } from './infrastructure/argon2-password-hasher';
 import { ConsoleEmailSender } from './infrastructure/console-email-sender';
+import { DrizzleAccountDeletionRepository } from './infrastructure/drizzle-account-deletion-repository';
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository';
 import { DrizzleEmailVerificationRepository } from './infrastructure/drizzle-email-verification-repository';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository';
@@ -62,7 +72,7 @@ function emailSender(config: ConfigService<Env, true>): EmailSender {
 const DEFAULT_APP_URL = 'http://localhost:5173';
 
 @Module({
-  controllers: [AuthController, RolesController],
+  controllers: [AuthController, MeController, RolesController],
   providers: [
     { provide: CLOCK, useValue: { now: () => new Date() } satisfies Clock },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
@@ -171,6 +181,50 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         clock: Clock,
       ): Login => new Login({ accounts, hasher, sessions, limiter, clock }),
     },
+    // ADR-032: eliminación de la cuenta con 10 días de gracia, restauración y purga.
+    {
+      provide: ACCOUNT_DELETION_REPOSITORY,
+      inject: [DATABASE],
+      useFactory: (db: Database): AccountDeletionRepository =>
+        new DrizzleAccountDeletionRepository(db),
+    },
+    {
+      provide: DeleteOwnAccount,
+      inject: [ACCOUNT_DELETION_REPOSITORY, PASSWORD_HASHER, ATTEMPT_LIMITER, CLOCK],
+      useFactory: (
+        deletion: AccountDeletionRepository,
+        hasher: PasswordHasher,
+        limiter: AttemptLimiter,
+        clock: Clock,
+      ): DeleteOwnAccount => new DeleteOwnAccount({ deletion, hasher, limiter, clock }),
+    },
+    {
+      provide: RestoreAccount,
+      inject: [
+        ACCOUNT_REPOSITORY,
+        ACCOUNT_DELETION_REPOSITORY,
+        PASSWORD_HASHER,
+        SESSION_REPOSITORY,
+        ATTEMPT_LIMITER,
+        CLOCK,
+      ],
+      useFactory: (
+        accounts: AccountRepository,
+        deletion: AccountDeletionRepository,
+        hasher: PasswordHasher,
+        sessions: SessionRepository,
+        limiter: AttemptLimiter,
+        clock: Clock,
+      ): RestoreAccount =>
+        new RestoreAccount({ accounts, deletion, hasher, sessions, limiter, clock }),
+    },
+    {
+      provide: PurgeDeletedAccounts,
+      inject: [ACCOUNT_DELETION_REPOSITORY, CLOCK],
+      useFactory: (deletion: AccountDeletionRepository, clock: Clock): PurgeDeletedAccounts =>
+        new PurgeDeletedAccounts({ deletion, clock }),
+    },
+    AccountPurgeScheduler,
     {
       provide: ResolveSession,
       inject: [SESSION_REPOSITORY, CLOCK],

@@ -121,4 +121,14 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     ]);
     expect(named(/^token$|^verification_token$|^plain_token$/)).toEqual([]);
   });
+
+  // ADR-032: la eliminación pendiente es solo una fecha dentro de identity.accounts. La cuenta se borra por
+  // completo: ninguna otra tabla guarda una copia ni una «cuenta borrada» con sus datos.
+  it('la eliminación pendiente solo guarda una fecha en identity.accounts', () => {
+    expect(named(/deletion|deleted|eliminad|eliminacion/)).toEqual([
+      'identity.accounts.deletion_scheduled_for',
+    ]);
+    const type = columns.find((column) => column.column_name === 'deletion_scheduled_for');
+    expect(type?.udt_name).toBe('timestamptz');
+  });
 });

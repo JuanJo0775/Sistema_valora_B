@@ -8,10 +8,12 @@ export interface Account {
   role: Role;
   // Grill de la #33, pregunta 4: hasta cuándo está suspendida, o null.
   suspendedUntil: Date | null;
+  // ADR-032: cuándo se borra la cuenta de forma definitiva; null si no hay eliminación pendiente.
+  deletionScheduledFor: Date | null;
 }
 
 // Consentimiento de datos (RF-001, Ley 1581): qué versión aceptó y cuándo.
-export interface NewAccount extends Omit<Account, 'suspendedUntil'> {
+export interface NewAccount extends Omit<Account, 'suspendedUntil' | 'deletionScheduledFor'> {
   // #133: el nombre visible, ya normalizado. Solo lo ve la propia cuenta (EC-08).
   displayName: string | null;
   policyVersion: string;

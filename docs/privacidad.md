@@ -32,12 +32,34 @@ Redactado con apoyo de IA (Claude Code). **No es asesoría jurídica:** el equip
 
 1. **Canal de contacto del responsable.** El Decreto exige indicar domicilio, dirección, correo y teléfono. La política remite hoy al repositorio de GitHub; hay que definir un correo del proyecto y publicarlo en `/privacidad` (sección 1).
 2. **Identidad del responsable.** Confirmar si el responsable es el equipo, cada integrante o la universidad, según su política de propiedad intelectual y de datos.
-3. **Procedimiento de supresión.** Hoy es manual. Definir quién lo ejecuta y cómo: eliminar la fila de `identity.accounts` y sus sesiones; los reportes quedan con un identificador interno sin cuenta (hallazgo 1 de `privacidad-ec08.md`). Probarlo.
+3. **Procedimiento de supresión.** Automatizado desde ADR-032 (ver «Supresión de la cuenta» abajo). Pendiente del equipo: confirmar el plazo de gracia de 10 días, revisar la retención de las copias de respaldo de Neon y del proveedor de correo, y que el texto público de `/privacidad` (sección 6) describa la gracia y lo que se conserva.
 4. **Registro Nacional de Bases de Datos (RNBD).** Obligatorio para responsables con activos totales superiores a 100.000 UVT y para entidades públicas; un proyecto académico probablemente no lo es. Confirmarlo antes de abrir al público.
 5. **Retención.** La política dice «mientras la cuenta esté activa y por el tiempo que dure el proyecto». Fijar un plazo concreto y una limpieza al cerrar el proyecto.
 6. **Menores de edad.** La política pide autorización del representante legal. Si el equipo prefiere vetarlos, hay que pedir la fecha de nacimiento o una declaración de mayoría de edad en el registro.
 7. **Incidentes de seguridad.** Definir quién avisa a la SIC (Registro Nacional de Bases de Datos, módulo de incidentes) y en cuántas horas.
 8. **Revisión jurídica** del texto antes de producción.
+
+## Supresión de la cuenta (derecho del art. 8 de la Ley 1581; ADR-032)
+
+Desde la app, sin intervención del equipo: la opción de eliminar la cuenta, con la contraseña. En el API, `POST /v1/me/account-deletion`.
+
+**1. Solicitud.** Se comprueba la contraseña (límite de 5 fallos por cuenta y 20 intentos por IP en 15 minutos). La cuenta queda **pendiente de eliminación** y se cierran todas sus sesiones; la respuesta dice la fecha en que se borrará (ahora más 10 días).
+
+**2. Durante los 10 días de gracia.** La cuenta existe pero no puede abrir sesión: iniciar sesión con la contraseña correcta responde que está pendiente de eliminación y la fecha, sin crear sesión. No puede registrar precios ni hacer nada. La persona puede **restaurarla** con su correo y contraseña (`POST /v1/auth/restore-account`) y queda con la sesión iniciada. Con una contraseña incorrecta nadie sabe que la cuenta existe ni su estado. Registrarse de nuevo con ese correo no crea nada: se trata como un correo en uso.
+
+**3. Purga.** Pasados los 10 días, un trabajo interno borra la cuenta de forma definitiva, en una transacción por cuenta. Corre al arrancar el servidor y cada hora. Como Render gratuito duerme el servicio, el borrado puede retrasarse unas horas respecto de la fecha; **nunca se adelanta**. Es idempotente y, si falla para una cuenta, se reintenta en la pasada siguiente.
+
+| Se borra | Se conserva (sin ningún dato personal) |
+|---|---|
+| `identity.accounts`: correo, nombre, hash de la contraseña, versión y fecha de la política aceptada, fecha de verificación, suspensión y la clave seudónima (`reporter_key`) | Los **reportes de precios** y su historial (`pricing.reports`, solo con un identificador interno que ya no corresponde a ninguna cuenta), porque la comunidad depende de ellos |
+| `identity.sessions`: todas las sesiones | La **reputación**, las observaciones y las **marcas** de `reliability`, las **propuestas** de producto y de tienda y la bitácora de moderación, todas con la clave seudónima |
+| `identity.email_verifications`: los enlaces de verificación | La bitácora inmutable de cambios de rol (`identity.role_changes`: ids, sin correo) |
+
+**Por qué lo que se conserva no identifica a nadie.** La clave seudónima es `HMAC-SHA256(REPORTER_KEY_SECRET, id de la cuenta)`. La única tabla que la unía a una persona era `identity.accounts`, que se borra. Sin la cuenta no hay correo ni nombre al que llegar, y quien se registre de nuevo con el mismo correo recibe un id nuevo, otra clave y reputación neutra. Los reportes de una misma persona siguen pudiendo agruparse entre sí (es un seudónimo), pero no vincularse con ella.
+
+**Salvedades.** Los respaldos de la base (Neon) y los registros del proveedor de correo (Resend) conservan datos hasta que vence su retención. Un moderador no puede eliminar su cuenta si es el último (403 `LAST_MODERATOR_CANNOT_DELETE`). Una cuenta suspendida también puede eliminarse y volver a registrarse sin la suspensión; el derecho de supresión pesa más.
+
+**Pruebas:** `test/integration/account-deletion-http.spec.ts` (solicitud, gracia, restauración, purga con reloj controlado, transacción, concurrencia, moderador único y límite), los casos de uso en `src/modules/identity/application`, `privacy-schema.spec.ts` y las pruebas de contrato y del guardián de rutas.
 
 ## Qué datos y cookies usa realmente el sistema
 
