@@ -90,6 +90,11 @@ export class DeleteOwnAccount {
       limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
       throw new InvalidPasswordError();
     }
+    // Quien tiene contraseña confirma con ella: el correo solo vale para las cuentas creadas con Google.
+    if (credentials.passwordHash !== null && !('password' in input)) {
+      limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
+      throw new InvalidPasswordError();
+    }
     if ('confirmEmail' in input && normalizeEmail(input.confirmEmail) !== credentials.email) {
       limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
       throw new InvalidConfirmationError();
