@@ -17,12 +17,12 @@ Café molido;Sello Rojo;grains-groceries;250;g;1;;no;Revisado por el equipo: pro
 Chocolate de mesa;Corona;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;https://images.openfoodfacts.org/images/products/770/200/708/4535/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Chocolate de mesa;Corona;grains-groceries;200;g;1;;no;Verificado por el equipo con carulla.com (17-nov-2026);Sara Sanchez;2026-11-17;;;
 Atún en aceite;Van Camp's;grains-groceries;160;g;1;7702367002637;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/236/700/2637/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
-Leche entera;Colanta;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
-Leche entera;Alquería;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
+Leche entera;Colanta;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;https://images.openfoodfacts.org/images/products/770/212/900/1052/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Leche entera;Alquería;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;https://images.openfoodfacts.org/images/products/770/217/700/4210/front_es.6.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Huevos rojos AA;;dairy-eggs;30;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
 Huevos rojos AA;;dairy-eggs;12;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Queso campesino;;dairy-eggs;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
-Pan tajado blanco;Bimbo;bakery;600;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
+Pan tajado blanco;Bimbo;bakery;600;g;1;7705326468727;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/532/646/8727/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Papa pastusa;;fruits-vegetables;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Papa pastusa;;fruits-vegetables;2500;g;1;;no;Verificado por el equipo con carulla.com (17-nov-2026);Sara Sanchez;2026-11-17;;;
 Tomate chonto;;fruits-vegetables;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
@@ -37,7 +37,7 @@ Agua sin gas;Cristal;beverages;600;ml;1;;no;Revisado por el equipo: producto de 
 Detergente en polvo;Fab;household-cleaning;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
 Lavaloza en crema;Axion;household-cleaning;450;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
 Papel higiénico doble hoja;Familia;household-cleaning;12;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
-Crema dental;Colgate;personal-care;75;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
+Crema dental;Colgate;personal-care;75;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;https://images.openfoodfacts.org/images/products/000/000/001/5063/front_es.6.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Jabón de baño;Protex;personal-care;110;g;3;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
 Aceite de soya;Olímpica;grains-groceries;900;ml;1;7701008626058;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Aceite de soya;Olímpica;grains-groceries;3;l;1;7701008625204;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
