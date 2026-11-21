@@ -24,3 +24,12 @@ export function sessionCookie(token: string, maxAgeSeconds: number): string {
 export function clearedSessionCookie(): string {
   return stringifySetCookie({ name: SESSION_COOKIE, value: '', ...ATTRIBUTES, maxAge: 0 });
 }
+
+// ADR-029, fase 2 (#181): el saludo con Google (state, nonce y verificador PKCE, firmados). Solo viaja a
+// las rutas de Google y dura lo mismo que su vencimiento firmado.
+export const GOOGLE_HANDSHAKE_COOKIE = 'valora_google';
+const GOOGLE_ATTRIBUTES = { ...ATTRIBUTES, path: '/v1/auth/google' } as const;
+
+export function googleCookie(name: string, value: string, maxAgeSeconds: number): string {
+  return stringifySetCookie({ name, value, ...GOOGLE_ATTRIBUTES, maxAge: maxAgeSeconds });
+}

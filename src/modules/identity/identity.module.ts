@@ -13,7 +13,11 @@ import { ChangeRole } from './application/change-role';
 import { DeleteOwnAccount } from './application/delete-own-account';
 import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
 import { RestoreAccount } from './application/restore-account';
-import type { Clock } from './application/clock';
+import { CLOCK, type Clock } from './application/clock';
+import {
+  GOOGLE_IDENTITY_PROVIDER,
+  type GoogleIdentityProvider,
+} from './application/google-identity-provider';
 import { EMAIL_SENDER, type EmailSender } from './application/email-sender';
 import {
   EMAIL_VERIFICATION_REPOSITORY,
@@ -33,6 +37,7 @@ import { SendVerificationEmail } from './application/send-verification-email';
 import { SuspendReporter } from './application/suspend-reporter';
 import { VerifyEmail } from './application/verify-email';
 import { AuthController } from './http/auth.controller';
+import { GoogleAuthController } from './http/google-auth.controller';
 import { MeController } from './http/me.controller';
 import { RolesController } from './http/roles.controller';
 import { SessionGuard } from './http/session.guard';
@@ -45,11 +50,11 @@ import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repos
 import { DrizzleEmailVerificationRepository } from './infrastructure/drizzle-email-verification-repository';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository';
 import { InMemoryAttemptLimiter } from './infrastructure/in-memory-attempt-limiter';
+import { JoseGoogleIdentityProvider } from './infrastructure/jose-google-identity-provider';
 import { ResendEmailSender } from './infrastructure/resend-email-sender';
 
 const PASSWORD_HASHER = Symbol('PASSWORD_HASHER');
 const ATTEMPT_LIMITER = Symbol('ATTEMPT_LIMITER');
-const CLOCK = Symbol('CLOCK');
 
 // ADR-029: elige el proveedor de correo según el entorno, como ImageStorage (ADR-022). La validación
 // de las variables ya exigió la clave, el remitente y APP_URL con «resend».
@@ -72,10 +77,23 @@ function emailSender(config: ConfigService<Env, true>): EmailSender {
 const DEFAULT_APP_URL = 'http://localhost:5173';
 
 @Module({
-  controllers: [AuthController, MeController, RolesController],
+  controllers: [AuthController, GoogleAuthController, MeController, RolesController],
   providers: [
     { provide: CLOCK, useValue: { now: () => new Date() } satisfies Clock },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
+    // ADR-029, fase 2 (#181): null sin las tres variables de Google; las rutas de Google responden 404.
+    {
+      provide: GOOGLE_IDENTITY_PROVIDER,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>): GoogleIdentityProvider | null => {
+        const clientId = config.get('GOOGLE_CLIENT_ID', { infer: true });
+        const clientSecret = config.get('GOOGLE_CLIENT_SECRET', { infer: true });
+        const redirectUri = config.get('GOOGLE_REDIRECT_URI', { infer: true });
+        return clientId && clientSecret && redirectUri
+          ? new JoseGoogleIdentityProvider({ clientId, clientSecret, redirectUri })
+          : null;
+      },
+    },
     {
       provide: ATTEMPT_LIMITER,
       inject: [CLOCK],
