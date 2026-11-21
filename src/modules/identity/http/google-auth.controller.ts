@@ -26,7 +26,13 @@ import {
   GoogleRejectedError,
   type GoogleIdentityProvider,
 } from '../application/google-identity-provider';
-import { type GoogleIdentity, SignInWithGoogle } from '../application/sign-in-with-google';
+import { AccountPendingDeletionError } from '../application/login';
+import {
+  GoogleEmailNotVerifiedError,
+  type GoogleIdentity,
+  SignInWithGoogle,
+  type SignInWithGoogleResult,
+} from '../application/sign-in-with-google';
 import type { CookieResponse } from './auth.controller';
 import {
   GOOGLE_HANDSHAKE_COOKIE,
@@ -102,7 +108,19 @@ export class GoogleAuthController {
       if (error instanceof GoogleRejectedError) return { url: signInWithError('google') };
       throw error;
     }
-    const result = await this.signIn.execute(identity);
+    let result: SignInWithGoogleResult;
+    try {
+      result = await this.signIn.execute(identity);
+    } catch (error) {
+      if (error instanceof GoogleEmailNotVerifiedError) {
+        return { url: signInWithError('google-correo-sin-verificar') };
+      }
+      // ADR-032: la PWA ofrece restaurar la cuenta; la fecha no viaja en la URL.
+      if (error instanceof AccountPendingDeletionError) {
+        return { url: signInWithError('eliminacion-pendiente') };
+      }
+      throw error;
+    }
     if (result.outcome === 'needs-policy') {
       const signUp = {
         subject: result.subject,
