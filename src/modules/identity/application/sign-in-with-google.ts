@@ -41,10 +41,22 @@ export class SignInWithGoogle {
       // Misma sesión que el inicio con contraseña (ADR-014).
       return { outcome: 'signed-in', ...(await startSession(this.ports, linked.id)) };
     }
+    const email = normalizeEmail(identity.email);
+    const existing = await this.ports.links.findByEmail(email);
+    if (existing) {
+      // ADR-029, fase 2, punto 2: el correo ya tiene cuenta; se vincula y su correo queda verificado.
+      await this.ports.links.link({
+        accountId: existing.id,
+        subject: identity.subject,
+        verifiedAt: this.ports.clock.now(),
+        forgetPassword: false,
+      });
+      return { outcome: 'signed-in', ...(await startSession(this.ports, existing.id)) };
+    }
     return {
       outcome: 'needs-policy',
       subject: identity.subject,
-      email: normalizeEmail(identity.email),
+      email,
       suggestedName: identity.name,
     };
   }
