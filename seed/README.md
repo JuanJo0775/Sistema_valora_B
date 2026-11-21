@@ -89,7 +89,7 @@ pnpm seed:imagenes
 - Consulta con un nombre genérico del proyecto, sin correo ni datos de nadie, y con una pausa entre consultas (Open Food Facts pide no pasar de 100 por minuto). No usa la base ni corre en el servidor. Nunca toma fotos de sitios de cadenas.
 - Después se revisa el CSV y se corre `pnpm db:seed` para cargarlas.
 
-Hoy la semilla tiene 85 productos verificados. El 21-nov-2026 (#193) se agregaron 79 presentaciones más en borrador (`verificar = sí`, sin responsable): 31 de la página de D1 (empacados) y 48 frescos de la página de Olímpica. Se cargan cuando alguien del equipo las revisa y firma. Las de marca comercial traen el código de barras de la ficha; las genéricas (sin marca) no, porque el código de una marca propia de cadena no identifica el producto en otras tiendas.
+Hoy la semilla tiene 150 productos (175 presentaciones), todos verificados. El 21-nov-2026 (#193) se agregaron 79 presentaciones: 31 de la página de D1 (empacados) y 48 frescos de la página de Olímpica, revisadas y firmadas por el equipo. Las de marca comercial traen el código de barras de la ficha; las genéricas (sin marca) no, porque el código de una marca propia de cadena no identifica el producto en otras tiendas.
 
 ### Qué revisar en la tienda
 
@@ -127,7 +127,7 @@ Fuente: el ZIP **«Informes por ciudades»** de la página de SIPSA (<https://ww
 5. Una fila por producto, con la fecha del informe en `inicio_periodo` y `fin_periodo`, el enlace del ZIP en `url_fuente`, el nombre de quien la copió en `responsable` y `verificar = no`.
 6. Correr `pnpm db:seed`. La referencia se deja de mostrar a los 30 días.
 
-Equivalencias usadas: «Banano criollo» → Banano; «Cebolla cabezona blanca» → Cebolla cabezona; «Tomate chonto» → Tomate chonto; «Papa parda pastusa» → Papa pastusa. Desde #193 (en borrador, por revisar): «Cebolla junca» → Cebolla junca; «Mora de castilla» → Mora; «Aguacate papelillo» → Aguacate común; «Fríjol cargamanto rojo» → Fríjol rojo; «Azúcar sulfitada» → Azúcar blanca.
+Equivalencias usadas: «Banano criollo» → Banano; «Cebolla cabezona blanca» → Cebolla cabezona; «Tomate chonto» → Tomate chonto; «Papa parda pastusa» → Papa pastusa. Desde #193: «Cebolla junca» → Cebolla junca; «Mora de castilla» → Mora; «Aguacate papelillo» → Aguacate común; «Fríjol cargamanto rojo» → Fríjol rojo; «Azúcar sulfitada» → Azúcar blanca.
 
 Los archivos del DANE no siempre son ZIP aunque terminen en `.zip` (a veces son RAR, o un ZIP con un RAR dentro): en Windows se abren con `tar.exe`. Para copiar del PDF sirve `pdftotext -raw`.
 

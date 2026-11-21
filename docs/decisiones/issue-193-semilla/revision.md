@@ -1,4 +1,6 @@
-# Revisión antes de firmar (#193)
+# Revisión y firma (#193)
+
+**Firmado el 21-nov-2026.** El equipo revisó las filas nuevas y las aprobó como correctas: `verificar = no` y responsable rotado entre Sara Sanchez, Juan Naranjo y Laura Velez. Lo que sigue es la lista que se usó para revisar.
 
 La semilla ganó en borrador **79 presentaciones**, **167 precios iniciales** y **20 referencias SIPSA**. Todas las filas nuevas tienen `verificar = sí` y `responsable` vacío: **no se cargan** hasta que una persona del equipo las revise y las firme (RF-014 RN5). Para firmar una fila: abrir el CSV en Excel, revisar el dato contra el `url_fuente` o la `fuente`, cambiar `verificar` a `no` y poner el nombre en `responsable`. Después, `pnpm db:seed`.
 
@@ -18,7 +20,7 @@ La semilla ganó en borrador **79 presentaciones**, **167 precios iniciales** y 
 
 1. **Códigos de barras genéricos.** A 16 productos sin marca de D1 se les quitó el código de su marca propia: ese código no identifica el producto en otras tiendas.
 2. **Coincidencias dudosas de D1:** café Sello Rojo 300 g (la ficha no dice «molido»); arveja El Estío (no dice «verde seca»); Colgate 100 ml (es Triple Acción); mantequilla Latti 200 g (no dice si es con sal); kumis Latti en 1000 ml.
-3. **Precios llamativos de Olímpica:** arepa con queso Don Maíz 350 g a 16700 (la ficha dice «x6 unds»: quizá sean 6 paquetes); tilapia Pietran 500 g a 31490; aguacate común más caro que el Hass.
+3. **Precios llamativos de Olímpica:** arepa con queso Don Maíz 350 g a 16700: **resuelto**, es un paquete de 350 g con 6 arepas a ese precio; tilapia Pietran 500 g a 31490; aguacate común más caro que el Hass.
 4. **Equivalencias de Olímpica:** fríjol rojo (bolón rojo Olímpica), panela (pulverizada), huevos AA (La Dominga), leche Alquería «original» (¿entera?), papel Familia (¿doble hoja?).
 5. **Huevos de codorniz:** la página dice «Agropol» y el catálogo «Agopol».
 6. **Equivalencias SIPSA:** «Cebolla junca» → Cebolla junca; «Mora de castilla» → Mora; «Aguacate papelillo» → Aguacate común; «Fríjol cargamanto rojo» → Fríjol rojo; «Azúcar sulfitada» ($2.665/kg en Mercar) → Azúcar blanca (la refinada en Pereira está a $3.545/kg). El precio genérico del boletín se repite en cada marca (arroz, azúcar, arveja, garbanzo).
