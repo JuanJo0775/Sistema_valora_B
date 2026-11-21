@@ -49,3 +49,11 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Qué cambia un comercio verificado por sí solo? | **Horario, teléfono y nombre** se aplican al instante. Excepción automática: si el nombre nuevo es equivalente al de otra tienda a menos de 50 m (regla de duplicados de la #27), va al moderador | El dueño conoce esos datos; la excepción evita copiar el nombre de la tienda vecina |
 | ¿Qué pasa por el moderador? | **La ubicación**, siempre: va a la lista de propuestas de tiendas que ya existe | Mover el punto cambia la distancia, que entra al orden neutral y a «tiendas cercanas» |
 | ¿Cómo se aplica sin romper el monolito? | `commerce` pide los cambios a `establishments` por su interfaz pública (`index.ts`); no escribe en sus tablas | Regla de dependencias (ADR-001) |
+
+## D6. Promociones (ADR-009, ADR-026)
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Promoción sin precio oficial vigente? | **No.** Los tres tipos (descuento porcentual, precio especial, pague X lleve Y) exigen un oficial **vigente** del producto. Si el oficial pasa a «por confirmar», la promoción **se pausa** sola; reconfirmar (D4) la reactiva | El «antes» siempre es un precio real y reciente: evita descuentos inflados (EC-06) |
+| ¿Qué condiciones puede tener? | **Fijas, sin texto libre:** máximo por cliente (número), hasta agotar existencias (sí/no), medio de pago (cualquiera, efectivo o tarjeta) | Sin publicidad, teléfonos ni datos personales; no hay que moderar; se muestran y prueban igual |
+| ¿Cambian el orden? | **Nunca** (ADR-009): van en `promotions`, aparte de `results` | Neutralidad |
