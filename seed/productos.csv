@@ -110,8 +110,8 @@ Aceite de soya;;grains-groceries;900;ml;1;;no;Página de D1, ficha del producto 
 Panela;;grains-groceries;1000;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 El Refugio;Sara Sanchez;2026-11-21;;;
 Pasta spaghetti;;grains-groceries;500;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Deliziare;Juan Naranjo;2026-11-21;;;
 Gaseosa Colombiana;Postobón;beverages;1750;ml;1;7707151700881;no;Página de D1, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
-Gaseosa cola;Coca-Cola;beverages;1750;ml;1;7702535025482;no;Página de D1, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
-Agua sin gas;Cristal;beverages;5;l;1;7702090006544;no;Página de D1, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Gaseosa cola;Coca-Cola;beverages;1750;ml;1;7702535025482;no;Página de D1, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;https://images.openfoodfacts.org/images/products/770/253/502/5482/front_en.5.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Agua sin gas;Cristal;beverages;5;l;1;7702090006544;no;Página de D1, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;https://images.openfoodfacts.org/images/products/770/209/000/6544/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Leche entera;;dairy-eggs;900;ml;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Laura Velez;2026-11-21;;;
 Queso campesino;;dairy-eggs;350;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Sara Sanchez;2026-11-21;;;
 Yogur de fresa;;dairy-eggs;1000;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Juan Naranjo;2026-11-21;;;
@@ -173,4 +173,4 @@ Pan costeño;Olímpica;bakery;150;g;1;;no;Página de Olímpica, ficha del produc
 Pan trenza aliñado;Olímpica;bakery;360;g;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
 Mogolla ocañera;Olímpica;bakery;600;g;1;7701008064126;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
 Arepa antioqueña blanca;Don Maíz;bakery;1000;g;1;7702417000019;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
-Arepa paisa;Don Maíz;bakery;350;g;1;7702417000200;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Arepa paisa;Don Maíz;bakery;350;g;1;7702417000200;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;https://images.openfoodfacts.org/images/products/770/241/700/0200/front_en.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
