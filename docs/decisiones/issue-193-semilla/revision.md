@@ -2,7 +2,7 @@
 
 **Firmado el 21-nov-2026.** El equipo revisó las filas nuevas y las aprobó como correctas: `verificar = no` y responsable rotado entre Sara Sanchez, Juan Naranjo y Laura Velez. Lo que sigue es la lista que se usó para revisar.
 
-La semilla ganó en borrador **79 presentaciones**, **167 precios iniciales** y **20 referencias SIPSA**. Todas las filas nuevas tienen `verificar = sí` y `responsable` vacío: **no se cargan** hasta que una persona del equipo las revise y las firme (RF-014 RN5). Para firmar una fila: abrir el CSV en Excel, revisar el dato contra el `url_fuente` o la `fuente`, cambiar `verificar` a `no` y poner el nombre en `responsable`. Después, `pnpm db:seed`.
+La semilla ganó **79 presentaciones**, **167 precios iniciales** y **20 referencias SIPSA**. Entraron en borrador (`verificar = sí`, sin responsable) y se cargaron con `pnpm db:seed` solo después de la firma (RF-014 RN5).
 
 ## Cómo se consiguieron (21-nov-2026)
 
