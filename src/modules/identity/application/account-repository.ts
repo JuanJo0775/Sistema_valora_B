@@ -4,7 +4,8 @@ export type Role = 'reportante' | 'comercio' | 'moderador';
 export interface Account {
   id: string;
   email: string;
-  passwordHash: string;
+  // ADR-029, fase 2 (#179): null en las cuentas creadas con Google, que no tienen contraseña.
+  passwordHash: string | null;
   role: Role;
   // Grill de la #33, pregunta 4: hasta cuándo está suspendida, o null.
   suspendedUntil: Date | null;
@@ -13,7 +14,9 @@ export interface Account {
 }
 
 // Consentimiento de datos (RF-001, Ley 1581): qué versión aceptó y cuándo.
-export interface NewAccount extends Omit<Account, 'suspendedUntil' | 'deletionScheduledFor'> {
+export interface NewAccount
+  extends Omit<Account, 'passwordHash' | 'suspendedUntil' | 'deletionScheduledFor'> {
+  passwordHash: string;
   // #133: el nombre visible, ya normalizado. Solo lo ve la propia cuenta (EC-08).
   displayName: string | null;
   policyVersion: string;
