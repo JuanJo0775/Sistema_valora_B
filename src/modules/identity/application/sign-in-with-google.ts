@@ -1,5 +1,7 @@
+import type { Account } from './account-repository';
 import type { Clock } from './clock';
 import type { GoogleAccountLinks } from './google-account-links';
+import { AccountPendingDeletionError } from './login';
 import { normalizeEmail } from './register-account';
 import type { SessionRepository } from './session-repository';
 import { type StartedSession, startSession } from './start-session';
@@ -30,6 +32,13 @@ export class GoogleEmailNotVerifiedError extends Error {
   }
 }
 
+// ADR-032, como el login: durante la gracia no se abre sesión ni se vincula; se dice cuándo se borra.
+function rejectPendingDeletion(account: Account): void {
+  if (account.deletionScheduledFor) {
+    throw new AccountPendingDeletionError(account.deletionScheduledFor);
+  }
+}
+
 // ADR-029, fase 2 (#180): entrar con una cuenta de Google ya validada.
 export class SignInWithGoogle {
   constructor(private readonly ports: SignInWithGooglePorts) {}
@@ -38,12 +47,14 @@ export class SignInWithGoogle {
     if (!identity.emailVerified) throw new GoogleEmailNotVerifiedError();
     const linked = await this.ports.links.findBySubject(identity.subject);
     if (linked) {
+      rejectPendingDeletion(linked);
       // Misma sesión que el inicio con contraseña (ADR-014).
       return { outcome: 'signed-in', ...(await startSession(this.ports, linked.id)) };
     }
     const email = normalizeEmail(identity.email);
     const existing = await this.ports.links.findByEmail(email);
     if (existing) {
+      rejectPendingDeletion(existing);
       // ADR-029, fase 2, punto 2: el correo ya tiene cuenta; se vincula y su correo queda verificado.
       await this.ports.links.link({
         accountId: existing.id,
