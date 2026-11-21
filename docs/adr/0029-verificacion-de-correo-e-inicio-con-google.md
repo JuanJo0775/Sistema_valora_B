@@ -62,7 +62,7 @@ Se elige **A**, en dos fases.
 
 ## Pendientes del equipo
 
-- Dominio conseguido (`valoora.app`, 20-nov-2026) y verificado en Google Search Console; cliente OAuth y pantalla de consentimiento publicados. Falta verificar el dominio en el proveedor de correo (`PENDIENTE`).
+- Dominio conseguido (`valoora.app`, 20-nov-2026) y verificado en Google Search Console; cliente OAuth y pantalla de consentimiento publicados. Proveedor de correo: Resend, con `valoora.app` verificado (DKIM y SPF) el 21-nov-2026; remitente `Valora <no-responder@valoora.app>`. Falta configurarlo en Render y pasar `REQUIRE_VERIFIED_EMAIL` a `true` cuando se compruebe la entrega.
 - Decidir si se exige verificación para iniciar sesión o solo para reportar.
 - Confirmar con el docente que un módulo de identidad propio cumple lo que se espera (alternativa C de ADR-014 sigue descartada).
 
