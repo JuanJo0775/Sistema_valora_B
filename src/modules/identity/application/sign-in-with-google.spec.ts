@@ -149,4 +149,19 @@ describe('entrar con Google (ADR-029, fase 2)', () => {
     // La sesión nueva se abre después de cerrar las anteriores (lo hace link en su transacción).
     expect(sessions.created).toHaveLength(1);
   });
+
+  // Como el login (grill de la #33): una cuenta suspendida entra; la suspensión limita lo que puede hacer
+  // (los guards de la API), no la sesión.
+  it('una cuenta suspendida entra igual que con el login', async () => {
+    const { sessions, signIn } = setup([
+      {
+        ...ana,
+        googleSubject: '109876543210987654321',
+        suspendedUntil: new Date('2026-12-01T00:00:00Z'),
+      },
+    ]);
+
+    await expect(signIn.execute(google())).resolves.toMatchObject({ outcome: 'signed-in' });
+    expect(sessions.created).toHaveLength(1);
+  });
 });
