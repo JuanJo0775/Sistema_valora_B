@@ -1,4 +1,9 @@
-import { newGoogleHandshake, openHandshake, sealHandshake } from './google-handshake';
+import {
+  GOOGLE_HANDSHAKE_MINUTES,
+  newGoogleHandshake,
+  openHandshake,
+  sealHandshake,
+} from './google-handshake';
 
 const secret = 'secreto-de-sesion-de-prueba';
 const now = new Date('2026-11-21T14:00:00Z');
@@ -33,5 +38,14 @@ describe('saludo con Google guardado en una cookie firmada', () => {
     expect(first.nonce).not.toBe(second.nonce);
     // RFC 7636: el verificador PKCE tiene de 43 a 128 caracteres.
     expect(first.codeVerifier).toMatch(/^[\w-]{43,128}$/);
+  });
+
+  it('vence a los 10 minutos: un callback tardío no se acepta', () => {
+    const sealed = sealHandshake(newGoogleHandshake(), secret, now);
+    const minutes = (n: number) => new Date(now.getTime() + n * 60_000);
+
+    expect(GOOGLE_HANDSHAKE_MINUTES).toBe(10);
+    expect(openHandshake(sealed, secret, minutes(10))).not.toBeNull();
+    expect(openHandshake(sealed, secret, minutes(10.01))).toBeNull();
   });
 });
