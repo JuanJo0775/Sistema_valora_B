@@ -12,7 +12,8 @@ export const accounts = identitySchema.table(
     email: text('email').notNull(),
     // #133: el nombre visible; vacío en las cuentas creadas antes. Solo lo ve la propia cuenta.
     displayName: text('display_name'),
-    passwordHash: text('password_hash').notNull(),
+    // ADR-029, fase 2 (#179): nula en las cuentas creadas con Google, que no tienen contraseña.
+    passwordHash: text('password_hash'),
     role: text('role').notNull(),
     // Consentimiento de datos (RF-001, Ley 1581).
     policyVersion: text('policy_version').notNull(),
