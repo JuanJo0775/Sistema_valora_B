@@ -71,6 +71,7 @@ export class JoseGoogleIdentityProvider implements GoogleIdentityProvider {
         name: typeof payload['name'] === 'string' ? payload['name'] : null,
       };
     } catch (error) {
+      if (error instanceof GoogleRejectedError) throw error;
       throw new GoogleRejectedError(error instanceof Error ? error.name : 'id_token inválido');
     }
   }
