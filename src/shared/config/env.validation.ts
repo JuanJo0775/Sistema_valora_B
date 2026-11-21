@@ -111,6 +111,30 @@ export class Env {
   @ValidateIf((env: Env) => env.EMAIL_PROVIDER === 'resend' || env.APP_URL !== undefined)
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
   APP_URL?: string;
+
+  // ADR-029, fase 2 (#181): inicio de sesión con Google. Las tres o ninguna: sin ellas la API arranca y
+  // las rutas de Google responden 404. El secreto solo va en el panel de Render, nunca en Git.
+  @ValidateIf(hasGoogleConfig)
+  @IsString()
+  @IsNotEmpty()
+  GOOGLE_CLIENT_ID?: string;
+
+  @ValidateIf(hasGoogleConfig)
+  @IsString()
+  @IsNotEmpty()
+  GOOGLE_CLIENT_SECRET?: string;
+
+  @ValidateIf(hasGoogleConfig)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
+  GOOGLE_REDIRECT_URI?: string;
+}
+
+function hasGoogleConfig(env: Env): boolean {
+  return (
+    env.GOOGLE_CLIENT_ID !== undefined ||
+    env.GOOGLE_CLIENT_SECRET !== undefined ||
+    env.GOOGLE_REDIRECT_URI !== undefined
+  );
 }
 
 export function validateEnv(raw: Record<string, unknown>): Env {
