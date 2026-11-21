@@ -160,6 +160,18 @@ describe('eliminar la propia cuenta (ADR-032)', () => {
     expect(limiter.recorded).toContain(`eliminar-cuenta:${ana.id}`);
   });
 
+  it('una cuenta sin contraseña que envía una contraseña responde InvalidPasswordError sin verificar ningún hash', async () => {
+    const { deletion, hasher, limiter, useCase } = setup();
+    deletion.add({ ...ana, passwordHash: null });
+
+    await expect(useCase.execute(input())).rejects.toThrow(InvalidPasswordError);
+
+    // Verificar contra un hash vacío hace fallar a argon2 (sería un 500): no se llega a verificar.
+    expect(hasher.verified).toHaveLength(0);
+    expect(deletion.accounts.get(ana.id)?.deletionScheduledFor).toBeNull();
+    expect(limiter.recorded).toContain(`eliminar-cuenta:${ana.id}`);
+  });
+
   it('una cuenta que ya no existe responde AccountGoneError', async () => {
     const { useCase } = setup();
 
