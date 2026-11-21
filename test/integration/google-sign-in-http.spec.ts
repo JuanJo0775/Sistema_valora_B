@@ -89,4 +89,56 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
       expect(response.body).toMatchObject({ code: 'NOT_FOUND' });
     });
   });
+
+  // Empieza el flujo como el navegador: guarda la cookie del saludo y el state que viajó a Google.
+  async function begin(): Promise<{ cookie: string; state: string }> {
+    const response = await request(server).get('/v1/auth/google/start').expect(302);
+    const [setCookie] = response.headers['set-cookie'] as unknown as string[];
+    const state = new URL(String(response.headers['location'])).searchParams.get('state') ?? '';
+    return { cookie: (setCookie ?? '').split(';')[0] ?? '', state };
+  }
+  const callback = (query: Record<string, string>, cookie?: string) => {
+    const call = request(server).get('/v1/auth/google/callback').query(query);
+    return cookie ? call.set('Cookie', cookie) : call;
+  };
+  const openSessions = async () => {
+    const result = await db.execute<{ open: number }>(
+      sql`select count(*)::int as open from identity.sessions`,
+    );
+    return result.rows[0]?.open;
+  };
+
+  describe('GET /v1/auth/google/callback sin éxito', () => {
+    it('si la persona canceló en Google vuelve a /entrar sin error y borra la cookie del saludo', async () => {
+      const { cookie } = await begin();
+
+      const response = await callback({ error: 'access_denied' }, cookie).expect(302);
+
+      expect(response.headers['location']).toBe('/entrar');
+      const [cleared] = response.headers['set-cookie'] as unknown as string[];
+      expect(cleared).toMatch(/^valora_google=; /);
+      expect(cleared).toContain('Max-Age=0');
+    });
+
+    it.each([
+      ['el state no coincide', (state: string) => ({ code: 'codigo-bueno', state: `${state}x` })],
+      ['falta el código', (state: string) => ({ state })],
+      ['Google no acepta el código', (state: string) => ({ code: 'codigo-malo', state })],
+    ])('si %s vuelve a /entrar?error=google sin abrir sesión', async (_case, query) => {
+      const { cookie, state } = await begin();
+
+      const response = await callback(query(state), cookie).expect(302);
+
+      expect(response.headers['location']).toBe('/entrar?error=google');
+      expect(await openSessions()).toBe(0);
+    });
+
+    it('sin la cookie del saludo (otro navegador o vencida) vuelve a /entrar?error=google', async () => {
+      const { state } = await begin();
+
+      const response = await callback({ code: 'codigo-bueno', state }).expect(302);
+
+      expect(response.headers['location']).toBe('/entrar?error=google');
+    });
+  });
 });
