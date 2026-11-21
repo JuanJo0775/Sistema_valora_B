@@ -111,6 +111,9 @@ describe('adaptador de Google (OpenID Connect con PKCE)', () => {
       ['no lo emitió Google (iss ajeno)', () => idToken({ iss: 'https://evil.example' })],
       ['ya venció', () => idToken({ iat: now - 7200, exp: now - 3600 })],
       ['está firmado con otra clave', () => idToken({}, () => otherKey)],
+      // Un id_token de otro inicio de sesión (robado o repetido) no trae el nonce de esta cookie.
+      ['trae otro nonce', () => idToken({ nonce: 'nonce-de-otro-inicio' })],
+      ['no trae nonce', () => idToken({ nonce: undefined })],
     ])('rechaza un id_token que %s', async (_case, token) => {
       const { provider } = googleReturning(token());
 
