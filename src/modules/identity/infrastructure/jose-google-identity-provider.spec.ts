@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import { createLocalJWKSet, exportJWK, generateKeyPair, type KeyLike, SignJWT } from 'jose';
 import type { GoogleHandshake } from '../application/google-handshake';
+import { GoogleRejectedError } from '../application/google-identity-provider';
 import { JoseGoogleIdentityProvider } from './jose-google-identity-provider';
 
 const config = {
@@ -34,5 +36,94 @@ describe('adaptador de Google (OpenID Connect con PKCE)', () => {
     });
     // El verificador nunca sale del servidor: solo su hash.
     expect(url.toString()).not.toContain(handshake.codeVerifier);
+  });
+
+  describe('cambiar el código por la identidad', () => {
+    let googleKey: KeyLike;
+    let otherKey: KeyLike;
+    let keys: ReturnType<typeof createLocalJWKSet>;
+    const now = Math.floor(Date.now() / 1000);
+
+    beforeAll(async () => {
+      const google = await generateKeyPair('RS256');
+      googleKey = google.privateKey;
+      otherKey = (await generateKeyPair('RS256')).privateKey;
+      keys = createLocalJWKSet({
+        keys: [{ ...(await exportJWK(google.publicKey)), kid: 'google-1', alg: 'RS256' }],
+      });
+    });
+
+    const claims = {
+      iss: 'https://accounts.google.com',
+      aud: config.clientId,
+      sub: '109876543210987654321',
+      email: 'ana@correo.com',
+      email_verified: true,
+      name: 'Ana María',
+      nonce: handshake.nonce,
+      iat: now,
+      exp: now + 3600,
+    };
+    const idToken = (change: Record<string, unknown> = {}, key = () => googleKey) =>
+      new SignJWT({ ...claims, ...change })
+        .setProtectedHeader({ alg: 'RS256', kid: 'google-1' })
+        .sign(key());
+
+    // fetch simulado del endpoint de tokens de Google: guarda lo que se le pidió.
+    function googleReturning(token: Promise<string>, status = 200) {
+      const calls: { url: string; body: URLSearchParams }[] = [];
+      const fetchFn = async (url: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(url), body: new URLSearchParams(String(init?.body)) });
+        return new Response(JSON.stringify({ id_token: await token }), { status });
+      };
+      const provider = new JoseGoogleIdentityProvider(config, {
+        fetch: fetchFn as typeof fetch,
+        keys,
+      });
+      return { provider, calls };
+    }
+
+    it('con un id_token válido devuelve la identidad y manda el verificador PKCE, no el hash', async () => {
+      const { provider, calls } = googleReturning(idToken());
+
+      await expect(provider.identityFrom('codigo-de-google', handshake)).resolves.toEqual({
+        subject: '109876543210987654321',
+        email: 'ana@correo.com',
+        emailVerified: true,
+        name: 'Ana María',
+      });
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.url).toBe('https://oauth2.googleapis.com/token');
+      expect(Object.fromEntries(calls[0]?.body ?? [])).toEqual({
+        grant_type: 'authorization_code',
+        code: 'codigo-de-google',
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        redirect_uri: config.redirectUri,
+        code_verifier: handshake.codeVerifier,
+      });
+    });
+
+    it.each([
+      [
+        'es de otro cliente (aud ajeno)',
+        () => idToken({ aud: 'otro-cliente.apps.googleusercontent.com' }),
+      ],
+      ['no lo emitió Google (iss ajeno)', () => idToken({ iss: 'https://evil.example' })],
+      ['ya venció', () => idToken({ iat: now - 7200, exp: now - 3600 })],
+      ['está firmado con otra clave', () => idToken({}, () => otherKey)],
+    ])('rechaza un id_token que %s', async (_case, token) => {
+      const { provider } = googleReturning(token());
+
+      await expect(provider.identityFrom('codigo', handshake)).rejects.toThrow(GoogleRejectedError);
+    });
+
+    it('si Google rechaza el código (código usado o vencido), lo rechaza', async () => {
+      const { provider } = googleReturning(Promise.resolve('sin-token'), 400);
+
+      await expect(provider.identityFrom('codigo-usado', handshake)).rejects.toThrow(
+        GoogleRejectedError,
+      );
+    });
   });
 });
