@@ -98,4 +98,22 @@ describe('entrar con Google (ADR-029, fase 2)', () => {
     ]);
     expect(links.links).toHaveLength(0);
   });
+
+  // RF-001 y grill de la #178, pregunta 2: pulsar el botón de Google no es aceptar la política.
+  it('un correo sin cuenta no crea nada: pide aceptar la política con el correo y el nombre que da Google', async () => {
+    const { links, sessions, signIn } = setup();
+
+    const result = await signIn.execute(
+      google({ email: 'Nueva@Correo.com', name: 'Nueva Persona' }),
+    );
+
+    expect(result).toEqual({
+      outcome: 'needs-policy',
+      subject: '109876543210987654321',
+      email: 'nueva@correo.com',
+      suggestedName: 'Nueva Persona',
+    });
+    expect(sessions.created).toHaveLength(0);
+    expect(links.links).toHaveLength(0);
+  });
 });
