@@ -85,7 +85,8 @@ export class DeleteOwnAccount {
     if (credentials === null) throw new AccountGoneError();
     if (
       'password' in input &&
-      !(await hasher.verify(credentials.passwordHash ?? '', input.password))
+      (credentials.passwordHash === null ||
+        !(await hasher.verify(credentials.passwordHash, input.password)))
     ) {
       limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
       throw new InvalidPasswordError();
