@@ -106,7 +106,11 @@ describe('Open Food Facts por código de barras (ADR-020, #119)', () => {
       () => json(200, { status: 1, product: { image_front_url: PHOTO } }),
     ];
     let call = 0;
-    const { fetcher, requests } = fakeFetch(() => (replies[call++] ?? replies[2])!());
+    const { fetcher, requests } = fakeFetch(() => {
+      const reply = replies[Math.min(call, replies.length - 1)] ?? (() => json(500, {}));
+      call += 1;
+      return reply();
+    });
     const waits: number[] = [];
     const patient = new OpenFoodFactsImages(fetcher, (ms) => {
       waits.push(ms);
