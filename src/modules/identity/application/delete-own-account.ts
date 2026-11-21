@@ -1,5 +1,5 @@
 import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
-import type { AccountDeletionRepository } from './account-deletion-repository';
+import type { AccountCredentials, AccountDeletionRepository } from './account-deletion-repository';
 import type { Clock } from './clock';
 import type { PasswordHasher } from './password-hasher';
 import { normalizeEmail } from './register-account';
@@ -56,8 +56,7 @@ export interface DeleteOwnAccountPorts {
 // La cuenta con contraseña confirma con ella; la creada con Google, con su correo (grill de la #178,
 // pregunta 3).
 export type DeleteOwnAccountInput = { accountId: string; ip: string } & (
-  | { password: string }
-  | { confirmEmail: string }
+  { password: string } | { confirmEmail: string }
 );
 
 export interface DeleteOwnAccountResult {
@@ -72,7 +71,7 @@ export class DeleteOwnAccount {
   constructor(private readonly ports: DeleteOwnAccountPorts) {}
 
   async execute(input: DeleteOwnAccountInput): Promise<DeleteOwnAccountResult> {
-    const { deletion, hasher, limiter, clock } = this.ports;
+    const { deletion, limiter, clock } = this.ports;
     const accountKey = deletionAccountKey(input.accountId);
     const ipKey = deletionIpKey(input.ip);
     const wait =
@@ -83,22 +82,10 @@ export class DeleteOwnAccount {
 
     const credentials = await deletion.credentialsOf(input.accountId);
     if (credentials === null) throw new AccountGoneError();
-    if (
-      'password' in input &&
-      (credentials.passwordHash === null ||
-        !(await hasher.verify(credentials.passwordHash, input.password)))
-    ) {
+    const failure = await this.confirmationFailure(credentials, input);
+    if (failure) {
       limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
-      throw new InvalidPasswordError();
-    }
-    // Quien tiene contraseña confirma con ella: el correo solo vale para las cuentas creadas con Google.
-    if (credentials.passwordHash !== null && !('password' in input)) {
-      limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
-      throw new InvalidPasswordError();
-    }
-    if ('confirmEmail' in input && normalizeEmail(input.confirmEmail) !== credentials.email) {
-      limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
-      throw new InvalidConfirmationError();
+      throw failure;
     }
 
     const now = clock.now();
@@ -111,5 +98,21 @@ export class DeleteOwnAccount {
     if (result.outcome === 'last-moderator') throw new LastModeratorError();
     limiter.reset(accountKey);
     return { scheduledFor: result.scheduledFor };
+  }
+
+  // Quien tiene contraseña confirma con ella; la cuenta creada con Google, con su correo (grill de la #178,
+  // pregunta 3). null si la confirmación vale.
+  private async confirmationFailure(
+    credentials: AccountCredentials,
+    input: DeleteOwnAccountInput,
+  ): Promise<Error | null> {
+    if (credentials.passwordHash === null) {
+      if (!('confirmEmail' in input)) return new InvalidPasswordError();
+      const matches = normalizeEmail(input.confirmEmail) === credentials.email;
+      return matches ? null : new InvalidConfirmationError();
+    }
+    if (!('password' in input)) return new InvalidPasswordError();
+    const valid = await this.ports.hasher.verify(credentials.passwordHash, input.password);
+    return valid ? null : new InvalidPasswordError();
   }
 }
