@@ -1126,7 +1126,8 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401':
           description: >-
-            code UNAUTHORIZED con «Correo o contraseña incorrectos.», exista o no la cuenta.
+            code UNAUTHORIZED con «Correo o contraseña incorrectos.», exista o no la cuenta. Una cuenta
+            creada con Google no tiene contraseña y recibe este mismo error (no revela cómo se creó, EC-08).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

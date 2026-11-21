@@ -29,9 +29,12 @@ Orden: 1 → 2 → 3 → (4 y 5). El paso 4 empieza cuando el contrato del paso 
 | 2 | Con una cuenta sin contraseña, restaurar la cuenta responde el mismo error genérico | `restore-account.spec.ts` | Igual que el ciclo 1 |
 | 3 | Una cuenta sin contraseña pide la eliminación escribiendo su correo y queda pendiente 10 días | `delete-own-account.spec.ts` | El caso de uso no acepta la confirmación por correo |
 | 4 | Con un correo que no es el de la cuenta, la eliminación se rechaza y cuenta como fallo | `delete-own-account.spec.ts` | Se programa la eliminación |
-| 5 | Una cuenta con contraseña no puede confirmar con el correo: sigue pidiendo la contraseña | `delete-own-account.spec.ts` | Se programa la eliminación |
+| 5a | Una cuenta con contraseña no puede confirmar con el correo: sigue pidiendo la contraseña | `delete-own-account.spec.ts` | Se programa la eliminación |
+| 5b | Una cuenta sin contraseña que envía una contraseña recibe `INVALID_PASSWORD` sin verificar ningún hash | `delete-own-account.spec.ts` | Se verifica contra un hash vacío (con argon2 sería un 500) |
 | 6 | La base guarda y devuelve cuentas sin contraseña (migración y repositorios) | `test/integration/identity-repositories.spec.ts` | `password_hash` es `NOT NULL` |
 | 7 | `POST /v1/me/account-deletion` acepta `confirmEmail` en lugar de `password` (exactamente uno de los dos) y lo refleja el contrato | `test/integration/account-deletion-http.spec.ts` y `docs/openapi.yaml` | 400 con `confirmEmail` |
+
+**Cómo resultó (20-nov-2026):** el ciclo 2 pasó en verde desde el principio (el cambio de tipo del ciclo 1 ya cubría la restauración) y quedó como prueba de caracterización. El ciclo 3 cambió el puerto `passwordHashOf` por `credentialsOf` (correo y hash), porque `null` ya no distinguía «no existe» de «no tiene contraseña». Tras el 5b hubo una refactorización real: un solo método decide cómo se confirma la eliminación. En el ciclo 7, la prueba de «los dos campos a la vez» ya respondía 400 y quedó como guardia.
 
 **Terminado cuando:** las pruebas de inicio de sesión, restauración y eliminación pasan con cuentas sin contraseña; la prueba guardiana del esquema (`privacy-schema.spec.ts`) sigue en verde; `pnpm test`, `lint`, `typecheck` y `depcheck` en verde.
 
