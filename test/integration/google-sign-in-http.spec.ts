@@ -143,6 +143,36 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
     });
   });
 
+  describe('GET /v1/auth/google/callback cuando el caso de uso no deja entrar', () => {
+    it('si Google no verificó el correo vuelve a /entrar con google-correo-sin-verificar', async () => {
+      google.identity = { ...google.identity, emailVerified: false };
+      const { cookie, state } = await begin();
+
+      const response = await callback({ code: 'codigo-bueno', state }, cookie).expect(302);
+
+      expect(response.headers['location']).toBe('/entrar?error=google-correo-sin-verificar');
+      expect(await openSessions()).toBe(0);
+    });
+
+    // ADR-032: la PWA ofrece restaurarla; la fecha no viaja en la URL.
+    it('una cuenta con eliminación pendiente vuelve a /entrar con eliminacion-pendiente', async () => {
+      await signIn(server, db, 'ana@correo.com');
+      await db.execute(
+        sql`update identity.accounts set deletion_scheduled_for = now() + interval '5 days' where email = 'ana@correo.com'`,
+      );
+      await db.execute(sql`update identity.sessions set revoked_at = now()`);
+      const { cookie, state } = await begin();
+
+      const response = await callback({ code: 'codigo-bueno', state }, cookie).expect(302);
+
+      expect(response.headers['location']).toBe('/entrar?error=eliminacion-pendiente');
+      const open = await db.execute<{ n: number }>(
+        sql`select count(*)::int as n from identity.sessions where revoked_at is null`,
+      );
+      expect(open.rows[0]?.n).toBe(0);
+    });
+  });
+
   describe('GET /v1/auth/google/callback con éxito', () => {
     // Vuelve de Google con el código bueno y el state correcto, como el navegador.
     async function returnFromGoogle() {
