@@ -9,8 +9,9 @@ Preguntas que ADR-029 no respondía. Decididas por el equipo el 20-nov-2026 con 
 | A. A mano con `fetch` y `node:crypto` | Sin dependencias nuevas | Validar el `id_token` (firma con las claves de Google, `aud`, `iss`, `exp`, `nonce`) es fácil de hacer mal y difícil de probar |
 | B. `openid-client` | Implementación certificada por la OpenID Foundation; resuelve PKCE, `state`, `nonce` y la validación | Una dependencia más |
 | C. Passport (`passport-google-oauth20`) | Muy usado con NestJS | Arrastra sesiones de Passport que no encajan con la sesión propia (ADR-014) |
+| D. `jose` v5 + `fetch` | `jose` es la librería con la que `openid-client` valida los tokens; compatible con CommonJS; valida firma (claves de Google), `aud`, `iss` y `exp` | El intercambio del código (un `POST`) y la generación de PKCE, `state` y `nonce` (`node:crypto`) quedan a cargo del adaptador |
 
-**Decisión: B.** Queda detrás de un puerto (`GoogleIdentityProvider`), así que los casos de uso no la conocen y las pruebas usan un doble. Se anota en ADR-029.
+~~**Decisión: B.**~~ **Corregida el 20-nov-2026: D.** `openid-client` v6 solo se distribuye como módulo ESM y el backend corre en CommonJS (`tsconfig`: `module: commonjs`): en producción cargaría con Node 22, pero Jest no puede cargarlo y las pruebas de integración fallarían. La v5 es compatible pero está en mantenimiento y su API cambia por completo en la v6. Se elige `jose` v5 (CommonJS) para la parte difícil, validar el `id_token`, y lo demás en el adaptador. Queda detrás de un puerto (`GoogleIdentityProvider`), así que los casos de uso no la conocen y las pruebas usan un doble. Decidido por el equipo; se anota en ADR-029.
 
 ## 2. ¿Cómo acepta la política una cuenta nueva que entra con Google?
 
