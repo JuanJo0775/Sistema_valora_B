@@ -7,7 +7,8 @@ import type { PasswordHasher } from './password-hasher';
 // cuenta, para las pruebas unitarias.
 export interface FakeAccount {
   id: string;
-  passwordHash: string;
+  // null: cuenta creada con Google, sin contraseña (#179).
+  passwordHash: string | null;
   role: Role;
   deletionScheduledFor: Date | null;
 }
