@@ -64,6 +64,7 @@ describe('repositorios de identity', () => {
       passwordHash: ana.passwordHash,
       role: 'reportante',
       suspendedUntil: null,
+      deletionScheduledFor: null,
     });
     await expect(accounts.findByEmail('nadie@correo.com')).resolves.toBeNull();
     // Dos registros simultáneos con el mismo correo: el segundo no crea nada ni falla.

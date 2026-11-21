@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { Account, AccountRepository } from './account-repository';
 import type { AttemptLimiter } from './attempt-limiter';
-import { InvalidCredentialsError, Login, type LoginInput, TooManyAttemptsError } from './login';
+import {
+  AccountPendingDeletionError,
+  InvalidCredentialsError,
+  Login,
+  type LoginInput,
+  TooManyAttemptsError,
+} from './login';
 import type { PasswordHasher } from './password-hasher';
 import type { NewSession, SessionRepository, StoredSession } from './session-repository';
 
@@ -12,6 +18,7 @@ const ana: Account = {
   passwordHash: 'hash:la-clave-de-ana',
   role: 'reportante',
   suspendedUntil: null,
+  deletionScheduledFor: null,
 };
 
 class FakeHasher implements PasswordHasher {
@@ -122,6 +129,26 @@ describe('iniciar sesión', () => {
     expect(sessions.sessions).toHaveLength(0);
     expect(limiter.recorded).toEqual(
       expect.arrayContaining(['login-correo:ana@correo.com', 'login-correo:nadie@correo.com']),
+    );
+  });
+
+  // ADR-032.
+  it('con la contraseña correcta de una cuenta pendiente de eliminación no abre sesión y dice cuándo se borra', async () => {
+    const scheduledFor = new Date('2026-11-28T10:00:00Z');
+    const { sessions, login } = setup({}, { ...ana, deletionScheduledFor: scheduledFor });
+
+    const attempt = login.execute(input());
+
+    await expect(attempt).rejects.toThrow(AccountPendingDeletionError);
+    await expect(attempt).rejects.toMatchObject({ scheduledFor });
+    expect(sessions.sessions).toHaveLength(0);
+  });
+
+  it('con una contraseña mala, una cuenta pendiente da el mismo error genérico (no revela que existe)', async () => {
+    const { login } = setup({}, { ...ana, deletionScheduledFor: new Date('2026-11-28T10:00:00Z') });
+
+    await expect(login.execute(input({ password: 'otra-clave' }))).rejects.toThrow(
+      InvalidCredentialsError,
     );
   });
 

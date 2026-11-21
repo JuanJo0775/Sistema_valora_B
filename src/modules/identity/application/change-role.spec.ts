@@ -19,6 +19,7 @@ const account = (email: string, role: Account['role']): Account => ({
   passwordHash: 'hash',
   role,
   suspendedUntil: null,
+  deletionScheduledFor: null,
 });
 
 // Doble del límite: registra las claves y bloquea las indicadas.

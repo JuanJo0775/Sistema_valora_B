@@ -1,12 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { SESSION_MAX_DAYS } from '../../../domain/session-lifetime';
 import type { AccountRepository } from './account-repository';
 import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
 import type { Clock } from './clock';
 import type { PasswordHasher } from './password-hasher';
 import { normalizeEmail } from './register-account';
 import type { SessionRepository } from './session-repository';
-import { hashSessionToken, newSessionToken } from './session-token';
+import { startSession } from './start-session';
 
 export interface LoginPorts {
   accounts: AccountRepository;
@@ -29,9 +28,16 @@ export interface LoginResult {
 
 export { TooManyAttemptsError } from './attempt-limiter';
 
-const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
-
 export const emailKey = (email: string) => `login-correo:${email}`;
+
+// ADR-032: credenciales correctas de una cuenta con la eliminación pendiente.
+export class AccountPendingDeletionError extends Error {
+  constructor(readonly scheduledFor: Date) {
+    super(
+      'La cuenta está pendiente de eliminación; puedes restaurarla antes de la fecha indicada.',
+    );
+  }
+}
 
 // Grill de la #16, pregunta 6: el mismo error y el mismo mensaje, exista o no la cuenta.
 export class InvalidCredentialsError extends Error {
@@ -69,19 +75,13 @@ export class Login {
       throw new InvalidCredentialsError();
     }
 
-    const now = this.ports.clock.now();
+    // ADR-032: con la contraseña correcta, una cuenta pendiente de eliminación no abre sesión; se le dice
+    // cuándo se borra y que puede restaurarla. Solo lo sabe quien acertó la contraseña.
+    if (account.deletionScheduledFor) {
+      throw new AccountPendingDeletionError(account.deletionScheduledFor);
+    }
 
-    // Grill de la #16, pregunta 3: cada inicio de sesión crea una sesión y un token nuevos.
-    const token = newSessionToken();
-    const expiresAt = new Date(now.getTime() + SESSION_MAX_DAYS * DAY_IN_MILLISECONDS);
-    await this.ports.sessions.create({
-      id: randomUUID(),
-      tokenHash: hashSessionToken(token),
-      accountId: account.id,
-      createdAt: now,
-      lastSeenAt: now,
-      expiresAt,
-    });
+    const { token, expiresAt } = await startSession(this.ports, account.id);
     limiter.reset(emailKey(email));
     return { token, expiresAt };
   }

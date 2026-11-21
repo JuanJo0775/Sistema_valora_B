@@ -1,0 +1,2 @@
+ALTER TABLE "identity"."accounts" ADD COLUMN "deletion_scheduled_for" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "accounts_deletion_due_idx" ON "identity"."accounts" USING btree ("deletion_scheduled_for") WHERE deletion_scheduled_for is not null;

@@ -285,4 +285,59 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
       checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
     ).toEqual([]);
   });
+
+  // ADR-032: la eliminación de la cuenta con gracia de 10 días, el login de una cuenta pendiente y la
+  // restauración responden como dice el contrato.
+  it('eliminar la cuenta, iniciar sesión estando pendiente y restaurarla responden como dice el contrato', async () => {
+    checked.length = 0;
+    const me = await signIn(server, db, 'eliminar-contrato@correo.com');
+    const other = await signIn(server, db, 'intentos-contrato@correo.com');
+    const password = 'una-clave-larga';
+    const withSession = (as: SignedIn | null, body: object) => {
+      const call = request(server).post('/v1/me/account-deletion');
+      return (as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call).send(
+        body,
+      );
+    };
+    const credentials = (email: string, pass: string) => ({ email, password: pass });
+
+    await check('POST /me/account-deletion', withSession(null, { password }));
+    await check('POST /me/account-deletion', withSession(me, {}));
+    await check('POST /me/account-deletion', withSession(me, { password: 'otra-clave-larga' }));
+    await check('POST /me/account-deletion', withSession(me, { password }));
+    await check(
+      'POST /auth/login',
+      request(server)
+        .post('/v1/auth/login')
+        .send(credentials('eliminar-contrato@correo.com', password)),
+    );
+    await check(
+      'POST /auth/restore-account',
+      request(server)
+        .post('/v1/auth/restore-account')
+        .send(credentials('eliminar-contrato@correo.com', 'otra-clave-larga')),
+    );
+    await check(
+      'POST /auth/restore-account',
+      request(server)
+        .post('/v1/auth/restore-account')
+        .send(credentials('eliminar-contrato@correo.com', password)),
+    );
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await check(
+        'POST /me/account-deletion',
+        withSession(other, { password: 'otra-clave-larga' }),
+      );
+    }
+    await check('POST /me/account-deletion', withSession(other, { password }));
+
+    expect(checked.map(({ status }) => status)).toEqual([
+      401, 400, 403, 202, 403, 401, 204, 403, 403, 403, 403, 403, 429,
+    ]);
+    expect(checked[2]?.body).toMatchObject({ code: 'INVALID_PASSWORD' });
+    expect(checked[4]?.body).toMatchObject({ code: 'ACCOUNT_PENDING_DELETION' });
+    expect(
+      checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
+    ).toEqual([]);
+  });
 });
