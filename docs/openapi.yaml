@@ -852,7 +852,8 @@ paths:
       operationId: requestAccountDeletion
       summary: Eliminar la propia cuenta, con 10 días de gracia (Ley 1581, art. 8; ADR-032)
       description: >-
-        Derecho de supresión. Cualquier rol, también una cuenta suspendida. Pide la contraseña. No borra
+        Derecho de supresión. Cualquier rol, también una cuenta suspendida. Pide la contraseña; una cuenta
+        creada con Google no tiene contraseña y confirma escribiendo su correo (confirmEmail, #179). No borra
         todavía: marca la cuenta como pendiente de eliminación para dentro de 10 días, revoca todas sus
         sesiones y limpia la cookie. Pedirla otra vez no mueve la fecha. Durante la gracia la persona no
         puede iniciar sesión (403 ACCOUNT_PENDING_DELETION) salvo para restaurarla con POST
@@ -867,10 +868,24 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [password]
-              properties:
-                password: { type: string, maxLength: 128, writeOnly: true }
+              description: >-
+                Exactamente uno de los dos: password (cuentas con contraseña) o confirmEmail (cuentas sin
+                contraseña). Ninguno o los dos responde 400 VALIDATION_ERROR.
+              oneOf:
+                - type: object
+                  required: [password]
+                  additionalProperties: false
+                  properties:
+                    password: { type: string, maxLength: 128, writeOnly: true }
+                - type: object
+                  required: [confirmEmail]
+                  additionalProperties: false
+                  properties:
+                    confirmEmail:
+                      type: string
+                      maxLength: 254
+                      writeOnly: true
+                      description: El correo de la cuenta; se compara sin espacios y en minúsculas.
       responses:
         '202':
           description: Eliminación programada; la cookie de sesión se borra
@@ -895,14 +910,16 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403':
           description: >-
-            code INVALID_PASSWORD (la contraseña no coincide; no se programa nada), code
+            code INVALID_PASSWORD (la contraseña no coincide, o una cuenta con contraseña envió
+            confirmEmail; no se programa nada), code INVALID_CONFIRMATION (una cuenta sin contraseña
+            escribió un correo que no es el suyo), code
             LAST_MODERATOR_CANNOT_DELETE (es el único moderador activo) o code CSRF_TOKEN_INVALID.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '429':
           description: >-
-            Más de 5 contraseñas incorrectas por cuenta o 20 intentos por IP en 15 minutos.
+            Más de 5 confirmaciones incorrectas por cuenta o 20 intentos por IP en 15 minutos.
           headers:
             Retry-After: { $ref: '#/components/headers/RetryAfter' }
           content:
@@ -1109,7 +1126,8 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401':
           description: >-
-            code UNAUTHORIZED con «Correo o contraseña incorrectos.», exista o no la cuenta.
+            code UNAUTHORIZED con «Correo o contraseña incorrectos.», exista o no la cuenta. Una cuenta
+            creada con Google no tiene contraseña y recibe este mismo error (no revela cómo se creó, EC-08).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

@@ -3,6 +3,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { NewAccount } from '../../src/modules/identity/application/account-repository';
 import type { NewSession } from '../../src/modules/identity/application/session-repository';
+import { DrizzleAccountDeletionRepository } from '../../src/modules/identity/infrastructure/drizzle-account-deletion-repository';
 import { DrizzleAccountRepository } from '../../src/modules/identity/infrastructure/drizzle-account-repository';
 import { DrizzleSessionRepository } from '../../src/modules/identity/infrastructure/drizzle-session-repository';
 import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
@@ -73,6 +74,22 @@ describe('repositorios de identity', () => {
       sql`select count(*) as count from identity.accounts`,
     );
     expect(count.rows[0]?.count).toBe('1');
+  });
+
+  // ADR-029, fase 2 (#179): las cuentas creadas con Google no tienen contraseña. Se inserta con SQL porque
+  // el caso de uso que las crea llega con la #181.
+  it('guarda una cuenta sin contraseña y la devuelve con passwordHash null, también en credentialsOf', async () => {
+    await accounts.create(ana);
+    await db.execute(sql`update identity.accounts set password_hash = null where id = ${ana.id}`);
+
+    await expect(accounts.findByEmail('ana@correo.com')).resolves.toMatchObject({
+      id: ana.id,
+      passwordHash: null,
+    });
+    await expect(new DrizzleAccountDeletionRepository(db).credentialsOf(ana.id)).resolves.toEqual({
+      email: 'ana@correo.com',
+      passwordHash: null,
+    });
   });
 
   it('guarda el nombre visible y lo devuelve solo con displayNameOf (#133)', async () => {

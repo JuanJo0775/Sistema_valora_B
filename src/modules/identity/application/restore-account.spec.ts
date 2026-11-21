@@ -29,11 +29,15 @@ class Sessions implements SessionRepository {
   }
 }
 
-function setup(deletionScheduledFor: Date | null, blocked: Record<string, number> = {}) {
+function setup(
+  deletionScheduledFor: Date | null,
+  blocked: Record<string, number> = {},
+  passwordHash: string | null = 'hash:la-clave-de-ana',
+) {
   const deletion = new InMemoryDeletion();
   deletion.add({
     id,
-    passwordHash: 'hash:la-clave-de-ana',
+    passwordHash,
     role: 'reportante',
     deletionScheduledFor,
   });
@@ -102,6 +106,19 @@ describe('restaurar una cuenta pendiente de eliminación (ADR-032)', () => {
     expect(hasher.verified).toHaveLength(1);
     expect(sessions.created).toHaveLength(0);
     expect(deletion.accounts.get(id)?.deletionScheduledFor ?? null).toEqual(state);
+  });
+
+  // ADR-029, fase 2 (#179): una cuenta creada con Google no se restaura con contraseña; vuelve a entrar con
+  // Google. El error es el genérico, sin revelar que la cuenta existe ni cómo se creó (EC-08).
+  it('una cuenta sin contraseña pendiente de eliminación da el error genérico y sigue pendiente', async () => {
+    const { deletion, hasher, sessions, limiter, restore } = setup(scheduled, {}, null);
+
+    await expect(restore.execute(input())).rejects.toThrow(InvalidCredentialsError);
+
+    expect(hasher.verified).toHaveLength(1);
+    expect(sessions.created).toHaveLength(0);
+    expect(deletion.accounts.get(id)?.deletionScheduledFor).toEqual(scheduled);
+    expect(limiter.recorded).toContain('login-correo:ana@correo.com');
   });
 
   it('comparte los límites del login: bloqueada, responde 429 sin verificar la contraseña', async () => {
