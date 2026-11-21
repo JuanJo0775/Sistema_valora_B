@@ -150,7 +150,7 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
       return callback({ code: 'codigo-bueno', state }, cookie).expect(302);
     }
     const sessionCookieOf = (response: request.Response) =>
-      ((response.headers['set-cookie'] as unknown as string[]) ?? [])
+      (response.headers['set-cookie'] as unknown as string[])
         .find((cookie) => cookie.startsWith('valora_session='))
         ?.split(';')[0];
 

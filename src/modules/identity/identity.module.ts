@@ -14,6 +14,8 @@ import { DeleteOwnAccount } from './application/delete-own-account';
 import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
 import { RestoreAccount } from './application/restore-account';
 import { CLOCK, type Clock } from './application/clock';
+import { GOOGLE_ACCOUNT_LINKS, type GoogleAccountLinks } from './application/google-account-links';
+import { SignInWithGoogle } from './application/sign-in-with-google';
 import {
   GOOGLE_IDENTITY_PROVIDER,
   type GoogleIdentityProvider,
@@ -48,6 +50,7 @@ import { ConsoleEmailSender } from './infrastructure/console-email-sender';
 import { DrizzleAccountDeletionRepository } from './infrastructure/drizzle-account-deletion-repository';
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository';
 import { DrizzleEmailVerificationRepository } from './infrastructure/drizzle-email-verification-repository';
+import { DrizzleGoogleAccountLinks } from './infrastructure/drizzle-google-account-links';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository';
 import { InMemoryAttemptLimiter } from './infrastructure/in-memory-attempt-limiter';
 import { JoseGoogleIdentityProvider } from './infrastructure/jose-google-identity-provider';
@@ -198,6 +201,21 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         limiter: AttemptLimiter,
         clock: Clock,
       ): Login => new Login({ accounts, hasher, sessions, limiter, clock }),
+    },
+    // ADR-029, fase 2 (#180, #181): entrar con Google.
+    {
+      provide: GOOGLE_ACCOUNT_LINKS,
+      inject: [DATABASE],
+      useFactory: (db: Database): GoogleAccountLinks => new DrizzleGoogleAccountLinks(db),
+    },
+    {
+      provide: SignInWithGoogle,
+      inject: [GOOGLE_ACCOUNT_LINKS, SESSION_REPOSITORY, CLOCK],
+      useFactory: (
+        links: GoogleAccountLinks,
+        sessions: SessionRepository,
+        clock: Clock,
+      ): SignInWithGoogle => new SignInWithGoogle({ links, sessions, clock }),
     },
     // ADR-032: eliminación de la cuenta con 10 días de gracia, restauración y purga.
     {

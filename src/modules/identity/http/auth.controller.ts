@@ -56,7 +56,7 @@ export interface ClientRequest {
 
 // Lo que estas rutas escriben en la respuesta.
 export interface CookieResponse {
-  setHeader(name: string, value: string): unknown;
+  setHeader(name: string, value: string | string[]): unknown;
 }
 
 // 429 con los segundos de espera: el filtro común los envía en Retry-After.

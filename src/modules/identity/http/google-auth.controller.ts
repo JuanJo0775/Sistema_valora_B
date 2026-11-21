@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseCookie } from 'cookie';
+import { SESSION_MAX_DAYS } from '../../../domain/session-lifetime';
 import type { Env } from '../../../shared/config/env.validation';
 import { CLOCK, type Clock } from '../application/clock';
 import {
@@ -24,8 +25,9 @@ import {
   GoogleRejectedError,
   type GoogleIdentityProvider,
 } from '../application/google-identity-provider';
+import { type GoogleIdentity, SignInWithGoogle } from '../application/sign-in-with-google';
 import type { CookieResponse } from './auth.controller';
-import { GOOGLE_HANDSHAKE_COOKIE, googleCookie } from './session-cookie';
+import { GOOGLE_HANDSHAKE_COOKIE, googleCookie, sessionCookie } from './session-cookie';
 
 // Lo que el callback lee de la petición, sin depender de los tipos de Express.
 interface CallbackRequest {
@@ -50,6 +52,7 @@ export class GoogleAuthController {
     @Inject(GOOGLE_IDENTITY_PROVIDER) private readonly google: GoogleIdentityProvider | null,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly config: ConfigService<Env, true>,
+    private readonly signIn: SignInWithGoogle,
   ) {}
 
   @Get('start')
@@ -84,11 +87,20 @@ export class GoogleAuthController {
     if (!handshake || !query.code || query.state !== handshake.state) {
       return { url: signInWithError('google') };
     }
+    let identity: GoogleIdentity;
     try {
-      await google.identityFrom(query.code, handshake);
+      identity = await google.identityFrom(query.code, handshake);
     } catch (error) {
       if (error instanceof GoogleRejectedError) return { url: signInWithError('google') };
       throw error;
+    }
+    const result = await this.signIn.execute(identity);
+    if (result.outcome === 'signed-in') {
+      // Las dos cookies van juntas: la del saludo, vacía, y la de sesión, como POST /auth/login.
+      response.setHeader('Set-Cookie', [
+        googleCookie(GOOGLE_HANDSHAKE_COOKIE, '', 0),
+        sessionCookie(result.token, SESSION_MAX_DAYS * 24 * 60 * 60),
+      ]);
     }
     return { url: '/' };
   }
