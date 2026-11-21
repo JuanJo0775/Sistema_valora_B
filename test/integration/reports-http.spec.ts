@@ -40,7 +40,7 @@ describe('POST /v1/reports', () => {
     // Una sola cuenta de reportante para todo el archivo: los límites de inicio de sesión cuentan
     // por IP.
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts`,
     );
     reporter = await signIn(server, db, 'reportante@correo.com');
   });

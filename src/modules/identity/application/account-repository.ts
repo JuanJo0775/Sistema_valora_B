@@ -4,16 +4,21 @@ export type Role = 'reportante' | 'comercio' | 'moderador';
 export interface Account {
   id: string;
   email: string;
-  passwordHash: string;
+  // ADR-033: nulo en las cuentas creadas con Google (no tienen contraseña).
+  passwordHash: string | null;
   role: Role;
   // Grill de la #33, pregunta 4: hasta cuándo está suspendida, o null.
   suspendedUntil: Date | null;
   // ADR-032: cuándo se borra la cuenta de forma definitiva; null si no hay eliminación pendiente.
   deletionScheduledFor: Date | null;
+  // ADR-029: cuándo se comprobó el correo; null = sin verificar.
+  emailVerifiedAt: Date | null;
 }
 
 // Consentimiento de datos (RF-001, Ley 1581): qué versión aceptó y cuándo.
-export interface NewAccount extends Omit<Account, 'suspendedUntil' | 'deletionScheduledFor'> {
+export interface NewAccount extends Omit<Account, 'suspendedUntil' | 'deletionScheduledFor' | 'emailVerifiedAt'> {
+  // ADR-033: las cuentas de Google nacen con el correo ya comprobado por Google.
+  emailVerifiedAt?: Date;
   // #133: el nombre visible, ya normalizado. Solo lo ve la propia cuenta (EC-08).
   displayName: string | null;
   policyVersion: string;

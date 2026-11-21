@@ -25,7 +25,7 @@ describe('POST /v1/moderation/roles (RF-002 RN1 y RN4)', () => {
     db = app.get<Database>(DATABASE);
     // Pocas cuentas para todo el archivo: los límites de inicio de sesión cuentan por IP.
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
     );
     moderator = await signIn(server, db, 'moderadora@correo.com', 'moderador');
     reporter = await signIn(server, db, 'ana@correo.com');

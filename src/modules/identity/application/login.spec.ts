@@ -19,6 +19,7 @@ const ana: Account = {
   role: 'reportante',
   suspendedUntil: null,
   deletionScheduledFor: null,
+  emailVerifiedAt: null,
 };
 
 class FakeHasher implements PasswordHasher {
@@ -206,5 +207,17 @@ describe('iniciar sesión', () => {
     await expect(login.execute(input({ password: 'otra-clave' }))).rejects.toThrow(
       InvalidCredentialsError,
     );
+  });
+
+  // ADR-033: una cuenta creada con Google no tiene contraseña. Responde el 401 de siempre y tarda lo
+  // mismo (se verifica contra un hash falso); no revela que existe ni que es de Google.
+  it('una cuenta sin contraseña (Google) responde el error genérico y no abre sesión', async () => {
+    const { hasher, sessions, limiter, login } = setup({}, { ...ana, passwordHash: null });
+
+    await expect(login.execute(input())).rejects.toThrow(InvalidCredentialsError);
+
+    expect(sessions.sessions).toHaveLength(0);
+    expect(hasher.verified).toHaveLength(1);
+    expect(limiter.recorded).toContain('login-correo:ana@correo.com');
   });
 });

@@ -13,6 +13,8 @@ export interface ResolveSessionPorts {
 export interface ActiveSession {
   sessionId: string;
   accountId: string;
+  // ADR-033: cuándo se creó la sesión; eliminar una cuenta sin contraseña exige una reciente.
+  createdAt: Date;
   role: Role;
   // ADR-029: registrar precios exige el correo verificado.
   emailVerified: boolean;
@@ -33,6 +35,7 @@ export class ResolveSession {
     return {
       sessionId: session.id,
       accountId: session.accountId,
+      createdAt: session.createdAt,
       role: session.role,
       emailVerified: session.accountEmailVerifiedAt !== null,
       ...(suspendedUntil && suspendedUntil > now ? { suspendedUntil } : {}),

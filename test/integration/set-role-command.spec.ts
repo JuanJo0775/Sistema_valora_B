@@ -27,7 +27,7 @@ describe('pnpm identity:set-role <correo> <rol> "<motivo>"', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
     );
     await request(app.getHttpServer() as Parameters<typeof request>[0])
       .post('/v1/auth/register')

@@ -34,7 +34,7 @@ describe('apelación por HTTP (RF-013 RN4, #71)', () => {
     db = app.get<Database>(DATABASE);
     // Pocas cuentas para todo el archivo: los límites de inicio de sesión cuentan por IP.
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts`,
     );
     author = await signIn(server, db, 'autora@correo.com');
     stranger = await signIn(server, db, 'otra@correo.com');

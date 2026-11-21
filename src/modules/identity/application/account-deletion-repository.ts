@@ -10,8 +10,9 @@ export type ScheduleOutcome =
   | { outcome: 'gone' };
 
 export interface AccountDeletionRepository {
-  // Hash de la contraseña de la cuenta, o null si ya no existe.
-  passwordHashOf(accountId: string): Promise<string | null>;
+  // Lo que prueba que quien pide eliminar es el dueño: el hash de su contraseña (null si la cuenta es de
+  // Google y no tiene), o null si la cuenta ya no existe.
+  credentialsOf(accountId: string): Promise<{ passwordHash: string | null } | null>;
   // Marca la cuenta pendiente de eliminación y revoca todas sus sesiones, juntos. Con dos peticiones a la
   // vez, las filas se bloquean: la segunda ve la fecha de la primera y no la mueve.
   schedule(input: { accountId: string; scheduledFor: Date; now: Date }): Promise<ScheduleOutcome>;
@@ -19,7 +20,7 @@ export interface AccountDeletionRepository {
   cancel(accountId: string): Promise<boolean>;
   // Cuentas pendientes cuya fecha ya llegó, las más antiguas primero.
   dueAccountIds(now: Date, limit: number): Promise<string[]>;
-  // Borra la cuenta y todo lo que cuelga de ella (sesiones y enlaces de verificación) si sigue pendiente y
+  // Borra la cuenta y todo lo que cuelga de ella (sesiones, enlaces de verificación e identidades externas) si sigue pendiente y
   // ya venció; false si no (restaurada, ya borrada o aún no vence).
   purge(accountId: string, now: Date): Promise<boolean>;
 }

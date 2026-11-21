@@ -42,7 +42,7 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
     );
     reporter = await signIn(server, db, 'contrato@correo.com');
     const today = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);

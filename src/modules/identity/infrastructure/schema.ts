@@ -12,7 +12,8 @@ export const accounts = identitySchema.table(
     email: text('email').notNull(),
     // #133: el nombre visible; vacío en las cuentas creadas antes. Solo lo ve la propia cuenta.
     displayName: text('display_name'),
-    passwordHash: text('password_hash').notNull(),
+    // ADR-033: nulo en las cuentas creadas con Google; esas cuentas no tienen contraseña.
+    passwordHash: text('password_hash'),
     role: text('role').notNull(),
     // Consentimiento de datos (RF-001, Ley 1581).
     policyVersion: text('policy_version').notNull(),
@@ -97,5 +98,27 @@ export const emailVerifications = identitySchema.table(
     uniqueIndex('email_verifications_pending_idx')
       .on(table.accountId)
       .where(sql`used_at is null`),
+  ],
+);
+
+// ADR-033: la identidad de la persona en un proveedor externo (hoy solo Google). `subject` es el `sub` del
+// id_token: un identificador estable que Google asigna a la persona y NO cambia aunque cambie su correo. Es
+// un dato personal (EC-08): vive solo aquí, ninguna respuesta lo trae y la purga de la cuenta lo borra
+// (la fila cuelga de la cuenta con borrado en cascada).
+export const externalIdentities = identitySchema.table(
+  'external_identities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    provider: text('provider').notNull(),
+    subject: text('subject').notNull(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    linkedAt: timestamp('linked_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('external_identities_provider_subject_idx').on(table.provider, table.subject),
+    index('external_identities_account_idx').on(table.accountId),
+    check('external_identities_provider_valid', sql`${table.provider} in ('google')`),
   ],
 );
