@@ -52,4 +52,31 @@ describe('completar el registro de quien entró con Google', () => {
     ]);
     expect(result.token).toEqual(expect.any(String));
   });
+
+  // Mientras la persona estaba en /bienvenida, alguien se registró con ese correo (con contraseña y sin
+  // verificarlo). No se crea otra cuenta: se vincula, como al entrar con Google (grill, pregunta 4).
+  it('si el correo ya tiene cuenta, la vincula en lugar de crear otra', async () => {
+    const someone = {
+      id: '22222222-2222-4222-8222-222222222222',
+      email: 'nueva@correo.com',
+      passwordHash: 'hash:de-quien-se-adelanto',
+      role: 'reportante' as const,
+      suspendedUntil: null,
+      deletionScheduledFor: null,
+      emailVerified: false,
+    };
+    const { links, sessions, complete } = setup([someone]);
+
+    await complete.execute({
+      signUp,
+      displayName: 'Nueva Persona',
+      acceptedPolicyVersion: '2026-11',
+    });
+
+    expect(links.created).toHaveLength(0);
+    expect(links.links).toEqual([
+      expect.objectContaining({ accountId: someone.id, forgetPassword: true }),
+    ]);
+    expect(sessions.created).toEqual([expect.objectContaining({ accountId: someone.id })]);
+  });
 });
