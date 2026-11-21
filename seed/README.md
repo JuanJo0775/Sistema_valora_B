@@ -89,7 +89,7 @@ pnpm seed:imagenes
 - Consulta con un nombre genérico del proyecto, sin correo ni datos de nadie, y con una pausa entre consultas (Open Food Facts pide no pasar de 100 por minuto). No usa la base ni corre en el servidor. Nunca toma fotos de sitios de cadenas.
 - Después se revisa el CSV y se corre `pnpm db:seed` para cargarlas.
 
-Hoy la semilla tiene 85 productos y 93 presentaciones. Las 56 presentaciones que vienen de olimpica.com (16-nov-2026, #118) traen código de barras; las 37 primeras todavía no (los llena el equipo).
+Hoy la semilla tiene 85 productos verificados. El 21-nov-2026 (#193) se agregaron 79 presentaciones más en borrador (`verificar = sí`, sin responsable): 31 de la página de D1 (empacados) y 48 frescos de la página de Olímpica. Se cargan cuando alguien del equipo las revisa y firma. Las de marca comercial traen el código de barras de la ficha; las genéricas (sin marca) no, porque el código de una marca propia de cadena no identifica el producto en otras tiendas.
 
 ### Qué revisar en la tienda
 
@@ -121,19 +121,21 @@ SIPSA es el sistema del DANE que publica **precios mayoristas** de alimentos en 
 Fuente: el ZIP **«Informes por ciudades»** de la página de SIPSA (<https://www.dane.gov.co/index.php/estadisticas-por-tema/agropecuario/sistema-de-informacion-de-precios-sipsa/componente-precios-mayoristas>), que trae un PDF por mercado. El anexo diario en Excel **no** trae Armenia.
 
 1. Una vez por semana, descargar el ZIP del último día hábil (`bol-SIPSADiario-regionales-DDmesAAAA.zip`). El del sábado solo trae Bogotá.
-2. Buscar cada producto en el PDF **«Armenia, Retiro»**. Si no aparece, usar **«Pereira, Mercasa»** como respaldo; el mercado queda escrito en la fila y la comparación lo muestra.
+2. Buscar cada producto en el PDF de Armenia: **«Armenia, Mercar»** los martes y jueves (el más completo: trae granos, procesados, lácteos y pollo) y **«Armenia, Retiro»** los otros días hábiles (pocos productos). Si no aparece, usar **«Pereira, Mercasa»** como respaldo; el mercado queda escrito en la fila y la comparación lo muestra.
 3. Si no aparece en ninguno de los dos, probar el día hábil anterior. Si no salió en toda la semana, esa semana el producto no lleva fila.
 4. **Precio por kilo:** el punto medio entre mínimo y máximo. Si viene por bulto, bolsa o arroba, dividir por los kilos que dice el informe (por ejemplo, cebolla: bulto de 50 kg entre $100.000 y $112.000 → $106.000 ÷ 50 = $2.120).
 5. Una fila por producto, con la fecha del informe en `inicio_periodo` y `fin_periodo`, el enlace del ZIP en `url_fuente`, el nombre de quien la copió en `responsable` y `verificar = no`.
 6. Correr `pnpm db:seed`. La referencia se deja de mostrar a los 30 días.
 
-Equivalencias usadas: «Banano criollo» → Banano; «Cebolla cabezona blanca» → Cebolla cabezona; «Tomate chonto» → Tomate chonto; «Papa parda pastusa» → Papa pastusa.
+Equivalencias usadas: «Banano criollo» → Banano; «Cebolla cabezona blanca» → Cebolla cabezona; «Tomate chonto» → Tomate chonto; «Papa parda pastusa» → Papa pastusa. Desde #193 (en borrador, por revisar): «Cebolla junca» → Cebolla junca; «Mora de castilla» → Mora; «Aguacate papelillo» → Aguacate común; «Fríjol cargamanto rojo» → Fríjol rojo; «Azúcar sulfitada» → Azúcar blanca.
+
+Los archivos del DANE no siempre son ZIP aunque terminen en `.zip` (a veces son RAR, o un ZIP con un RAR dentro): en Windows se abren con `tar.exe`. Para copiar del PDF sirve `pdftotext -raw`.
 
 Las filas solo se cargan cuando el producto también está verificado en `productos.csv` (con responsable). Si no, la semilla dice qué fila corregir.
 
 ## `precios-iniciales.csv` («Dato inicial», #135)
 
-Precios tomados de la página pública de una cadena (hoy, D1 y Carulla). `pnpm db:seed` pone cada fila en **todas las tiendas revisadas de esa cadena** en `tiendas.csv` (una tienda es de la cadena si su nombre trae el nombre de la cadena como palabra: «D1» sí, «Panadería D10» no). Se guardan con la fuente `siembra` («Dato inicial»):
+Precios tomados de la página pública de una cadena (hoy, D1, Carulla y Olímpica). `pnpm db:seed` pone cada fila en **todas las tiendas revisadas de esa cadena** en `tiendas.csv` (una tienda es de la cadena si su nombre trae el nombre de la cadena como palabra: «D1» sí, «Panadería D10» no). Se guardan con la fuente `siembra` («Dato inicial»):
 
 - **Nunca reemplazan un precio de la comunidad.** Si la tienda ya tiene uno, el dato inicial no se guarda. Si la comunidad reporta después, su precio lo reemplaza.
 - **No son reportes:** no suben la confianza ni la reputación de nadie, no entran a la moderación ni al historial, y vencen con la vigencia de siempre (7 o 14 días desde `fecha_consulta`).
@@ -154,6 +156,7 @@ Precios tomados de la página pública de una cadena (hoy, D1 y Carulla). `pnpm 
 
 - Si una fila tiene un error, no se carga ningún dato inicial y el comando dice qué fila corregir. Una prueba revisa este archivo en cada pull request.
 - Carulla (#142): la página no deja elegir Armenia sin entrar a rutas que su `robots.txt` prohíbe, así que su precio es el nacional. Un precio de otro tamaño nunca se pone en una presentación distinta: daría un precio por unidad falso. Por eso se agregaron a `productos.csv` las presentaciones que vende Carulla (papa pastusa 2500 g, aceite Premier 900 ml y chocolate Corona 200 g). Las ofertas no se cargan.
+- Olímpica (#193): la página no deja elegir ciudad sin entrar a rutas que su `robots.txt` prohíbe, así que su precio es el que muestra por defecto. Si la ficha muestra una oferta, se toma el precio normal (tachado) y se anota en `nota`. Las frutas y verduras a granel usan la opción «X KG».
 - Ara no publica precios que se puedan leer sin entrar a rutas que su `robots.txt` prohíbe. Éxito bloquea las consultas automáticas. No se usan imágenes de las cadenas (ADR-020, punto 8).
 
 ## `muestra-exactitud.csv` (PR-22, #93)
