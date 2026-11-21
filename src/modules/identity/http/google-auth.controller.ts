@@ -1,7 +1,12 @@
 import {
+  Body,
   Controller,
   Get,
   Header,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UnauthorizedException,
   Inject,
   NotFoundException,
   Query,
@@ -18,6 +23,7 @@ import {
   GOOGLE_HANDSHAKE_MINUTES,
   newGoogleHandshake,
   openHandshake,
+  openSignUp,
   sealHandshake,
   sealSignUp,
 } from '../application/google-handshake';
@@ -33,7 +39,9 @@ import {
   SignInWithGoogle,
   type SignInWithGoogleResult,
 } from '../application/sign-in-with-google';
+import { CompleteGoogleSignUp } from '../application/complete-google-sign-up';
 import type { CookieResponse } from './auth.controller';
+import { CompleteGoogleSignUpDto } from './auth.dto';
 import {
   GOOGLE_HANDSHAKE_COOKIE,
   GOOGLE_SIGNUP_COOKIE,
@@ -67,6 +75,7 @@ export class GoogleAuthController {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly config: ConfigService<Env, true>,
     private readonly signIn: SignInWithGoogle,
+    private readonly completeSignUp: CompleteGoogleSignUp,
   ) {}
 
   @Get('start')
@@ -143,6 +152,31 @@ export class GoogleAuthController {
       sessionCookie(result.token, SESSION_MAX_DAYS * 24 * 60 * 60),
     ]);
     return { url: '/' };
+  }
+
+  // RF-001: crea la cuenta con lo que guardó el callback (correo y sub de Google, firmados) y lo que la
+  // persona acepta en /bienvenida. Sin CSRF: aún no hay sesión, y SameSite=Lax impide que otro sitio
+  // envíe la cookie en un POST.
+  @Post('complete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async complete(
+    @Body() body: CompleteGoogleSignUpDto,
+    @Req() request: CallbackRequest,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<void> {
+    this.enabledGoogle();
+    const sealed = parseCookie(request.headers.cookie ?? '')[GOOGLE_SIGNUP_COOKIE];
+    const signUp = sealed ? openSignUp(sealed, this.secret(), this.clock.now()) : null;
+    if (!signUp) throw new UnauthorizedException();
+    const { token } = await this.completeSignUp.execute({
+      signUp,
+      displayName: body.displayName,
+      acceptedPolicyVersion: body.acceptedPolicyVersion,
+    });
+    response.setHeader('Set-Cookie', [
+      googleCookie(GOOGLE_SIGNUP_COOKIE, '', 0),
+      sessionCookie(token, SESSION_MAX_DAYS * 24 * 60 * 60),
+    ]);
   }
 
   private enabledGoogle(): GoogleIdentityProvider {

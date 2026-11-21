@@ -71,6 +71,19 @@ export class LoginDto {
   password!: string;
 }
 
+// RF-001 (#181): quien entró con Google acepta la política y elige su nombre en /bienvenida. El correo
+// no viaja en el cuerpo: sale de la cookie firmada del registro pendiente.
+export class CompleteGoogleSignUpDto {
+  @Transform(toNormalizedName)
+  @IsDisplayName()
+  displayName!: string;
+
+  @IsIn([CURRENT_POLICY_VERSION], {
+    message: `debe ser la versión vigente de la política (${CURRENT_POLICY_VERSION})`,
+  })
+  acceptedPolicyVersion!: string;
+}
+
 // ADR-032: la contraseña confirma que quien pide eliminar la cuenta es su dueño. Una cuenta creada con
 // Google no tiene contraseña y confirma con su correo (#179). Exactamente uno de los dos.
 export class DeleteAccountDto {

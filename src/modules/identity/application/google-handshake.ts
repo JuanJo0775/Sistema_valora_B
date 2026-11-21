@@ -60,3 +60,6 @@ export interface PendingGoogleSignUp {
 
 export const sealSignUp = (signUp: PendingGoogleSignUp, secret: string, now: Date) =>
   seal(signUp, secret, now);
+
+export const openSignUp = (sealed: string, secret: string, now: Date) =>
+  open(sealed, secret, now) as PendingGoogleSignUp | null;

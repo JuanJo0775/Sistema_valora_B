@@ -16,6 +16,7 @@ import { RestoreAccount } from './application/restore-account';
 import { CLOCK, type Clock } from './application/clock';
 import { GOOGLE_ACCOUNT_LINKS, type GoogleAccountLinks } from './application/google-account-links';
 import { SignInWithGoogle } from './application/sign-in-with-google';
+import { CompleteGoogleSignUp } from './application/complete-google-sign-up';
 import {
   GOOGLE_IDENTITY_PROVIDER,
   type GoogleIdentityProvider,
@@ -216,6 +217,16 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         sessions: SessionRepository,
         clock: Clock,
       ): SignInWithGoogle => new SignInWithGoogle({ links, sessions, clock }),
+    },
+    {
+      provide: CompleteGoogleSignUp,
+      inject: [GOOGLE_ACCOUNT_LINKS, SESSION_REPOSITORY, CLOCK, SignInWithGoogle],
+      useFactory: (
+        links: GoogleAccountLinks,
+        sessions: SessionRepository,
+        clock: Clock,
+        signIn: SignInWithGoogle,
+      ): CompleteGoogleSignUp => new CompleteGoogleSignUp({ links, sessions, clock, signIn }),
     },
     // ADR-032: eliminación de la cuenta con 10 días de gracia, restauración y purga.
     {
