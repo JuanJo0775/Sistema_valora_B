@@ -8,6 +8,15 @@ import {
 } from './sign-in-with-google';
 
 const now = new Date('2026-11-21T14:00:00Z');
+const ana = {
+  id: '11111111-1111-4111-8111-111111111111',
+  email: 'ana@correo.com',
+  passwordHash: 'hash:la-clave-de-ana',
+  role: 'reportante' as const,
+  suspendedUntil: null,
+  deletionScheduledFor: null,
+  emailVerified: true,
+};
 
 // Doble del puerto: cuentas en memoria y los vínculos que se piden.
 class InMemoryGoogleLinks implements GoogleAccountLinks {
@@ -76,5 +85,17 @@ describe('entrar con Google (ADR-029, fase 2)', () => {
 
     expect(links.links).toHaveLength(0);
     expect(sessions.created).toHaveLength(0);
+  });
+
+  it('una cuenta ya vinculada a ese sub de Google entra y abre una sesión, sin volver a vincular', async () => {
+    const { links, sessions, signIn } = setup([{ ...ana, googleSubject: '109876543210987654321' }]);
+
+    const result = await signIn.execute(google());
+
+    expect(result).toMatchObject({ outcome: 'signed-in', token: expect.any(String) as unknown });
+    expect(sessions.created).toEqual([
+      expect.objectContaining({ accountId: ana.id, createdAt: now }),
+    ]);
+    expect(links.links).toHaveLength(0);
   });
 });
