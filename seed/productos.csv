@@ -1,9 +1,9 @@
 ﻿producto;marca;categoria;cantidad;unidad;unidades_empaque;codigo_barras;verificar;fuente;responsable;fecha;imagen_url;imagen_fuente;imagen_atribucion
-Arroz blanco;Diana;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
+Arroz blanco;Diana;grains-groceries;500;g;1;7702511000014;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/251/100/0014/front_es.8.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Arroz blanco;Diana;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Arroz blanco;Roa;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
 Arroz blanco;Roa;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
-Aceite de girasol;Premier;grains-groceries;1000;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
+Aceite de girasol;Premier;grains-groceries;1000;ml;1;7701018007151;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;https://images.openfoodfacts.org/images/products/770/101/800/7151/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Aceite de girasol;Premier;grains-groceries;3000;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
 Aceite de girasol;Premier;grains-groceries;900;ml;1;;no;Verificado por el equipo con carulla.com (17-nov-2026);Sara Sanchez;2026-11-17;;;
 Azúcar blanca;Manuelita;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
@@ -12,11 +12,11 @@ Lenteja;;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda
 Panela;;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
 Sal refinada;Refisal;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Pasta spaghetti;Doria;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
-Pasta spaghetti;Doria;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
+Pasta spaghetti;Doria;grains-groceries;500;g;1;7702085013021;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/208/501/3021/front_es.15.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Café molido;Sello Rojo;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Chocolate de mesa;Corona;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
 Chocolate de mesa;Corona;grains-groceries;200;g;1;;no;Verificado por el equipo con carulla.com (17-nov-2026);Sara Sanchez;2026-11-17;;;
-Atún en aceite;Van Camp's;grains-groceries;160;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
+Atún en aceite;Van Camp's;grains-groceries;160;g;1;7702367002637;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/236/700/2637/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Leche entera;Colanta;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Leche entera;Alquería;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
 Huevos rojos AA;;dairy-eggs;30;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
@@ -57,7 +57,7 @@ Café instantáneo liofilizado;Buendía;grains-groceries;170;g;1;7707211630929;n
 Azúcar morena;Riopaila;grains-groceries;1;kg;1;7702127008022;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Azúcar blanca;Incauca;grains-groceries;2.5;kg;1;7702059405029;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Pasta fideo;Doria;grains-groceries;500;g;1;7702085013069;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/208/501/3069/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
-Pasta conchas;Doria;grains-groceries;250;g;1;7702085012215;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
+Pasta conchas;Doria;grains-groceries;250;g;1;7702085012215;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/208/500/1974/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Leche condensada;Colombina;grains-groceries;400;g;1;7702097066558;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/209/706/6558/front_en.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Leche en polvo entera;Klim;dairy-eggs;360;g;1;7702024034605;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/202/403/4605/front_es.7.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Leche en polvo;El Rodeo;dairy-eggs;375;g;1;7702024402831;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/202/440/2831/front_es.7.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
