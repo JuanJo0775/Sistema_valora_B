@@ -215,6 +215,21 @@ describe('validateEnv con el inicio de sesión con Google (ADR-029, fase 2)', ()
     },
   );
 
+  // #182: un panel como el de Render puede dejar una variable creada pero vacía. Vacía es ausente: la API
+  // arranca con Google apagado en lugar de caerse.
+  it('las variables de Google vacías cuentan como ausentes', () => {
+    const env = validateEnv({
+      ...validEnv,
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '  ',
+      GOOGLE_REDIRECT_URI: '',
+    });
+
+    expect(env.GOOGLE_CLIENT_ID).toBeUndefined();
+    expect(env.GOOGLE_CLIENT_SECRET).toBeUndefined();
+    expect(env.GOOGLE_REDIRECT_URI).toBeUndefined();
+  });
+
   it('GOOGLE_REDIRECT_URI debe ser una dirección http o https', () => {
     expect(() =>
       validateEnv({ ...validEnv, ...google, GOOGLE_REDIRECT_URI: 'no-es-una-url' }),

@@ -114,19 +114,27 @@ export class Env {
 
   // ADR-029, fase 2 (#181): inicio de sesión con Google. Las tres o ninguna: sin ellas la API arranca y
   // las rutas de Google responden 404. El secreto solo va en el panel de Render, nunca en Git.
+  @Transform(emptyAsAbsent)
   @ValidateIf(hasGoogleConfig)
   @IsString()
   @IsNotEmpty()
   GOOGLE_CLIENT_ID?: string;
 
+  @Transform(emptyAsAbsent)
   @ValidateIf(hasGoogleConfig)
   @IsString()
   @IsNotEmpty()
   GOOGLE_CLIENT_SECRET?: string;
 
+  @Transform(emptyAsAbsent)
   @ValidateIf(hasGoogleConfig)
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
   GOOGLE_REDIRECT_URI?: string;
+}
+
+// #182: un panel de variables puede dejarlas creadas pero vacías; vacía cuenta como ausente.
+function emptyAsAbsent({ value }: { value: unknown }): unknown {
+  return typeof value === 'string' && value.trim() === '' ? undefined : value;
 }
 
 function hasGoogleConfig(env: Env): boolean {
