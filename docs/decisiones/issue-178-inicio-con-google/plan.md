@@ -13,7 +13,8 @@ Ya listo fuera del código (20-nov-2026): dominio `https://www.valoora.app` veri
 |---|---|---|---|---|
 | 1 | #179 | `feat/identity-cuentas-sin-contrasena` | `password_hash` acepta nulo; login y restauración responden el 401 genérico con una cuenta sin contraseña; eliminar la cuenta sin contraseña se confirma escribiendo el correo | Sí |
 | 2 | #180 | `feat/identity-entrar-con-google` | Columna `google_subject` y caso de uso `SignInWithGoogle` (vincular, entrar o pedir la política), sin HTTP | Sí |
-| 3 | #181 | `feat/identity-rutas-google` | `GET /v1/auth/google/start`, `GET /v1/auth/google/callback`, `POST /v1/auth/google/complete`; adaptador con `openid-client`; contrato primero | Sí |
+| 3A | #181 | `feat/identity-google-oidc` | Piezas sin HTTP: configuración de Google, cookie firmada del saludo (`state`, `nonce`, PKCE) y adaptador `jose` v5 + `fetch` | Sí |
+| 3B | #181 | `feat/identity-rutas-google` | Contrato primero; `GET /v1/auth/google/start`, `GET /v1/auth/google/callback`, `POST /v1/auth/google/complete` y el caso de uso `CompleteGoogleSignUp` | Sí |
 | 4 | F#154 | `feat/auth-boton-google` | Botón «Continuar con Google», página `/bienvenida` y mensajes de error | Vitest y Playwright |
 | 5 | #182 | `chore/google-produccion` | Variables en Render y prueba real en `www.valoora.app` | No (operación) |
 
@@ -54,6 +55,24 @@ Puerto propio `GoogleAccountLinks` (`findBySubject`, `findByEmail`, `link`) en l
 | 8 | Migración `0031` (`google_subject` única) y `DrizzleGoogleAccountLinks`: vincular, borrar la contraseña y cerrar sesiones en una transacción | No existía el repositorio |
 
 El repositorio aún no se registra en `identity.module.ts`: lo hará la #181, que es la primera ruta que lo usa (YAGNI).
+
+## Paso 3 (#181): ciclos TDD, partido en dos PR
+
+Aprobado por el equipo el 20-nov-2026, para que cada PR quede por debajo de unas 400 líneas.
+
+**PR A (`feat/identity-google-oidc`), sin HTTP ni contrato:**
+
+| Ciclo | Comportamiento |
+|---|---|
+| 0 | Documentación: la librería pasa a `jose` v5 + `fetch` (grill, pregunta 1; ADR-029) |
+| 1 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI` van las tres o ninguna; si falta una, la API no arranca |
+| 2 | La cookie del saludo guarda `state`, `nonce` y el verificador PKCE firmados con `SESSION_SECRET`; alterada, se rechaza |
+| 3 | La cookie del saludo vence a los 10 minutos |
+| 4 | El adaptador arma la URL de Google con `code_challenge` S256, `state`, `nonce` y `openid email profile` |
+| 5 | El adaptador cambia el código por el `id_token` y lo valida (firma, `aud`, `iss`, `exp`); un `aud` ajeno se rechaza |
+| 6 | Un `nonce` distinto al de la cookie se rechaza |
+
+**PR B (`feat/identity-rutas-google`):** contrato primero, luego `start`, `callback`, `CompleteGoogleSignUp` y `complete` (ver `contrato-api.md`).
 
 ## Riesgos y decisiones abiertas
 

@@ -69,3 +69,11 @@ services:
       # Dirección pública de la PWA (https://...), sin barra final: base del enlace /verificar-correo.
       - key: APP_URL
         sync: false
+      # Inicio de sesión con Google (ADR-029, fase 2): las tres o ninguna. GOOGLE_REDIRECT_URI es
+      # https://www.valoora.app/v1/auth/google/callback; el secreto solo en el panel de Render.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
