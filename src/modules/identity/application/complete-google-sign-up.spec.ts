@@ -1,11 +1,5 @@
-import type { Account } from './account-repository';
 import { CompleteGoogleSignUp } from './complete-google-sign-up';
-import type {
-  GoogleAccountLinks,
-  GoogleLink,
-  LinkableAccount,
-  NewGoogleAccount,
-} from './google-account-links';
+import { InMemoryGoogleLinks } from './google-doubles.testing';
 import { CreatedSessions } from './session-doubles.testing';
 import { SignInWithGoogle } from './sign-in-with-google';
 
@@ -15,33 +9,6 @@ const signUp = {
   email: 'nueva@correo.com',
   suggestedName: 'Nueva Persona',
 };
-
-// Doble del puerto: cuentas en memoria; createLinked respeta el correo único como la base.
-class InMemoryGoogleLinks implements GoogleAccountLinks {
-  readonly created: NewGoogleAccount[] = [];
-  readonly links: GoogleLink[] = [];
-
-  constructor(private readonly accounts: (LinkableAccount & { googleSubject?: string })[] = []) {}
-
-  findBySubject(subject: string): Promise<Account | null> {
-    return Promise.resolve(this.accounts.find((a) => a.googleSubject === subject) ?? null);
-  }
-
-  findByEmail(email: string): Promise<LinkableAccount | null> {
-    return Promise.resolve(this.accounts.find((a) => a.email === email) ?? null);
-  }
-
-  link(link: GoogleLink): Promise<void> {
-    this.links.push(link);
-    return Promise.resolve();
-  }
-
-  createLinked(account: NewGoogleAccount): Promise<boolean> {
-    if (this.accounts.some((a) => a.email === account.email)) return Promise.resolve(false);
-    this.created.push(account);
-    return Promise.resolve(true);
-  }
-}
 
 function setup(accounts: ConstructorParameters<typeof InMemoryGoogleLinks>[0] = []) {
   const links = new InMemoryGoogleLinks(accounts);

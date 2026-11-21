@@ -1,6 +1,5 @@
-import type { Account } from './account-repository';
 import { AccountPendingDeletionError } from './login';
-import type { GoogleAccountLinks, GoogleLink, LinkableAccount } from './google-account-links';
+import { InMemoryGoogleLinks } from './google-doubles.testing';
 import { CreatedSessions } from './session-doubles.testing';
 import {
   GoogleEmailNotVerifiedError,
@@ -18,26 +17,6 @@ const ana = {
   deletionScheduledFor: null,
   emailVerified: true,
 };
-
-// Doble del puerto: cuentas en memoria y los vínculos que se piden.
-class InMemoryGoogleLinks implements GoogleAccountLinks {
-  readonly links: GoogleLink[] = [];
-
-  constructor(private readonly accounts: (LinkableAccount & { googleSubject?: string })[] = []) {}
-
-  findBySubject(subject: string): Promise<Account | null> {
-    return Promise.resolve(this.accounts.find((a) => a.googleSubject === subject) ?? null);
-  }
-
-  findByEmail(email: string): Promise<LinkableAccount | null> {
-    return Promise.resolve(this.accounts.find((a) => a.email === email) ?? null);
-  }
-
-  link(link: GoogleLink): Promise<void> {
-    this.links.push(link);
-    return Promise.resolve();
-  }
-}
 
 function setup(accounts: ConstructorParameters<typeof InMemoryGoogleLinks>[0] = []) {
   const links = new InMemoryGoogleLinks(accounts);
