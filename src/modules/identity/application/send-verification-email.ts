@@ -21,6 +21,14 @@ export interface SendVerificationEmailInput {
   email: string;
 }
 
+// Quita las barras finales de APP_URL sin una expresión regular (SonarQube S8786: /\/+$/ puede tardar
+// mucho con entradas largas por el retroceso).
+function withoutTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url[end - 1] === '/') end -= 1;
+  return url.slice(0, end);
+}
+
 // Crea un token nuevo, deja sin efecto los anteriores sin usar y envía el enlace a la PWA.
 export class SendVerificationEmail {
   constructor(private readonly ports: SendVerificationEmailPorts) {}
@@ -36,7 +44,7 @@ export class SendVerificationEmail {
       createdAt: now,
       expiresAt: new Date(now.getTime() + VERIFICATION_TTL_HOURS * 60 * 60 * 1000),
     });
-    const base = this.ports.appUrl.replace(/\/+$/, '');
+    const base = withoutTrailingSlashes(this.ports.appUrl);
     const link = `${base}/verificar-correo?token=${token}`;
     await this.ports.sender.send({
       to: input.email,
