@@ -61,6 +61,9 @@ export class JoseGoogleIdentityProvider implements GoogleIdentityProvider {
         issuer: GOOGLE_ISSUERS,
         audience: this.config.clientId,
       });
+      // El nonce de la cookie firmada: el token es de este inicio de sesión y no de otro.
+      if (payload['nonce'] !== handshake.nonce)
+        throw new GoogleRejectedError('el nonce no coincide');
       return {
         subject: String(payload.sub),
         email: String(payload['email']),
