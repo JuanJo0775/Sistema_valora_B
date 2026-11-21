@@ -27,6 +27,12 @@ const isHttps = (value: unknown): value is string => {
   }
 };
 
+// Retry-After en segundos, si el servidor lo dice; si no, null.
+function retryAfterMs(response: Response): number | null {
+  const seconds = Number(response.headers.get('Retry-After'));
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null;
+}
+
 // ADR-020: la foto frontal de un producto en la API pública de Open Food Facts. Solo trae el
 // enlace; la foto nunca se descarga.
 export class OpenFoodFactsImages {
@@ -51,7 +57,7 @@ export class OpenFoodFactsImages {
       }
       if (response.status !== 429 || attempt >= MAX_ATTEMPTS) break;
       // Frenado no es «no está»: pausa creciente y otra vez el mismo código.
-      await this.wait(BACKOFF_MS * attempt);
+      await this.wait(retryAfterMs(response) ?? BACKOFF_MS * attempt);
       attempt += 1;
     }
     if (response.status === 404) return { status: 'not_found' };
