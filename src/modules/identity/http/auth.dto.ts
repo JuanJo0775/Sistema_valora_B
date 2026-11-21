@@ -1,5 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsIn, IsString, Length, MaxLength, ValidateBy } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsString,
+  Length,
+  MaxLength,
+  ValidateBy,
+  ValidateIf,
+} from 'class-validator';
 import { isValidDisplayName, normalizeDisplayName } from '../../../domain/display-name';
 import type { Role } from '../application/account-repository';
 import { ROLE_NOTE_LENGTH } from '../application/change-role';
@@ -63,11 +71,25 @@ export class LoginDto {
   password!: string;
 }
 
-// ADR-032: la contraseña confirma que quien pide eliminar la cuenta es su dueño.
+// ADR-032: la contraseña confirma que quien pide eliminar la cuenta es su dueño. Una cuenta creada con
+// Google no tiene contraseña y confirma con su correo (#179). Exactamente uno de los dos.
 export class DeleteAccountDto {
+  @ValidateIf((dto: DeleteAccountDto) => dto.confirmEmail === undefined)
   @IsString({ message: 'debe ser texto' })
   @MaxLength(128, { message: 'debe tener como máximo 128 caracteres' })
-  password!: string;
+  password?: string;
+
+  @ValidateIf((dto: DeleteAccountDto) => dto.confirmEmail !== undefined)
+  @IsString({ message: 'debe ser texto' })
+  @MaxLength(254, { message: 'debe tener como máximo 254 caracteres' })
+  @ValidateBy({
+    name: 'passwordOrEmail',
+    validator: {
+      validate: (_value, args) => (args?.object as DeleteAccountDto).password === undefined,
+      defaultMessage: () => 'envía la contraseña o el correo, no los dos',
+    },
+  })
+  confirmEmail?: string;
 }
 
 // Grill de la #73, pregunta 1: comercio no se asigna hasta el Corte 3.
