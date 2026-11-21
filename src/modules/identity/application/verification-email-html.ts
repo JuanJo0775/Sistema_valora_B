@@ -8,11 +8,19 @@ export interface VerificationEmailContent {
   validHours: number;
 }
 
-export function verificationEmailHtml({
-  base,
-  link,
-  validHours,
-}: VerificationEmailContent): string {
+// Lo que entra en atributos y texto se escapa: nada puede cerrar un atributo ni abrir una etiqueta.
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+export function verificationEmailHtml(content: VerificationEmailContent): string {
+  const base = escapeHtml(content.base);
+  const link = escapeHtml(content.link);
+  const validHours = content.validHours;
   return `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Verifica tu correo en Valora</title></head>
