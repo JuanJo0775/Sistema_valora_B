@@ -134,4 +134,19 @@ describe('entrar con Google (ADR-029, fase 2)', () => {
     ]);
     expect(sessions.created).toEqual([expect.objectContaining({ accountId: ana.id })]);
   });
+
+  // Grill de la #178, pregunta 4: alguien pudo registrar con contraseña el correo ajeno sin verificarlo.
+  // Al vincularlo, la dueña real del correo no debe compartir la cuenta con esa persona.
+  it('un correo con cuenta sin verificar se vincula, pierde la contraseña y sus sesiones abiertas', async () => {
+    const { links, sessions, signIn } = setup([{ ...ana, emailVerified: false }]);
+
+    const result = await signIn.execute(google());
+
+    expect(result).toMatchObject({ outcome: 'signed-in' });
+    expect(links.links).toEqual([
+      expect.objectContaining({ accountId: ana.id, forgetPassword: true }),
+    ]);
+    // La sesión nueva se abre después de cerrar las anteriores (lo hace link en su transacción).
+    expect(sessions.created).toHaveLength(1);
+  });
 });
