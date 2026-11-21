@@ -1,7 +1,7 @@
 ﻿producto;marca;categoria;cantidad;unidad;unidades_empaque;codigo_barras;verificar;fuente;responsable;fecha;imagen_url;imagen_fuente;imagen_atribucion
 Arroz blanco;Diana;grains-groceries;500;g;1;7702511000014;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/251/100/0014/front_es.8.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Arroz blanco;Diana;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
-Arroz blanco;Roa;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
+Arroz blanco;Roa;grains-groceries;500;g;1;7702552000097;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;https://images.openfoodfacts.org/images/products/770/255/200/0097/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Arroz blanco;Roa;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
 Aceite de girasol;Premier;grains-groceries;1000;ml;1;7701018007151;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;https://images.openfoodfacts.org/images/products/770/101/800/7151/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Aceite de girasol;Premier;grains-groceries;3000;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
