@@ -40,3 +40,12 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 |---|---|---|
 | ¿Cuánto vale un precio oficial sin reconfirmar? | **La misma vigencia de los reportes** (ADR-005: 7 días frescos, 14 el resto; «por confirmar» y «desactualizado» como hoy). Valores provisionales y configurables en un solo lugar | Una sola regla para oficiales y reportados (neutralidad); un fresco de hace un mes no puede verse vigente |
 | ¿Cómo reconfirma un comercio con muchos productos? | Botón **«Todos mis precios siguen igual»** (un toque reconfirma todos); editar un precio lo reconfirma; **subir el archivo** reconfirma lo que trae; **recordatorio** un día antes (aviso en `/comercios` y correo con Resend) | Con 1.000 productos es un toque por semana. Se descartó que el comercio elija el periodo: podría dejar precios viejos como vigentes durante meses |
+
+## D5. Evidencias y correcciones de la tienda (ADR-022, `establishments`)
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Bucket privado para evidencias? | **No hace falta**: con la verificación por presencia (D2) no se guardan documentos | Menos datos personales (Ley 1581) y nada nuevo que operar |
+| ¿Qué cambia un comercio verificado por sí solo? | **Horario, teléfono y nombre** se aplican al instante. Excepción automática: si el nombre nuevo es equivalente al de otra tienda a menos de 50 m (regla de duplicados de la #27), va al moderador | El dueño conoce esos datos; la excepción evita copiar el nombre de la tienda vecina |
+| ¿Qué pasa por el moderador? | **La ubicación**, siempre: va a la lista de propuestas de tiendas que ya existe | Mover el punto cambia la distancia, que entra al orden neutral y a «tiendas cercanas» |
+| ¿Cómo se aplica sin romper el monolito? | `commerce` pide los cambios a `establishments` por su interfaz pública (`index.ts`); no escribe en sus tablas | Regla de dependencias (ADR-001) |
