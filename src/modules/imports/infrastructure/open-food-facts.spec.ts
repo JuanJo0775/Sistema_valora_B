@@ -96,4 +96,28 @@ describe('Open Food Facts por código de barras (ADR-020, #119)', () => {
 
     expect(pauses).toEqual([700, 700]);
   });
+
+  // #195: el 21-nov-2026 Open Food Facts frenó la semilla con 429 y se quedaron ~50 productos sin
+  // consultar. Frenado no es «no está»: se espera y se vuelve a pedir el mismo código.
+  it('si Open Food Facts frena las consultas (HTTP 429), espera y reintenta el mismo código', async () => {
+    const replies = [
+      () => json(429, {}),
+      () => json(429, {}),
+      () => json(200, { status: 1, product: { image_front_url: PHOTO } }),
+    ];
+    let call = 0;
+    const { fetcher, requests } = fakeFetch(() => (replies[call++] ?? replies[2])!());
+    const waits: number[] = [];
+    const patient = new OpenFoodFactsImages(fetcher, (ms) => {
+      waits.push(ms);
+      return Promise.resolve();
+    });
+
+    await expect(patient.find('7702001023456')).resolves.toEqual({ status: 'found', url: PHOTO });
+
+    expect(requests).toHaveLength(3);
+    expect(new Set(requests.map(({ url }) => url)).size).toBe(1);
+    expect(waits).toHaveLength(2);
+    expect(waits.every((ms) => ms > 0)).toBe(true);
+  });
 });
