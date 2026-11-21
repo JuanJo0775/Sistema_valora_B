@@ -96,4 +96,63 @@ describe('Open Food Facts por código de barras (ADR-020, #119)', () => {
 
     expect(pauses).toEqual([700, 700]);
   });
+
+  // #195: el 21-nov-2026 Open Food Facts frenó la semilla con 429 y se quedaron ~50 productos sin
+  // consultar. Frenado no es «no está»: se espera y se vuelve a pedir el mismo código.
+  it('si Open Food Facts frena las consultas (HTTP 429), espera y reintenta el mismo código', async () => {
+    const replies = [
+      () => json(429, {}),
+      () => json(429, {}),
+      () => json(200, { status: 1, product: { image_front_url: PHOTO } }),
+    ];
+    let call = 0;
+    const { fetcher, requests } = fakeFetch(() => {
+      const reply = replies[Math.min(call, replies.length - 1)] ?? (() => json(500, {}));
+      call += 1;
+      return reply();
+    });
+    const waits: number[] = [];
+    const patient = new OpenFoodFactsImages(fetcher, (ms) => {
+      waits.push(ms);
+      return Promise.resolve();
+    });
+
+    await expect(patient.find('7702001023456')).resolves.toEqual({ status: 'found', url: PHOTO });
+
+    expect(requests).toHaveLength(3);
+    expect(new Set(requests.map(({ url }) => url)).size).toBe(1);
+    expect(waits).toHaveLength(2);
+    expect(waits.every((ms) => ms > 0)).toBe(true);
+  });
+
+  it('si el 429 dice cuánto esperar (Retry-After en segundos), espera eso', async () => {
+    let call = 0;
+    const { fetcher } = fakeFetch(() => {
+      call += 1;
+      return call === 1
+        ? Promise.resolve(new Response('{}', { status: 429, headers: { 'Retry-After': '12' } }))
+        : json(200, { status: 1, product: { image_front_url: PHOTO } });
+    });
+    const waits: number[] = [];
+    const patient = new OpenFoodFactsImages(fetcher, (ms) => {
+      waits.push(ms);
+      return Promise.resolve();
+    });
+
+    await patient.find('7702001023456');
+
+    expect(waits).toEqual([12_000]);
+  });
+
+  it('si sigue frenado después de 4 intentos, se rinde con HTTP 429 y no espera para siempre', async () => {
+    const { fetcher, requests } = fakeFetch(() => json(429, {}));
+    const patient = new OpenFoodFactsImages(fetcher, () => Promise.resolve());
+
+    await expect(patient.find('7702001023456')).resolves.toEqual({
+      status: 'error',
+      message: 'HTTP 429',
+    });
+
+    expect(requests).toHaveLength(4);
+  });
 });
