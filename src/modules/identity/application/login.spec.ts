@@ -132,6 +132,19 @@ describe('iniciar sesión', () => {
     );
   });
 
+  // ADR-029, fase 2 (#179): una cuenta creada con Google no tiene contraseña. Ninguna contraseña la abre y
+  // el error es el genérico, sin revelar cómo se creó la cuenta (EC-08).
+  it('una cuenta sin contraseña no abre sesión con ninguna contraseña: da el error genérico y cuenta como fallo', async () => {
+    const { hasher, sessions, limiter, login } = setup({}, { ...ana, passwordHash: null });
+
+    await expect(login.execute(input())).rejects.toThrow(InvalidCredentialsError);
+
+    // Se verifica un hash de relleno, para que tarde lo mismo que una contraseña mala.
+    expect(hasher.verified).toHaveLength(1);
+    expect(sessions.sessions).toHaveLength(0);
+    expect(limiter.recorded).toContain('login-correo:ana@correo.com');
+  });
+
   // ADR-032.
   it('con la contraseña correcta de una cuenta pendiente de eliminación no abre sesión y dice cuándo se borra', async () => {
     const scheduledFor = new Date('2026-11-28T10:00:00Z');
