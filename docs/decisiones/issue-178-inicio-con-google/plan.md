@@ -72,7 +72,21 @@ Aprobado por el equipo el 20-nov-2026, para que cada PR quede por debajo de unas
 | 5 | El adaptador cambia el código por el `id_token` y lo valida (firma, `aud`, `iss`, `exp`); un `aud` ajeno se rechaza |
 | 6 | Un `nonce` distinto al de la cookie se rechaza |
 
-**PR B (`feat/identity-rutas-google`):** contrato primero, luego `start`, `callback`, `CompleteGoogleSignUp` y `complete` (ver `contrato-api.md`).
+**PR B (`feat/identity-rutas-google`):** contrato primero (`docs/openapi.yaml`, que deja en rojo la prueba de inventario de rutas hasta el último ciclo).
+
+| Ciclo | Comportamiento |
+|---|---|
+| B1 | `GET /v1/auth/google/start`: 302 a Google con la cookie firmada `valora_google` (10 min, `Path=/v1/auth/google`); 404 sin Google configurado |
+| B2 | Callback sin éxito: si la persona canceló, a `/entrar`; `state` distinto, sin cookie o código rechazado, a `/entrar?error=google`; siempre borra la cookie del saludo |
+| B3 | Callback de una cuenta vinculada: a `/` con la cookie de sesión de siempre |
+| B4 | Callback de un correo nuevo: a `/bienvenida` con la cookie firmada `valora_google_signup`; nada en la URL (EC-08). El sellado firmado pasa a ser genérico (dos usos) |
+| B5 | Callback con correo sin verificar o eliminación pendiente: a `/entrar?error=google-correo-sin-verificar` o `eliminacion-pendiente` (antes, 500) |
+| B6 | `CompleteGoogleSignUp` crea la cuenta reportante sin contraseña, verificada y vinculada; dobles de Google compartidos en `google-doubles.testing.ts` |
+| B7 | Si el correo ya tiene cuenta (se creó mientras tanto), entra o la vincula: nunca se duplica |
+| B8 | `POST /v1/auth/google/complete`: 401 sin registro pendiente válido; 204 con sesión; 400 con política o nombre inválidos |
+| B9 | `complete` comparte el límite de 10 registros por IP con `POST /auth/register` (429) |
+
+El proveedor de Google es `null` sin las tres variables y las pruebas lo reemplazan por un Google simulado: dan lo mismo en la CI y en un equipo con su `.env` local.
 
 ## Riesgos y decisiones abiertas
 
