@@ -1,19 +1,46 @@
-import { Controller, Get, Header, Inject, NotFoundException, Redirect, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  Inject,
+  NotFoundException,
+  Query,
+  Redirect,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { parseCookie } from 'cookie';
 import type { Env } from '../../../shared/config/env.validation';
-import type { Clock } from '../application/clock';
-import { CLOCK } from '../application/clock';
+import { CLOCK, type Clock } from '../application/clock';
 import {
   GOOGLE_HANDSHAKE_MINUTES,
   newGoogleHandshake,
+  openHandshake,
   sealHandshake,
 } from '../application/google-handshake';
 import {
   GOOGLE_IDENTITY_PROVIDER,
+  GoogleRejectedError,
   type GoogleIdentityProvider,
 } from '../application/google-identity-provider';
 import type { CookieResponse } from './auth.controller';
 import { GOOGLE_HANDSHAKE_COOKIE, googleCookie } from './session-cookie';
+
+// Lo que el callback lee de la petición, sin depender de los tipos de Express.
+interface CallbackRequest {
+  headers: { cookie?: string };
+}
+
+interface CallbackQuery {
+  code?: string;
+  state?: string;
+  error?: string;
+}
+
+// Adónde vuelve la persona en la PWA (mismo origen: Vercel reenvía /v1/* a la API).
+const SIGN_IN_PAGE = '/entrar';
+const signInWithError = (code: string) => `${SIGN_IN_PAGE}?error=${code}`;
 
 // ADR-029, fase 2 (#181): entrar con Google. La persona llega por el navegador (enlaces y
 // redirecciones), no por fetch. Sin las tres variables de Google, las rutas responden 404.
@@ -37,6 +64,33 @@ export class GoogleAuthController {
       googleCookie(GOOGLE_HANDSHAKE_COOKIE, sealed, GOOGLE_HANDSHAKE_MINUTES * 60),
     );
     return { url: google.authorizationUrl(handshake) };
+  }
+
+  // Siempre redirige a la PWA y borra la cookie del saludo: sirve una sola vez.
+  @Get('callback')
+  @Redirect()
+  @Header('Cache-Control', 'no-store')
+  async callback(
+    @Query() query: CallbackQuery,
+    @Req() request: CallbackRequest,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<{ url: string }> {
+    const google = this.enabledGoogle();
+    response.setHeader('Set-Cookie', googleCookie(GOOGLE_HANDSHAKE_COOKIE, '', 0));
+    // La persona canceló en Google: no es un error que mostrar.
+    if (query.error) return { url: SIGN_IN_PAGE };
+    const sealed = parseCookie(request.headers.cookie ?? '')[GOOGLE_HANDSHAKE_COOKIE];
+    const handshake = sealed ? openHandshake(sealed, this.secret(), this.clock.now()) : null;
+    if (!handshake || !query.code || query.state !== handshake.state) {
+      return { url: signInWithError('google') };
+    }
+    try {
+      await google.identityFrom(query.code, handshake);
+    } catch (error) {
+      if (error instanceof GoogleRejectedError) return { url: signInWithError('google') };
+      throw error;
+    }
+    return { url: '/' };
   }
 
   private enabledGoogle(): GoogleIdentityProvider {
