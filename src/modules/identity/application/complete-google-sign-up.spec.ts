@@ -1,4 +1,5 @@
 import { CompleteGoogleSignUp } from './complete-google-sign-up';
+import { FakeLimiter } from './deletion-doubles.testing';
 import { InMemoryGoogleLinks } from './google-doubles.testing';
 import { CreatedSessions } from './session-doubles.testing';
 import { SignInWithGoogle } from './sign-in-with-google';
@@ -19,6 +20,7 @@ function setup(accounts: ConstructorParameters<typeof InMemoryGoogleLinks>[0] = 
     sessions,
     clock,
     signIn: new SignInWithGoogle({ links, sessions, clock }),
+    limiter: new FakeLimiter(),
   });
   return { links, sessions, complete };
 }
@@ -33,6 +35,7 @@ describe('completar el registro de quien entró con Google', () => {
       signUp,
       displayName: '  Nueva   Persona ',
       acceptedPolicyVersion: '2026-11',
+      ip: '203.0.113.7',
     });
 
     expect(links.created).toEqual([
@@ -71,6 +74,7 @@ describe('completar el registro de quien entró con Google', () => {
       signUp,
       displayName: 'Nueva Persona',
       acceptedPolicyVersion: '2026-11',
+      ip: '203.0.113.7',
     });
 
     expect(links.created).toHaveLength(0);

@@ -60,7 +60,7 @@ export interface CookieResponse {
 }
 
 // 429 con los segundos de espera: el filtro común los envía en Retry-After.
-function tooManyRequests(error: TooManyAttemptsError): HttpException {
+export function tooManyRequests(error: TooManyAttemptsError): HttpException {
   return new HttpException(
     { retryAfterSeconds: error.retryAfterSeconds },
     HttpStatus.TOO_MANY_REQUESTS,

@@ -39,8 +39,9 @@ import {
   SignInWithGoogle,
   type SignInWithGoogleResult,
 } from '../application/sign-in-with-google';
+import { TooManyAttemptsError } from '../application/attempt-limiter';
 import { CompleteGoogleSignUp } from '../application/complete-google-sign-up';
-import type { CookieResponse } from './auth.controller';
+import { type ClientRequest, type CookieResponse, tooManyRequests } from './auth.controller';
 import { CompleteGoogleSignUpDto } from './auth.dto';
 import {
   GOOGLE_HANDSHAKE_COOKIE,
@@ -161,18 +162,25 @@ export class GoogleAuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async complete(
     @Body() body: CompleteGoogleSignUpDto,
-    @Req() request: CallbackRequest,
+    @Req() request: CallbackRequest & ClientRequest,
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<void> {
     this.enabledGoogle();
     const sealed = parseCookie(request.headers.cookie ?? '')[GOOGLE_SIGNUP_COOKIE];
     const signUp = sealed ? openSignUp(sealed, this.secret(), this.clock.now()) : null;
     if (!signUp) throw new UnauthorizedException();
-    const { token } = await this.completeSignUp.execute({
-      signUp,
-      displayName: body.displayName,
-      acceptedPolicyVersion: body.acceptedPolicyVersion,
-    });
+    let token: string;
+    try {
+      ({ token } = await this.completeSignUp.execute({
+        signUp,
+        displayName: body.displayName,
+        acceptedPolicyVersion: body.acceptedPolicyVersion,
+        ip: request.ip ?? 'desconocida',
+      }));
+    } catch (error) {
+      if (error instanceof TooManyAttemptsError) throw tooManyRequests(error);
+      throw error;
+    }
     response.setHeader('Set-Cookie', [
       googleCookie(GOOGLE_SIGNUP_COOKIE, '', 0),
       sessionCookie(token, SESSION_MAX_DAYS * 24 * 60 * 60),

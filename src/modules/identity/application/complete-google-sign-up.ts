@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { normalizeDisplayName } from '../../../domain/display-name';
+import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
 import type { Clock } from './clock';
 import type { GoogleAccountLinks } from './google-account-links';
 import type { PendingGoogleSignUp } from './google-handshake';
+import { REGISTRATIONS_PER_IP } from './register-account';
 import type { SessionRepository } from './session-repository';
 import type { SignInWithGoogle } from './sign-in-with-google';
 import { type StartedSession, startSession } from './start-session';
@@ -12,6 +14,7 @@ export interface CompleteGoogleSignUpPorts {
   sessions: SessionRepository;
   clock: Clock;
   signIn: SignInWithGoogle;
+  limiter: AttemptLimiter;
 }
 
 export interface CompleteGoogleSignUpInput {
@@ -20,6 +23,7 @@ export interface CompleteGoogleSignUpInput {
   // #133: ya validado por el DTO con la regla de domain/display-name.
   displayName: string;
   acceptedPolicyVersion: string;
+  ip: string;
 }
 
 // RF-001 y grill de la #178, pregunta 2 (#181): la cuenta se crea solo al aceptar la política.
@@ -27,6 +31,11 @@ export class CompleteGoogleSignUp {
   constructor(private readonly ports: CompleteGoogleSignUpPorts) {}
 
   async execute(input: CompleteGoogleSignUpInput): Promise<StartedSession> {
+    // El mismo tope que el registro con contraseña: 10 por IP en 15 minutos (comparten la clave).
+    const ipKey = `registro-ip:${input.ip}`;
+    const wait = this.ports.limiter.retryAfterSeconds(ipKey, REGISTRATIONS_PER_IP);
+    if (wait !== null) throw new TooManyAttemptsError(wait);
+    this.ports.limiter.record(ipKey, REGISTRATIONS_PER_IP);
     // Si mientras tanto el sub o el correo ya tienen cuenta, se entra (o se vincula) como en el
     // callback: nunca se crea una cuenta repetida.
     const existing = await this.signInIfAccountExists(input.signUp);

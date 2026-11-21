@@ -220,13 +220,15 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
     },
     {
       provide: CompleteGoogleSignUp,
-      inject: [GOOGLE_ACCOUNT_LINKS, SESSION_REPOSITORY, CLOCK, SignInWithGoogle],
+      inject: [GOOGLE_ACCOUNT_LINKS, SESSION_REPOSITORY, CLOCK, SignInWithGoogle, ATTEMPT_LIMITER],
       useFactory: (
         links: GoogleAccountLinks,
         sessions: SessionRepository,
         clock: Clock,
         signIn: SignInWithGoogle,
-      ): CompleteGoogleSignUp => new CompleteGoogleSignUp({ links, sessions, clock, signIn }),
+        limiter: AttemptLimiter,
+      ): CompleteGoogleSignUp =>
+        new CompleteGoogleSignUp({ links, sessions, clock, signIn, limiter }),
     },
     // ADR-032: eliminación de la cuenta con 10 días de gracia, restauración y purga.
     {
