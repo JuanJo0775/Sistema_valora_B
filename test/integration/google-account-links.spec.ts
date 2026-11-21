@@ -1,11 +1,11 @@
 import { sql } from 'drizzle-orm';
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { Pool } from 'pg';
 import type { NewAccount } from '../../src/modules/identity/application/account-repository';
 import { DrizzleAccountRepository } from '../../src/modules/identity/infrastructure/drizzle-account-repository';
 import { DrizzleGoogleAccountLinks } from '../../src/modules/identity/infrastructure/drizzle-google-account-links';
 import { DrizzleSessionRepository } from '../../src/modules/identity/infrastructure/drizzle-session-repository';
-import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
+import { openTestDatabase } from '../support/test-database';
 
 // ADR-029, fase 2 (#180): el vínculo con Google en la base. Cuentas de prueba: solo existen aquí.
 const ana: NewAccount = {
@@ -27,14 +27,7 @@ describe('vínculo con Google en la base (#180)', () => {
   let accounts: DrizzleAccountRepository;
 
   beforeAll(() => {
-    pool = new Pool({
-      connectionString: resolveDatabaseUrl({
-        NODE_ENV: 'test',
-        DATABASE_URL: process.env['DATABASE_URL'] ?? '',
-        DATABASE_URL_TEST: process.env['DATABASE_URL_TEST'] ?? '',
-      }),
-    });
-    db = drizzle(pool);
+    ({ pool, db } = openTestDatabase());
     links = new DrizzleGoogleAccountLinks(db);
     accounts = new DrizzleAccountRepository(db);
   });
