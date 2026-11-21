@@ -57,3 +57,12 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Promoción sin precio oficial vigente? | **No.** Los tres tipos (descuento porcentual, precio especial, pague X lleve Y) exigen un oficial **vigente** del producto. Si el oficial pasa a «por confirmar», la promoción **se pausa** sola; reconfirmar (D4) la reactiva | El «antes» siempre es un precio real y reciente: evita descuentos inflados (EC-06) |
 | ¿Qué condiciones puede tener? | **Fijas, sin texto libre:** máximo por cliente (número), hasta agotar existencias (sí/no), medio de pago (cualquiera, efectivo o tarjeta) | Sin publicidad, teléfonos ni datos personales; no hay que moderar; se muestran y prueban igual |
 | ¿Cambian el orden? | **Nunca** (ADR-009): van en `promotions`, aparte de `results` | Neutralidad |
+
+## D7. Carga de precios por archivo (ADR-027)
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Al momento o en segundo plano? | **Al momento: `POST /v1/commerce/prices/bulk` responde 200** (antes 202) con el resultado. Máximo **1.000 filas** por archivo | Resultado inmediato; sin cola, sin estados ni archivos guardados; con una sola instancia en Render (ADR-012) un trabajo largo competiría con la API. Aún no hay código que use el 202 |
+| ¿Y las filas con error? | **Se publican las buenas y se informan las malas** (fila, producto, motivo), con opción de descargar solo las que fallaron | El comerciante no pierde trabajo |
+| ¿Cómo se identifica el producto? | Por **código de barras**. Si no está en Valora, la fila falla con la sugerencia de proponer el producto (#26); nunca se crea un producto desde el archivo | Datos del catálogo verificados (RF-014) |
+| ¿Subir el mismo archivo otra vez? | **Actualiza sin duplicar** (misma tienda y presentación) y **reconfirma** lo que trae (D4) | Idempotente |
