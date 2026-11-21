@@ -33,3 +33,10 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | Al verificarse, ¿qué pasa con su rol de reportante? | **Un rol por cuenta:** la cuenta pasa de `reportante` a `comercio` (evento `MerchantVerified`, receptor en `identity`). Ya no reporta precios de otras tiendas; sus reportes anteriores se conservan | Evita el conflicto de interés de reportar precios de la competencia (EC-03); no cambia el modelo de roles ni el núcleo |
 | ¿Cuántas tiendas por cuenta? | **Una** en el Corte 3. El perfil de comercio se guarda como algo propio de la cuenta, para que varias tiendas sean después un cambio aditivo | La mayoría de comercios objetivo tiene un solo local; el módulo queda pequeño (EC-05) |
 | Si se revoca el perfil (suplantación confirmada) o se elimina la cuenta (ADR-032), ¿qué pasa con lo publicado? | **Se retira todo al instante:** precios oficiales y promociones dejan de mostrarse (`OfficialPriceWithdrawn`, `PromotionWithdrawn`); la comparación vuelve a los reportes y datos iniciales. La tienda sigue en el mapa. Se anota quién revocó, cuándo y por qué. La cuenta vuelve a `reportante` y el moderador puede suspenderla con las reglas existentes | Un perfil revocado ya no es confiable; un precio falso no puede seguir engañando |
+
+## D4. Periodo de reconfirmación del precio oficial (ADR-005, ADR-016)
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Cuánto vale un precio oficial sin reconfirmar? | **La misma vigencia de los reportes** (ADR-005: 7 días frescos, 14 el resto; «por confirmar» y «desactualizado» como hoy). Valores provisionales y configurables en un solo lugar | Una sola regla para oficiales y reportados (neutralidad); un fresco de hace un mes no puede verse vigente |
+| ¿Cómo reconfirma un comercio con muchos productos? | Botón **«Todos mis precios siguen igual»** (un toque reconfirma todos); editar un precio lo reconfirma; **subir el archivo** reconfirma lo que trae; **recordatorio** un día antes (aviso en `/comercios` y correo con Resend) | Con 1.000 productos es un toque por semana. Se descartó que el comercio elija el periodo: podría dejar precios viejos como vigentes durante meses |
