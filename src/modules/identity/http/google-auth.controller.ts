@@ -19,6 +19,7 @@ import {
   newGoogleHandshake,
   openHandshake,
   sealHandshake,
+  sealSignUp,
 } from '../application/google-handshake';
 import {
   GOOGLE_IDENTITY_PROVIDER,
@@ -27,7 +28,12 @@ import {
 } from '../application/google-identity-provider';
 import { type GoogleIdentity, SignInWithGoogle } from '../application/sign-in-with-google';
 import type { CookieResponse } from './auth.controller';
-import { GOOGLE_HANDSHAKE_COOKIE, googleCookie, sessionCookie } from './session-cookie';
+import {
+  GOOGLE_HANDSHAKE_COOKIE,
+  GOOGLE_SIGNUP_COOKIE,
+  googleCookie,
+  sessionCookie,
+} from './session-cookie';
 
 // Lo que el callback lee de la petición, sin depender de los tipos de Express.
 interface CallbackRequest {
@@ -42,6 +48,8 @@ interface CallbackQuery {
 
 // Adónde vuelve la persona en la PWA (mismo origen: Vercel reenvía /v1/* a la API).
 const SIGN_IN_PAGE = '/entrar';
+// RF-001: aceptar la política y el nombre antes de crear la cuenta.
+const WELCOME_PAGE = '/bienvenida';
 const signInWithError = (code: string) => `${SIGN_IN_PAGE}?error=${code}`;
 
 // ADR-029, fase 2 (#181): entrar con Google. La persona llega por el navegador (enlaces y
@@ -95,13 +103,27 @@ export class GoogleAuthController {
       throw error;
     }
     const result = await this.signIn.execute(identity);
-    if (result.outcome === 'signed-in') {
-      // Las dos cookies van juntas: la del saludo, vacía, y la de sesión, como POST /auth/login.
+    if (result.outcome === 'needs-policy') {
+      const signUp = {
+        subject: result.subject,
+        email: result.email,
+        suggestedName: result.suggestedName,
+      };
       response.setHeader('Set-Cookie', [
         googleCookie(GOOGLE_HANDSHAKE_COOKIE, '', 0),
-        sessionCookie(result.token, SESSION_MAX_DAYS * 24 * 60 * 60),
+        googleCookie(
+          GOOGLE_SIGNUP_COOKIE,
+          sealSignUp(signUp, this.secret(), this.clock.now()),
+          GOOGLE_HANDSHAKE_MINUTES * 60,
+        ),
       ]);
+      return { url: WELCOME_PAGE };
     }
+    // Las dos cookies van juntas: la del saludo, vacía, y la de sesión, como POST /auth/login.
+    response.setHeader('Set-Cookie', [
+      googleCookie(GOOGLE_HANDSHAKE_COOKIE, '', 0),
+      sessionCookie(result.token, SESSION_MAX_DAYS * 24 * 60 * 60),
+    ]);
     return { url: '/' };
   }
 
