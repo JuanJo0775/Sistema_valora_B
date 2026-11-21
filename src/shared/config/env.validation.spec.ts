@@ -186,3 +186,53 @@ describe('validateEnv con REQUIRE_VERIFIED_EMAIL (ADR-029)', () => {
     ).not.toThrow();
   });
 });
+
+describe('validateEnv con el inicio de sesión con Google (ADR-029, fase 2)', () => {
+  const google = {
+    GOOGLE_CLIENT_ID: '1234-abc.apps.googleusercontent.com',
+    GOOGLE_CLIENT_SECRET: 'GOCSPX-secreto-de-ejemplo',
+    GOOGLE_REDIRECT_URI: 'https://www.valoora.app/v1/auth/google/callback',
+  };
+
+  it('sin ninguna variable de Google la API arranca y el inicio con Google queda apagado', () => {
+    const env = validateEnv(validEnv);
+
+    expect(env.GOOGLE_CLIENT_ID).toBeUndefined();
+  });
+
+  it('con las tres variables acepta la configuración', () => {
+    const env = validateEnv({ ...validEnv, ...google });
+
+    expect(env.GOOGLE_REDIRECT_URI).toBe(google.GOOGLE_REDIRECT_URI);
+  });
+
+  it.each(['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'])(
+    'si falta %s y están las otras, no arranca y nombra la que falta',
+    (missing) => {
+      expect(() => validateEnv({ ...validEnv, ...google, [missing]: undefined })).toThrow(
+        new RegExp(missing),
+      );
+    },
+  );
+
+  // #182: un panel como el de Render puede dejar una variable creada pero vacía. Vacía es ausente: la API
+  // arranca con Google apagado en lugar de caerse.
+  it('las variables de Google vacías cuentan como ausentes', () => {
+    const env = validateEnv({
+      ...validEnv,
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '  ',
+      GOOGLE_REDIRECT_URI: '',
+    });
+
+    expect(env.GOOGLE_CLIENT_ID).toBeUndefined();
+    expect(env.GOOGLE_CLIENT_SECRET).toBeUndefined();
+    expect(env.GOOGLE_REDIRECT_URI).toBeUndefined();
+  });
+
+  it('GOOGLE_REDIRECT_URI debe ser una dirección http o https', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, ...google, GOOGLE_REDIRECT_URI: 'no-es-una-url' }),
+    ).toThrow(/GOOGLE_REDIRECT_URI/);
+  });
+});

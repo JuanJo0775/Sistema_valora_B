@@ -37,11 +37,12 @@ Se elige **A**, en dos fases.
 2. Si el correo de Google (con `email_verified = true`) coincide con una cuenta, se vincula a ella; si no, se crea una con el rol `reportante` y el correo ya verificado. `password_hash` pasa a ser nulo en esas cuentas.
 3. La sesión es la misma sesión de servidor con cookie y CSRF: nada cambia después del inicio. La clave seudónima, los roles y las pruebas de privacidad siguen valiendo.
 4. Google Cloud: cliente OAuth y pantalla de consentimiento; en modo de prueba solo entran los usuarios de prueba, hay que publicarla para el público.
+5. Precisiones del equipo (20-nov-2026, épica #178, ver `docs/decisiones/issue-178-inicio-con-google/`): la librería es `jose` v5 con `fetch` para el intercambio del código (se descartó `openid-client`: su v6 solo es ESM y el backend y Jest corren en CommonJS; queda detrás del puerto `GoogleIdentityProvider`); una cuenta nueva no se crea en el callback sino al aceptar la política en la página `/bienvenida`; el vínculo se guarda en `identity.accounts.google_subject`; al vincular una cuenta con el correo sin verificar se borran su contraseña y sus sesiones; una cuenta sin contraseña confirma su eliminación (ADR-032) escribiendo su correo.
 
 ## Consecuencias
 
 - Positivas: correos comprobados, menos cuentas falsas (EC-03), sin cambiar dónde viven los datos ni el modelo de sesión; ADR-014 y EC-08 siguen intactos; cada fase se puede probar con TDD.
-- Negativas / riesgos: más superficie que mantener (tokens, límites, plantillas); **entregar correo exige un remitente verificable**: con un dominio propio (SPF, DKIM) la entrega es fiable; sin dominio, los proveedores gratuitos limitan a quién se puede escribir (`SUPUESTO:` el equipo no tiene dominio; confirmar los límites vigentes del proveedor antes de elegirlo). Los límites de envío gratuitos (cientos por día) pueden frenar un registro masivo.
+- Negativas / riesgos: más superficie que mantener (tokens, límites, plantillas); **entregar correo exige un remitente verificable**: con un dominio propio (SPF, DKIM) la entrega es fiable; sin dominio, los proveedores gratuitos limitan a quién se puede escribir (el equipo consiguió el dominio `valoora.app` el 20-nov-2026, ver `docs/despliegue.md` paso 5 bis; confirmar los límites vigentes del proveedor). Los límites de envío gratuitos (cientos por día) pueden frenar un registro masivo.
 - Trade-offs aceptados: construir en lugar de comprar, a cambio de no ceder la identidad a un tercero y no rehacer el módulo.
 
 ## Verificación
@@ -61,7 +62,7 @@ Se elige **A**, en dos fases.
 
 ## Pendientes del equipo
 
-- Elegir proveedor de correo y conseguir un dominio o un remitente verificado (`PENDIENTE`).
+- Dominio conseguido (`valoora.app`, 20-nov-2026) y verificado en Google Search Console; cliente OAuth y pantalla de consentimiento publicados. Proveedor de correo: Resend, con `valoora.app` verificado (DKIM y SPF) el 21-nov-2026; remitente `Valora <no-responder@valoora.app>`. Falta configurarlo en Render y pasar `REQUIRE_VERIFIED_EMAIL` a `true` cuando se compruebe la entrega.
 - Decidir si se exige verificación para iniciar sesión o solo para reportar.
 - Confirmar con el docente que un módulo de identidad propio cumple lo que se espera (alternativa C de ADR-014 sigue descartada).
 

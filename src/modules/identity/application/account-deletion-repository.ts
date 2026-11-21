@@ -9,9 +9,15 @@ export type ScheduleOutcome =
   // La cuenta ya no existe (otra petición la purgó).
   | { outcome: 'gone' };
 
+export interface AccountCredentials {
+  email: string;
+  passwordHash: string | null;
+}
+
 export interface AccountDeletionRepository {
-  // Hash de la contraseña de la cuenta, o null si ya no existe.
-  passwordHashOf(accountId: string): Promise<string | null>;
+  // Lo que confirma la eliminación: el correo y el hash de la contraseña (null si la cuenta se creó con
+  // Google, #179). null si la cuenta ya no existe.
+  credentialsOf(accountId: string): Promise<AccountCredentials | null>;
   // Marca la cuenta pendiente de eliminación y revoca todas sus sesiones, juntos. Con dos peticiones a la
   // vez, las filas se bloquean: la segunda ve la fecha de la primera y no la mueve.
   schedule(input: { accountId: string; scheduledFor: Date; now: Date }): Promise<ScheduleOutcome>;

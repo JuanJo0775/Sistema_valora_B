@@ -1,7 +1,8 @@
 import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
-import type { AccountDeletionRepository } from './account-deletion-repository';
+import type { AccountCredentials, AccountDeletionRepository } from './account-deletion-repository';
 import type { Clock } from './clock';
 import type { PasswordHasher } from './password-hasher';
+import { normalizeEmail } from './register-account';
 
 // ADR-032: la eliminación es definitiva, pero tarda 10 días en ejecutarse; en ese lapso la persona puede
 // restaurar la cuenta iniciando sesión de nuevo.
@@ -21,6 +22,13 @@ export { TooManyAttemptsError } from './attempt-limiter';
 export class InvalidPasswordError extends Error {
   constructor() {
     super('La contraseña no es correcta.');
+  }
+}
+
+// 403 INVALID_CONFIRMATION: una cuenta sin contraseña escribió un correo que no es el suyo (#179).
+export class InvalidConfirmationError extends Error {
+  constructor() {
+    super('El correo no coincide con el de la cuenta.');
   }
 }
 
@@ -45,11 +53,11 @@ export interface DeleteOwnAccountPorts {
   clock: Clock;
 }
 
-export interface DeleteOwnAccountInput {
-  accountId: string;
-  password: string;
-  ip: string;
-}
+// La cuenta con contraseña confirma con ella; la creada con Google, con su correo (grill de la #178,
+// pregunta 3).
+export type DeleteOwnAccountInput = { accountId: string; ip: string } & (
+  { password: string } | { confirmEmail: string }
+);
 
 export interface DeleteOwnAccountResult {
   scheduledFor: Date;
@@ -63,7 +71,7 @@ export class DeleteOwnAccount {
   constructor(private readonly ports: DeleteOwnAccountPorts) {}
 
   async execute(input: DeleteOwnAccountInput): Promise<DeleteOwnAccountResult> {
-    const { deletion, hasher, limiter, clock } = this.ports;
+    const { deletion, limiter, clock } = this.ports;
     const accountKey = deletionAccountKey(input.accountId);
     const ipKey = deletionIpKey(input.ip);
     const wait =
@@ -72,11 +80,12 @@ export class DeleteOwnAccount {
     if (wait !== null) throw new TooManyAttemptsError(wait);
     limiter.record(ipKey, DELETION_ATTEMPTS_PER_IP);
 
-    const hash = await deletion.passwordHashOf(input.accountId);
-    if (hash === null) throw new AccountGoneError();
-    if (!(await hasher.verify(hash, input.password))) {
+    const credentials = await deletion.credentialsOf(input.accountId);
+    if (credentials === null) throw new AccountGoneError();
+    const failure = await this.confirmationFailure(credentials, input);
+    if (failure) {
       limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
-      throw new InvalidPasswordError();
+      throw failure;
     }
 
     const now = clock.now();
@@ -89,5 +98,21 @@ export class DeleteOwnAccount {
     if (result.outcome === 'last-moderator') throw new LastModeratorError();
     limiter.reset(accountKey);
     return { scheduledFor: result.scheduledFor };
+  }
+
+  // Quien tiene contraseña confirma con ella; la cuenta creada con Google, con su correo (grill de la #178,
+  // pregunta 3). null si la confirmación vale.
+  private async confirmationFailure(
+    credentials: AccountCredentials,
+    input: DeleteOwnAccountInput,
+  ): Promise<Error | null> {
+    if (credentials.passwordHash === null) {
+      if (!('confirmEmail' in input)) return new InvalidPasswordError();
+      const matches = normalizeEmail(input.confirmEmail) === credentials.email;
+      return matches ? null : new InvalidConfirmationError();
+    }
+    if (!('password' in input)) return new InvalidPasswordError();
+    const valid = await this.ports.hasher.verify(credentials.passwordHash, input.password);
+    return valid ? null : new InvalidPasswordError();
   }
 }

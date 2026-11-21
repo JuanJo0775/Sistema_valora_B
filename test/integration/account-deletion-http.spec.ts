@@ -126,6 +126,51 @@ describe('eliminación de la propia cuenta (ADR-032)', () => {
       expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
     });
 
+    // ADR-029, fase 2 (#179): una cuenta creada con Google no tiene contraseña y confirma con su correo.
+    describe('cuenta sin contraseña', () => {
+      const signInWithoutPassword = async () => {
+        const ana = await signIn(server, db, 'ana@correo.com');
+        await db.execute(sql`update identity.accounts set password_hash = null`);
+        return ana;
+      };
+
+      it('confirma escribiendo su correo: responde 202 y la cuenta queda pendiente', async () => {
+        const ana = await signInWithoutPassword();
+
+        const response = await requestDeletion(ana, { confirmEmail: ' Ana@Correo.com ' }).expect(
+          202,
+        );
+
+        const body = response.body as { scheduledFor: string };
+        expect((await accountRow())?.deletion_scheduled_for).toEqual(new Date(body.scheduledFor));
+      });
+
+      it('con otro correo responde 403 INVALID_CONFIRMATION y no marca nada', async () => {
+        const ana = await signInWithoutPassword();
+
+        const response = await requestDeletion(ana, { confirmEmail: 'otra@correo.com' }).expect(
+          403,
+        );
+
+        expect(response.body).toEqual({
+          code: 'INVALID_CONFIRMATION',
+          message: 'El correo no coincide con el de la cuenta.',
+        });
+        expect((await accountRow())?.deletion_scheduled_for).toBeNull();
+      });
+    });
+
+    it('con la contraseña y el correo a la vez responde 400', async () => {
+      const ana = await signIn(server, db, 'ana@correo.com');
+
+      const response = await requestDeletion(ana, {
+        password: PASSWORD,
+        confirmEmail: 'ana@correo.com',
+      }).expect(400);
+      expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+      expect((await accountRow())?.deletion_scheduled_for).toBeNull();
+    });
+
     it('al sexto intento fallido responde 429 con Retry-After, aunque la contraseña ya sea la correcta', async () => {
       const ana = await signIn(server, db, 'ana@correo.com');
       for (let attempt = 0; attempt < 5; attempt += 1) {

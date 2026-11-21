@@ -26,6 +26,11 @@ const PUBLIC_ROUTES = new Set([
   'POST /auth/verify-email',
   // ADR-032: igual que el login, la credencial es el correo con la contraseña; no lleva sesión.
   'POST /auth/restore-account',
+  // ADR-029, fase 2 (#181): entrar con Google. Aún no hay sesión; el callback y complete exigen sus
+  // cookies firmadas (saludo y registro pendiente).
+  'GET /auth/google/start',
+  'GET /auth/google/callback',
+  'POST /auth/google/complete',
 ]);
 // Con sesión, pero para cualquier rol.
 const ANY_ROLE_ROUTES = new Set([
