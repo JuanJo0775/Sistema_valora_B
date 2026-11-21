@@ -72,14 +72,13 @@ describe('adaptador de Google (OpenID Connect con PKCE)', () => {
     // fetch simulado del endpoint de tokens de Google: guarda lo que se le pidió.
     function googleReturning(token: Promise<string>, status = 200) {
       const calls: { url: string; body: URLSearchParams }[] = [];
-      const fetchFn = async (url: string | URL | Request, init?: RequestInit) => {
-        calls.push({ url: String(url), body: new URLSearchParams(String(init?.body)) });
+      const fetchFn: typeof fetch = async (url, init) => {
+        const target = url instanceof URL ? url.href : typeof url === 'string' ? url : url.url;
+        const body = typeof init?.body === 'string' ? init.body : '';
+        calls.push({ url: target, body: new URLSearchParams(body) });
         return new Response(JSON.stringify({ id_token: await token }), { status });
       };
-      const provider = new JoseGoogleIdentityProvider(config, {
-        fetch: fetchFn as typeof fetch,
-        keys,
-      });
+      const provider = new JoseGoogleIdentityProvider(config, { fetch: fetchFn, keys });
       return { provider, calls };
     }
 
