@@ -223,4 +223,78 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
       expect(accounts.rows[0]?.n).toBe(0);
     });
   });
+
+  describe('POST /v1/auth/google/complete', () => {
+    const body = { displayName: 'Ana María', acceptedPolicyVersion: '2026-11' };
+    // Recorre el flujo hasta /bienvenida y devuelve la cookie del registro pendiente.
+    async function pendingSignUp(): Promise<string> {
+      const { cookie, state } = await begin();
+      const response = await callback({ code: 'codigo-bueno', state }, cookie).expect(302);
+      const cookies = response.headers['set-cookie'] as unknown as string[];
+      const pending = cookies.find((value) => value.startsWith('valora_google_signup='));
+      return (pending ?? '').split(';')[0] ?? '';
+    }
+
+    it('sin el registro pendiente (o con uno alterado) responde 401 y no crea nada', async () => {
+      await request(server).post('/v1/auth/google/complete').send(body).expect(401);
+      await request(server)
+        .post('/v1/auth/google/complete')
+        .set('Cookie', 'valora_google_signup=datos.firma-falsa')
+        .send(body)
+        .expect(401);
+
+      const accounts = await db.execute<{ n: number }>(
+        sql`select count(*)::int as n from identity.accounts`,
+      );
+      expect(accounts.rows[0]?.n).toBe(0);
+    });
+
+    it('con la política aceptada crea la cuenta sin contraseña, verificada y vinculada, y abre la sesión', async () => {
+      const pending = await pendingSignUp();
+
+      const response = await request(server)
+        .post('/v1/auth/google/complete')
+        .set('Cookie', pending)
+        .send(body)
+        .expect(204);
+
+      const cookies = response.headers['set-cookie'] as unknown as string[];
+      expect(cookies.find((value) => value.startsWith('valora_google_signup='))).toContain(
+        'Max-Age=0',
+      );
+      const session = cookies.find((value) => value.startsWith('valora_session='))?.split(';')[0];
+      const me = await request(server)
+        .get('/v1/auth/session')
+        .set('Cookie', session ?? '')
+        .expect(200);
+      expect(me.body).toMatchObject({
+        role: 'reportante',
+        emailVerified: true,
+        displayName: 'Ana María',
+      });
+      const [account] = (
+        await db.execute<{ password_hash: string | null; google_subject: string }>(
+          sql`select password_hash, google_subject from identity.accounts where email = 'ana@correo.com'`,
+        )
+      ).rows;
+      expect(account).toEqual({ password_hash: null, google_subject: google.identity.subject });
+    });
+
+    it('sin aceptar la política vigente o con un nombre inválido responde 400', async () => {
+      const pending = await pendingSignUp();
+
+      for (const invalid of [
+        { ...body, acceptedPolicyVersion: '2020-01' },
+        { ...body, displayName: 'x' },
+        { acceptedPolicyVersion: '2026-11' },
+      ]) {
+        const response = await request(server)
+          .post('/v1/auth/google/complete')
+          .set('Cookie', pending)
+          .send(invalid)
+          .expect(400);
+        expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+      }
+    });
+  });
 });
