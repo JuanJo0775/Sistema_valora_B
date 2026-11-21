@@ -98,10 +98,10 @@ Registrar precios exige el correo verificado, así que producción necesita envi
 | `REQUIRE_VERIFIED_EMAIL` | `true` (por defecto) o `false` | Si registrar precios exige el correo verificado. **En producción, con `EMAIL_PROVIDER=console` y `true` la API no arranca** (nadie recibiría el enlace y se bloquearían todos los reportes). `render.yaml` la deja en `false`: se cambia a `true` al configurar el proveedor, el remitente y `APP_URL`. Con `false` el resto del flujo (registro, verificación, reenvío, `emailVerified`) sigue igual; solo `POST /reports` deja de exigir la verificación. |
 | `EMAIL_PROVIDER` | `console` (por defecto) o `resend` | `console` no entrega ningún mensaje: solo sirve en desarrollo y pruebas. Escribe el enlace y el destinatario en el registro solo si `NODE_ENV` es exactamente `development` o `test`; con cualquier otro valor no escribe ninguno de los dos. |
 | `EMAIL_API_KEY` | clave de Resend (`re_...`) | Obligatoria con `resend`. Solo en el panel de Render, nunca en Git. |
-| `EMAIL_FROM` | `Valora <no-responder@tu-dominio>` | Obligatoria con `resend`. Debe ser un remitente verificado en Resend. |
-| `APP_URL` | `https://<dirección de la PWA>` | Obligatoria con `resend`. Base del enlace `${APP_URL}/verificar-correo?token=...`; sin barra final. |
+| `EMAIL_FROM` | `Valora <no-responder@valoora.app>` | Obligatoria con `resend`. Debe ser un remitente verificado en Resend: se agrega `valoora.app` en Resend y se crean en Name.com los registros DNS que indique (paso 5 bis). |
+| `APP_URL` | `https://www.valoora.app` | Obligatoria con `resend`. Base del enlace `${APP_URL}/verificar-correo?token=...`; sin barra final. |
 
-Si falta alguna con `resend`, la API no arranca y el mensaje nombra la variable. `PENDIENTE` (ADR-029): elegir el proveedor y conseguir un dominio o remitente verificable (SPF y DKIM); sin dominio propio los proveedores gratuitos limitan a quién se puede escribir. Si el envío falla, el registro no falla: la persona puede pedir el reenvío desde su sesión (3 por hora). Las cuentas creadas antes de ADR-029 quedan sin verificar y piden su enlace al entrar.
+Si falta alguna con `resend`, la API no arranca y el mensaje nombra la variable. `PENDIENTE` (ADR-029): el dominio ya existe (`valoora.app`, paso 5 bis); falta verificarlo en el proveedor de correo (SPF y DKIM) y configurar las variables en Render. Si el envío falla, el registro no falla: la persona puede pedir el reenvío desde su sesión (3 por hora). Las cuentas creadas antes de ADR-029 quedan sin verificar y piden su enlace al entrar.
 
 ### 4. Crear el servicio en Render
 
@@ -129,16 +129,32 @@ Si falta alguna con `resend`, la API no arranca y el mensaje nombra la variable.
 
 Importa el repositorio, preset **Vite**, rama de producción `main`. `vercel.json` ya reenvía `/v1/*`. Si la dirección de Render **no** es `https://valora-api.onrender.com`, cambia el `destination` en `vercel.json` y vuelve a desplegar (la URL queda escrita ahí).
 
+### 5 bis. Dominio propio: `valoora.app`
+
+La dirección pública de Valora es **`https://www.valoora.app`** (conectado el 20-nov-2026). Google exige un dominio propio verificado para publicar el inicio de sesión con Google (ADR-029, fase 2); también sirve para el remitente del correo y la vista previa al compartir. `sistema-valora-f.vercel.app` sigue funcionando.
+
+| Pieza | Dónde | Estado |
+|---|---|---|
+| Registro del dominio | Name.com, con el pack de estudiantes de GitHub (gratis un año), a nombre de una integrante | `PENDIENTE (equipo)`: anotar la fecha de vencimiento y quién lo renueva |
+| DNS | Panel DNS de Name.com | `A @ → 216.198.79.1` y `CNAME www → <destino que indica Vercel>` |
+| Redirección | Vercel, proyecto `sistema-valora-f`, «Domains» | `valoora.app` redirige con 308 a `www.valoora.app` (producción) |
+| Certificado HTTPS | Vercel | Automático; se renueva solo. Los `.app` solo abren con HTTPS |
+| Propiedad del dominio | Google Search Console, propiedad tipo «Dominio», cuenta dueña del proyecto de Google Cloud | Verificado con un registro `TXT @ google-site-verification=…`. **No borrarlo:** sin él Google retira la verificación |
+| Pantalla de consentimiento | Google Cloud, proyecto `valora`, «Google Auth Platform» | Dominio autorizado `valoora.app`, inicio `https://www.valoora.app`, privacidad `https://www.valoora.app/privacidad`, usuarios «External», publicada («In production») |
+| Cliente OAuth web | Google Auth Platform, «Clients» | Origen `https://www.valoora.app`; redirección `https://www.valoora.app/v1/auth/google/callback` (más las de `localhost:5173` y `sistema-valora-f.vercel.app`) |
+
+Para comprobar el DNS: `Resolve-DnsName valoora.app -Type TXT` (Windows) o `dig TXT valoora.app`. Quien no administre el dominio pide los registros nuevos a la persona dueña de la cuenta de Name.com (por ejemplo, los de SPF y DKIM del proveedor de correo, paso 3 ter).
+
 ### 6. Primer despliegue
 
-Un merge a `main` del backend (o «Run workflow» en la pestaña Actions) lanza `Despliegue`: pide aprobación, migra Neon, dispara Render y espera a que `GET /v1/health` responda. Después verifica `https://<tu-dominio-vercel>/v1/health` (debe devolver `{"status":"ok"}`, visto a través de Vercel).
+Un merge a `main` del backend (o «Run workflow» en la pestaña Actions) lanza `Despliegue`: pide aprobación, migra Neon, dispara Render y espera a que `GET /v1/health` responda. Después verifica `https://www.valoora.app/v1/health` (debe devolver `{"status":"ok"}`, visto a través de Vercel).
 
 ### 7. Antes de cada demostración
 
 En el plan gratuito Render duerme el servicio. La primera petición tarda cerca de un minuto y Vercel puede cortar la espera con un error. Despiértalo antes (el workflow `keepalive-api.yml` ya lo hace cada 10 minutos entre las 07:00 y las 23:00 de Colombia; fuera de ese horario o si Render lo suspendió, hazlo a mano):
 
 ```bash
-curl https://<tu-dominio-vercel>/v1/health
+curl https://www.valoora.app/v1/health
 ```
 
 ### 8. Verificar `trust proxy` antes de abrir el sistema
