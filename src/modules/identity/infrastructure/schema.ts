@@ -28,10 +28,14 @@ export const accounts = identitySchema.table(
     // ADR-032: cuándo se borra la cuenta de forma definitiva (nulo = no hay eliminación pendiente). La
     // purga solo borra las que ya cumplieron la fecha; nunca se adelanta.
     deletionScheduledFor: timestamp('deletion_scheduled_for', { withTimezone: true }),
+    // ADR-029, fase 2 (#180): el `sub` de Google vinculado a la cuenta (nulo = sin vincular). Es fijo
+    // aunque la persona cambie de correo en Google.
+    googleSubject: text('google_subject'),
   },
   (table) => [
     uniqueIndex('accounts_email_idx').on(table.email),
     uniqueIndex('accounts_reporter_key_idx').on(table.reporterKey),
+    uniqueIndex('accounts_google_subject_idx').on(table.googleSubject),
     index('accounts_deletion_due_idx')
       .on(table.deletionScheduledFor)
       .where(sql`deletion_scheduled_for is not null`),
