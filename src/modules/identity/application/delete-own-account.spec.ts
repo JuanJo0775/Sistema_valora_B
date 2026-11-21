@@ -145,6 +145,21 @@ describe('eliminar la propia cuenta (ADR-032)', () => {
     expect(limiter.recorded).toContain(`eliminar-cuenta:${ana.id}`);
   });
 
+  it('una cuenta con contraseña no puede confirmar con el correo: responde InvalidPasswordError y no marca nada', async () => {
+    const { deletion, limiter, useCase } = setup();
+    deletion.add({ ...ana });
+
+    const attempt = useCase.execute({
+      accountId: ana.id,
+      confirmEmail: 'ana@correo.com',
+      ip: '203.0.113.7',
+    });
+
+    await expect(attempt).rejects.toThrow(InvalidPasswordError);
+    expect(deletion.accounts.get(ana.id)?.deletionScheduledFor).toBeNull();
+    expect(limiter.recorded).toContain(`eliminar-cuenta:${ana.id}`);
+  });
+
   it('una cuenta que ya no existe responde AccountGoneError', async () => {
     const { useCase } = setup();
 
