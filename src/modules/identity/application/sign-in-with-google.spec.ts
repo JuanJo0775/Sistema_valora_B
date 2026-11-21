@@ -116,4 +116,22 @@ describe('entrar con Google (ADR-029, fase 2)', () => {
     expect(sessions.created).toHaveLength(0);
     expect(links.links).toHaveLength(0);
   });
+
+  // ADR-029, fase 2, punto 2: el correo de Google coincide con una cuenta; se vincula a ella.
+  it('un correo con cuenta verificada se vincula a ese sub, conserva su contraseña y abre sesión', async () => {
+    const { links, sessions, signIn } = setup([{ ...ana }]);
+
+    const result = await signIn.execute(google({ email: 'ANA@correo.com' }));
+
+    expect(result).toMatchObject({ outcome: 'signed-in' });
+    expect(links.links).toEqual([
+      {
+        accountId: ana.id,
+        subject: '109876543210987654321',
+        verifiedAt: now,
+        forgetPassword: false,
+      },
+    ]);
+    expect(sessions.created).toEqual([expect.objectContaining({ accountId: ana.id })]);
+  });
 });
