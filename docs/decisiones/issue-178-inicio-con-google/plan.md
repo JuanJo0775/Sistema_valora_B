@@ -38,6 +38,23 @@ Orden: 1 → 2 → 3 → (4 y 5). El paso 4 empieza cuando el contrato del paso 
 
 **Terminado cuando:** las pruebas de inicio de sesión, restauración y eliminación pasan con cuentas sin contraseña; la prueba guardiana del esquema (`privacy-schema.spec.ts`) sigue en verde; `pnpm test`, `lint`, `typecheck` y `depcheck` en verde.
 
+## Paso 2 (#180): ciclos TDD
+
+Puerto propio `GoogleAccountLinks` (`findBySubject`, `findByEmail`, `link`) en lugar de ensanchar `AccountRepository`, para no tocar los dobles de las demás pruebas.
+
+| Ciclo | Comportamiento | Rojo |
+|---|---|---|
+| 1 | Si Google no verificó el correo, se rechaza sin tocar ninguna cuenta | No existía el caso de uso |
+| 2 | Una cuenta ya vinculada a ese `sub` entra y abre la misma sesión que el login | No devolvía sesión |
+| 3 | Un correo sin cuenta responde `needs-policy` (correo normalizado y nombre de Google) y no crea nada | Llegaba a «aún no implementado» |
+| 4 | Un correo con cuenta verificada se vincula, conserva la contraseña y abre sesión | Respondía `needs-policy` |
+| 5 | Un correo con cuenta sin verificar se vincula con `forgetPassword` (pierde contraseña y sesiones) | Vinculaba sin olvidar la contraseña |
+| 6 | Una cuenta suspendida entra igual que con el login | Caracterización: pasó en verde de entrada |
+| 7 | Con eliminación pendiente (por `sub` o por correo) no abre sesión, no se vincula y dice cuándo se borra | Abría la sesión |
+| 8 | Migración `0031` (`google_subject` única) y `DrizzleGoogleAccountLinks`: vincular, borrar la contraseña y cerrar sesiones en una transacción | No existía el repositorio |
+
+El repositorio aún no se registra en `identity.module.ts`: lo hará la #181, que es la primera ruta que lo usa (YAGNI).
+
 ## Riesgos y decisiones abiertas
 
 - **Robo de cuenta por registro previo.** Alguien registra con contraseña el correo de otra persona y no lo verifica; si esa persona entra luego con Google, se vincularía a una cuenta cuya contraseña conoce el atacante. Mitigación del paso 2: al vincular una cuenta **sin verificar**, se borra su contraseña y se cierran sus sesiones.
