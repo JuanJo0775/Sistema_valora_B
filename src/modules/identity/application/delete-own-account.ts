@@ -2,6 +2,7 @@ import { type AttemptLimiter, TooManyAttemptsError } from './attempt-limiter';
 import type { AccountDeletionRepository } from './account-deletion-repository';
 import type { Clock } from './clock';
 import type { PasswordHasher } from './password-hasher';
+import { normalizeEmail } from './register-account';
 
 // ADR-032: la eliminación es definitiva, pero tarda 10 días en ejecutarse; en ese lapso la persona puede
 // restaurar la cuenta iniciando sesión de nuevo.
@@ -21,6 +22,13 @@ export { TooManyAttemptsError } from './attempt-limiter';
 export class InvalidPasswordError extends Error {
   constructor() {
     super('La contraseña no es correcta.');
+  }
+}
+
+// 403 INVALID_CONFIRMATION: una cuenta sin contraseña escribió un correo que no es el suyo (#179).
+export class InvalidConfirmationError extends Error {
+  constructor() {
+    super('El correo no coincide con el de la cuenta.');
   }
 }
 
@@ -81,6 +89,10 @@ export class DeleteOwnAccount {
     ) {
       limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
       throw new InvalidPasswordError();
+    }
+    if ('confirmEmail' in input && normalizeEmail(input.confirmEmail) !== credentials.email) {
+      limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
+      throw new InvalidConfirmationError();
     }
 
     const now = clock.now();
