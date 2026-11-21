@@ -124,4 +124,23 @@ describe('Open Food Facts por código de barras (ADR-020, #119)', () => {
     expect(waits).toHaveLength(2);
     expect(waits.every((ms) => ms > 0)).toBe(true);
   });
+
+  it('si el 429 dice cuánto esperar (Retry-After en segundos), espera eso', async () => {
+    let call = 0;
+    const { fetcher } = fakeFetch(() => {
+      call += 1;
+      return call === 1
+        ? Promise.resolve(new Response('{}', { status: 429, headers: { 'Retry-After': '12' } }))
+        : json(200, { status: 1, product: { image_front_url: PHOTO } });
+    });
+    const waits: number[] = [];
+    const patient = new OpenFoodFactsImages(fetcher, (ms) => {
+      waits.push(ms);
+      return Promise.resolve();
+    });
+
+    await patient.find('7702001023456');
+
+    expect(waits).toEqual([12_000]);
+  });
 });
