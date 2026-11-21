@@ -86,9 +86,10 @@ describe('repositorios de identity', () => {
       id: ana.id,
       passwordHash: null,
     });
-    await expect(
-      new DrizzleAccountDeletionRepository(db).credentialsOf(ana.id),
-    ).resolves.toEqual({ email: 'ana@correo.com', passwordHash: null });
+    await expect(new DrizzleAccountDeletionRepository(db).credentialsOf(ana.id)).resolves.toEqual({
+      email: 'ana@correo.com',
+      passwordHash: null,
+    });
   });
 
   it('guarda el nombre visible y lo devuelve solo con displayNameOf (#133)', async () => {
