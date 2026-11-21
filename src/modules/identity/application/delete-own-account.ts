@@ -45,11 +45,12 @@ export interface DeleteOwnAccountPorts {
   clock: Clock;
 }
 
-export interface DeleteOwnAccountInput {
-  accountId: string;
-  password: string;
-  ip: string;
-}
+// La cuenta con contraseña confirma con ella; la creada con Google, con su correo (grill de la #178,
+// pregunta 3).
+export type DeleteOwnAccountInput = { accountId: string; ip: string } & (
+  | { password: string }
+  | { confirmEmail: string }
+);
 
 export interface DeleteOwnAccountResult {
   scheduledFor: Date;
@@ -72,9 +73,12 @@ export class DeleteOwnAccount {
     if (wait !== null) throw new TooManyAttemptsError(wait);
     limiter.record(ipKey, DELETION_ATTEMPTS_PER_IP);
 
-    const hash = await deletion.passwordHashOf(input.accountId);
-    if (hash === null) throw new AccountGoneError();
-    if (!(await hasher.verify(hash, input.password))) {
+    const credentials = await deletion.credentialsOf(input.accountId);
+    if (credentials === null) throw new AccountGoneError();
+    if (
+      'password' in input &&
+      !(await hasher.verify(credentials.passwordHash ?? '', input.password))
+    ) {
       limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
       throw new InvalidPasswordError();
     }

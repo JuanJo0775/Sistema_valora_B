@@ -1,4 +1,8 @@
-import type { AccountDeletionRepository, ScheduleOutcome } from './account-deletion-repository';
+import type {
+  AccountCredentials,
+  AccountDeletionRepository,
+  ScheduleOutcome,
+} from './account-deletion-repository';
 import type { Role } from './account-repository';
 import type { AttemptLimiter } from './attempt-limiter';
 import type { PasswordHasher } from './password-hasher';
@@ -7,6 +11,8 @@ import type { PasswordHasher } from './password-hasher';
 // cuenta, para las pruebas unitarias.
 export interface FakeAccount {
   id: string;
+  // Solo lo usan las pruebas que confirman con el correo.
+  email?: string;
   // null: cuenta creada con Google, sin contraseña (#179).
   passwordHash: string | null;
   role: Role;
@@ -24,8 +30,11 @@ export class InMemoryDeletion implements AccountDeletionRepository {
     return account;
   }
 
-  passwordHashOf(accountId: string): Promise<string | null> {
-    return Promise.resolve(this.accounts.get(accountId)?.passwordHash ?? null);
+  credentialsOf(accountId: string): Promise<AccountCredentials | null> {
+    const own = this.accounts.get(accountId);
+    return Promise.resolve(
+      own ? { email: own.email ?? 'sin-correo@prueba.co', passwordHash: own.passwordHash } : null,
+    );
   }
 
   schedule(input: { accountId: string; scheduledFor: Date }): Promise<ScheduleOutcome> {
