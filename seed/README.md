@@ -77,6 +77,8 @@ No se inventan: un código falso podría coincidir con otro producto real. Se co
 
 ### Fotos de Open Food Facts (`pnpm seed:imagenes`, #119)
 
+Open Food Facts tiene bases hermanas con la misma licencia: **Open Beauty Facts** (cuidado personal) y **Open Products Facts** (aseo del hogar). Sus fotos se guardan con `imagen_fuente = open_food_facts` y la atribución de la base real, por ejemplo `Open Products Facts, CC BY-SA` (ADR-020, punto 2). El comando solo consulta Open Food Facts; las de las bases hermanas se agregan a mano.
+
 Cuando una fila tiene `codigo_barras`, este comando busca la foto frontal del producto en [Open Food Facts](https://world.openfoodfacts.org) (ADR-020) y la escribe en `productos.csv`:
 
 ```bash

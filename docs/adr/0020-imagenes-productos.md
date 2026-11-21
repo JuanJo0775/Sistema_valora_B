@@ -26,6 +26,7 @@ Se elige **B**. La imagen pertenece al producto del catálogo canónico (ADR-007
 
 1. **Orden de prioridad:** Open Food Facts por código de barras, citando la fuente; foto del equipo; ilustración genérica sin marcas (la pone el frontend cuando no hay imagen).
 2. **Enlaces (#26):** la semilla puede traer el enlace de la imagen con su fuente (`open_food_facts` o `equipo`) y su atribución.
+   - **Precisión del equipo (21-nov-2026):** la fuente `open_food_facts` cubre también sus bases hermanas de la misma fundación, con la misma licencia (CC BY-SA) y el mismo formato: **Open Beauty Facts** (cuidado personal) y **Open Products Facts** (aseo y otros productos que no son comida). En esos casos `imagen_atribucion` nombra la base real (por ejemplo, «Open Products Facts, CC BY-SA») y la PWA la muestra tal cual. No se agregan fuentes nuevas al contrato ni a la base: sería un cambio de esquema por la misma licencia.
 3. **Subida en el Corte 2 (#88):** solo el rol moderador sube fotos de producto (fuente `equipo`). El comercio sube la fachada o el logo de su tienda y propone fotos de producto en el Corte 3 (RF-015). El reportante no sube fotos.
 4. **Límites:** JPEG, PNG o WebP de hasta 2 MB. El servidor la reduce a 800 px de lado mayor como máximo y la guarda en WebP.
 5. **Privacidad:** al reprocesar la imagen se descartan todos los metadatos, incluida la ubicación (EXIF).
