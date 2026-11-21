@@ -7,7 +7,8 @@ import type { PasswordHasher } from './password-hasher';
 // cuenta, para las pruebas unitarias.
 export interface FakeAccount {
   id: string;
-  passwordHash: string;
+  // null: cuenta de Google, sin contraseña.
+  passwordHash: string | null;
   role: Role;
   deletionScheduledFor: Date | null;
 }
@@ -23,8 +24,9 @@ export class InMemoryDeletion implements AccountDeletionRepository {
     return account;
   }
 
-  passwordHashOf(accountId: string): Promise<string | null> {
-    return Promise.resolve(this.accounts.get(accountId)?.passwordHash ?? null);
+  credentialsOf(accountId: string): Promise<{ passwordHash: string | null } | null> {
+    const own = this.accounts.get(accountId);
+    return Promise.resolve(own ? { passwordHash: own.passwordHash } : null);
   }
 
   schedule(input: { accountId: string; scheduledFor: Date }): Promise<ScheduleOutcome> {

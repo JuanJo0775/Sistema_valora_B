@@ -29,11 +29,15 @@ class Sessions implements SessionRepository {
   }
 }
 
-function setup(deletionScheduledFor: Date | null, blocked: Record<string, number> = {}) {
+function setup(
+  deletionScheduledFor: Date | null,
+  blocked: Record<string, number> = {},
+  passwordHash: string | null = 'hash:la-clave-de-ana',
+) {
   const deletion = new InMemoryDeletion();
   deletion.add({
     id,
-    passwordHash: 'hash:la-clave-de-ana',
+    passwordHash,
     role: 'reportante',
     deletionScheduledFor,
   });
@@ -49,6 +53,7 @@ function setup(deletionScheduledFor: Date | null, blocked: Record<string, number
               role: stored.role,
               suspendedUntil: null,
               deletionScheduledFor: stored.deletionScheduledFor,
+              emailVerifiedAt: null,
             }
           : null;
       return Promise.resolve(account);
@@ -110,5 +115,15 @@ describe('restaurar una cuenta pendiente de eliminación (ADR-032)', () => {
     await expect(restore.execute(input())).rejects.toThrow(TooManyAttemptsError);
 
     expect(hasher.verified).toHaveLength(0);
+  });
+
+  // ADR-033: una cuenta de Google no tiene contraseña; restaurarla por aquí responde el 401 genérico.
+  it('una cuenta sin contraseña (Google) responde el error genérico y no se restaura por aquí', async () => {
+    const { deletion, sessions, restore } = setup(scheduled, {}, null);
+
+    await expect(restore.execute(input())).rejects.toThrow(InvalidCredentialsError);
+
+    expect(sessions.created).toHaveLength(0);
+    expect(deletion.accounts.get(id)?.deletionScheduledFor).toEqual(scheduled);
   });
 });

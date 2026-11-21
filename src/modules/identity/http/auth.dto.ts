@@ -1,5 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsIn, IsString, Length, MaxLength, ValidateBy } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  Length,
+  MaxLength,
+  ValidateBy,
+} from 'class-validator';
 import { isValidDisplayName, normalizeDisplayName } from '../../../domain/display-name';
 import type { Role } from '../application/account-repository';
 import { ROLE_NOTE_LENGTH } from '../application/change-role';
@@ -63,11 +71,13 @@ export class LoginDto {
   password!: string;
 }
 
-// ADR-032: la contraseña confirma que quien pide eliminar la cuenta es su dueño.
+// ADR-032: la contraseña confirma que quien pide eliminar la cuenta es su dueño. ADR-033: las cuentas de
+// Google no tienen contraseña y mandan `{}`; si la cuenta sí la tiene, el caso de uso exige que venga.
 export class DeleteAccountDto {
+  @IsOptional()
   @IsString({ message: 'debe ser texto' })
   @MaxLength(128, { message: 'debe tener como máximo 128 caracteres' })
-  password!: string;
+  password?: string;
 }
 
 // Grill de la #73, pregunta 1: comercio no se asigna hasta el Corte 3.

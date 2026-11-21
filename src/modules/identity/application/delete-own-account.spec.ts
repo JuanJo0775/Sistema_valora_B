@@ -3,6 +3,8 @@ import {
   DeleteOwnAccount,
   InvalidPasswordError,
   LastModeratorError,
+  PasswordRequiredError,
+  ReauthRequiredError,
   TooManyAttemptsError,
 } from './delete-own-account';
 import { FakeHasher, FakeLimiter, InMemoryDeletion } from './deletion-doubles.testing';
@@ -29,9 +31,10 @@ function setup(blocked: Record<string, number> = {}, clock = { now: () => now })
   return { deletion, hasher, limiter, useCase };
 }
 
-const input = (accountId = ana.id, password = 'la-clave-de-ana') => ({
+const input = (accountId = ana.id, password: string | undefined = 'la-clave-de-ana') => ({
   accountId,
-  password,
+  ...(password === undefined ? {} : { password }),
+  sessionCreatedAt: new Date('2026-11-01T00:00:00Z'),
   ip: '203.0.113.7',
 });
 
@@ -112,5 +115,58 @@ describe('eliminar la propia cuenta (ADR-032)', () => {
     const { useCase } = setup();
 
     await expect(useCase.execute(input())).rejects.toThrow(AccountGoneError);
+  });
+
+  it('una cuenta con contraseña que no la manda recibe PasswordRequiredError y no se marca nada', async () => {
+    const { deletion, hasher, useCase } = setup();
+    deletion.add({ ...ana });
+
+    await expect(useCase.execute(input(ana.id, undefined))).rejects.toThrow(PasswordRequiredError);
+
+    expect(hasher.verified).toHaveLength(0);
+    expect(deletion.accounts.get(ana.id)?.deletionScheduledFor).toBeNull();
+  });
+
+  describe('cuenta de Google, sin contraseña (ADR-033)', () => {
+    const google = { ...ana, passwordHash: null };
+    const sessionAt = (minutesAgo: number) => ({
+      ...input(ana.id, undefined),
+      sessionCreatedAt: new Date(now.getTime() - minutesAgo * 60 * 1000),
+    });
+
+    it('con una sesión de hace 9 minutos se acepta sin contraseña', async () => {
+      const { deletion, hasher, useCase } = setup();
+      deletion.add({ ...google });
+
+      const result = await useCase.execute(sessionAt(9));
+
+      expect(result.scheduledFor).toEqual(new Date('2026-11-28T10:00:00Z'));
+      expect(hasher.verified).toHaveLength(0);
+    });
+
+    it('con una sesión de exactamente 10 minutos todavía se acepta', async () => {
+      const { deletion, useCase } = setup();
+      deletion.add({ ...google });
+
+      await expect(useCase.execute(sessionAt(10))).resolves.toBeDefined();
+    });
+
+    it('con una sesión de hace 11 minutos responde ReauthRequiredError y no marca nada', async () => {
+      const { deletion, useCase } = setup();
+      deletion.add({ ...google });
+
+      await expect(useCase.execute(sessionAt(11))).rejects.toThrow(ReauthRequiredError);
+
+      expect(deletion.accounts.get(ana.id)?.deletionScheduledFor).toBeNull();
+    });
+
+    it('una contraseña enviada se ignora: no abre otra vía', async () => {
+      const { deletion, useCase } = setup();
+      deletion.add({ ...google });
+
+      await expect(
+        useCase.execute({ ...sessionAt(60), password: 'cualquiera' }),
+      ).rejects.toThrow(ReauthRequiredError);
+    });
   });
 });

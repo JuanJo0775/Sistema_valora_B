@@ -31,6 +31,24 @@ export class LastModeratorError extends Error {
   }
 }
 
+// 400: la cuenta tiene contraseña y no vino en el cuerpo.
+export class PasswordRequiredError extends Error {
+  constructor() {
+    super('La contraseña es obligatoria.');
+  }
+}
+
+// ADR-033: las cuentas de Google no tienen contraseña; eliminar pide que la sesión sea reciente. 403
+// REAUTH_REQUIRED: el frontend le pide a la persona volver a entrar con Google.
+export class ReauthRequiredError extends Error {
+  constructor() {
+    super('Por seguridad, vuelve a iniciar sesión con Google para eliminar tu cuenta.');
+  }
+}
+
+// Una sesión de una cuenta sin contraseña sirve para eliminar solo si se creó hace tan poco como esto.
+export const REAUTH_WINDOW_MINUTES = 10;
+
 // La cuenta de la sesión ya no existe (otra petición la borró): 401.
 export class AccountGoneError extends Error {
   constructor() {
@@ -47,7 +65,10 @@ export interface DeleteOwnAccountPorts {
 
 export interface DeleteOwnAccountInput {
   accountId: string;
-  password: string;
+  // Ausente en las cuentas sin contraseña (ADR-033).
+  password?: string;
+  // Cuándo se creó la sesión que hace la petición.
+  sessionCreatedAt: Date;
   ip: string;
 }
 
@@ -57,7 +78,7 @@ export interface DeleteOwnAccountResult {
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
-// Derecho de supresión (Ley 1581, art. 8): comprueba la contraseña, marca la cuenta para borrarla en 10
+// Derecho de supresión (Ley 1581, art. 8): comprueba la contraseña (o, en una cuenta de Google, que la sesión sea reciente), marca la cuenta para borrarla en 10
 // días y cierra todas sus sesiones. Pedirlo otra vez no mueve la fecha.
 export class DeleteOwnAccount {
   constructor(private readonly ports: DeleteOwnAccountPorts) {}
@@ -72,14 +93,21 @@ export class DeleteOwnAccount {
     if (wait !== null) throw new TooManyAttemptsError(wait);
     limiter.record(ipKey, DELETION_ATTEMPTS_PER_IP);
 
-    const hash = await deletion.passwordHashOf(input.accountId);
-    if (hash === null) throw new AccountGoneError();
-    if (!(await hasher.verify(hash, input.password))) {
-      limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
-      throw new InvalidPasswordError();
+    const credentials = await deletion.credentialsOf(input.accountId);
+    if (credentials === null) throw new AccountGoneError();
+    const now = clock.now();
+    if (credentials.passwordHash === null) {
+      // ADR-033: sin contraseña, la prueba de identidad es haber entrado con Google hace poco.
+      const ageMs = now.getTime() - input.sessionCreatedAt.getTime();
+      if (ageMs > REAUTH_WINDOW_MINUTES * 60 * 1000) throw new ReauthRequiredError();
+    } else {
+      if (input.password === undefined) throw new PasswordRequiredError();
+      if (!(await hasher.verify(credentials.passwordHash, input.password))) {
+        limiter.record(accountKey, DELETION_FAILURES_PER_ACCOUNT);
+        throw new InvalidPasswordError();
+      }
     }
 
-    const now = clock.now();
     const result = await deletion.schedule({
       accountId: input.accountId,
       scheduledFor: new Date(now.getTime() + ACCOUNT_DELETION_GRACE_DAYS * DAY_IN_MILLISECONDS),

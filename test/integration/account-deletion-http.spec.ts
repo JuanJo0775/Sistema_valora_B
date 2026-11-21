@@ -35,7 +35,7 @@ describe('eliminación de la propia cuenta (ADR-032)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, pricing.reports, comparison.price_current, catalog.presentations, catalog.products, catalog.product_aliases, establishments.establishments`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts, pricing.reports, comparison.price_current, catalog.presentations, catalog.products, catalog.product_aliases, establishments.establishments`,
     );
   });
 

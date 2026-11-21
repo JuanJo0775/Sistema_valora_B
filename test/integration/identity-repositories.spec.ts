@@ -51,7 +51,7 @@ describe('repositorios de identity', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
     );
   });
 

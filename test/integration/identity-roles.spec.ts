@@ -43,7 +43,7 @@ describe('acceso por rol (RF-002)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts`,
     );
   });
 

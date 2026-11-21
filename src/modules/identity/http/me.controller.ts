@@ -18,9 +18,12 @@ import {
   DeleteOwnAccount,
   InvalidPasswordError,
   LastModeratorError,
+  PasswordRequiredError,
+  ReauthRequiredError,
 } from '../application/delete-own-account';
 import { DeleteAccountDto } from './auth.dto';
 import type { ClientRequest, CookieResponse } from './auth.controller';
+import { RequestValidationError } from '../../../shared/http/validation';
 import { clearedSessionCookie } from './session-cookie';
 import {
   AllowSuspended,
@@ -55,7 +58,8 @@ export class MeController {
     try {
       const { scheduledFor } = await this.deleteOwnAccount.execute({
         accountId: session.accountId,
-        password: body.password,
+        ...(body.password === undefined ? {} : { password: body.password }),
+        sessionCreatedAt: session.createdAt,
         ip: request.ip ?? 'desconocida',
       });
       // Todas las sesiones quedaron revocadas en el servidor; se limpia también la cookie del navegador.
@@ -76,6 +80,13 @@ export class MeController {
           code: 'LAST_MODERATOR_CANNOT_DELETE',
           message: error.message,
         });
+      }
+      if (error instanceof PasswordRequiredError) {
+        throw new RequestValidationError('password: debe ser texto');
+      }
+      // ADR-033: cuenta de Google con una sesión de más de 10 minutos; el frontend pide volver a entrar.
+      if (error instanceof ReauthRequiredError) {
+        throw new ForbiddenException({ code: 'REAUTH_REQUIRED', message: error.message });
       }
       if (error instanceof AccountGoneError) throw new UnauthorizedException();
       throw error;

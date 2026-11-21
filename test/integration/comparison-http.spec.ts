@@ -291,7 +291,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
   // El reportante necesita sesión (#62); la comparación se consulta sin ella: sigue siendo pública.
   it('de punta a punta: un reporte con sesión llega por el outbox y la comparación lo muestra sin sesión', async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts`,
     );
     const reporter = await signIn(server, db, 'reportante@correo.com');
     const observedAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
@@ -324,7 +324,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
   // Grill de la #31: pricing → reliability → comparison, con la confiabilidad en la respuesta.
   it('de punta a punta con reliability: dos cuentas que coinciden suman una confirmación y un precio fuera de rango no reemplaza al vigente', async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts`,
     );
     const relay = app.get(OutboxRelay);
     const reportAs = async (email: string, priceCop: number, minutesAgo: number) => {
@@ -371,7 +371,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
   // Grill de la #32: marcar → cola → descartar → la comparación vuelve al precio confiable.
   it('de punta a punta con moderación: un precio marcado y descartado deja de mostrarse, y la cola no expone a nadie', async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts`,
     );
     const relay = app.get(OutboxRelay);
     const reportAs = async (email: string, priceCop: number, minutesAgo: number) => {

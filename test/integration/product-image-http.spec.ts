@@ -29,7 +29,7 @@ describe('PUT /v1/moderation/products/{productId}/image (ADR-020, #88)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.external_identities, identity.email_verifications, identity.sessions, identity.accounts`,
     );
     reporter = await signIn(server, db, 'reportante-fotos@correo.com');
     moderator = await signIn(server, db, 'moderador-fotos@correo.com', 'moderador');
