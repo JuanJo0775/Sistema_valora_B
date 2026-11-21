@@ -1,4 +1,5 @@
 import type { Account } from './account-repository';
+import { AccountPendingDeletionError } from './login';
 import type { GoogleAccountLinks, GoogleLink, LinkableAccount } from './google-account-links';
 import type { NewSession, SessionRepository, StoredSession } from './session-repository';
 import {
@@ -164,4 +165,26 @@ describe('entrar con Google (ADR-029, fase 2)', () => {
     await expect(signIn.execute(google())).resolves.toMatchObject({ outcome: 'signed-in' });
     expect(sessions.created).toHaveLength(1);
   });
+
+  // ADR-032, como el login: durante los 10 días de gracia no se abre sesión; se dice cuándo se borra y
+  // la PWA ofrece restaurarla.
+  it.each([
+    ['ya vinculada a ese sub', { googleSubject: '109876543210987654321' }],
+    ['encontrada por el correo', {}],
+  ])(
+    'una cuenta %s con eliminación pendiente no abre sesión, no se vincula y dice cuándo se borra',
+    async (_case, extra) => {
+      const scheduledFor = new Date('2026-11-28T10:00:00Z');
+      const { links, sessions, signIn } = setup([
+        { ...ana, ...extra, deletionScheduledFor: scheduledFor },
+      ]);
+
+      const attempt = signIn.execute(google());
+
+      await expect(attempt).rejects.toThrow(AccountPendingDeletionError);
+      await expect(attempt).rejects.toMatchObject({ scheduledFor });
+      expect(sessions.created).toHaveLength(0);
+      expect(links.links).toHaveLength(0);
+    },
+  );
 });
