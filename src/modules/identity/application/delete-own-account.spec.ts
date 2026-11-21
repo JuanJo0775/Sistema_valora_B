@@ -10,6 +10,7 @@ import { FakeHasher, FakeLimiter, InMemoryDeletion } from './deletion-doubles.te
 const now = new Date('2026-11-18T10:00:00Z');
 const ana = {
   id: '11111111-1111-4111-8111-111111111111',
+  email: 'ana@correo.com',
   passwordHash: 'hash:la-clave-de-ana',
   role: 'reportante' as const,
   deletionScheduledFor: null,
@@ -106,6 +107,25 @@ describe('eliminar la propia cuenta (ADR-032)', () => {
     await useCase.execute(input(first.id));
 
     await expect(useCase.execute(input(second.id))).rejects.toThrow(LastModeratorError);
+  });
+
+  // ADR-029, fase 2 (#179) y grill de la #178, pregunta 3: una cuenta creada con Google no tiene
+  // contraseña; confirma escribiendo su correo (sin importar espacios ni mayúsculas).
+  it('una cuenta sin contraseña confirma escribiendo su correo y queda pendiente 10 días, sin sesiones', async () => {
+    const { deletion, hasher, limiter, useCase } = setup();
+    deletion.add({ ...ana, passwordHash: null });
+
+    const result = await useCase.execute({
+      accountId: ana.id,
+      confirmEmail: '  Ana@Correo.com ',
+      ip: '203.0.113.7',
+    });
+
+    expect(result.scheduledFor).toEqual(new Date('2026-11-28T10:00:00Z'));
+    expect(deletion.accounts.get(ana.id)?.deletionScheduledFor).toEqual(result.scheduledFor);
+    expect(deletion.revoked).toEqual([ana.id]);
+    expect(hasher.verified).toHaveLength(0);
+    expect(limiter.resets).toEqual([`eliminar-cuenta:${ana.id}`]);
   });
 
   it('una cuenta que ya no existe responde AccountGoneError', async () => {
