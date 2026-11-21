@@ -170,5 +170,27 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
         .set('Cookie', cookie ?? '')
         .expect(200);
     });
+
+    // RF-001 y grill de la #178, pregunta 2: pulsar el botón de Google no es aceptar la política.
+    it('un correo sin cuenta va a /bienvenida con el registro pendiente firmado, sin sesión ni datos en la URL', async () => {
+      const response = await returnFromGoogle();
+
+      expect(response.headers['location']).toBe('/bienvenida');
+      const cookies = response.headers['set-cookie'] as unknown as string[];
+      const pending = cookies.find((cookie) => cookie.startsWith('valora_google_signup='));
+      expect(pending).toMatch(/^valora_google_signup=[\w-]+\.[\w-]+; /);
+      expect(pending).toContain('Max-Age=600');
+      expect(pending).toContain('Path=/v1/auth/google');
+      expect(pending).toContain('HttpOnly');
+      // EC-08: ni el correo ni el sub viajan a la vista: van dentro de la cookie firmada.
+      expect(pending).not.toContain('ana@correo.com');
+      expect(String(response.headers['location'])).not.toMatch(/correo|109876/);
+      expect(sessionCookieOf(response)).toBeUndefined();
+      expect(await openSessions()).toBe(0);
+      const accounts = await db.execute<{ n: number }>(
+        sql`select count(*)::int as n from identity.accounts`,
+      );
+      expect(accounts.rows[0]?.n).toBe(0);
+    });
   });
 });
