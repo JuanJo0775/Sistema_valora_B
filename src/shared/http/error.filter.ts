@@ -16,6 +16,8 @@ interface ErrorBody {
   message: string;
   // Solo en el 409 DUPLICATE_REPORT (issue #84).
   availableFrom?: string;
+  // Solo en el 403 ACCOUNT_PENDING_DELETION (ADR-032): cuándo se borra la cuenta.
+  scheduledFor?: string;
 }
 
 interface ErrorResponse {
@@ -87,16 +89,25 @@ function ownAvailableFrom(exception: HttpException): string | undefined {
   return typeof body.availableFrom === 'string' ? body.availableFrom : undefined;
 }
 
+// Fecha de eliminación de una cuenta pendiente, si la trae (403 ACCOUNT_PENDING_DELETION, ADR-032).
+function ownScheduledFor(exception: HttpException): string | undefined {
+  const body = exception.getResponse();
+  if (typeof body !== 'object' || !('scheduledFor' in body)) return undefined;
+  return typeof body.scheduledFor === 'string' ? body.scheduledFor : undefined;
+}
+
 // Un 409, 403 o 401 pueden traer su propio código y mensaje; los demás usan los fijos.
 function withOwnMessage(exception: HttpException, status: number, known: ErrorBody): ErrorBody {
   if (!OWN_CODE_STATUSES.has(status)) return known;
   const code = ownCode(exception) ?? known.code;
   const hasOwnMessage = !DEFAULT_MESSAGES.has(exception.message);
   const availableFrom = ownAvailableFrom(exception);
+  const scheduledFor = ownScheduledFor(exception);
   return {
     code,
     message: hasOwnMessage ? exception.message : known.message,
     ...(availableFrom === undefined ? {} : { availableFrom }),
+    ...(scheduledFor === undefined ? {} : { scheduledFor }),
   };
 }
 

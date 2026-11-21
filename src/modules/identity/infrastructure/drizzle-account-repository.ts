@@ -24,6 +24,7 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
         passwordHash: accounts.passwordHash,
         role: accounts.role,
         suspendedUntil: accounts.suspendedUntil,
+        deletionScheduledFor: accounts.deletionScheduledFor,
       })
       .from(accounts)
       .where(eq(accounts.email, email));

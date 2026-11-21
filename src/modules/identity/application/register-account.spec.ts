@@ -11,7 +11,9 @@ class InMemoryAccountRepository implements AccountRepository {
 
   findByEmail(email: string): Promise<Account | null> {
     const found = this.accounts.find((account) => account.email === email);
-    return Promise.resolve(found ? { ...found, suspendedUntil: null } : null);
+    return Promise.resolve(
+      found ? { ...found, suspendedUntil: null, deletionScheduledFor: null } : null,
+    );
   }
 
   create(account: NewAccount): Promise<void> {

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Header,
   HttpCode,
@@ -18,10 +19,11 @@ import type { Env } from '../../../shared/config/env.validation';
 import type { Role } from '../application/account-repository';
 import { TooManyAttemptsError } from '../application/attempt-limiter';
 import { csrfTokenFor } from '../application/csrf';
-import { InvalidCredentialsError, Login } from '../application/login';
+import { AccountPendingDeletionError, InvalidCredentialsError, Login } from '../application/login';
 import { Logout } from '../application/logout';
 import { OwnDisplayName } from '../application/own-display-name';
 import { RegisterAccount } from '../application/register-account';
+import { RestoreAccount } from '../application/restore-account';
 import { ResendVerification } from '../application/resend-verification';
 import { VerifyEmail } from '../application/verify-email';
 import { LoginDto, RegisterDto, VerifyEmailDto } from './auth.dto';
@@ -71,6 +73,7 @@ export class AuthController {
     private readonly registerAccount: RegisterAccount,
     private readonly login: Login,
     private readonly logout: Logout,
+    private readonly restoreAccount: RestoreAccount,
     private readonly ownDisplayName: OwnDisplayName,
     private readonly verifyEmail: VerifyEmail,
     private readonly resendVerification: ResendVerification,
@@ -96,6 +99,8 @@ export class AuthController {
   }
 
   // Grill de la #16, preguntas 3 y 9: sesión nueva en cada inicio, con la cookie de 30 días.
+  // ADR-032: con la contraseña correcta de una cuenta pendiente de eliminación responde 403
+  // ACCOUNT_PENDING_DELETION con la fecha, sin crear sesión.
   @Post('login')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logIn(
@@ -103,8 +108,28 @@ export class AuthController {
     @Req() request: ClientRequest,
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<void> {
+    await this.startSessionWith(this.login, body, request, response);
+  }
+
+  // ADR-032: cancela la eliminación pendiente y inicia la sesión como el login (misma respuesta y cookie).
+  @Post('restore-account')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async restore(
+    @Body() body: LoginDto,
+    @Req() request: ClientRequest,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<void> {
+    await this.startSessionWith(this.restoreAccount, body, request, response);
+  }
+
+  private async startSessionWith(
+    flow: Login | RestoreAccount,
+    body: LoginDto,
+    request: ClientRequest,
+    response: CookieResponse,
+  ): Promise<void> {
     try {
-      const { token } = await this.login.execute({
+      const { token } = await flow.execute({
         email: body.email,
         password: body.password,
         ip: request.ip ?? 'desconocida',
@@ -115,6 +140,13 @@ export class AuthController {
       if (error instanceof TooManyAttemptsError) throw tooManyRequests(error);
       if (error instanceof InvalidCredentialsError) {
         throw new UnauthorizedException({ code: 'UNAUTHORIZED', message: error.message });
+      }
+      if (error instanceof AccountPendingDeletionError) {
+        throw new ForbiddenException({
+          code: 'ACCOUNT_PENDING_DELETION',
+          message: error.message,
+          scheduledFor: error.scheduledFor.toISOString(),
+        });
       }
       throw error;
     }
