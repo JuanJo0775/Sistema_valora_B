@@ -9,7 +9,7 @@ import {
   TooManyAttemptsError,
 } from './login';
 import type { PasswordHasher } from './password-hasher';
-import type { NewSession, SessionRepository, StoredSession } from './session-repository';
+import { CreatedSessions } from './session-doubles.testing';
 
 const now = new Date('2026-11-12T14:00:00Z');
 const ana: Account = {
@@ -31,27 +31,6 @@ class FakeHasher implements PasswordHasher {
   verify(hash: string, password: string): Promise<boolean> {
     this.verified.push(hash);
     return Promise.resolve(hash === `hash:${password}`);
-  }
-}
-
-class InMemorySessions implements SessionRepository {
-  readonly sessions: NewSession[] = [];
-
-  create(session: NewSession): Promise<void> {
-    this.sessions.push(session);
-    return Promise.resolve();
-  }
-
-  findByTokenHash(): Promise<StoredSession | null> {
-    return Promise.reject(new Error('Login no busca sesiones'));
-  }
-
-  touch(): Promise<void> {
-    return Promise.reject(new Error('Login no actualiza sesiones'));
-  }
-
-  revoke(): Promise<void> {
-    return Promise.reject(new Error('Login no revoca sesiones'));
   }
 }
 
@@ -82,7 +61,7 @@ function setup(blocked: Record<string, number> = {}, account: Account = ana) {
     applyRoleChange: () => Promise.reject(new Error('Login no cambia roles')),
   };
   const hasher = new FakeHasher();
-  const sessions = new InMemorySessions();
+  const sessions = new CreatedSessions();
   const limiter = new FakeLimiter(blocked);
   const login = new Login({ accounts, hasher, sessions, limiter, clock: { now: () => now } });
   return { hasher, sessions, limiter, login };
@@ -102,7 +81,7 @@ describe('iniciar sesión', () => {
     const { token, expiresAt } = await login.execute(input());
 
     expect(token).toMatch(/^[\w-]{43}$/);
-    expect(sessions.sessions).toEqual([
+    expect(sessions.created).toEqual([
       {
         id: expect.any(String) as unknown,
         tokenHash: createHash('sha256').update(token).digest('hex'),
@@ -126,7 +105,7 @@ describe('iniciar sesión', () => {
 
     // También se verifica un hash de relleno: el tiempo no revela si la cuenta existe (pregunta 6).
     expect(hasher.verified).toHaveLength(2);
-    expect(sessions.sessions).toHaveLength(0);
+    expect(sessions.created).toHaveLength(0);
     expect(limiter.recorded).toEqual(
       expect.arrayContaining(['login-correo:ana@correo.com', 'login-correo:nadie@correo.com']),
     );
@@ -141,7 +120,7 @@ describe('iniciar sesión', () => {
 
     // Se verifica un hash de relleno, para que tarde lo mismo que una contraseña mala.
     expect(hasher.verified).toHaveLength(1);
-    expect(sessions.sessions).toHaveLength(0);
+    expect(sessions.created).toHaveLength(0);
     expect(limiter.recorded).toContain('login-correo:ana@correo.com');
   });
 
@@ -154,7 +133,7 @@ describe('iniciar sesión', () => {
 
     await expect(attempt).rejects.toThrow(AccountPendingDeletionError);
     await expect(attempt).rejects.toMatchObject({ scheduledFor });
-    expect(sessions.sessions).toHaveLength(0);
+    expect(sessions.created).toHaveLength(0);
   });
 
   it('con una contraseña mala, una cuenta pendiente da el mismo error genérico (no revela que existe)', async () => {
@@ -199,7 +178,7 @@ describe('iniciar sesión', () => {
 
     await login.execute(input());
 
-    expect(sessions.sessions).toHaveLength(1);
+    expect(sessions.created).toHaveLength(1);
   });
 
   it('cuando la suspensión ya terminó, la cuenta inicia sesión', async () => {
@@ -210,7 +189,7 @@ describe('iniciar sesión', () => {
 
     await login.execute(input());
 
-    expect(sessions.sessions).toHaveLength(1);
+    expect(sessions.created).toHaveLength(1);
   });
 
   it('con la contraseña incorrecta, una cuenta suspendida da el error de siempre', async () => {

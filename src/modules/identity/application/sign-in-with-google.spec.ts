@@ -1,7 +1,7 @@
 import type { Account } from './account-repository';
 import { AccountPendingDeletionError } from './login';
 import type { GoogleAccountLinks, GoogleLink, LinkableAccount } from './google-account-links';
-import type { NewSession, SessionRepository, StoredSession } from './session-repository';
+import { CreatedSessions } from './session-doubles.testing';
 import {
   GoogleEmailNotVerifiedError,
   type GoogleIdentity,
@@ -39,30 +39,9 @@ class InMemoryGoogleLinks implements GoogleAccountLinks {
   }
 }
 
-class InMemorySessions implements SessionRepository {
-  readonly created: NewSession[] = [];
-
-  create(session: NewSession): Promise<void> {
-    this.created.push(session);
-    return Promise.resolve();
-  }
-
-  findByTokenHash(): Promise<StoredSession | null> {
-    return Promise.reject(new Error('no se usa'));
-  }
-
-  touch(): Promise<void> {
-    return Promise.reject(new Error('no se usa'));
-  }
-
-  revoke(): Promise<void> {
-    return Promise.reject(new Error('no se usa'));
-  }
-}
-
 function setup(accounts: ConstructorParameters<typeof InMemoryGoogleLinks>[0] = []) {
   const links = new InMemoryGoogleLinks(accounts);
-  const sessions = new InMemorySessions();
+  const sessions = new CreatedSessions();
   const signIn = new SignInWithGoogle({ links, sessions, clock: { now: () => now } });
   return { links, sessions, signIn };
 }
