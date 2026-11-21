@@ -27,10 +27,14 @@ export class CompleteGoogleSignUp {
   constructor(private readonly ports: CompleteGoogleSignUpPorts) {}
 
   async execute(input: CompleteGoogleSignUpInput): Promise<StartedSession> {
+    // Si mientras tanto el sub o el correo ya tienen cuenta, se entra (o se vincula) como en el
+    // callback: nunca se crea una cuenta repetida.
+    const existing = await this.signInIfAccountExists(input.signUp);
+    if (existing) return existing;
     const { links, clock } = this.ports;
     const now = clock.now();
     const id = randomUUID();
-    await links.createLinked({
+    const created = await links.createLinked({
       id,
       email: input.signUp.email,
       displayName: normalizeDisplayName(input.displayName),
@@ -42,6 +46,23 @@ export class CompleteGoogleSignUp {
       // Google ya comprobó el correo: no hace falta el enlace de verificación (ADR-029).
       emailVerifiedAt: now,
     });
-    return startSession(this.ports, id);
+    if (created) return startSession(this.ports, id);
+    // Otra petición creó la cuenta entre la búsqueda y la inserción: se vincula a ella.
+    const linked = await this.signInIfAccountExists(input.signUp);
+    if (!linked) throw new Error('la cuenta con ese correo desapareció a mitad del registro');
+    return linked;
+  }
+
+  private async signInIfAccountExists(signUp: PendingGoogleSignUp): Promise<StartedSession | null> {
+    const result = await this.ports.signIn.execute({
+      subject: signUp.subject,
+      email: signUp.email,
+      // El callback solo guarda el registro pendiente si Google verificó el correo.
+      emailVerified: true,
+      name: signUp.suggestedName,
+    });
+    return result.outcome === 'signed-in'
+      ? { token: result.token, expiresAt: result.expiresAt }
+      : null;
   }
 }
