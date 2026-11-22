@@ -16,8 +16,9 @@ import type {
   NearbyEstablishment,
   WithinRadiusQuery,
 } from '../../establishments';
-import type { PriceRef, PriceReliability } from '../../reliability';
+import type { PriceRef, PriceReliability, ReportAtStore } from '../../reliability';
 import type { CurrentPrices } from './current-prices';
+import type { OfficialPriceCopies } from './official-price-copies';
 
 // Puertos hacia las consultas públicas de catalog y establishments (grill de la #15, pregunta 2).
 export interface ProductLookup {
@@ -53,12 +54,20 @@ export interface Clock {
 // Puerto hacia la consulta pública de reliability (grill de la #31, pregunta 6).
 export interface PricesReliability {
   of(prices: PriceRef[], ttlDays: number): Promise<PriceReliability[]>;
+  // D1 (#204): los reportes recientes de la tienda, uno por persona, con su nivel.
+  reportsAt(
+    presentationId: string,
+    establishmentId: string,
+    ttlDays: number,
+  ): Promise<ReportAtStore[]>;
 }
 
 export interface CompareProductPorts {
   products: ProductLookup;
   stores: StoresWithinRadius;
   prices: Pick<CurrentPrices, 'findByPresentations'>;
+  // #204: la copia del precio oficial de commerce.
+  officials: OfficialPriceCopies;
   reliability: PricesReliability;
   // Grill de la #34: la referencia SIPSA más reciente del producto, por la consulta pública de catalog.
   references: { latestFor(productId: string): Promise<WholesaleReferenceView | null> };
@@ -90,19 +99,22 @@ export interface CompareProductInput {
 export interface ComparisonItem {
   // Sin la ubicación del usuario (#106) no hay distancia.
   establishment: EstablishmentDetail & { distanceM?: number };
-  // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo.
-  reportId: string;
+  // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo. Un precio oficial
+  // no viene de un reporte (#204).
+  reportId?: string;
   presentationId: string;
   priceCop: number;
   unitPrice: UnitPrice;
-  // Grill de la #15, pregunta 7; B#135: de la comunidad o un dato inicial de la semilla.
-  source: PriceSource;
+  // Grill de la #15, pregunta 7; B#135: de la comunidad o un dato inicial de la semilla. #204: oficial,
+  // publicado por el comercio.
+  source: PriceSource | 'oficial';
   freshness: Freshness;
   // Grill de la #15, pregunta 6: el precio por unidad más bajo entre los no desactualizados.
   isCheapest: boolean;
-  // Grill de la #31: el nivel que calcula reliability, o en_revision si el precio es sospechoso.
-  reliability: 'alta' | 'media' | 'baja' | 'en_revision';
-  confirmations: number;
+  // Grill de la #31: el nivel que calcula reliability, o en_revision si el precio es sospechoso. Un
+  // precio oficial no se califica (#204).
+  reliability?: 'alta' | 'media' | 'baja' | 'en_revision';
+  confirmations?: number;
   observedAt: Date;
 }
 
@@ -173,13 +185,16 @@ function toResults(ranked: Candidate[], reliability: PriceReliability[]): Compar
   const cheapest = lowestUnitPrice(ranked.filter((candidate) => !isStale(candidate)));
   const byPlace = new Map(reliability.map((assessed) => [placeOf(assessed), assessed]));
   return ranked.map((candidate) => {
+    const isCheapest =
+      !isStale(candidate) &&
+      cheapest !== undefined &&
+      candidate.unitPrice.compareTo(cheapest) === 0;
+    // #204: el oficial no se califica.
+    if (candidate.item.source === 'oficial') return { ...candidate.item, isCheapest };
     const assessed = byPlace.get(placeOf(candidate));
     return {
       ...candidate.item,
-      isCheapest:
-        !isStale(candidate) &&
-        cheapest !== undefined &&
-        candidate.unitPrice.compareTo(cheapest) === 0,
+      isCheapest,
       // Sin evaluación (precios anteriores a la #31) cuenta como baja.
       reliability: candidate.inReview ? 'en_revision' : (assessed?.level ?? 'baja'),
       confirmations: candidate.inReview ? 0 : (assessed?.confirmations ?? 0),
@@ -199,13 +214,11 @@ export class CompareProduct {
 
     const ranked = rankInGroups(await this.candidatesFor(product, input), input);
     const reliability = await this.ports.reliability.of(
-      ranked
-        .filter((candidate) => !candidate.inReview)
-        .map(({ presentationId, establishmentId, item }) => ({
-          presentationId,
-          establishmentId,
-          reportId: item.reportId,
-        })),
+      ranked.flatMap(({ presentationId, establishmentId, item, inReview }) =>
+        inReview || item.reportId === undefined
+          ? []
+          : [{ presentationId, establishmentId, reportId: item.reportId }],
+      ),
       ttlDaysFor(product.isFresh),
     );
     const reference = await this.ports.references.latestFor(product.id);
@@ -253,7 +266,8 @@ export class CompareProduct {
   ): Promise<Candidate[]> {
     const presentations = new Map(product.presentations.map((p) => [p.id, p]));
     const prices = await this.ports.prices.findByPresentations([...presentations.keys()]);
-    const ids = [...new Set(prices.map((price) => price.establishmentId))];
+    const officials = await this.ports.officials.findByPresentations([...presentations.keys()]);
+    const ids = [...new Set([...prices, ...officials].map((price) => price.establishmentId))];
     const { lat, lng, municipality } = input;
     const stores: ComparisonItem['establishment'][] =
       lat !== undefined && lng !== undefined
@@ -292,6 +306,30 @@ export class CompareProduct {
         presentationId: item.presentationId,
         unitPrice: item.unitPrice,
         // Sin ubicación todas empatan en distancia; decide el resto de la cadena (#21).
+        distanceMeters: establishment.distanceM ?? 0,
+        observedAt: item.observedAt,
+      });
+    }
+    // #204: el precio oficial de la tienda.
+    for (const official of officials) {
+      const establishment = storesById.get(official.establishmentId);
+      const presentation = presentations.get(official.presentationId);
+      if (!establishment || !presentation) continue;
+      const item: Candidate['item'] = {
+        establishment,
+        presentationId: official.presentationId,
+        priceCop: official.priceCop,
+        unitPrice: calculateUnitPrice(official.priceCop, presentation),
+        source: 'oficial',
+        freshness: freshnessAt(official.confirmedAt, now, ttlDays),
+        observedAt: official.confirmedAt,
+      };
+      candidates.push({
+        item,
+        inReview: false,
+        establishmentId: establishment.id,
+        presentationId: item.presentationId,
+        unitPrice: item.unitPrice,
         distanceMeters: establishment.distanceM ?? 0,
         observedAt: item.observedAt,
       });
