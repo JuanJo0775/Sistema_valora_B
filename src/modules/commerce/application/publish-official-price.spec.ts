@@ -1,3 +1,4 @@
+import { ImplausiblePriceError } from '../../../domain/price-plausibility';
 import type { DomainEvent } from '../../../shared/events';
 import type { MerchantClaim } from './merchant-claims';
 import type { OfficialPrice } from './official-prices';
@@ -103,4 +104,17 @@ describe('publicar un precio oficial (RF-016, D4 del grill comercial)', () => {
     ).rejects.toThrow(UnknownPresentationError);
     expect(prices).toEqual([]);
   });
+
+  // Neutralidad: el oficial cumple el mismo piso y techo absolutos que un reporte (ADR-030).
+  it.each([99, 5_000_001])(
+    '$%d se rechaza por el mismo piso y techo de los reportes',
+    async (priceCop) => {
+      const { publish, prices } = setup();
+
+      await expect(
+        publish.execute({ accountId: 'cuenta-de-dona-rosa', presentationId: RICE, priceCop }),
+      ).rejects.toThrow(ImplausiblePriceError);
+      expect(prices).toEqual([]);
+    },
+  );
 });
