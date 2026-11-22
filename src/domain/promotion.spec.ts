@@ -1,4 +1,10 @@
-import { promotedPriceCop, promotionStatus } from './promotion';
+import {
+  assertValidOffer,
+  InvalidPromotionError,
+  type PromotionOffer,
+  promotedPriceCop,
+  promotionStatus,
+} from './promotion';
 
 // 22 de noviembre de 2026, 10:00 a. m. en Colombia (UTC-5).
 const now = new Date('2026-11-22T15:00:00Z');
@@ -51,5 +57,28 @@ describe('precio con la promoción, a partir del oficial (D6)', () => {
 
   it('pague 2 lleve 3 de $2.600 deja cada unidad en $1.733', () => {
     expect(promotedPriceCop({ type: 'pague_x_lleve_y', payX: 2, takeY: 3 }, 2600)).toBe(1733);
+  });
+});
+
+describe('límites de cada tipo de promoción (D6, EC-06)', () => {
+  it.each<PromotionOffer>([
+    { type: 'descuento_porcentual', percent: 1 },
+    { type: 'descuento_porcentual', percent: 90 },
+    { type: 'precio_especial', specialPriceCop: 2599 },
+    { type: 'pague_x_lleve_y', payX: 1, takeY: 2 },
+  ])('se acepta %o con un oficial de $2.600', (offer) => {
+    expect(() => assertValidOffer(offer, 2600)).not.toThrow();
+  });
+
+  it.each<[string, PromotionOffer]>([
+    ['un descuento de 0 %', { type: 'descuento_porcentual', percent: 0 }],
+    ['un descuento de más de 90 %', { type: 'descuento_porcentual', percent: 91 }],
+    ['un descuento con decimales', { type: 'descuento_porcentual', percent: 12.5 }],
+    ['un precio especial igual al oficial', { type: 'precio_especial', specialPriceCop: 2600 }],
+    ['un precio especial de menos de $100', { type: 'precio_especial', specialPriceCop: 99 }],
+    ['pague 3 lleve 3', { type: 'pague_x_lleve_y', payX: 3, takeY: 3 }],
+    ['pague 0 lleve 2', { type: 'pague_x_lleve_y', payX: 0, takeY: 2 }],
+  ])('se rechaza %s', (_case, offer) => {
+    expect(() => assertValidOffer(offer, 2600)).toThrow(InvalidPromotionError);
   });
 });
