@@ -1,7 +1,7 @@
 import { type Freshness, freshnessOf, ttlDaysFor } from '../../../domain/freshness';
 import type { MerchantClaimRepository } from './merchant-claims';
 import type { OfficialPrice, OfficialPriceRepository } from './official-prices';
-import { MerchantNotVerifiedError } from './publish-official-price';
+import { verifiedEstablishmentOf } from './publish-official-price';
 
 export interface MerchantOfficialPricesPorts {
   claims: Pick<MerchantClaimRepository, 'findByAccount'>;
@@ -22,10 +22,9 @@ export class MerchantOfficialPrices {
 
   async execute(accountId: string): Promise<OfficialPriceView[]> {
     const { claims, prices, presentations, clock } = this.ports;
-    const claim = await claims.findByAccount(accountId);
-    if (claim?.status !== 'verificado') throw new MerchantNotVerifiedError();
+    const establishmentId = await verifiedEstablishmentOf(claims, accountId);
     const now = clock.now();
-    const stored = await prices.listFor(claim.establishmentId);
+    const stored = await prices.listFor(establishmentId);
     return Promise.all(
       stored.map(async (price) => ({
         ...price,

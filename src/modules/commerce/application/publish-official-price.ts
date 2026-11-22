@@ -41,6 +41,16 @@ export class UnknownPresentationError extends DomainError {
   }
 }
 
+// La tienda de un comercio verificado (D2, D3); si no lo está, no puede trabajar con precios.
+export async function verifiedEstablishmentOf(
+  claims: Pick<MerchantClaimRepository, 'findByAccount'>,
+  accountId: string,
+): Promise<string> {
+  const claim = await claims.findByAccount(accountId);
+  if (claim?.status !== 'verificado') throw new MerchantNotVerifiedError();
+  return claim.establishmentId;
+}
+
 // RF-016 con la D4 del grill comercial: el comercio publica o cambia el precio oficial de su tienda.
 export class PublishOfficialPrice {
   constructor(private readonly ports: PublishOfficialPricePorts) {}
@@ -48,13 +58,12 @@ export class PublishOfficialPrice {
   async execute(request: PublishOfficialPriceRequest): Promise<OfficialPrice> {
     assertPlausiblePrice(request.priceCop);
     const { claims, prices, clock } = this.ports;
-    const claim = await claims.findByAccount(request.accountId);
-    if (claim?.status !== 'verificado') throw new MerchantNotVerifiedError();
+    const establishmentId = await verifiedEstablishmentOf(claims, request.accountId);
     if (!(await this.ports.presentations.exists(request.presentationId))) {
       throw new UnknownPresentationError();
     }
     const price: OfficialPrice = {
-      establishmentId: claim.establishmentId,
+      establishmentId,
       presentationId: request.presentationId,
       priceCop: request.priceCop,
       confirmedAt: clock.now(),

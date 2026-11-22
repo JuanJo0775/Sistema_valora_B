@@ -1,7 +1,7 @@
 import { createEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 import { OFFICIAL_PRICES_RECONFIRMED, type OfficialPriceRepository } from './official-prices';
-import { MerchantNotVerifiedError } from './publish-official-price';
+import { verifiedEstablishmentOf } from './publish-official-price';
 
 export interface ReconfirmOfficialPricesPorts {
   claims: Pick<MerchantClaimRepository, 'findByAccount'>;
@@ -15,9 +15,7 @@ export class ReconfirmOfficialPrices {
 
   async execute(accountId: string): Promise<{ reconfirmed: number }> {
     const { claims, prices, clock } = this.ports;
-    const claim = await claims.findByAccount(accountId);
-    if (claim?.status !== 'verificado') throw new MerchantNotVerifiedError();
-    const { establishmentId } = claim;
+    const establishmentId = await verifiedEstablishmentOf(claims, accountId);
     const at = clock.now();
     const reconfirmed = await prices.reconfirmAll(establishmentId, at, [
       createEvent(OFFICIAL_PRICES_RECONFIRMED, 1, {
