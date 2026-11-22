@@ -1,4 +1,4 @@
-import { rankFeaturedProducts } from '../../../domain/featured-products';
+import { pageFeaturedProducts } from '../../../domain/featured-products';
 import { ttlDaysFor } from '../../../domain/freshness';
 import type { Municipality } from '../../../domain/municipality';
 import { type RankableOffer, rankOffers } from '../../../domain/neutral-ranking';
@@ -42,6 +42,8 @@ export interface FeaturedProductsInput {
   // Código de la lista cerrada de categorías; uno desconocido deja la lista vacía.
   category?: string;
   limit: number;
+  // Desde qué posición del orden empieza la página; 0 si no se envía.
+  offset?: number;
 }
 
 // Un precio vigente del producto en el área, con la tienda donde está.
@@ -83,6 +85,9 @@ export interface FeaturedProductsResult {
   // Tiendas del área con algún precio vigente, de cualquier categoría.
   storesWithPrices: number;
   items: FeaturedProduct[];
+  // Productos destacables con los mismos filtros (todas las páginas) y si quedan después de esta.
+  total: number;
+  hasMore: boolean;
 }
 
 type Store = EstablishmentDetail & { distanceM?: number };
@@ -151,11 +156,16 @@ export class FeaturedProducts {
     const candidates = [...groups]
       .filter(
         ([productId]) =>
-          input.category === undefined ||
-          summaries.get(productId)?.category.code === input.category,
+          summaries.has(productId) &&
+          (input.category === undefined ||
+            summaries.get(productId)?.category.code === input.category),
       )
       .map(([productId, group]) => ({ productId, ...pricesOf(group) }));
-    const ranked = rankFeaturedProducts(candidates, input.limit);
+    // Se ordena todo en memoria y solo se recorta la página (ver pageFeaturedProducts).
+    const page = pageFeaturedProducts(candidates, {
+      limit: input.limit,
+      offset: input.offset ?? 0,
+    });
     return {
       criteria: {
         ...(input.municipality === undefined ? {} : { municipality: input.municipality }),
@@ -164,7 +174,9 @@ export class FeaturedProducts {
         sort: 'store_count',
       },
       storesWithPrices: new Set(offers.map((offer) => offer.establishmentId)).size,
-      items: ranked.flatMap(({ productId, storeCount, cheapest, priciest, savingsPercent }) => {
+      total: page.total,
+      hasMore: page.hasMore,
+      items: page.items.flatMap(({ productId, storeCount, cheapest, priciest, savingsPercent }) => {
         const summary = summaries.get(productId);
         if (!summary) return [];
         return [

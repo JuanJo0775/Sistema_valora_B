@@ -318,8 +318,15 @@ paths:
           schema: { type: string, minLength: 1 }
         - name: limit
           in: query
-          description: Los mismos valores del parámetro común Limit, con 5 por defecto.
+          description: Tamaño de la página. Los mismos valores del parámetro común Limit, con 5 por defecto.
           schema: { type: integer, minimum: 1, maximum: 50, default: 5 }
+        - name: offset
+          in: query
+          description: >-
+            Cuántos productos del orden se saltan (paginación por desplazamiento). Con 0 por defecto, la
+            respuesta es la de siempre. Más allá del final responde 200 con items vacío. Un valor negativo
+            o que no es entero responde 400 VALIDATION_ERROR.
+          schema: { type: integer, minimum: 0, default: 0 }
       responses:
         '200':
           description: Los productos de la canasta, en el orden declarado
@@ -333,8 +340,17 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [criteria, storesWithPrices, items]
+                required: [criteria, storesWithPrices, total, hasMore, items]
                 properties:
+                  total:
+                    type: integer
+                    minimum: 0
+                    description: >-
+                      Productos destacables con los mismos filtros (municipio o ubicación, radio y
+                      categoría), sumando todas las páginas.
+                  hasMore:
+                    type: boolean
+                    description: Si quedan productos después de esta página (offset + items.length < total).
                   criteria:
                     type: object
                     description: >-

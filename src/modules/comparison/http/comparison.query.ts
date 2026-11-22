@@ -113,4 +113,11 @@ export class FeaturedProductsQueryDto {
   @Min(1, { message: 'debe estar entre 1 y 50' })
   @Max(50, { message: 'debe estar entre 1 y 50' })
   limit = 5;
+
+  // Paginación por desplazamiento: cuántos productos del orden se saltan; 0 por defecto.
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'debe ser un número entero' })
+  @Min(0, { message: 'debe ser 0 o mayor' })
+  offset = 0;
 }

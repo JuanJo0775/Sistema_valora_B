@@ -31,6 +31,9 @@ interface FeaturedProductsResponse {
     sort: 'store_count';
   };
   storesWithPrices: number;
+  // Productos destacables con los mismos filtros, y si quedan más después de esta página.
+  total: number;
+  hasMore: boolean;
   items: {
     productId: string;
     name: string;
@@ -73,10 +76,11 @@ export class FeaturedProductsController {
     @Query() query: FeaturedProductsQueryDto,
     @Res({ passthrough: true }) response: HeaderTarget,
   ): Promise<FeaturedProductsResponse> {
-    const { lat, lng, municipality, radiusKm, category, limit } = query;
+    const { lat, lng, municipality, radiusKm, category, limit, offset } = query;
     const located = lat !== undefined && lng !== undefined;
     // Con la ubicación del usuario en la URL, ninguna caché la guarda (EC-08), como la comparación.
-    // Sin ella, caché pública de 60 s (EC-04); Express agrega el ETag y responde 304 con If-None-Match.
+    // Sin ella, caché pública de 60 s (EC-04); limit y offset van en la URL, que es la clave de caché.
+    // Express agrega el ETag y responde 304 con If-None-Match.
     response.setHeader('Cache-Control', located ? NO_STORE : CACHE_PRICES);
     try {
       const result = await this.featured.of({
@@ -86,10 +90,13 @@ export class FeaturedProductsController {
         ...(category === undefined ? {} : { category }),
         radiusKm,
         limit,
+        offset,
       });
       return {
         criteria: result.criteria,
         storesWithPrices: result.storesWithPrices,
+        total: result.total,
+        hasMore: result.hasMore,
         items: result.items.map(({ cheapest, priciest, ...item }) => ({
           ...item,
           cheapest: toPriceResponse(cheapest),

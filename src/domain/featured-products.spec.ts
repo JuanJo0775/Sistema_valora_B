@@ -1,4 +1,8 @@
-import { type FeaturedCandidate, rankFeaturedProducts } from './featured-products';
+import {
+  type FeaturedCandidate,
+  pageFeaturedProducts,
+  rankFeaturedProducts,
+} from './featured-products';
 import { calculateUnitPrice } from './unit-price';
 
 // Producto de prueba: por defecto, 500 g a $2.000 ($400 por 100 g) en una tienda.
@@ -49,5 +53,62 @@ describe('canasta básica de hoy (B#120)', () => {
     );
 
     expect(ranked.map(({ productId }) => productId)).toEqual(['leche', 'huevos']);
+  });
+});
+
+describe('página de la canasta básica por desplazamiento', () => {
+  const pool = [
+    candidate('e', 1),
+    candidate('a', 5),
+    candidate('c', 3),
+    candidate('b', 3),
+    candidate('d', 2),
+  ];
+  const ids = (items: { productId: string }[]) => items.map(({ productId }) => productId);
+
+  it('recorta con offset y limit y dice el total y si hay más', () => {
+    const page = pageFeaturedProducts(pool, { limit: 2, offset: 1 });
+
+    expect(ids(page.items)).toEqual(['b', 'c']);
+    expect(page.total).toBe(5);
+    expect(page.hasMore).toBe(true);
+  });
+
+  it('la última página no tiene más', () => {
+    const page = pageFeaturedProducts(pool, { limit: 2, offset: 4 });
+
+    expect(ids(page.items)).toEqual(['e']);
+    expect(page.hasMore).toBe(false);
+  });
+
+  it('una página justo al final no tiene más aunque llene el limit', () => {
+    const page = pageFeaturedProducts(pool, { limit: 2, offset: 3 });
+
+    expect(ids(page.items)).toEqual(['d', 'e']);
+    expect(page.hasMore).toBe(false);
+  });
+
+  it('más allá del final, la página sale vacía y conserva el total', () => {
+    const page = pageFeaturedProducts(pool, { limit: 5, offset: 40 });
+
+    expect(page).toEqual({ items: [], total: 5, hasMore: false });
+  });
+
+  it('sin candidatos, vacío', () => {
+    expect(pageFeaturedProducts([], { limit: 5, offset: 0 })).toEqual({
+      items: [],
+      total: 0,
+      hasMore: false,
+    });
+  });
+
+  it('las páginas seguidas, sin importar el orden de entrada, no repiten ni saltan productos', () => {
+    const shuffled = [...pool].reverse();
+    const pages = [0, 2, 4].flatMap((offset) =>
+      ids(pageFeaturedProducts(shuffled, { limit: 2, offset }).items),
+    );
+
+    expect(pages).toEqual(ids(rankFeaturedProducts(pool, 10)));
+    expect(new Set(pages).size).toBe(pool.length);
   });
 });
