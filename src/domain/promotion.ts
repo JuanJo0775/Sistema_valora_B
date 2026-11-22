@@ -14,6 +14,6 @@ export interface PromotionStatusInput {
   officialFreshness: Freshness;
 }
 
-export function promotionStatus(_input: PromotionStatusInput): PromotionStatus {
-  return 'activa';
+export function promotionStatus({ officialFreshness }: PromotionStatusInput): PromotionStatus {
+  return officialFreshness === 'vigente' ? 'activa' : 'pausada';
 }
