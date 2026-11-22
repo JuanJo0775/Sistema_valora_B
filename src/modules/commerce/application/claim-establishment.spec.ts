@@ -133,4 +133,12 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
     );
     expect(claims).toEqual([]);
   });
+
+  it('sin NIT, la tienda de barrio queda registrada como informal', async () => {
+    const { claim, claims } = setup();
+
+    await claim.execute(request({ nit: undefined }));
+
+    expect(claims[0]).toMatchObject({ nit: null, informal: true });
+  });
 });
