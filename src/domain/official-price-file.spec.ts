@@ -1,4 +1,8 @@
-import { PriceFileTooLargeError, readPriceFile } from './official-price-file';
+import {
+  InvalidPriceFileError,
+  PriceFileTooLargeError,
+  readPriceFile,
+} from './official-price-file';
 
 const fileWith = (rows: number) =>
   ['codigo_barras;precio', ...Array.from({ length: rows }, (_, i) => `${String(i)};2600`)].join(
@@ -57,5 +61,18 @@ describe('archivo de precios oficiales (D7 del grill comercial)', () => {
   it('hasta 1.000 filas se lee; con 1.001 se rechaza el archivo completo', () => {
     expect(readPriceFile(fileWith(1000)).rows).toHaveLength(1000);
     expect(() => readPriceFile(fileWith(1001))).toThrow(PriceFileTooLargeError);
+  });
+
+  // Excel en otro idioma separa con coma: el encabezado lo delata antes de leer mal las filas.
+  it.each([
+    ['vacío', ''],
+    ['separado con comas', 'codigo_barras,precio\n111,2600'],
+    ['sin encabezado', '111;2600'],
+  ])('un archivo %s se rechaza completo', (_case, file) => {
+    expect(() => readPriceFile(file)).toThrow(InvalidPriceFileError);
+  });
+
+  it('el encabezado no distingue mayúsculas, espacios ni la marca de Excel al inicio', () => {
+    expect(readPriceFile('﻿ Codigo_Barras ; Precio \n111;2600').rows).toHaveLength(1);
   });
 });
