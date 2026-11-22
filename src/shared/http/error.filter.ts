@@ -75,6 +75,17 @@ function isMalformedJson(exception: unknown): boolean {
   );
 }
 
+// El lector del cuerpo (body-parser) corta un cuerpo más grande que su límite con su propio error,
+// que NestJS no convierte: sin esto saldría como 500 (#205).
+function isBodyTooLarge(exception: unknown): boolean {
+  return (
+    typeof exception === 'object' &&
+    exception !== null &&
+    'type' in exception &&
+    exception.type === 'entity.too.large'
+  );
+}
+
 // Código propio de la excepción, si lo trae.
 function ownCode(exception: HttpException): string | undefined {
   const body = exception.getResponse();
@@ -136,6 +147,10 @@ function toErrorResponse(exception: unknown): ErrorResponse | null {
   }
   if (isMalformedJson(exception)) {
     return { status: HttpStatus.BAD_REQUEST, body: MALFORMED_JSON };
+  }
+  const tooLarge = HTTP_ERRORS[HttpStatus.PAYLOAD_TOO_LARGE];
+  if (isBodyTooLarge(exception) && tooLarge) {
+    return { status: HttpStatus.PAYLOAD_TOO_LARGE, body: tooLarge };
   }
   if (exception instanceof HttpException) {
     const status = exception.getStatus();
