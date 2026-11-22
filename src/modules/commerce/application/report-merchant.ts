@@ -5,7 +5,7 @@ import type { MerchantClaimRepository } from './merchant-claims';
 
 export interface ReportMerchantPorts {
   claims: Pick<MerchantClaimRepository, 'ownerOf'>;
-  cases: MerchantCaseRepository;
+  cases: Pick<MerchantCaseRepository, 'hasOpen' | 'open'>;
   clock: { now(): Date };
 }
 
