@@ -129,4 +129,17 @@ describe('copia del precio oficial en comparison (#204)', () => {
       [otherStore, '2026-11-22T10:00:00.000Z', '2026-11-22T10:00:00.000Z'],
     ]);
   });
+
+  // D3 (#208): al revocar el comercio o borrar su cuenta, el oficial deja de mostrarse.
+  it('un oficial retirado desaparece de la copia; los de otras tiendas siguen', async () => {
+    await publish(4000, '2026-11-22T10:00:00.000Z');
+    await publish(4100, '2026-11-22T10:00:00.000Z', {
+      presentationId,
+      establishmentId: otherStore,
+    });
+
+    await deliver('OfficialPriceWithdrawn', { establishmentId, presentationId });
+
+    expect((await copies()).map((c) => c.establishmentId)).toEqual([otherStore]);
+  });
 });
