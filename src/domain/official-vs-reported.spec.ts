@@ -92,4 +92,19 @@ describe('precio oficial frente a reportado (D1 del grill comercial, ADR-008)', 
       }),
     ).toEqual({ kind: 'oficial', priceCop: 4000 });
   });
+
+  // Precisión de D1 (22-nov-2026): los reportes deben estar del mismo lado del oficial.
+  it('un reporte más caro y otro más barato no corroboran lo mismo', () => {
+    expect(resolve([report(4800), report(3200)])).toEqual({ kind: 'oficial', priceCop: 4000 });
+  });
+
+  it('dos reportes más baratos también corroboran: entra el menor de los dos', () => {
+    const lower = report(3500);
+
+    expect(resolve([report(3600), lower, report(4800)])).toMatchObject({
+      kind: 'discrepancia',
+      priceCop: 3500,
+      reportId: lower.reportId,
+    });
+  });
 });
