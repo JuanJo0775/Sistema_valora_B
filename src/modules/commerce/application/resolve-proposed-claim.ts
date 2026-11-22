@@ -24,6 +24,15 @@ export class ResolveProposedClaim {
     const claim = await claims.pendingFor(decision.proposalId);
     if (!claim) return;
     const { accountId } = claim;
+    if (decision.decision === 'rechazar') {
+      await claims.reject({
+        accountId,
+        establishmentId: claim.establishmentId,
+        reason: decision.note,
+        rejectedAt: clock.now(),
+      });
+      return;
+    }
     // Fusionar: la propuesta era una tienda que ya estaba en el mapa.
     const establishmentId = decision.mergeInto ?? claim.establishmentId;
     if (decision.decision === 'fusionar' && (await claims.ownerOf(establishmentId)) !== null) {
