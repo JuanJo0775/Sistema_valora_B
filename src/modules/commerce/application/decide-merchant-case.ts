@@ -41,6 +41,16 @@ export class DecideMerchantCase {
     const { cases, claims, prices, promotions, revocations, clock } = this.ports;
     const merchantCase = await cases.findPending(request.caseId);
     if (!merchantCase) throw new MerchantCaseNotFoundError();
+    if (request.decision === 'descartar') {
+      await cases.close({
+        caseId: merchantCase.id,
+        status: 'descartado',
+        note: request.note,
+        moderatorKey: request.moderatorKey,
+        decidedAt: clock.now(),
+      });
+      return;
+    }
     const { establishmentId } = merchantCase;
     const claim = await claims.findByEstablishment(establishmentId);
     if (!claim) return;
