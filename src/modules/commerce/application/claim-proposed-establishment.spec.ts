@@ -1,4 +1,5 @@
 import type { DomainEvent } from '../../../shared/events';
+import { AccountHasEstablishmentError } from './claim-establishment';
 import {
   ClaimProposedEstablishment,
   type ProposedClaimRequest,
@@ -85,5 +86,17 @@ describe('registrar un comercio con una tienda que no está en el mapa (RF-015, 
     ]);
     // Todavía no es comercio: el rol cambia cuando se aprueba la tienda.
     expect(events).toEqual([]);
+  });
+
+  it('una cuenta que ya tiene una tienda, aunque esté pre-aprobada, no propone otra', async () => {
+    const { claim, proposed } = setup();
+    await claim.execute(request());
+
+    await expect(
+      claim.execute(
+        request({ newEstablishment: { name: 'Otra', type: 'barrio', municipality: 'cordoba' } }),
+      ),
+    ).rejects.toThrow(AccountHasEstablishmentError);
+    expect(proposed).toHaveLength(1);
   });
 });
