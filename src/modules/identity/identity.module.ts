@@ -12,6 +12,7 @@ import type { AttemptLimiter } from './application/attempt-limiter';
 import { ChangeRole } from './application/change-role';
 import { GrantMerchantRole } from './application/grant-merchant-role';
 import { RevokeMerchantRole } from './application/revoke-merchant-role';
+import { NotifyAccount } from './application/notify-account';
 import { DeleteOwnAccount } from './application/delete-own-account';
 import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
 import { RestoreAccount } from './application/restore-account';
@@ -306,11 +307,25 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         clock: Clock,
       ): ChangeRole => new ChangeRole({ accounts, limiter, clock }),
     },
+    // B9 (#209): otro módulo avisa a una cuenta sin conocer su correo (EC-08).
+    {
+      provide: NotifyAccount,
+      inject: [DATABASE, EMAIL_SENDER],
+      useFactory: (db: Database, sender: EmailSender): NotifyAccount =>
+        new NotifyAccount({ accounts: new DrizzleAccountRepository(db), sender }),
+    },
     SessionGuard,
     VerifiedEmailGuard,
   ],
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
-  exports: [ResolveSession, SessionGuard, VerifiedEmailGuard, ReporterIdentity, ChangeRole],
+  exports: [
+    ResolveSession,
+    SessionGuard,
+    VerifiedEmailGuard,
+    ReporterIdentity,
+    ChangeRole,
+    NotifyAccount,
+  ],
 })
 export class IdentityModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}

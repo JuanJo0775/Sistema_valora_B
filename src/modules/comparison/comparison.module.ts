@@ -3,6 +3,7 @@ import { DATABASE, type Database } from '../../shared/database/database.module';
 import { EventBus } from '../../shared/events';
 import {
   CatalogModule,
+  PresentationFreshness,
   PresentationLabels,
   PresentationsForPricing,
   ProductForComparison,
@@ -32,6 +33,7 @@ import { FeaturedProductsController } from './http/featured-products.controller'
 import { PriceHistoryController } from './http/price-history.controller';
 import { StorePricesController } from './http/store-prices.controller';
 import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
+import { OfficialDiscrepancies } from './application/official-discrepancies';
 import { DrizzleOfficialPriceCopies } from './infrastructure/drizzle-official-price-copies';
 import { DrizzlePromotionCopies } from './infrastructure/drizzle-promotion-copies';
 import { DrizzlePriceHistory } from './infrastructure/drizzle-price-history';
@@ -179,6 +181,22 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
       inject: [DATABASE],
       useFactory: (db: Database): PeerPrices => new PeerPrices(new DrizzlePeerPrices(db)),
     },
+    // B9 (#209): las discrepancias corroboradas de una tienda, para avisar al comercio.
+    {
+      provide: OfficialDiscrepancies,
+      inject: [DATABASE, ReliabilityOfPrices, PresentationFreshness],
+      useFactory: (
+        db: Database,
+        reliability: ReliabilityOfPrices,
+        presentations: PresentationFreshness,
+      ): OfficialDiscrepancies =>
+        new OfficialDiscrepancies({
+          officials: new DrizzleOfficialPriceCopies(db),
+          reliability,
+          presentations,
+          clock: { now: () => new Date() },
+        }),
+    },
     // PR-22 (#93): el precio publicado, para el informe de exactitud.
     {
       provide: CurrentPriceOf,
@@ -187,7 +205,7 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
         new CurrentPriceOf(new DrizzleCurrentPrices(db)),
     },
   ],
-  exports: [CurrentPriceOf, ImportInitialPrices, PeerPrices],
+  exports: [CurrentPriceOf, ImportInitialPrices, PeerPrices, OfficialDiscrepancies],
 })
 export class ComparisonModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}
