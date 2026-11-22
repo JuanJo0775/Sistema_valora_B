@@ -99,6 +99,6 @@ const toCorrection = ({ name, hasLocation, lat, lng, ...row }: CorrectionRow): S
   ...row,
   ...(name === null ? {} : { name }),
   ...(hasLocation && lat !== null && lng !== null
-    ? { location: { lat: Number(lat), lng: Number(lng) } }
+    ? { location: { lat, lng } }
     : {}),
 });
