@@ -19,7 +19,7 @@ export interface EffectivePricesInput {
   officials: OfficialPriceCopy[];
   reliability: StoreReports;
   // La vigencia de la categoría de cada presentación (ADR-005).
-  ttlDaysOf(presentationId: string): number;
+  ttlDaysOf: (presentationId: string) => number;
   now: Date;
 }
 
