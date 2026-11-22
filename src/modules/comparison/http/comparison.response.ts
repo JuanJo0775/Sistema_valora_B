@@ -25,6 +25,13 @@ export interface ComparisonItemResponse {
   reliability?: string;
   confirmations?: number;
   observedAt: string;
+  // D1 (#204): solo con discrepancia corroborada.
+  discrepancy?: {
+    officialPriceCop: number;
+    reportedPriceCop: number;
+    reports: number;
+    since: string;
+  };
 }
 
 export interface ComparisonResponse {
@@ -75,6 +82,14 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
       ...(item.reliability === undefined ? {} : { reliability: item.reliability }),
       ...(item.confirmations === undefined ? {} : { confirmations: item.confirmations }),
       observedAt: item.observedAt.toISOString(),
+      ...(item.discrepancy === undefined
+        ? {}
+        : {
+            discrepancy: {
+              ...item.discrepancy,
+              since: item.discrepancy.since.toISOString(),
+            },
+          }),
     })),
     promotions: [],
     ...(comparison.wholesaleReference === undefined

@@ -7,6 +7,7 @@ import {
 } from '../../../domain/neutral-ranking';
 import { savingsPercent } from '../../../domain/savings';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
+import { type Discrepancy, officialVsReported } from '../../../domain/official-vs-reported';
 import { isRecentReference } from '../../../domain/wholesale-reference';
 import type { Municipality } from '../../../domain/municipality';
 import type { ProductForComparisonView, WholesaleReferenceView } from '../../catalog';
@@ -18,7 +19,7 @@ import type {
 } from '../../establishments';
 import type { PriceRef, PriceReliability, ReportAtStore } from '../../reliability';
 import type { CurrentPrices } from './current-prices';
-import type { OfficialPriceCopies } from './official-price-copies';
+import type { OfficialPriceCopies, OfficialPriceCopy } from './official-price-copies';
 
 // Puertos hacia las consultas públicas de catalog y establishments (grill de la #15, pregunta 2).
 export interface ProductLookup {
@@ -116,6 +117,8 @@ export interface ComparisonItem {
   reliability?: 'alta' | 'media' | 'baja' | 'en_revision';
   confirmations?: number;
   observedAt: Date;
+  // D1 (#204): la comunidad corrobora otro precio; el oficial se muestra al lado con aviso.
+  discrepancy?: Discrepancy;
 }
 
 export interface Comparison {
@@ -312,19 +315,18 @@ export class CompareProduct {
         observedAt: item.observedAt,
       });
     }
-    // #204: el precio oficial de la tienda.
+    // #204: el precio oficial de la tienda, o la mediana de la comunidad si la corrobora (D1).
     for (const official of officials) {
       const establishment = storesById.get(official.establishmentId);
       const presentation = presentations.get(official.presentationId);
       if (!establishment || !presentation) continue;
+      const shown = await this.officialOrReported(official, now, ttlDays);
       const item: Candidate['item'] = {
         establishment,
+        ...shown,
         presentationId: official.presentationId,
-        priceCop: official.priceCop,
-        unitPrice: calculateUnitPrice(official.priceCop, presentation),
-        source: 'oficial',
-        freshness: freshnessAt(official.confirmedAt, now, ttlDays),
-        observedAt: official.confirmedAt,
+        unitPrice: calculateUnitPrice(shown.priceCop, presentation),
+        freshness: freshnessAt(shown.observedAt, now, ttlDays),
       };
       candidates.push({
         item,
@@ -337,5 +339,40 @@ export class CompareProduct {
       });
     }
     return candidates;
+  }
+
+  // D1 y ADR-008: el oficial, salvo que los reportes recientes y confiables corroboren otro precio.
+  private async officialOrReported(
+    official: OfficialPriceCopy,
+    now: Date,
+    ttlDays: number,
+  ): Promise<
+    Pick<ComparisonItem, 'priceCop' | 'source' | 'observedAt' | 'reportId' | 'discrepancy'>
+  > {
+    const reports = await this.ports.reliability.reportsAt(
+      official.presentationId,
+      official.establishmentId,
+      ttlDays,
+    );
+    const resolved = officialVsReported({
+      official: { priceCop: official.priceCop, changedAt: official.priceChangedAt },
+      reports: reports.map((report) => ({ ...report, reliable: report.level !== 'baja' })),
+      now,
+      ttlDays,
+    });
+    const chosen =
+      resolved.kind === 'discrepancia'
+        ? reports.find((report) => report.reportId === resolved.reportId)
+        : undefined;
+    if (resolved.kind === 'oficial' || !chosen) {
+      return { priceCop: official.priceCop, source: 'oficial', observedAt: official.confirmedAt };
+    }
+    return {
+      priceCop: chosen.priceCop,
+      source: 'comunidad',
+      observedAt: chosen.observedAt,
+      reportId: chosen.reportId,
+      discrepancy: resolved.discrepancy,
+    };
   }
 }
