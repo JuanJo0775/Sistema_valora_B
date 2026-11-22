@@ -26,4 +26,21 @@ describe('precio oficial frente a reportado (D1 del grill comercial, ADR-008)', 
   it('sin reportes que lo contradigan, entra el oficial', () => {
     expect(resolve([])).toEqual({ kind: 'oficial', priceCop: 4000 });
   });
+
+  it('caso del grill: oficial $4.000 y reportes de $4.700, $4.800 y $5.900 → entra $4.800', () => {
+    const middle = report(4800, { observedAt: daysAgo(1) });
+    const earliest = report(4700, { observedAt: daysAgo(3) });
+
+    expect(resolve([earliest, middle, report(5900)])).toEqual({
+      kind: 'discrepancia',
+      priceCop: 4800,
+      reportId: middle.reportId,
+      discrepancy: {
+        officialPriceCop: 4000,
+        reportedPriceCop: 4800,
+        reports: 3,
+        since: earliest.observedAt,
+      },
+    });
+  });
 });
