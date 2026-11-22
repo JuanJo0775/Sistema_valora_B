@@ -50,13 +50,18 @@ export function officialVsReported({
   ttlDays,
 }: OfficialVsReportedInput): OfficialVsReported {
   const oldest = now.getTime() - ttlDays * DAY_IN_MILLISECONDS;
-  const differs = (r: ReportedPrice) =>
-    Math.abs(r.priceCop - official.priceCop) > official.priceCop * DISCREPANCY_PARAMS.threshold;
+  const margin = official.priceCop * DISCREPANCY_PARAMS.threshold;
+  const above = (r: ReportedPrice) => r.priceCop > official.priceCop + margin;
+  const below = (r: ReportedPrice) => r.priceCop < official.priceCop - margin;
   // D1: solo cuentan los reportes confiables, vigentes (ADR-005) y posteriores al último cambio de
   // precio del oficial.
   const counts = (r: ReportedPrice) =>
     r.reliable && r.observedAt > official.changedAt && r.observedAt.getTime() >= oldest;
-  const corroborating = reports.filter((r) => counts(r) && differs(r));
+  const recent = reports.filter(counts);
+  // Precisión de D1: corroboran los del mismo lado (más caros o más baratos), el lado más numeroso.
+  const higher = recent.filter(above);
+  const lower = recent.filter(below);
+  const corroborating = higher.length >= lower.length ? higher : lower;
   if (corroborating.length < DISCREPANCY_PARAMS.minReports) {
     return { kind: 'oficial', priceCop: official.priceCop };
   }
