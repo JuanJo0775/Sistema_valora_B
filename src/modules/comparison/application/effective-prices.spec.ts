@@ -47,4 +47,39 @@ describe('precio efectivo de cada presentación en cada tienda', () => {
       },
     ]);
   });
+
+  // D1 y ADR-008: con discrepancia corroborada entra la mediana de la comunidad.
+  it('con discrepancia corroborada, el precio efectivo es la mediana, con su reporte y el oficial al lado', async () => {
+    const result = await effectivePrices({
+      current: [],
+      officials: [official('a', 2200)],
+      reliability: {
+        reportsAt: () =>
+          Promise.resolve([
+            { reportId: 'r-alto', priceCop: 2700, observedAt: daysAgo(2), level: 'media' as const },
+            { reportId: 'r-medio', priceCop: 2600, observedAt: daysAgo(1), level: 'alta' as const },
+          ]),
+      },
+      ttlDaysOf: () => 14,
+      now,
+    });
+
+    expect(result).toEqual([
+      {
+        reportId: 'r-medio',
+        presentationId: 'arroz',
+        establishmentId: 'a',
+        priceCop: 2600,
+        observedAt: daysAgo(1),
+        status: 'vigente',
+        source: 'comunidad',
+        discrepancy: {
+          officialPriceCop: 2200,
+          reportedPriceCop: 2600,
+          reports: 2,
+          since: daysAgo(2),
+        },
+      },
+    ]);
+  });
 });
