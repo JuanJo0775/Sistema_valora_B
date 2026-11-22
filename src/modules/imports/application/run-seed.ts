@@ -1,3 +1,4 @@
+import type { Municipality } from '../../../domain/municipality';
 import type { Unit } from '../../../domain/unit-price';
 import type { ImportCatalog, ProductImport, WholesaleReference } from '../../catalog';
 import type {
@@ -107,6 +108,8 @@ function toStore(row: SeedRow): EstablishmentImport {
     ...(neighborhood === '' ? {} : { neighborhood }),
     lat: Number(text(row, 'lat')),
     lng: Number(text(row, 'lng')),
+    // #213: storeErrors ya comprobó que es uno de los 12 municipios del Quindío.
+    municipality: text(row, 'municipio') as Municipality,
   };
 }
 
