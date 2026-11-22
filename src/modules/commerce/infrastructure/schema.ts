@@ -2,8 +2,10 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
+  date,
   index,
   integer,
+  jsonb,
   pgSchema,
   primaryKey,
   text,
@@ -11,6 +13,8 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { PromotionOffer } from '../../../domain/promotion';
+import type { PromotionConditions } from '../application/promotions';
 
 // Esquema propio del módulo (ADR-003, ADR-021). Ningún otro módulo lee estas tablas.
 export const commerceSchema = pgSchema('commerce');
@@ -70,5 +74,26 @@ export const officialPrices = commerceSchema.table(
     primaryKey({ columns: [table.establishmentId, table.presentationId] }),
     // ADR-030: el mismo piso y techo absolutos que un reporte.
     check('official_prices_price_cop_range', sql`${table.priceCop} between 100 and 5000000`),
+  ],
+);
+
+// RF-017 con la D6 del grill comercial: las promociones de cada tienda. La oferta y las condiciones
+// tienen formas fijas (sin texto libre) que valida la capa de aplicación; se guardan como JSON.
+export const promotions = commerceSchema.table(
+  'promotions',
+  {
+    id: uuid('id').primaryKey(),
+    establishmentId: uuid('establishment_id').notNull(),
+    presentationId: uuid('presentation_id').notNull(),
+    offer: jsonb('offer').$type<PromotionOffer>().notNull(),
+    conditions: jsonb('conditions').$type<PromotionConditions>().notNull(),
+    // Fechas de Colombia, las dos incluidas.
+    validFrom: date('valid_from', { mode: 'string' }).notNull(),
+    validUntil: date('valid_until', { mode: 'string' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index('promotions_establishment_idx').on(table.establishmentId),
+    check('promotions_dates_order', sql`${table.validUntil} >= ${table.validFrom}`),
   ],
 );
