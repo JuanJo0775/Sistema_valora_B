@@ -98,7 +98,5 @@ interface CorrectionRow {
 const toCorrection = ({ name, hasLocation, lat, lng, ...row }: CorrectionRow): StoreCorrection => ({
   ...row,
   ...(name === null ? {} : { name }),
-  ...(hasLocation && lat !== null && lng !== null
-    ? { location: { lat, lng } }
-    : {}),
+  ...(hasLocation && lat !== null && lng !== null ? { location: { lat, lng } } : {}),
 });
