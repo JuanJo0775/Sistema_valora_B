@@ -537,3 +537,12 @@ Insumo de RNF-009 (el despliegue debe pasar pruebas de humo) y respuesta a «¿e
 ## Regla de cambio
 
 Una propuesta tecnológica no se convierte en decisión por aparecer en un README, issue o rama. Para cerrar una decisión se requiere ADR con contexto, alternativas, decisión, consecuencias, responsables y aceptación del equipo.
+
+## Canasta del Inicio paginada por desplazamiento (22 de noviembre de 2026)
+
+El Inicio solo alcanzaba 6 productos y «Ver más» llegaba a 20, aunque hay unos 150 con precio.
+
+- **Contrato (aditivo):** `GET /v1/featured-products` acepta `offset` (entero ≥ 0, 0 por defecto) además de `limit` (1 a 50, 5 por defecto). La respuesta suma `total` (productos destacables con los mismos filtros: municipio o ubicación, radio y categoría) y `hasMore` (`offset + items.length < total`). Sin `offset` el cuerpo trae lo mismo de antes más esos dos campos.
+- **Orden:** el de ADR-009 y B#120 (más tiendas, menor precio por unidad que se muestra, id), que es total: las páginas no repiten ni saltan productos. `offset` más allá del final responde 200 con `items` vacío.
+- **Caché y privacidad:** sin cambios. Con `lat`/`lng`, `no-store` (EC-08); sin ubicación, caché pública de 60 s (ADR-031). `limit` y `offset` van en la query, que ya forma parte de la clave de caché, así que no hace falta `Vary`.
+- **Eficiencia:** se calcula y ordena todo en memoria y solo se recorta la página (`pageFeaturedProducts`), con unos cientos de candidatos basta. Si el catálogo con precio pasa de unos pocos miles de productos, hay que pasar el conteo por producto, el orden y el recorte a la consulta.

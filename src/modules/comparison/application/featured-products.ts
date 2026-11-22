@@ -148,7 +148,8 @@ export class FeaturedProducts {
       .filter(
         ([productId]) =>
           summaries.has(productId) &&
-          (input.category === undefined || summaries.get(productId)?.category.code === input.category),
+          (input.category === undefined ||
+            summaries.get(productId)?.category.code === input.category),
       )
       .map(([productId, group]) => ({ productId, ...pricesOf(group) }));
     // Se ordena todo en memoria y solo se recorta la página (ver pageFeaturedProducts).

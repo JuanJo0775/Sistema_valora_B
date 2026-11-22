@@ -255,13 +255,15 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
 
   it('400 con offset negativo, decimal o que no es un número, y con limit en 0', async () => {
     const responses = await Promise.all(
-      [
-        { offset: '-1' },
-        { offset: '1.5' },
-        { offset: 'abc' },
-        { limit: '0' },
-        { limit: '51' },
-      ].map((bad) => featured({ municipality: 'armenia', ...bad })),
+      (
+        [
+          { offset: '-1' },
+          { offset: '1.5' },
+          { offset: 'abc' },
+          { limit: '0' },
+          { limit: '51' },
+        ] as Record<string, string>[]
+      ).map((bad) => featured({ municipality: 'armenia', ...bad })),
     );
 
     expect(responses.map((response) => response.status)).toEqual([400, 400, 400, 400, 400]);
