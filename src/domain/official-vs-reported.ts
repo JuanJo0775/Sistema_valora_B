@@ -43,37 +43,38 @@ function median(reports: ReportedPrice[]): ReportedPrice {
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
-export function officialVsReported({
+// Los reportes que corroboran una discrepancia, o [] si no hay discrepancia corroborada.
+function corroborating({
   official,
   reports,
   now,
   ttlDays,
-}: OfficialVsReportedInput): OfficialVsReported {
-  const oldest = now.getTime() - ttlDays * DAY_IN_MILLISECONDS;
-  const margin = official.priceCop * DISCREPANCY_PARAMS.threshold;
-  const above = (r: ReportedPrice) => r.priceCop > official.priceCop + margin;
-  const below = (r: ReportedPrice) => r.priceCop < official.priceCop - margin;
+}: OfficialVsReportedInput): ReportedPrice[] {
   // D1: solo cuentan los reportes confiables, vigentes (ADR-005) y posteriores al último cambio de
   // precio del oficial.
-  const counts = (r: ReportedPrice) =>
-    r.reliable && r.observedAt > official.changedAt && r.observedAt.getTime() >= oldest;
-  const recent = reports.filter(counts);
-  // Precisión de D1: corroboran los del mismo lado (más caros o más baratos), el lado más numeroso.
-  const higher = recent.filter(above);
-  const lower = recent.filter(below);
-  const corroborating = higher.length >= lower.length ? higher : lower;
-  const opposite = corroborating === higher ? lower : higher;
-  // Y son más que los que coinciden con el oficial y que los del otro lado.
+  const oldest = now.getTime() - ttlDays * DAY_IN_MILLISECONDS;
+  const recent = reports.filter(
+    (r) => r.reliable && r.observedAt > official.changedAt && r.observedAt.getTime() >= oldest,
+  );
+  // Precisión de D1: corroboran los del mismo lado del oficial (más caros o más baratos)...
+  const margin = official.priceCop * DISCREPANCY_PARAMS.threshold;
+  const higher = recent.filter((r) => r.priceCop > official.priceCop + margin);
+  const lower = recent.filter((r) => r.priceCop < official.priceCop - margin);
+  const [side, opposite] = higher.length >= lower.length ? [higher, lower] : [lower, higher];
+  // ...y son más que los que coinciden con el oficial y que los del otro lado.
   const agreeing = recent.length - higher.length - lower.length;
-  if (
-    corroborating.length < DISCREPANCY_PARAMS.minReports ||
-    corroborating.length <= agreeing ||
-    corroborating.length <= opposite.length
-  ) {
-    return { kind: 'oficial', priceCop: official.priceCop };
-  }
-  const chosen = median(corroborating);
-  const since = new Date(Math.min(...corroborating.map((r) => r.observedAt.getTime())));
+  const corroborated =
+    side.length >= DISCREPANCY_PARAMS.minReports &&
+    side.length > agreeing &&
+    side.length > opposite.length;
+  return corroborated ? side : [];
+}
+
+export function officialVsReported(input: OfficialVsReportedInput): OfficialVsReported {
+  const { official } = input;
+  const reports = corroborating(input);
+  if (reports.length === 0) return { kind: 'oficial', priceCop: official.priceCop };
+  const chosen = median(reports);
   return {
     kind: 'discrepancia',
     priceCop: chosen.priceCop,
@@ -81,8 +82,8 @@ export function officialVsReported({
     discrepancy: {
       officialPriceCop: official.priceCop,
       reportedPriceCop: chosen.priceCop,
-      reports: corroborating.length,
-      since,
+      reports: reports.length,
+      since: new Date(Math.min(...reports.map((r) => r.observedAt.getTime()))),
     },
   };
 }
