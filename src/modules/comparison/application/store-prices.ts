@@ -2,7 +2,7 @@ import type { PriceSource } from '../../../domain/initial-price';
 import { type Freshness, ttlDaysFor } from '../../../domain/freshness';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import type { PresentationForPricing } from '../../catalog';
-import type { EstablishmentDetail } from '../../establishments';
+import type { EstablishmentDetail, StoreContact } from '../../establishments';
 import type { PriceRef, PriceReliability } from '../../reliability';
 import { freshnessAt } from './compare-product';
 import type { CurrentPrices } from './current-prices';
@@ -10,6 +10,8 @@ import type { CurrentPrices } from './current-prices';
 // Puertos hacia las consultas públicas de establishments, catalog y reliability (por su index.ts).
 export interface StorePricesPorts {
   stores: { find(establishmentId: string): Promise<EstablishmentDetail | null> };
+  // D5 (#207): el horario y el teléfono que puso el comercio, por la interfaz de establishments.
+  contacts: { of(establishmentId: string): Promise<StoreContact | null> };
   presentations: { of(presentationIds: string[]): Promise<Map<string, PresentationForPricing>> };
   prices: Pick<CurrentPrices, 'findByEstablishment'>;
   reliability: { of(prices: PriceRef[], ttlDays: number): Promise<PriceReliability[]> };
@@ -33,7 +35,7 @@ export interface StorePriceItem {
 }
 
 export interface StorePricesResult {
-  establishment: EstablishmentDetail;
+  establishment: EstablishmentDetail & StoreContact;
   prices: StorePriceItem[];
 }
 
@@ -45,9 +47,10 @@ export class StorePrices {
     establishmentId: string,
     options: { onlyCurrent: boolean },
   ): Promise<StorePricesResult | null> {
-    const { stores, presentations, prices, reliability, clock } = this.ports;
-    const establishment = await stores.find(establishmentId);
-    if (!establishment) return null;
+    const { stores, contacts, presentations, prices, reliability, clock } = this.ports;
+    const store = await stores.find(establishmentId);
+    if (!store) return null;
+    const establishment = { ...store, ...(await contacts.of(establishmentId)) };
     const current = await prices.findByEstablishment(establishmentId);
     const known = await presentations.of(current.map((price) => price.presentationId));
     const now = clock.now();

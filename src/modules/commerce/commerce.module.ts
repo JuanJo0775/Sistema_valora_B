@@ -6,6 +6,7 @@ import {
   EstablishmentsModule,
   PendingStoreProposalName,
   ProposeStore,
+  UpdateStoreDetails,
 } from '../establishments';
 import {
   CatalogModule,
@@ -22,9 +23,11 @@ import { MerchantProfile } from './application/merchant-profile';
 import { MerchantPromotions } from './application/merchant-promotions';
 import { PublishOfficialPrice } from './application/publish-official-price';
 import { ReconfirmOfficialPrices } from './application/reconfirm-official-prices';
+import { UpdateMyEstablishment } from './application/update-my-establishment';
 import { UploadOfficialPrices } from './application/upload-official-prices';
 import { WithdrawPromotion } from './application/withdraw-promotion';
 import { type ProposalDecision, ResolveProposedClaim } from './application/resolve-proposed-claim';
+import { EstablishmentController } from './http/establishment.controller';
 import { MerchantController } from './http/merchant.controller';
 import { OfficialPricesController } from './http/official-prices.controller';
 import { PromotionsController } from './http/promotions.controller';
@@ -36,7 +39,12 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
 // perfil. B3 (#203): precios oficiales.
 @Module({
   imports: [IdentityModule, EstablishmentsModule, CatalogModule],
-  controllers: [MerchantController, OfficialPricesController, PromotionsController],
+  controllers: [
+    MerchantController,
+    OfficialPricesController,
+    PromotionsController,
+    EstablishmentController,
+  ],
   providers: [
     {
       provide: PublishOfficialPrice,
@@ -66,6 +74,31 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           presentations,
           clock: { now: () => new Date() },
+        }),
+    },
+    // D5 (#207): datos de la tienda, por la interfaz pública de establishments (ADR-001), con la clave
+    // seudónima de quien los pide (EC-08).
+    {
+      provide: UpdateMyEstablishment,
+      inject: [DATABASE, OutboxPublisher, UpdateStoreDetails, ReporterIdentity],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        updateStoreDetails: UpdateStoreDetails,
+        identities: ReporterIdentity,
+      ): UpdateMyEstablishment =>
+        new UpdateMyEstablishment({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          stores: {
+            update: async (establishmentId, accountId, change) => {
+              const { reporterKey } = await identities.of(accountId);
+              return updateStoreDetails.execute({
+                establishmentId,
+                ...change,
+                proposerKey: reporterKey,
+              });
+            },
+          },
         }),
     },
     // D6 (#206): promociones.

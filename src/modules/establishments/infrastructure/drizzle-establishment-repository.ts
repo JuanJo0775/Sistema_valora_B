@@ -11,6 +11,7 @@ import type {
   SearchQuery,
   WithinRadiusQuery,
 } from '../application/establishment-repository';
+import type { StoreContact, StoreDetailsChange } from '../application/store-details';
 import type { Municipality } from '../../../domain/municipality';
 import { establishments } from './schema';
 
@@ -157,6 +158,25 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       .from(establishments)
       .where(inArray(establishments.id, establishmentIds));
     return new Map(rows.map((row) => [row.id, row.name]));
+  }
+
+  // D5 (#207): los cambios que el comercio aplica al instante. Sin cambios no hace nada.
+  async applyDetails(establishmentId: string, change: StoreDetailsChange): Promise<void> {
+    if (Object.keys(change).length === 0) return;
+    await this.db.update(establishments).set(change).where(eq(establishments.id, establishmentId));
+  }
+
+  // D5 (#207): horario y teléfono, para la ficha pública de la tienda.
+  async contactOf(establishmentId: string): Promise<StoreContact | null> {
+    const [row] = await this.db
+      .select({ openingHours: establishments.openingHours, phone: establishments.phone })
+      .from(establishments)
+      .where(eq(establishments.id, establishmentId));
+    if (!row) return null;
+    return {
+      ...(row.openingHours === null ? {} : { openingHours: row.openingHours }),
+      ...(row.phone === null ? {} : { phone: row.phone }),
+    };
   }
 
   async findById(establishmentId: string): Promise<EstablishmentDetail | null> {
