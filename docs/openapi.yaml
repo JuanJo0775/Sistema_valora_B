@@ -2392,13 +2392,21 @@ components:
       enum: [armenia, buenavista, calarca, circasia, cordoba, filandia, genova, la-tebaida, montenegro, pijao, quimbaya, salento]
     ComparisonItem:
       type: object
-      required: [establishment, reportId, presentationId, priceCop, unitPrice, source, freshness, reliability, confirmations, isCheapest, observedAt]
+      description: >-
+        Un precio por tienda. Si la tienda tiene precio oficial (#204, D1 del grill comercial), sale el
+        oficial (source oficial, sin reportId, reliability ni confirmations), salvo que 2 o más
+        reportes confiables, recientes, posteriores al último cambio del oficial, del mismo lado y a
+        más de 5 % sean más que los que coinciden: entonces entra al orden la mediana de esos reportes
+        (source comunidad, con su reportId) y discrepancy trae el oficial al lado.
+      required: [establishment, presentationId, priceCop, unitPrice, source, freshness, isCheapest, observedAt]
       properties:
         establishment: { $ref: '#/components/schemas/Establishment' }
         reportId:
           type: string
           format: uuid
-          description: El reporte cuyo precio se muestra; sirve para marcarlo como dudoso (RF-013).
+          description: >-
+            El reporte cuyo precio se muestra; sirve para marcarlo como dudoso (RF-013). No viene en un
+            precio oficial (#204).
         presentationId: { type: string, format: uuid }
         priceCop: { type: integer, minimum: 1 }
         unitPrice:
@@ -2413,7 +2421,9 @@ components:
         source:
           type: string
           enum: [comunidad, oficial, siembra]
-          description: Hoy siempre es comunidad; oficial llega con el módulo comercial (corte 3).
+          description: >-
+            comunidad (reportes), siembra (dato inicial, #135) u oficial (publicado por el comercio
+            verificado, #204).
         freshness:
           type: string
           enum: [vigente, por_confirmar, desactualizado]
@@ -2427,7 +2437,8 @@ components:
           description: >-
             Confiabilidad del precio al momento de la consulta (score de RF-011, issue #31): alta,
             media o baja. en_revision si el único precio de esa tienda quedó sospechoso (RF-012) y
-            espera moderación; no compite en el orden. Un precio sin evaluar cuenta como baja.
+            espera moderación; no compite en el orden. Un precio sin evaluar cuenta como baja. No viene
+            en un precio oficial, que no se califica (#204).
         isCheapest:
           type: boolean
           description: >-
@@ -2437,8 +2448,25 @@ components:
         confirmations:
           type: integer
           minimum: 0
-          description: Cuántas cuentas distintas confirman el precio (a ±5 %, dentro de su vigencia).
-        observedAt: { type: string, format: date-time }
+          description: >-
+            Cuántas cuentas distintas confirman el precio (a ±5 %, dentro de su vigencia). No viene en
+            un precio oficial (#204).
+        observedAt:
+          type: string
+          format: date-time
+          description: Cuándo se vio el precio; en un precio oficial, su última confirmación.
+        discrepancy:
+          type: object
+          additionalProperties: false
+          description: >-
+            Solo con discrepancia corroborada (D1, ADR-008): el oficial se muestra al lado del precio
+            que entra al orden, con aviso.
+          required: [officialPriceCop, reportedPriceCop, reports, since]
+          properties:
+            officialPriceCop: { type: integer }
+            reportedPriceCop: { type: integer, description: La mediana de los reportes que corroboran. }
+            reports: { type: integer, minimum: 2, description: Cuántos reportes la corroboran. }
+            since: { type: string, format: date-time, description: El más antiguo de esos reportes. }
     Promotion:
       type: object
       required: [presentationId, type, validUntil]
