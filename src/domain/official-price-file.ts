@@ -1,5 +1,7 @@
 import { PLAUSIBILITY_PARAMS } from './price-plausibility';
 
+const money = new Intl.NumberFormat('es-CO');
+
 // D7 del grill comercial (ADR-027): el archivo con el que un comercio publica muchos precios
 // oficiales a la vez. Una fila por producto: código de barras y precio, separados por «;» como guarda
 // Excel en Colombia (y como los CSV de la semilla).
@@ -23,9 +25,20 @@ export interface PriceFile {
   errors: PriceFileError[];
 }
 
-const { minPriceCop, maxPriceCop } = PLAUSIBILITY_PARAMS;
-const money = new Intl.NumberFormat('es-CO');
+// D7: se procesa al momento, así que el archivo tiene un tope. Valor PROVISIONAL.
+export const MAX_PRICE_FILE_ROWS = 1000;
 
+// El archivo completo se rechaza: la capa HTTP lo traduce a 413.
+export class PriceFileTooLargeError extends Error {
+  constructor() {
+    super(
+      `El archivo tiene más de ${money.format(MAX_PRICE_FILE_ROWS)} filas: divídelo en varios archivos.`,
+    );
+    this.name = 'PriceFileTooLargeError';
+  }
+}
+
+const { minPriceCop, maxPriceCop } = PLAUSIBILITY_PARAMS;
 // ADR-030: el mismo piso y techo absolutos que un reporte y que un oficial publicado uno a uno.
 const isValidPrice = (price: string): boolean =>
   /^\d+$/.test(price) && Number(price) >= minPriceCop && Number(price) <= maxPriceCop;
@@ -35,7 +48,11 @@ export function readPriceFile(text: string): PriceFile {
   const errors: PriceFileError[] = [];
   // La fila donde apareció cada código por primera vez.
   const firstRow = new Map<string, number>();
-  text.split(/\r?\n/).forEach((line, index) => {
+  const lines = text.split(/\r?\n/);
+  if (lines.slice(1).filter((line) => line.trim() !== '').length > MAX_PRICE_FILE_ROWS) {
+    throw new PriceFileTooLargeError();
+  }
+  lines.forEach((line, index) => {
     if (index === 0 || line.trim() === '') return;
     const row = index + 1;
     const [barcode = '', price = ''] = line.split(';').map((cell) => cell.trim());
