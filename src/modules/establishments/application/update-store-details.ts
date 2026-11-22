@@ -31,6 +31,7 @@ export class UpdateStoreDetails {
     const change: StoreDetailsChange = {
       ...(request.openingHours === undefined ? {} : { openingHours: request.openingHours }),
       ...(request.phone === undefined ? {} : { phone: request.phone }),
+      ...(request.name === undefined ? {} : { name: request.name.trim() }),
     };
     await this.ports.stores.applyDetails(request.establishmentId, change);
     return { applied: Object.keys(change) as (keyof StoreDetailsChange)[], inReview: [] };
