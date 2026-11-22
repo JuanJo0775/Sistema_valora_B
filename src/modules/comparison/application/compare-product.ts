@@ -70,7 +70,7 @@ export interface CompareProductPorts {
   stores: StoresWithinRadius;
   prices: Pick<CurrentPrices, 'findByPresentations'>;
   // #204: la copia del precio oficial de commerce.
-  officials: OfficialPriceCopies;
+  officials: Pick<OfficialPriceCopies, 'findByPresentations'>;
   // #206: la copia de las promociones de commerce.
   promotionCopies: PromotionCopies;
   reliability: PricesReliability;
