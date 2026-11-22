@@ -109,4 +109,23 @@ describe('decidir un caso de comercio (D3 del grill comercial)', () => {
       ['PromotionWithdrawn', { id: 'promo-1', establishmentId: STORE, presentationId: 'arroz' }],
     ]);
   });
+
+  it('descartar cierra el caso con su bitácora y no toca el comercio', async () => {
+    const { decide, revocations, closed } = setup();
+
+    await decide.execute(request({ decision: 'descartar' }));
+
+    expect(revocations).toEqual([]);
+    expect(closed).toEqual([
+      { caseId: 'caso-1', status: 'descartado', note, moderatorKey: 'moderadora', decidedAt: now },
+    ]);
+  });
+
+  it('un caso que no existe o ya se decidió no se encuentra', async () => {
+    const { decide } = setup();
+
+    await expect(decide.execute(request({ caseId: 'otro' }))).rejects.toThrow(
+      MerchantCaseNotFoundError,
+    );
+  });
 });
