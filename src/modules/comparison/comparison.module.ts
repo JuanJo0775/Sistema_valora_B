@@ -160,10 +160,16 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
     // B#131: cuántos precios vigentes tiene cada tienda de una lista.
     {
       provide: PriceCounts,
-      inject: [DATABASE, PresentationsForPricing],
-      useFactory: (db: Database, presentations: PresentationsForPricing): PriceCounts =>
+      inject: [DATABASE, PresentationsForPricing, ReliabilityOfPrices],
+      useFactory: (
+        db: Database,
+        presentations: PresentationsForPricing,
+        reliability: ReliabilityOfPrices,
+      ): PriceCounts =>
         new PriceCounts({
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
+          reliability,
           presentations,
           clock: { now: () => new Date() },
         }),

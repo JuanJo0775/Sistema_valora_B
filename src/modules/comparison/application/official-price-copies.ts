@@ -15,4 +15,6 @@ export interface OfficialPriceCopies {
   findByPresentations(presentationIds: string[]): Promise<OfficialPriceCopy[]>;
   // B9 (#209): los de una tienda, para avisarle sus discrepancias.
   findByEstablishment(establishmentId: string): Promise<OfficialPriceCopy[]>;
+  // #218: los de varias tiendas, para contar sus precios.
+  findByEstablishments(establishmentIds: string[]): Promise<OfficialPriceCopy[]>;
 }

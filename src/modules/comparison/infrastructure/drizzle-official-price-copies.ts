@@ -14,6 +14,14 @@ export class DrizzleOfficialPriceCopies implements OfficialPriceCopies {
       .where(inArray(officialPrices.presentationId, presentationIds));
   }
 
+  async findByEstablishments(establishmentIds: string[]): Promise<OfficialPriceCopy[]> {
+    if (establishmentIds.length === 0) return [];
+    return this.db
+      .select()
+      .from(officialPrices)
+      .where(inArray(officialPrices.establishmentId, establishmentIds));
+  }
+
   async findByEstablishment(establishmentId: string): Promise<OfficialPriceCopy[]> {
     return this.db
       .select()
