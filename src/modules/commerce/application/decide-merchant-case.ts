@@ -41,7 +41,9 @@ export class DecideMerchantCase {
     const { cases, claims, prices, promotions, revocations, clock } = this.ports;
     const merchantCase = await cases.findPending(request.caseId);
     if (!merchantCase) throw new MerchantCaseNotFoundError();
-    if (request.decision === 'descartar') {
+    const claim = await claims.findByEstablishment(merchantCase.establishmentId);
+    // Descartar, o revocar cuando el comercio ya no existe (otra decisión lo revocó): solo se cierra.
+    if (request.decision === 'descartar' || !claim) {
       await cases.close({
         caseId: merchantCase.id,
         status: 'descartado',
@@ -52,8 +54,6 @@ export class DecideMerchantCase {
       return;
     }
     const { establishmentId } = merchantCase;
-    const claim = await claims.findByEstablishment(establishmentId);
-    if (!claim) return;
     const { accountId } = claim;
     await revocations.revoke(
       {
