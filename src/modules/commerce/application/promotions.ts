@@ -1,4 +1,10 @@
-import type { PromotionOffer, PromotionStatus } from '../../../domain/promotion';
+import { freshnessOf, ttlDaysFor } from '../../../domain/freshness';
+import {
+  type PromotionOffer,
+  type PromotionStatus,
+  promotedPriceCop,
+  promotionStatus,
+} from '../../../domain/promotion';
 import type { DomainEvent } from '../../../shared/events';
 
 // D6 del grill comercial: condiciones fijas, sin texto libre.
@@ -32,6 +38,26 @@ export interface PromotionView extends Promotion {
 export interface PromotionRepository {
   // Con sus eventos, en la misma transacción (ADR-015).
   save(promotion: Promotion, events: DomainEvent[]): Promise<void>;
+  // Las de la tienda, la más reciente primero.
+  listFor(establishmentId: string): Promise<Promotion[]>;
 }
 
 export const PROMOTION_PUBLISHED = 'PromotionPublished';
+
+// D6: el estado y los precios de hoy. Sin oficial (retirado al revocar, B8), queda pausada.
+export function promotionView(
+  promotion: Promotion,
+  official: { priceCop: number; confirmedAt: Date } | null,
+  isFresh: boolean,
+  now: Date,
+): PromotionView {
+  const officialFreshness = official
+    ? freshnessOf({ observedAt: official.confirmedAt, now, ttlDays: ttlDaysFor(isFresh) })
+    : 'desactualizado';
+  return {
+    ...promotion,
+    status: promotionStatus({ ...promotion, now, officialFreshness }),
+    officialPriceCop: official?.priceCop ?? null,
+    promotedPriceCop: official ? promotedPriceCop(promotion.offer, official.priceCop) : null,
+  };
+}
