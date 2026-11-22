@@ -49,6 +49,14 @@ export class DrizzleStoreProposalRepository implements StoreProposalRepository {
     }));
   }
 
+  async pendingName(proposalId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ name: storeProposals.name })
+      .from(storeProposals)
+      .where(and(eq(storeProposals.id, proposalId), eq(storeProposals.status, 'pendiente')));
+    return row?.name ?? null;
+  }
+
   async decide(record: StoreProposalDecisionRecord, events: DomainEvent[]): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [decided] = await tx

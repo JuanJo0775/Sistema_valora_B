@@ -38,6 +38,8 @@ export interface StoreProposalRepository {
   // no existe o ya se decidió.
   // Los eventos se guardan con la decisión (ADR-015) y solo si se decidió.
   decide(record: StoreProposalDecisionRecord, events: DomainEvent[]): Promise<boolean>;
+  // El nombre de una propuesta pendiente, o null (D2 del grill comercial: el perfil pre-aprobado).
+  pendingName(proposalId: string): Promise<string | null>;
 }
 
 export const STORE_PROPOSAL_REPOSITORY = Symbol('STORE_PROPOSAL_REPOSITORY');
