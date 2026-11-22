@@ -46,6 +46,16 @@ export class NotAtEstablishmentError extends Error {
   }
 }
 
+// D3: una tienda tiene un solo dueño. La capa HTTP la traduce a 409; la disputa llega con B8.
+export class EstablishmentHasOwnerError extends Error {
+  readonly code = 'ESTABLISHMENT_HAS_OWNER';
+
+  constructor() {
+    super('Esta tienda ya está registrada por otra cuenta.');
+    this.name = 'EstablishmentHasOwnerError';
+  }
+}
+
 // RF-015 con la D2 del grill comercial: una cuenta registra como suya una tienda del mapa.
 export class ClaimEstablishment {
   constructor(private readonly ports: ClaimEstablishmentPorts) {}
@@ -56,6 +66,9 @@ export class ClaimEstablishment {
     if (!establishment) throw new EstablishmentNotFoundError();
     if (!isAtEstablishment(request.location, establishment)) {
       throw new NotAtEstablishmentError();
+    }
+    if ((await claims.ownerOf(request.establishmentId)) !== null) {
+      throw new EstablishmentHasOwnerError();
     }
     await claims.save({
       accountId: request.accountId,
