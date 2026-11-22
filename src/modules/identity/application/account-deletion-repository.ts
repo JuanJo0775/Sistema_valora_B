@@ -1,3 +1,5 @@
+import type { DomainEvent } from '../../../shared/events';
+
 // ADR-032: lo que la eliminación de cuenta necesita guardar y borrar. Cada método es una sola
 // transacción: nunca queda una cuenta a medio borrar.
 
@@ -26,8 +28,9 @@ export interface AccountDeletionRepository {
   // Cuentas pendientes cuya fecha ya llegó, las más antiguas primero.
   dueAccountIds(now: Date, limit: number): Promise<string[]>;
   // Borra la cuenta y todo lo que cuelga de ella (sesiones y enlaces de verificación) si sigue pendiente y
-  // ya venció; false si no (restaurada, ya borrada o aún no vence).
-  purge(accountId: string, now: Date): Promise<boolean>;
+  // ya venció, con sus eventos en la misma transacción (ADR-015); false si no (restaurada, ya borrada o
+  // aún no vence), y entonces no guarda los eventos.
+  purge(accountId: string, now: Date, events: DomainEvent[]): Promise<boolean>;
 }
 
 export const ACCOUNT_DELETION_REPOSITORY = Symbol('ACCOUNT_DELETION_REPOSITORY');

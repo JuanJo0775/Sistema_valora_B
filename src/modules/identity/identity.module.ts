@@ -2,7 +2,7 @@ import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../shared/config/env.validation';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
-import { type DomainEvent, EventBus } from '../../shared/events';
+import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
 import {
   ACCOUNT_DELETION_REPOSITORY,
   type AccountDeletionRepository,
@@ -234,9 +234,9 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
     // ADR-032: eliminación de la cuenta con 10 días de gracia, restauración y purga.
     {
       provide: ACCOUNT_DELETION_REPOSITORY,
-      inject: [DATABASE],
-      useFactory: (db: Database): AccountDeletionRepository =>
-        new DrizzleAccountDeletionRepository(db),
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): AccountDeletionRepository =>
+        new DrizzleAccountDeletionRepository(db, outbox),
     },
     {
       provide: DeleteOwnAccount,
