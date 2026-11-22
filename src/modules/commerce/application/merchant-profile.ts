@@ -28,7 +28,8 @@ export interface ActiveMerchantProfile {
 
 // La tienda propuesta no se aprobó: la cuenta puede registrar otra (D2).
 export interface RejectedMerchantProfile {
-  status: 'rechazado';
+  // Precisión de D3 (#208): revocado por un moderador.
+  status: 'rechazado' | 'revocado';
   reason: string;
   rejectedAt: Date;
 }
@@ -42,7 +43,11 @@ export class MerchantProfile {
     if (!claim) {
       const rejection = await this.ports.claims.lastRejection(accountId);
       return rejection
-        ? { status: 'rechazado', reason: rejection.reason, rejectedAt: rejection.rejectedAt }
+        ? {
+            status: rejection.outcome ?? 'rechazado',
+            reason: rejection.reason,
+            rejectedAt: rejection.rejectedAt,
+          }
         : null;
     }
     const establishment = await this.ports.establishments.find(claim.establishmentId);

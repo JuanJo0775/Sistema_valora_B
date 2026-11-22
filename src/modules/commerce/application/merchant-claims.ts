@@ -38,6 +38,8 @@ export interface MerchantClaimRejection {
   establishmentId: string;
   reason: string;
   rejectedAt: Date;
+  // Precisión de D3 (#208): sin él es un rechazo de la tienda propuesta (B2).
+  outcome?: 'rechazado' | 'revocado';
 }
 
 // Puerto para resolver la solicitud pre-aprobada cuando se decide su tienda propuesta (D2).

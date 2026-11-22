@@ -129,11 +129,13 @@ export class DrizzleMerchantClaimRepository
         establishmentId: merchantClaimRejections.establishmentId,
         reason: merchantClaimRejections.reason,
         rejectedAt: merchantClaimRejections.rejectedAt,
+        outcome: merchantClaimRejections.outcome,
       })
       .from(merchantClaimRejections)
       .where(eq(merchantClaimRejections.accountId, accountId))
       .orderBy(desc(merchantClaimRejections.rejectedAt))
       .limit(1);
-    return row ?? null;
+    // La restricción del esquema y el valor por defecto garantizan el resultado.
+    return row ? { ...row, outcome: row.outcome as 'rechazado' | 'revocado' } : null;
   }
 }
