@@ -30,3 +30,18 @@ export interface StoreDetailsRepository extends Pick<
 export interface StoreCorrections {
   propose(correction: StoreCorrection): Promise<void>;
 }
+
+// D5: la decisión del moderador sobre una corrección; no se fusiona.
+export interface StoreCorrectionDecisionRecord {
+  correctionId: string;
+  decision: 'aprobar' | 'rechazar';
+  note: string;
+  moderatorKey: string;
+  decidedAt: Date;
+}
+
+export interface StoreCorrectionDecisions {
+  // Aprobar aplica el nombre o la ubicación a la tienda en la misma transacción. Devuelve la
+  // corrección decidida, o null si no existe o ya se decidió.
+  decide(record: StoreCorrectionDecisionRecord): Promise<StoreCorrection | null>;
+}
