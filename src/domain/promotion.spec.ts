@@ -8,4 +8,12 @@ describe('estado de una promoción (D6 del grill comercial, ADR-009)', () => {
   it('dentro de sus fechas y con el oficial vigente, está activa', () => {
     expect(promotionStatus({ ...week, now, officialFreshness: 'vigente' })).toBe('activa');
   });
+
+  // D6: el «antes» debe ser un precio real y reciente; reconfirmar el oficial la reactiva.
+  it.each(['por_confirmar', 'desactualizado'] as const)(
+    'con el oficial %s, la promoción se pausa sola',
+    (officialFreshness) => {
+      expect(promotionStatus({ ...week, now, officialFreshness })).toBe('pausada');
+    },
+  );
 });
