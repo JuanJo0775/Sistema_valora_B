@@ -1,13 +1,22 @@
 import { PRE_APPROVED_UNLOCKS } from './claim-proposed-establishment';
-import type { MerchantClaim, MerchantClaimRepository } from './merchant-claims';
+import type {
+  MerchantClaim,
+  MerchantClaimRejection,
+  MerchantClaimRepository,
+} from './merchant-claims';
 
 export interface MerchantProfilePorts {
-  claims: Pick<MerchantClaimRepository, 'findByAccount'>;
+  claims: Pick<MerchantClaimRepository, 'findByAccount'> & {
+    // La última solicitud cerrada de la cuenta, o null.
+    lastRejection(accountId: string): Promise<MerchantClaimRejection | null>;
+  };
   // La tienda del mapa o la propuesta, por la interfaz pública de establishments.
   establishments: { find(establishmentId: string): Promise<{ name: string } | null> };
 }
 
-export interface MerchantProfileView {
+export type MerchantProfileView = ActiveMerchantProfile | RejectedMerchantProfile;
+
+export interface ActiveMerchantProfile {
   status: MerchantClaim['status'];
   establishment: { id: string; name: string };
   responsibleName: string;
@@ -17,13 +26,25 @@ export interface MerchantProfileView {
   unlocks?: typeof PRE_APPROVED_UNLOCKS;
 }
 
+// La tienda propuesta no se aprobó: la cuenta puede registrar otra (D2).
+export interface RejectedMerchantProfile {
+  status: 'rechazado';
+  reason: string;
+  rejectedAt: Date;
+}
+
 // GET /commerce/me: lo que el comercio ve de sí mismo. Nunca una ubicación (EC-08).
 export class MerchantProfile {
   constructor(private readonly ports: MerchantProfilePorts) {}
 
   async find(accountId: string): Promise<MerchantProfileView | null> {
     const claim = await this.ports.claims.findByAccount(accountId);
-    if (!claim) return null;
+    if (!claim) {
+      const rejection = await this.ports.claims.lastRejection(accountId);
+      return rejection
+        ? { status: 'rechazado', reason: rejection.reason, rejectedAt: rejection.rejectedAt }
+        : null;
+    }
     const establishment = await this.ports.establishments.find(claim.establishmentId);
     return {
       status: claim.status,

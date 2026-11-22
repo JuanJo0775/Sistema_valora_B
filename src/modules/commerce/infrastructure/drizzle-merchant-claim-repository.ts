@@ -1,12 +1,16 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import {
   AccountHasEstablishmentError,
   EstablishmentHasOwnerError,
 } from '../application/claim-establishment';
-import type { MerchantClaim, MerchantClaimRepository } from '../application/merchant-claims';
-import { merchantClaims } from './schema';
+import type {
+  MerchantClaim,
+  MerchantClaimRejection,
+  MerchantClaimRepository,
+} from '../application/merchant-claims';
+import { merchantClaimRejections, merchantClaims } from './schema';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -57,5 +61,20 @@ export class DrizzleMerchantClaimRepository implements MerchantClaimRepository {
 
   async establishmentOf(accountId: string): Promise<string | null> {
     return (await this.findByAccount(accountId))?.establishmentId ?? null;
+  }
+
+  async lastRejection(accountId: string): Promise<MerchantClaimRejection | null> {
+    const [row] = await this.db
+      .select({
+        accountId: merchantClaimRejections.accountId,
+        establishmentId: merchantClaimRejections.establishmentId,
+        reason: merchantClaimRejections.reason,
+        rejectedAt: merchantClaimRejections.rejectedAt,
+      })
+      .from(merchantClaimRejections)
+      .where(eq(merchantClaimRejections.accountId, accountId))
+      .orderBy(desc(merchantClaimRejections.rejectedAt))
+      .limit(1);
+    return row ?? null;
   }
 }

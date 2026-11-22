@@ -19,7 +19,7 @@ function setup(claims: MerchantClaim[], rejections: MerchantClaimRejection[] = [
       findByAccount: (accountId) =>
         Promise.resolve(claims.find((c) => c.accountId === accountId) ?? null),
       lastRejection: (accountId) =>
-        Promise.resolve(rejections.findLast((r) => r.accountId === accountId) ?? null),
+        Promise.resolve(rejections.filter((r) => r.accountId === accountId).at(-1) ?? null),
     },
     establishments: {
       find: (id) =>
