@@ -13,6 +13,8 @@ export interface OfficialPrice {
 export interface OfficialPriceRepository {
   // Uno por tienda y presentación: publicar otra vez lo reemplaza. Con sus eventos (ADR-015).
   save(price: OfficialPrice, events: DomainEvent[]): Promise<void>;
+  // D7: las filas buenas de un archivo, todas en una transacción con sus eventos.
+  saveAll(prices: OfficialPrice[], events: DomainEvent[]): Promise<void>;
   // Los de la tienda, en el orden en que se publicaron.
   listFor(establishmentId: string): Promise<OfficialPrice[]>;
   // Confirma todos los de la tienda a la vez, con sus eventos. Devuelve cuántos.
