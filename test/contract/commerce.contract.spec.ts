@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
+import { ImportCatalog } from '../../src/modules/catalog';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
@@ -12,6 +13,7 @@ import { type SignedIn, signIn } from '../support/sign-in';
 
 // Datos de prueba: solo existen dentro de esta prueba.
 const storeId = 'c0777777-7777-4777-8777-777777777777';
+const riceId = 'c0777777-7777-4777-8777-aaaaaaaaaaaa';
 const STORE = { lat: 4.5339, lng: -75.6811 };
 const claimBody = {
   establishmentId: storeId,
@@ -35,13 +37,21 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals`,
+      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.official_prices, catalog.presentations, catalog.products, catalog.product_aliases`,
     );
     await app.get(ImportEstablishments).save({
       id: storeId,
       name: 'Tienda La Esperanza',
       type: 'barrio',
       ...STORE,
+    });
+    await app.get(ImportCatalog).save({
+      id: 'c0777777-7777-4777-8777-bbbbbbbbbbbb',
+      name: 'Arroz del contrato comercial',
+      brand: 'Marca de prueba',
+      categoryCode: 'grains-groceries',
+      aliases: [],
+      presentations: [{ id: riceId, quantity: 500, unit: 'g', packCount: 1 }],
     });
   });
 
@@ -128,6 +138,58 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     ] as const;
     expect(responses.map(([, , response]) => response.status)).toEqual([201, 200, 200]);
     expect((rejected.body as { status: string }).status).toBe('rechazado');
+    expect(
+      responses.flatMap(([route, status, response]) =>
+        contractErrors(route, status, response.body as unknown),
+      ),
+    ).toEqual([]);
+  });
+
+  it('los precios oficiales responden como dice el contrato (#203)', async () => {
+    const owner = await signIn(server, db, 'contrato-oficiales@correo.com');
+    await db.execute(sql`truncate commerce.merchant_claims, establishments.store_proposals`);
+    await claim(owner).expect(201);
+    await app.get(OutboxRelay).runOnce();
+    const send = (method: 'put' | 'post', path: string, body?: object) => {
+      const call = request(server)
+        [method](`/v1${path}`)
+        .set('Cookie', owner.cookie)
+        .set('X-CSRF-Token', owner.csrfToken);
+      return body === undefined ? call : call.send(body);
+    };
+
+    const responses = [
+      [
+        'PUT /commerce/prices',
+        200,
+        await send('put', '/commerce/prices', { presentationId: riceId, priceCop: 2600 }),
+      ],
+      [
+        'PUT /commerce/prices',
+        422,
+        await send('put', '/commerce/prices', { presentationId: riceId, priceCop: 50 }),
+      ],
+      [
+        'PUT /commerce/prices',
+        400,
+        await send('put', '/commerce/prices', { presentationId: riceId }),
+      ],
+      [
+        'GET /commerce/prices',
+        200,
+        await request(server).get('/v1/commerce/prices').set('Cookie', owner.cookie),
+      ],
+      ['POST /commerce/prices/reconfirm', 200, await send('post', '/commerce/prices/reconfirm')],
+      [
+        'POST /commerce/prices/reconfirm',
+        401,
+        await request(server).post('/v1/commerce/prices/reconfirm'),
+      ],
+    ] as const;
+
+    expect(responses.map(([, status, response]) => [status, response.status])).toEqual(
+      responses.map(([, status]) => [status, status]),
+    );
     expect(
       responses.flatMap(([route, status, response]) =>
         contractErrors(route, status, response.body as unknown),
