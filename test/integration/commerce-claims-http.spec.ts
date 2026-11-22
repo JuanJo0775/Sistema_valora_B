@@ -41,7 +41,7 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts`,
     );
     rosa = await signIn(server, db, 'rosa@correo.com');
     ana = await signIn(server, db, 'ana@correo.com');

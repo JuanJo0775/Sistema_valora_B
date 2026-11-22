@@ -42,7 +42,7 @@ describe('plausibilidad del precio de punta a punta (EC-03, ADR-030)', () => {
     db = app.get<Database>(DATABASE);
     relay = app.get(OutboxRelay);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts`,
     );
     await db.execute(
       sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals, catalog.presentations, catalog.products, establishments.establishments`,

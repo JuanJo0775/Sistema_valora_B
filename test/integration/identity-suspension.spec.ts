@@ -36,7 +36,7 @@ describe('suspensión pedida por reliability (grill de la #33, pregunta 6)', () 
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, shared.outbox, shared.processed_events`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, shared.outbox, shared.processed_events`,
     );
   });
 

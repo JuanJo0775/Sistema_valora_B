@@ -19,7 +19,7 @@ function setup(accounts: ConstructorParameters<typeof InMemoryGoogleLinks>[0] = 
     links,
     sessions,
     clock,
-    signIn: new SignInWithGoogle({ links, sessions, clock }),
+    signIn: new SignInWithGoogle({ links, deletion: links, sessions, clock }),
     limiter: new FakeLimiter(),
   });
   return { links, sessions, complete };

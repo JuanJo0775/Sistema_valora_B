@@ -20,7 +20,9 @@ import {
   InvalidPasswordError,
   LastModeratorError,
 } from '../application/delete-own-account';
-import { DeleteAccountDto } from './auth.dto';
+import { ChangeOwnPassword } from '../application/change-own-password';
+import { ReauthRequiredError } from '../application/recent-session';
+import { ChangePasswordDto, DeleteAccountDto } from './auth.dto';
 import type { ClientRequest, CookieResponse } from './auth.controller';
 import { clearedSessionCookie } from './session-cookie';
 import {
@@ -37,7 +39,10 @@ export interface AccountDeletionResponse {
 
 @Controller('me')
 export class MeController {
-  constructor(private readonly deleteOwnAccount: DeleteOwnAccount) {}
+  constructor(
+    private readonly deleteOwnAccount: DeleteOwnAccount,
+    private readonly changeOwnPassword: ChangeOwnPassword,
+  ) {}
 
   // ADR-032, derecho de supresión (Ley 1581, art. 8). Cualquier rol, también una cuenta suspendida: nadie
   // pierde este derecho por estar sancionado. Exige sesión, el token CSRF (es un POST) y la contraseña.
@@ -82,6 +87,45 @@ export class MeController {
           code: 'LAST_MODERATOR_CANNOT_DELETE',
           message: error.message,
         });
+      }
+      if (error instanceof AccountGoneError) throw new UnauthorizedException();
+      throw error;
+    }
+  }
+
+  // ADR-033: cambia la contraseña (con la actual) o, en una cuenta de Google sin contraseña, crea la primera
+  // (sesión de 10 minutos o menos). Cierra las OTRAS sesiones; la actual sigue.
+  @Post('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(SessionGuard)
+  @AllowSuspended()
+  async changePassword(
+    @CurrentSession() session: AuthenticatedSession,
+    @Body() body: ChangePasswordDto,
+    @Req() request: ClientRequest,
+  ): Promise<void> {
+    try {
+      await this.changeOwnPassword.execute({
+        accountId: session.accountId,
+        sessionId: session.sessionId,
+        sessionCreatedAt: session.createdAt,
+        ip: request.ip ?? 'desconocida',
+        ...(body.currentPassword === undefined ? {} : { currentPassword: body.currentPassword }),
+        newPassword: body.newPassword,
+      });
+    } catch (error) {
+      if (error instanceof TooManyAttemptsError) {
+        throw new HttpException(
+          { retryAfterSeconds: error.retryAfterSeconds },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      if (error instanceof InvalidPasswordError) {
+        throw new ForbiddenException({ code: 'INVALID_PASSWORD', message: error.message });
+      }
+      if (error instanceof ReauthRequiredError) {
+        throw new ForbiddenException({ code: 'REAUTH_REQUIRED', message: error.message });
       }
       if (error instanceof AccountGoneError) throw new UnauthorizedException();
       throw error;

@@ -2,6 +2,7 @@ import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsIn,
+  IsOptional,
   IsString,
   Length,
   MaxLength,
@@ -11,6 +12,7 @@ import {
 import { isValidDisplayName, normalizeDisplayName } from '../../../domain/display-name';
 import type { Role } from '../application/account-repository';
 import { ROLE_NOTE_LENGTH } from '../application/change-role';
+import { PASSWORD_LENGTH } from '../application/password-policy';
 import { CURRENT_POLICY_VERSION } from '../application/policy';
 import { normalizeEmail } from '../application/register-account';
 
@@ -27,6 +29,9 @@ const IsDisplayName = () =>
       defaultMessage: () => 'debe tener de 2 a 40 letras, sin números, correos ni símbolos',
     },
   });
+
+// Las mismas reglas de contraseña al registrarse, al restablecerla y al cambiarla (ADR-033).
+const PASSWORD_MESSAGE = `debe tener entre ${String(PASSWORD_LENGTH.min)} y ${String(PASSWORD_LENGTH.max)} caracteres`;
 
 const toNormalizedName = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? normalizeDisplayName(value) : value;
@@ -50,7 +55,7 @@ export class RegisterDto {
   displayName!: string;
 
   @IsString({ message: 'debe ser texto' })
-  @Length(10, 128, { message: 'debe tener entre 10 y 128 caracteres' })
+  @Length(PASSWORD_LENGTH.min, PASSWORD_LENGTH.max, { message: PASSWORD_MESSAGE })
   password!: string;
 
   @IsIn([CURRENT_POLICY_VERSION], {
@@ -103,6 +108,38 @@ export class DeleteAccountDto {
     },
   })
   confirmEmail?: string;
+}
+
+// ADR-033: «olvidé mi contraseña». Solo el correo, ya normalizado.
+export class ForgotPasswordDto {
+  @Transform(toNormalizedEmail)
+  @MaxLength(254, { message: 'debe tener como máximo 254 caracteres' })
+  @IsEmail({}, { message: 'debe ser un correo válido' })
+  email!: string;
+}
+
+// ADR-033: el token del enlace del correo y la contraseña nueva, con las mismas reglas del registro.
+export class ResetPasswordDto {
+  @IsString({ message: 'debe ser texto' })
+  @Length(1, 200, { message: 'debe tener entre 1 y 200 caracteres' })
+  token!: string;
+
+  @IsString({ message: 'debe ser texto' })
+  @Length(PASSWORD_LENGTH.min, PASSWORD_LENGTH.max, { message: PASSWORD_MESSAGE })
+  password!: string;
+}
+
+// ADR-033: cambiar la contraseña desde la sesión. currentPassword es obligatoria si la cuenta tiene
+// contraseña (sin ella, 403 INVALID_PASSWORD) y se omite en una cuenta de Google.
+export class ChangePasswordDto {
+  @IsOptional()
+  @IsString({ message: 'debe ser texto' })
+  @MaxLength(128, { message: 'debe tener como máximo 128 caracteres' })
+  currentPassword?: string;
+
+  @IsString({ message: 'debe ser texto' })
+  @Length(PASSWORD_LENGTH.min, PASSWORD_LENGTH.max, { message: PASSWORD_MESSAGE })
+  newPassword!: string;
 }
 
 // Grill de la #73, pregunta 1: comercio no se asigna hasta el Corte 3.

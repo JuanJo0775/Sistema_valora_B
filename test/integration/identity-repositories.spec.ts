@@ -53,7 +53,7 @@ describe('repositorios de identity', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, identity.role_changes`,
     );
   });
 
@@ -117,6 +117,7 @@ describe('repositorios de identity', () => {
       role: 'reportante',
       accountSuspendedUntil: null,
       accountEmailVerifiedAt: null,
+      accountHasPassword: true,
     });
     await sessions.touch(session.id, later);
     await sessions.revoke(session.id, later);

@@ -17,6 +17,7 @@ const session = (change: Partial<StoredSession> = {}): StoredSession => ({
   revokedAt: null,
   accountSuspendedUntil: null,
   accountEmailVerifiedAt: null,
+  accountHasPassword: true,
   ...change,
 });
 
@@ -59,6 +60,8 @@ describe('resolver la sesión de una petición', () => {
       accountId: 'cuenta-1',
       role: 'reportante',
       emailVerified: false,
+      createdAt: minutesAgo(60 * 24),
+      hasPassword: true,
     });
     await older.resolve.execute(token);
 
@@ -90,6 +93,8 @@ describe('resolver la sesión de una petición', () => {
       accountId: 'cuenta-1',
       role: 'reportante',
       emailVerified: false,
+      createdAt: minutesAgo(60 * 24),
+      hasPassword: true,
       suspendedUntil: until,
     });
     await expect(finished.resolve.execute(token)).resolves.toEqual({
@@ -97,6 +102,8 @@ describe('resolver la sesión de una petición', () => {
       accountId: 'cuenta-1',
       role: 'reportante',
       emailVerified: false,
+      createdAt: minutesAgo(60 * 24),
+      hasPassword: true,
     });
   });
 
@@ -105,5 +112,15 @@ describe('resolver la sesión de una petición', () => {
     const verified = setup(session({ accountEmailVerifiedAt: minutesAgo(30) }));
 
     await expect(verified.resolve.execute(token)).resolves.toMatchObject({ emailVerified: true });
+  });
+
+  // ADR-033: la sesión dice si la cuenta tiene contraseña y cuándo se abrió.
+  it('la sesión dice si la cuenta tiene contraseña y cuándo se creó', async () => {
+    const google = setup(session({ accountHasPassword: false, createdAt: minutesAgo(3) }));
+
+    await expect(google.resolve.execute(token)).resolves.toMatchObject({
+      hasPassword: false,
+      createdAt: minutesAgo(3),
+    });
   });
 });

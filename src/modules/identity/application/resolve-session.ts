@@ -16,6 +16,11 @@ export interface ActiveSession {
   role: Role;
   // ADR-029: registrar precios exige el correo verificado.
   emailVerified: boolean;
+  // ADR-033: cuándo se abrió esta sesión; crear una contraseña o eliminar una cuenta de Google exige que sea
+  // reciente.
+  createdAt: Date;
+  // ADR-033: si la cuenta tiene contraseña.
+  hasPassword: boolean;
   // Grill de la #71, pregunta 5: solo si la cuenta está suspendida; la sesión queda limitada.
   suspendedUntil?: Date;
 }
@@ -35,6 +40,8 @@ export class ResolveSession {
       accountId: session.accountId,
       role: session.role,
       emailVerified: session.accountEmailVerifiedAt !== null,
+      createdAt: session.createdAt,
+      hasPassword: session.accountHasPassword,
       ...(suspendedUntil && suspendedUntil > now ? { suspendedUntil } : {}),
     };
   }

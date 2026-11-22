@@ -14,6 +14,10 @@ import { GrantMerchantRole } from './application/grant-merchant-role';
 import { RevokeMerchantRole } from './application/revoke-merchant-role';
 import { NotifyAccount } from './application/notify-account';
 import { DeleteOwnAccount } from './application/delete-own-account';
+import { ChangeOwnPassword } from './application/change-own-password';
+import { PASSWORD_REPOSITORY, type PasswordRepository } from './application/password-repository';
+import { RequestPasswordReset } from './application/request-password-reset';
+import { ResetPassword } from './application/reset-password';
 import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
 import { RestoreAccount } from './application/restore-account';
 import { CLOCK, type Clock } from './application/clock';
@@ -55,6 +59,7 @@ import { DrizzleAccountDeletionRepository } from './infrastructure/drizzle-accou
 import { DrizzleAccountRepository } from './infrastructure/drizzle-account-repository';
 import { DrizzleEmailVerificationRepository } from './infrastructure/drizzle-email-verification-repository';
 import { DrizzleGoogleAccountLinks } from './infrastructure/drizzle-google-account-links';
+import { DrizzlePasswordRepository } from './infrastructure/drizzle-password-repository';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository';
 import { InMemoryAttemptLimiter } from './infrastructure/in-memory-attempt-limiter';
 import { JoseGoogleIdentityProvider } from './infrastructure/jose-google-identity-provider';
@@ -183,6 +188,67 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         });
       },
     },
+    // ADR-033: restablecer la contraseña por correo y cambiarla desde la sesión.
+    {
+      provide: PASSWORD_REPOSITORY,
+      inject: [DATABASE],
+      useFactory: (db: Database): PasswordRepository => new DrizzlePasswordRepository(db),
+    },
+    {
+      provide: RequestPasswordReset,
+      inject: [
+        ACCOUNT_REPOSITORY,
+        PASSWORD_REPOSITORY,
+        EMAIL_SENDER,
+        ATTEMPT_LIMITER,
+        CLOCK,
+        ConfigService,
+      ],
+      useFactory: (
+        accounts: AccountRepository,
+        passwords: PasswordRepository,
+        sender: EmailSender,
+        limiter: AttemptLimiter,
+        clock: Clock,
+        config: ConfigService<Env, true>,
+      ): RequestPasswordReset => {
+        const appUrl: string | undefined = config.get('APP_URL', { infer: true });
+        const logger = new Logger(RequestPasswordReset.name);
+        return new RequestPasswordReset({
+          accounts,
+          passwords,
+          sender,
+          limiter,
+          clock,
+          appUrl: appUrl ?? DEFAULT_APP_URL,
+          log: {
+            warn: (message) => {
+              logger.warn(message);
+            },
+          },
+        });
+      },
+    },
+    {
+      provide: ResetPassword,
+      inject: [PASSWORD_REPOSITORY, PASSWORD_HASHER, ATTEMPT_LIMITER, CLOCK],
+      useFactory: (
+        passwords: PasswordRepository,
+        hasher: PasswordHasher,
+        limiter: AttemptLimiter,
+        clock: Clock,
+      ): ResetPassword => new ResetPassword({ passwords, hasher, limiter, clock }),
+    },
+    {
+      provide: ChangeOwnPassword,
+      inject: [PASSWORD_REPOSITORY, PASSWORD_HASHER, ATTEMPT_LIMITER, CLOCK],
+      useFactory: (
+        passwords: PasswordRepository,
+        hasher: PasswordHasher,
+        limiter: AttemptLimiter,
+        clock: Clock,
+      ): ChangeOwnPassword => new ChangeOwnPassword({ passwords, hasher, limiter, clock }),
+    },
     // #133: el nombre visible, solo para la propia sesión (EC-08).
     {
       provide: OwnDisplayName,
@@ -214,12 +280,13 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
     },
     {
       provide: SignInWithGoogle,
-      inject: [GOOGLE_ACCOUNT_LINKS, SESSION_REPOSITORY, CLOCK],
+      inject: [GOOGLE_ACCOUNT_LINKS, ACCOUNT_DELETION_REPOSITORY, SESSION_REPOSITORY, CLOCK],
       useFactory: (
         links: GoogleAccountLinks,
+        deletion: AccountDeletionRepository,
         sessions: SessionRepository,
         clock: Clock,
-      ): SignInWithGoogle => new SignInWithGoogle({ links, sessions, clock }),
+      ): SignInWithGoogle => new SignInWithGoogle({ links, deletion, sessions, clock }),
     },
     {
       provide: CompleteGoogleSignUp,
