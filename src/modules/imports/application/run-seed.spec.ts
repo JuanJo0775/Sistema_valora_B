@@ -297,6 +297,13 @@ describe('semilla de datos iniciales', () => {
       [storeRow(2, { lat: '95' })],
       'tiendas.csv, fila 2: las coordenadas no son válidas',
     ],
+    // #213: uno de los 12 municipios del Quindío (grill de la #106).
+    [
+      'tienda con un municipio que no es del Quindío',
+      [],
+      [storeRow(2, { municipio: 'pereira' })],
+      'tiendas.csv, fila 2: el municipio «pereira» no es del Quindío (armenia, buenavista, calarca, circasia, cordoba, filandia, genova, la-tebaida, montenegro, pijao, quimbaya o salento)',
+    ],
     [
       'tienda sin nombre',
       [],
