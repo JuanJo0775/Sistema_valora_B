@@ -225,6 +225,13 @@
       "when": 1795232586900,
       "tag": "0031_identity-google-subject",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795307628774,
+      "tag": "0032_commerce-merchant-claims",
+      "breakpoints": true
     }
   ]
 }
