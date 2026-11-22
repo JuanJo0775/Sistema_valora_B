@@ -62,6 +62,8 @@ export interface ProductRepository {
   search(query: ProductSearch): Promise<ProductView[]>;
   findByBarcode(barcode: string): Promise<ProductView[]>;
   presentationExists(presentationId: string): Promise<boolean>;
+  // D7 (#205): código de barras → presentación, solo de los códigos que existen.
+  presentationIdsByBarcodes(barcodes: string[]): Promise<Map<string, string>>;
   findForComparison(productId: string): Promise<ProductForComparisonView | null>;
   isFreshPresentation(presentationId: string): Promise<boolean | null>;
   labelsOf(presentationIds: string[]): Promise<Map<string, string>>;

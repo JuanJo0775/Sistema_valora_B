@@ -51,7 +51,9 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
       brand: 'Marca de prueba',
       categoryCode: 'grains-groceries',
       aliases: [],
-      presentations: [{ id: riceId, quantity: 500, unit: 'g', packCount: 1 }],
+      presentations: [
+        { id: riceId, quantity: 500, unit: 'g', packCount: 1, barcode: '7702511777014' },
+      ],
     });
   });
 
@@ -157,6 +159,14 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
         .set('X-CSRF-Token', owner.csrfToken);
       return body === undefined ? call : call.send(body);
     };
+    // D7 (#205): el archivo, con el encabezado salvo que se pida otra primera fila.
+    const bulk = (rows: string[], header = 'codigo_barras;precio') =>
+      request(server)
+        .post('/v1/commerce/prices/bulk')
+        .set('Content-Type', 'text/csv')
+        .set('Cookie', owner.cookie)
+        .set('X-CSRF-Token', owner.csrfToken)
+        .send([header, ...rows].join('\n'));
 
     const responses = [
       [
@@ -180,6 +190,13 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
         await request(server).get('/v1/commerce/prices').set('Cookie', owner.cookie),
       ],
       ['POST /commerce/prices/reconfirm', 200, await send('post', '/commerce/prices/reconfirm')],
+      ['POST /commerce/prices/bulk', 200, await bulk(['7702511777014;2600', '1;2600'])],
+      ['POST /commerce/prices/bulk', 400, await bulk([], '7702511777014;2600')],
+      [
+        'POST /commerce/prices/bulk',
+        413,
+        await bulk(Array.from({ length: 1001 }, (_, i) => `${String(i)};2600`)),
+      ],
       [
         'POST /commerce/prices/reconfirm',
         401,

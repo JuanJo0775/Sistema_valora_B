@@ -7,7 +7,12 @@ import {
   PendingStoreProposalName,
   ProposeStore,
 } from '../establishments';
-import { CatalogModule, PresentationExists, PresentationFreshness } from '../catalog';
+import {
+  CatalogModule,
+  PresentationExists,
+  PresentationFreshness,
+  PresentationsByBarcode,
+} from '../catalog';
 import { IdentityModule, ReporterIdentity } from '../identity';
 import { ClaimEstablishment } from './application/claim-establishment';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
@@ -15,6 +20,7 @@ import { MerchantOfficialPrices } from './application/merchant-official-prices';
 import { MerchantProfile } from './application/merchant-profile';
 import { PublishOfficialPrice } from './application/publish-official-price';
 import { ReconfirmOfficialPrices } from './application/reconfirm-official-prices';
+import { UploadOfficialPrices } from './application/upload-official-prices';
 import { type ProposalDecision, ResolveProposedClaim } from './application/resolve-proposed-claim';
 import { MerchantController } from './http/merchant.controller';
 import { OfficialPricesController } from './http/official-prices.controller';
@@ -54,6 +60,22 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           presentations,
+          clock: { now: () => new Date() },
+        }),
+    },
+    // D7 (#205): carga por archivo.
+    {
+      provide: UploadOfficialPrices,
+      inject: [DATABASE, OutboxPublisher, PresentationsByBarcode],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        presentations: PresentationsByBarcode,
+      ): UploadOfficialPrices =>
+        new UploadOfficialPrices({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          presentations,
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
           clock: { now: () => new Date() },
         }),
     },

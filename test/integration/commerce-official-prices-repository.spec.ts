@@ -65,6 +65,21 @@ describe('precios oficiales en el esquema commerce (RF-016, #203)', () => {
     await expect(prices.listFor(STORE)).resolves.toEqual([later]);
   });
 
+  // D7: el archivo completo en una transacción; subir el mismo archivo otra vez no duplica.
+  it('guarda las filas de un archivo juntas y repetirlo actualiza sin duplicar', async () => {
+    const file = [price(), price({ presentationId: OIL, priceCop: 8900 })];
+
+    await prices.saveAll(file, published());
+    const again = file.map((p) => ({ ...p, confirmedAt: new Date('2026-11-29T10:00:00Z') }));
+    await prices.saveAll(again, published());
+
+    await expect(prices.listFor(STORE)).resolves.toEqual(again);
+    await expect(outboxTypes()).resolves.toEqual([
+      'OfficialPricePublished',
+      'OfficialPricePublished',
+    ]);
+  });
+
   it('reconfirmar todos actualiza solo los de esa tienda, dice cuántos y guarda su evento', async () => {
     await prices.save(price(), []);
     await prices.save(price({ presentationId: OIL }), []);

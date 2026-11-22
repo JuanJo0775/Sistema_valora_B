@@ -4,9 +4,9 @@ import { AppModule } from '../../src/app.module';
 import { contractRoutes } from '../support/contract';
 import { routesOf } from '../support/routes';
 
-// Rutas del módulo comercial que aún no se construyen (corte 3). Las ya construidas (#201 a #203)
+// Rutas del módulo comercial que aún no se construyen (corte 3). Las ya construidas (#201 a #205)
 // se vigilan como las demás.
-const LATER = /^\w+ \/commerce\/(prices\/bulk|promotions)/;
+const LATER = /^\w+ \/commerce\/promotions/;
 
 // Grill de la #25, pregunta 2: toda ruta del código está en el contrato, y al revés.
 describe('inventario de rutas frente a docs/openapi.yaml (PR-09, #25)', () => {

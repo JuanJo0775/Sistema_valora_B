@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  PayloadTooLargeException,
   Get,
   Header,
   HttpCode,
@@ -21,6 +22,9 @@ import {
   PublishOfficialPrice,
 } from '../application/publish-official-price';
 import { ReconfirmOfficialPrices } from '../application/reconfirm-official-prices';
+import { UploadOfficialPrices, type UploadResult } from '../application/upload-official-prices';
+import { InvalidPriceFileError, PriceFileTooLargeError } from '../../../domain/official-price-file';
+import { RequestValidationError } from '../../../shared/http/validation';
 import { PublishOfficialPriceDto } from './official-prices.dto';
 
 // Un comercio sin tienda verificada recibe 403 con su propio código.
@@ -43,7 +47,33 @@ export class OfficialPricesController {
     private readonly publishOfficialPrice: PublishOfficialPrice,
     private readonly merchantOfficialPrices: MerchantOfficialPrices,
     private readonly reconfirmOfficialPrices: ReconfirmOfficialPrices,
+    private readonly uploadOfficialPrices: UploadOfficialPrices,
   ) {}
+
+  // D7: el archivo CSV, procesado al momento. Sin Content-Type text/csv el cuerpo no es texto.
+  @Post('bulk')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(SessionGuard)
+  @Roles('comercio')
+  async upload(
+    @Body() body: unknown,
+    @CurrentSession() session: AuthenticatedSession,
+  ): Promise<UploadResult> {
+    if (typeof body !== 'string') {
+      throw new RequestValidationError('archivo: envía el archivo como text/csv.');
+    }
+    try {
+      return await asMerchant(() => this.uploadOfficialPrices.execute(session.accountId, body));
+    } catch (error) {
+      if (error instanceof InvalidPriceFileError) {
+        throw new RequestValidationError(`archivo: ${error.message}`);
+      }
+      if (error instanceof PriceFileTooLargeError) {
+        throw new PayloadTooLargeException(error.message);
+      }
+      throw error;
+    }
+  }
 
   @Put()
   @HttpCode(HttpStatus.OK)

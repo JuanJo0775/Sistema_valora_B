@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type { OfficialPrice, OfficialPriceRepository } from '../application/official-prices';
@@ -11,14 +11,23 @@ export class DrizzleOfficialPriceRepository implements OfficialPriceRepository {
   ) {}
 
   // ADR-015: el precio y su evento se confirman juntos. Publicar otra vez lo reemplaza.
-  async save(price: OfficialPrice, events: DomainEvent[]): Promise<void> {
+  save(price: OfficialPrice, events: DomainEvent[]): Promise<void> {
+    return this.saveAll([price], events);
+  }
+
+  // D7: todas las filas del archivo en una sola transacción, con sus eventos.
+  async saveAll(prices: OfficialPrice[], events: DomainEvent[]): Promise<void> {
+    if (prices.length === 0) return;
     await this.db.transaction(async (tx) => {
       await tx
         .insert(officialPrices)
-        .values(price)
+        .values(prices)
         .onConflictDoUpdate({
           target: [officialPrices.establishmentId, officialPrices.presentationId],
-          set: { priceCop: price.priceCop, confirmedAt: price.confirmedAt },
+          set: {
+            priceCop: sql`excluded.price_cop`,
+            confirmedAt: sql`excluded.confirmed_at`,
+          },
         });
       for (const event of events) await this.outbox.publish(tx, event);
     });
