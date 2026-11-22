@@ -47,7 +47,7 @@ export function officialVsReported({
 }: OfficialVsReportedInput): OfficialVsReported {
   const differs = (r: ReportedPrice) =>
     Math.abs(r.priceCop - official.priceCop) > official.priceCop * DISCREPANCY_PARAMS.threshold;
-  const corroborating = reports.filter(differs);
+  const corroborating = reports.filter((r) => r.reliable && differs(r));
   if (corroborating.length < DISCREPANCY_PARAMS.minReports) {
     return { kind: 'oficial', priceCop: official.priceCop };
   }
