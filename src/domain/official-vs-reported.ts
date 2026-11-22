@@ -19,8 +19,49 @@ export interface OfficialVsReportedInput {
   ttlDays: number;
 }
 
-export type OfficialVsReported = { kind: 'oficial'; priceCop: number };
+export interface Discrepancy {
+  officialPriceCop: number;
+  reportedPriceCop: number;
+  // Cuántos reportes la corroboran y desde cuándo (el más antiguo de ellos).
+  reports: number;
+  since: Date;
+}
 
-export function officialVsReported({ official }: OfficialVsReportedInput): OfficialVsReported {
-  return { kind: 'oficial', priceCop: official.priceCop };
+export type OfficialVsReported =
+  | { kind: 'oficial'; priceCop: number }
+  // Entra al orden la mediana de los reportes que corroboran; reportId es el de ese reporte.
+  | { kind: 'discrepancia'; priceCop: number; reportId: string; discrepancy: Discrepancy };
+
+// ADR-008: valores PROVISIONALES y configurables en un solo lugar.
+export const DISCREPANCY_PARAMS = { threshold: 0.05, minReports: 2 } as const;
+
+// Con un número par, el menor de los dos centrales: siempre es un precio que alguien vio (D1).
+function median(reports: ReportedPrice[]): ReportedPrice {
+  const sorted = [...reports].sort((a, b) => a.priceCop - b.priceCop);
+  return sorted[Math.floor((sorted.length - 1) / 2)] as ReportedPrice;
+}
+
+export function officialVsReported({
+  official,
+  reports,
+}: OfficialVsReportedInput): OfficialVsReported {
+  const differs = (r: ReportedPrice) =>
+    Math.abs(r.priceCop - official.priceCop) > official.priceCop * DISCREPANCY_PARAMS.threshold;
+  const corroborating = reports.filter(differs);
+  if (corroborating.length < DISCREPANCY_PARAMS.minReports) {
+    return { kind: 'oficial', priceCop: official.priceCop };
+  }
+  const chosen = median(corroborating);
+  const since = new Date(Math.min(...corroborating.map((r) => r.observedAt.getTime())));
+  return {
+    kind: 'discrepancia',
+    priceCop: chosen.priceCop,
+    reportId: chosen.reportId,
+    discrepancy: {
+      officialPriceCop: official.priceCop,
+      reportedPriceCop: chosen.priceCop,
+      reports: corroborating.length,
+      since,
+    },
+  };
 }
