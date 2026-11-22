@@ -99,3 +99,24 @@ describe('confiabilidad de los precios que muestra la comparación', () => {
     expect(approved?.confirmations).toBe(1);
   });
 });
+
+// D1 del grill comercial (#204): los reportes que comparison compara con el precio oficial.
+describe('reportes recientes de una tienda para el precio oficial', () => {
+  it('uno por persona (el más reciente), con su nivel y sin la clave de quien reportó', async () => {
+    const reliability = setup(
+      [
+        observation('r-ana-viejo', 'ana', 4600, { observedAt: hoursAgo(30) }),
+        observation('r-ana', 'ana', 4800),
+        observation('r-beto', 'beto', 4800),
+      ],
+      { ana: 1, beto: 1 },
+    );
+
+    const reports = await reliability.reportsAt('arroz-500g', 'tienda-centro', 14);
+
+    expect(reports).toEqual([
+      { reportId: 'r-ana', priceCop: 4800, observedAt: hoursAgo(1), level: 'alta' },
+      { reportId: 'r-beto', priceCop: 4800, observedAt: hoursAgo(1), level: 'alta' },
+    ]);
+  });
+});
