@@ -435,5 +435,20 @@ describe('comparar los precios de un producto', () => {
         },
       ]);
     });
+
+    it('con precio oficial, la tienda sale una sola vez: el oficial reemplaza su precio de la comunidad', async () => {
+      const comparison = await setup({
+        stores: [store('a'), store('b')],
+        prices: [price('a', 2500), price('b', 2400)],
+        officials: [official('a')],
+      }).execute(input());
+
+      expect(
+        comparison?.results.map((item) => [item.establishment.id, item.source, item.priceCop]),
+      ).toEqual([
+        ['a', 'oficial', 2200],
+        ['b', 'comunidad', 2400],
+      ]);
+    });
   });
 });
