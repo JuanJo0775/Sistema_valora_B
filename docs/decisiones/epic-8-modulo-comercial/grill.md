@@ -58,6 +58,14 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Qué pasa por el moderador? | **La ubicación**, siempre: va a la lista de propuestas de tiendas que ya existe | Mover el punto cambia la distancia, que entra al orden neutral y a «tiendas cercanas» |
 | ¿Cómo se aplica sin romper el monolito? | `commerce` pide los cambios a `establishments` por su interfaz pública (`index.ts`); no escribe en sus tablas | Regla de dependencias (ADR-001) |
 
+**Precisiones al construir B7 (#207, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Cómo se escribe el horario? | **Por día, sin texto libre:** cada día de la semana está cerrado o tiene una hora de apertura y una de cierre (HH:MM) | Se valida solo, no hay que moderar texto y la PWA puede decir «abierto ahora» |
+| ¿A dónde van las correcciones que revisa el moderador? | A la **cola de propuestas de tiendas que ya existe** (#27), con un tipo «corrección» que muestra el valor actual y el propuesto | Una sola cola para el moderador |
+| ¿Se muestran el horario y el teléfono? | **Sí**, en la ficha pública de la tienda, cuando el comercio los puso. Son datos del negocio, no de una persona (EC-08) | Si no, el cambio no se vería en ningún lado |
+
 ## D6. Promociones (ADR-009, ADR-026)
 
 | Pregunta | Decisión | Razón |
