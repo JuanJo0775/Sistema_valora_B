@@ -1969,6 +1969,11 @@ paths:
       tags: [Comercios]
       operationId: upsertOfficialPrice
       summary: Publicar o actualizar un precio oficial (RF-016, EC-02)
+      description: >-
+        D4 del grill comercial (#203). Solo un comercio verificado, en su propia tienda. Publicar otra
+        vez la misma presentación reemplaza el precio y lo deja reconfirmado. El precio cumple el mismo
+        piso y techo absolutos que un reporte (ADR-030). Vale lo mismo que un reporte (ADR-005),
+        contando desde la última confirmación.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -1979,13 +1984,95 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [presentationId, priceCop]
               properties:
                 presentationId: { type: string, format: uuid }
                 priceCop: { type: integer, minimum: 1 }
       responses:
-        '200': { description: Precio oficial publicado }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '200':
+          description: Precio oficial publicado y confirmado ahora.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OfficialPrice' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: >-
+            code FORBIDDEN: la cuenta no es comercio. code MERCHANT_NOT_VERIFIED: su tienda no está
+            verificada. También CSRF_TOKEN_INVALID y ACCOUNT_SUSPENDED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            code UNKNOWN_PRESENTATION: la presentación no está en el catálogo. code IMPLAUSIBLE_PRICE:
+            menos de $100 o más de $5.000.000.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    get:
+      tags: [Comercios]
+      operationId: listOfficialPrices
+      summary: Los precios oficiales del comercio con su vigencia (RF-016)
+      description: >-
+        D4 del grill comercial (#203). La vigencia cuenta desde la última confirmación, con el TTL de
+        la categoría (ADR-005).
+      x-corte: 3
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Sus precios oficiales, en el orden en que los publicó.
+          headers:
+            Cache-Control:
+              description: Dato de la propia cuenta.
+              schema: { type: string, example: 'private, no-store' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/OfficialPriceWithFreshness' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN o MERCHANT_NOT_VERIFIED, como en PUT.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /commerce/prices/reconfirm:
+    post:
+      tags: [Comercios]
+      operationId: reconfirmOfficialPrices
+      summary: «Todos mis precios siguen igual» (RF-016)
+      description: >-
+        D4 del grill comercial (#203). Sin cuerpo: reconfirma de un toque todos los precios oficiales
+        de su tienda.
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        '200':
+          description: Cuántos precios se reconfirmaron.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [reconfirmed]
+                properties:
+                  reconfirmed: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN o MERCHANT_NOT_VERIFIED, como en PUT /commerce/prices.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /commerce/prices/bulk:
     post:
       tags: [Comercios]
@@ -2133,6 +2220,25 @@ components:
           type: string
           format: date-time
           description: Cuándo se borra la cuenta de forma definitiva si no se restaura.
+    OfficialPrice:
+      type: object
+      additionalProperties: false
+      required: [establishmentId, presentationId, priceCop, confirmedAt]
+      properties:
+        establishmentId: { type: string, format: uuid }
+        presentationId: { type: string, format: uuid }
+        priceCop: { type: integer }
+        confirmedAt: { type: string, format: date-time, description: Última confirmación. }
+    OfficialPriceWithFreshness:
+      type: object
+      additionalProperties: false
+      required: [establishmentId, presentationId, priceCop, confirmedAt, freshness]
+      properties:
+        establishmentId: { type: string, format: uuid }
+        presentationId: { type: string, format: uuid }
+        priceCop: { type: integer }
+        confirmedAt: { type: string, format: date-time }
+        freshness: { type: string, enum: [vigente, por_confirmar, desactualizado] }
     MerchantUnlocks:
       type: array
       description: Lo que el comercio pre-aprobado podrá hacer al aprobarse su tienda (D2).
@@ -2173,10 +2279,10 @@ components:
       description: >-
         Única forma de error de la API (issue #41). Solo tiene code y message; la única excepción es
         availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84) y scheduledFor en el 403 ACCOUNT_PENDING_DELETION (PendingDeletionError, ADR-032). Valores de code:
-        VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
+        VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), MERCHANT_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
         CONFLICT (409), ESTABLISHMENT_HAS_OWNER (409), ACCOUNT_HAS_ESTABLISHMENT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:

@@ -3,7 +3,9 @@ import {
   boolean,
   check,
   index,
+  integer,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -49,4 +51,24 @@ export const merchantClaimRejections = commerceSchema.table(
     rejectedAt: timestamp('rejected_at', { withTimezone: true }).notNull(),
   },
   (table) => [index('merchant_claim_rejections_account_idx').on(table.accountId, table.rejectedAt)],
+);
+
+// RF-016 con la D4 del grill comercial: un precio oficial por tienda y presentación. Sin llaves
+// foráneas: establishments y catalog son de otros esquemas.
+export const officialPrices = commerceSchema.table(
+  'official_prices',
+  {
+    establishmentId: uuid('establishment_id').notNull(),
+    presentationId: uuid('presentation_id').notNull(),
+    priceCop: integer('price_cop').notNull(),
+    // La vigencia cuenta desde aquí (ADR-005); editar o reconfirmar la mueve.
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull(),
+    // Primera publicación: solo ordena la lista del comercio.
+    publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.establishmentId, table.presentationId] }),
+    // ADR-030: el mismo piso y techo absolutos que un reporte.
+    check('official_prices_price_cop_range', sql`${table.priceCop} between 100 and 5000000`),
+  ],
 );

@@ -7,20 +7,66 @@ import {
   PendingStoreProposalName,
   ProposeStore,
 } from '../establishments';
+import { CatalogModule, PresentationExists, PresentationFreshness } from '../catalog';
 import { IdentityModule, ReporterIdentity } from '../identity';
 import { ClaimEstablishment } from './application/claim-establishment';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
+import { MerchantOfficialPrices } from './application/merchant-official-prices';
 import { MerchantProfile } from './application/merchant-profile';
+import { PublishOfficialPrice } from './application/publish-official-price';
+import { ReconfirmOfficialPrices } from './application/reconfirm-official-prices';
 import { type ProposalDecision, ResolveProposedClaim } from './application/resolve-proposed-claim';
 import { MerchantController } from './http/merchant.controller';
+import { OfficialPricesController } from './http/official-prices.controller';
+import { DrizzleOfficialPriceRepository } from './infrastructure/drizzle-official-price-repository';
 import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchant-claim-repository';
 
 // EPIC-B08: comercios verificados (D1 a D8 del grill comercial). B1 (#201) y B2 (#202): registro y
-// perfil.
+// perfil. B3 (#203): precios oficiales.
 @Module({
-  imports: [IdentityModule, EstablishmentsModule],
-  controllers: [MerchantController],
+  imports: [IdentityModule, EstablishmentsModule, CatalogModule],
+  controllers: [MerchantController, OfficialPricesController],
   providers: [
+    {
+      provide: PublishOfficialPrice,
+      inject: [DATABASE, OutboxPublisher, PresentationExists],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        presentations: PresentationExists,
+      ): PublishOfficialPrice =>
+        new PublishOfficialPrice({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          presentations,
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: MerchantOfficialPrices,
+      inject: [DATABASE, OutboxPublisher, PresentationFreshness],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        presentations: PresentationFreshness,
+      ): MerchantOfficialPrices =>
+        new MerchantOfficialPrices({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
+          presentations,
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: ReconfirmOfficialPrices,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ReconfirmOfficialPrices =>
+        new ReconfirmOfficialPrices({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
+          clock: { now: () => new Date() },
+        }),
+    },
     {
       provide: ClaimEstablishment,
       inject: [DATABASE, EstablishmentDetails, OutboxPublisher],
