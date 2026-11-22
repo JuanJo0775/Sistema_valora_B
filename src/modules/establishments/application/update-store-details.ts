@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { OpeningHours } from '../../../domain/opening-hours';
+import { assertValidOpeningHours, type OpeningHours } from '../../../domain/opening-hours';
 import { equivalentStoreNames } from '../../../domain/store-proposal';
 import type { StoreCorrections, StoreDetailsChange, StoreDetailsRepository } from './store-details';
 
@@ -33,6 +33,7 @@ export class UpdateStoreDetails {
   constructor(private readonly ports: UpdateStoreDetailsPorts) {}
 
   async execute(request: UpdateStoreDetailsRequest): Promise<UpdateStoreDetailsResult> {
+    if (request.openingHours !== undefined) assertValidOpeningHours(request.openingHours);
     const { stores, corrections, clock } = this.ports;
     const name = request.name?.trim();
     const nameInReview = name !== undefined && (await this.copiesANeighbor(request, name));
