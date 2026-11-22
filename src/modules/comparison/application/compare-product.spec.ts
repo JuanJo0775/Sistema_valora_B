@@ -450,5 +450,59 @@ describe('comparar los precios de un producto', () => {
         ['b', 'comunidad', 2400],
       ]);
     });
+
+    it('con discrepancia corroborada entra la mediana de la comunidad, con su reporte y el oficial al lado', async () => {
+      const comparison = await setup({
+        stores: [store('a'), store('b')],
+        prices: [price('b', 2400)],
+        officials: [official('a')],
+        // Dos reportes confiables, después del cambio del oficial y a más de 5 %.
+        reports: {
+          a: [
+            { reportId: 'r-alto', priceCop: 2700, daysAgo: 2, level: 'media' },
+            { reportId: 'r-medio', priceCop: 2600, daysAgo: 1, level: 'alta' },
+          ],
+        },
+      }).execute(input());
+
+      // La mediana ($2.600) entra al orden: la tienda b ($2.400) queda primero.
+      expect(comparison?.results.map((item) => item.establishment.id)).toEqual(['b', 'a']);
+      expect(comparison?.results[1]).toEqual({
+        establishment: store('a'),
+        reportId: 'r-medio',
+        presentationId: 'p-500g',
+        priceCop: 2600,
+        unitPrice: expect.anything() as unknown,
+        source: 'comunidad',
+        freshness: 'vigente',
+        isCheapest: false,
+        reliability: 'media',
+        confirmations: 0,
+        observedAt: daysAgo(1),
+        discrepancy: {
+          officialPriceCop: 2200,
+          reportedPriceCop: 2600,
+          reports: 2,
+          since: daysAgo(2),
+        },
+      });
+    });
+
+    it('los reportes de confiabilidad baja no le quitan el lugar al oficial', async () => {
+      const comparison = await setup({
+        stores: [store('a')],
+        officials: [official('a')],
+        reports: {
+          a: [
+            { reportId: 'r-1', priceCop: 2700, daysAgo: 1, level: 'baja' },
+            { reportId: 'r-2', priceCop: 2600, daysAgo: 1, level: 'baja' },
+          ],
+        },
+      }).execute(input());
+
+      expect(comparison?.results.map((item) => [item.source, item.priceCop])).toEqual([
+        ['oficial', 2200],
+      ]);
+    });
   });
 });
