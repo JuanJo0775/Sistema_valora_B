@@ -66,4 +66,18 @@ describe('el comercio corrige los datos de su tienda (D5 del grill comercial)', 
     ]);
     expect(corrections).toEqual([]);
   });
+
+  it('un nombre nuevo sin una tienda vecina parecida se aplica al instante', async () => {
+    const { update, applied, corrections } = setup([
+      { id: 'vecina', name: 'Panadería El Trigal', distanceM: 30 },
+    ]);
+
+    const result = await update.execute(request({ name: '  Tienda Esperanza de Rosa ' }));
+
+    expect(result).toEqual({ applied: ['name'], inReview: [] });
+    expect(applied).toEqual([
+      { establishmentId: STORE.id, change: { name: 'Tienda Esperanza de Rosa' } },
+    ]);
+    expect(corrections).toEqual([]);
+  });
 });
