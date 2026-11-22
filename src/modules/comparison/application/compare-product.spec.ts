@@ -7,6 +7,7 @@ import {
 } from './compare-product';
 import type { CurrentPrice } from './current-prices';
 import type { OfficialPriceCopy } from './official-price-copies';
+import type { PromotionCopy } from './promotion-copies';
 
 const productId = '11111111-1111-4111-8111-111111111111';
 const missingId = '99999999-9999-4999-8999-999999999999';
@@ -22,6 +23,8 @@ interface Fixture {
   reference?: WholesaleReferenceView | null;
   // #204: la copia del precio oficial y los reportes recientes de cada tienda.
   officials?: OfficialPriceCopy[];
+  // #206: la copia de las promociones.
+  promotions?: PromotionCopy[];
   reports?: Record<
     string,
     { reportId: string; priceCop: number; daysAgo: number; level: 'alta' | 'media' | 'baja' }[]
@@ -36,6 +39,7 @@ function setup({
   reliability = {},
   reference = null,
   officials = [],
+  promotions = [],
   reports = {},
 }: Fixture = {}) {
   return new CompareProduct({
@@ -71,6 +75,10 @@ function setup({
     prices: {
       findByPresentations: (ids) =>
         Promise.resolve(prices.filter((price) => ids.includes(price.presentationId))),
+    },
+    promotionCopies: {
+      findByPresentations: (ids) =>
+        Promise.resolve(promotions.filter((promotion) => ids.includes(promotion.presentationId))),
     },
     officials: {
       findByPresentations: (ids) =>
@@ -503,6 +511,68 @@ describe('comparar los precios de un producto', () => {
       expect(comparison?.results.map((item) => [item.source, item.priceCop])).toEqual([
         ['oficial', 2200],
       ]);
+    });
+  });
+
+  // D6 del grill comercial (#206) y ADR-009: las promociones van aparte y no cambian el orden.
+  describe('con promociones', () => {
+    const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const official = (establishmentId: string, confirmedDaysAgo = 1): OfficialPriceCopy => ({
+      presentationId: 'p-500g',
+      establishmentId,
+      priceCop: 2200,
+      confirmedAt: daysAgo(confirmedDaysAgo),
+      priceChangedAt: daysAgo(confirmedDaysAgo),
+    });
+    // El reloj de la prueba es el 12 de noviembre: esta va del 10 al 20.
+    const promotion = (
+      id: string,
+      establishmentId: string,
+      dates = { validFrom: '2026-11-10', validUntil: '2026-11-20' },
+    ): PromotionCopy => ({
+      id,
+      establishmentId,
+      presentationId: 'p-500g',
+      offer: { type: 'descuento_porcentual', percent: 10 },
+      conditions: { maxPerCustomer: 2, whileStocksLast: true, paymentMethod: 'efectivo' },
+      ...dates,
+    });
+    const fixture = {
+      stores: [store('a'), store('b'), store('c'), store('d')],
+      prices: [price('d', 2500)],
+      // c no tiene el oficial vigente: confirmado hace 20 días (TTL de 14).
+      officials: [official('a'), official('b'), official('c', 20)],
+      promotions: [
+        promotion('activa', 'a'),
+        promotion('vencida', 'b', { validFrom: '2026-11-01', validUntil: '2026-11-05' }),
+        promotion('pausada', 'c'),
+        promotion('fuera-del-radio', 'lejana'),
+      ],
+    };
+
+    it('solo salen las activas de las tiendas del área, con el oficial y el precio con la promoción', async () => {
+      const comparison = await setup(fixture).execute(input());
+
+      expect(comparison?.promotions).toEqual([
+        {
+          id: 'activa',
+          establishment: store('a'),
+          presentationId: 'p-500g',
+          offer: { type: 'descuento_porcentual', percent: 10 },
+          conditions: { maxPerCustomer: 2, whileStocksLast: true, paymentMethod: 'efectivo' },
+          validFrom: '2026-11-10',
+          validUntil: '2026-11-20',
+          officialPriceCop: 2200,
+          promotedPriceCop: 1980,
+        },
+      ]);
+    });
+
+    it('los resultados son idénticos con y sin promociones (ADR-009)', async () => {
+      const withPromotions = await setup(fixture).execute(input());
+      const without = await setup({ ...fixture, promotions: [] }).execute(input());
+
+      expect(withPromotions?.results).toEqual(without?.results);
     });
   });
 });
