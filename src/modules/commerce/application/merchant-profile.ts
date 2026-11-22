@@ -1,8 +1,9 @@
+import { PRE_APPROVED_UNLOCKS } from './claim-proposed-establishment';
 import type { MerchantClaim, MerchantClaimRepository } from './merchant-claims';
 
 export interface MerchantProfilePorts {
   claims: Pick<MerchantClaimRepository, 'findByAccount'>;
-  // La tienda del mapa, por la interfaz pública de establishments.
+  // La tienda del mapa o la propuesta, por la interfaz pública de establishments.
   establishments: { find(establishmentId: string): Promise<{ name: string } | null> };
 }
 
@@ -12,6 +13,8 @@ export interface MerchantProfileView {
   responsibleName: string;
   informal: boolean;
   verifiedAt: Date | null;
+  // Solo pre-aprobado: lo que podrá hacer cuando se apruebe su tienda (D2).
+  unlocks?: typeof PRE_APPROVED_UNLOCKS;
 }
 
 // GET /commerce/me: lo que el comercio ve de sí mismo. Nunca una ubicación (EC-08).
@@ -28,6 +31,7 @@ export class MerchantProfile {
       responsibleName: claim.responsibleName,
       informal: claim.informal,
       verifiedAt: claim.verifiedAt,
+      ...(claim.status === 'pre_aprobado' ? { unlocks: PRE_APPROVED_UNLOCKS } : {}),
     };
   }
 }
