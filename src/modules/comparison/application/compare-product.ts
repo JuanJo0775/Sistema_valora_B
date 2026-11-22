@@ -7,7 +7,7 @@ import {
 } from '../../../domain/neutral-ranking';
 import { savingsPercent } from '../../../domain/savings';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
-import { type Discrepancy, officialVsReported } from '../../../domain/official-vs-reported';
+import type { Discrepancy } from '../../../domain/official-vs-reported';
 import { promotedPriceCop, promotionStatus } from '../../../domain/promotion';
 import { isRecentReference } from '../../../domain/wholesale-reference';
 import type { Municipality } from '../../../domain/municipality';
@@ -21,6 +21,7 @@ import type {
 import type { PriceRef, PriceReliability, ReportAtStore } from '../../reliability';
 import type { CurrentPrices } from './current-prices';
 import type { OfficialPriceCopies, OfficialPriceCopy } from './official-price-copies';
+import { resolveOfficial } from './official-resolution';
 import type { PromotionCopies, PromotionCopy } from './promotion-copies';
 
 // Puertos hacia las consultas públicas de catalog y establishments (grill de la #15, pregunta 2).
@@ -395,17 +396,12 @@ export class CompareProduct {
   ): Promise<
     Pick<ComparisonItem, 'priceCop' | 'source' | 'observedAt' | 'reportId' | 'discrepancy'>
   > {
-    const reports = await this.ports.reliability.reportsAt(
-      official.presentationId,
-      official.establishmentId,
-      ttlDays,
-    );
-    const resolved = officialVsReported({
-      official: { priceCop: official.priceCop, changedAt: official.priceChangedAt },
-      reports: reports.map((report) => ({ ...report, reliable: report.level !== 'baja' })),
+    const { resolved, reports } = await resolveOfficial(
+      official,
+      this.ports.reliability,
       now,
       ttlDays,
-    });
+    );
     const chosen =
       resolved.kind === 'discrepancia'
         ? reports.find((report) => report.reportId === resolved.reportId)
