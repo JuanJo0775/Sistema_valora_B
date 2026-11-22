@@ -1,5 +1,6 @@
 import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentType } from '../../establishments';
+import { AccountHasEstablishmentError } from './claim-establishment';
 import type { MerchantClaimRepository } from './merchant-claims';
 
 type Point = { lat: number; lng: number };
@@ -52,6 +53,10 @@ export class ClaimProposedEstablishment {
 
   async execute(request: ProposedClaimRequest): Promise<ProposedClaimResult> {
     const { proposals, claims } = this.ports;
+    // D3: una tienda por cuenta, también mientras espera la aprobación.
+    if ((await claims.establishmentOf(request.accountId)) !== null) {
+      throw new AccountHasEstablishmentError();
+    }
     const establishmentId = await proposals.propose(
       { ...request.newEstablishment, ...request.location },
       request.accountId,
