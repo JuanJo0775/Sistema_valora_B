@@ -16,14 +16,19 @@ import {
 import { IdentityModule, ReporterIdentity } from '../identity';
 import { ClaimEstablishment } from './application/claim-establishment';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
+import { CreatePromotion } from './application/create-promotion';
 import { MerchantOfficialPrices } from './application/merchant-official-prices';
 import { MerchantProfile } from './application/merchant-profile';
+import { MerchantPromotions } from './application/merchant-promotions';
 import { PublishOfficialPrice } from './application/publish-official-price';
 import { ReconfirmOfficialPrices } from './application/reconfirm-official-prices';
 import { UploadOfficialPrices } from './application/upload-official-prices';
+import { WithdrawPromotion } from './application/withdraw-promotion';
 import { type ProposalDecision, ResolveProposedClaim } from './application/resolve-proposed-claim';
 import { MerchantController } from './http/merchant.controller';
 import { OfficialPricesController } from './http/official-prices.controller';
+import { PromotionsController } from './http/promotions.controller';
+import { DrizzlePromotionRepository } from './infrastructure/drizzle-promotion-repository';
 import { DrizzleOfficialPriceRepository } from './infrastructure/drizzle-official-price-repository';
 import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchant-claim-repository';
 
@@ -31,7 +36,7 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
 // perfil. B3 (#203): precios oficiales.
 @Module({
   imports: [IdentityModule, EstablishmentsModule, CatalogModule],
-  controllers: [MerchantController, OfficialPricesController],
+  controllers: [MerchantController, OfficialPricesController, PromotionsController],
   providers: [
     {
       provide: PublishOfficialPrice,
@@ -61,6 +66,48 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           presentations,
           clock: { now: () => new Date() },
+        }),
+    },
+    // D6 (#206): promociones.
+    {
+      provide: CreatePromotion,
+      inject: [DATABASE, OutboxPublisher, PresentationFreshness],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        presentations: PresentationFreshness,
+      ): CreatePromotion =>
+        new CreatePromotion({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
+          presentations,
+          promotions: new DrizzlePromotionRepository(db, outbox),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: MerchantPromotions,
+      inject: [DATABASE, OutboxPublisher, PresentationFreshness],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        presentations: PresentationFreshness,
+      ): MerchantPromotions =>
+        new MerchantPromotions({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          promotions: new DrizzlePromotionRepository(db, outbox),
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
+          presentations,
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: WithdrawPromotion,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): WithdrawPromotion =>
+        new WithdrawPromotion({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          promotions: new DrizzlePromotionRepository(db, outbox),
         }),
     },
     // D7 (#205): carga por archivo.
