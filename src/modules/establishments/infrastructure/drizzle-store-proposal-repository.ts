@@ -1,5 +1,6 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type { EstablishmentType } from '../application/establishment-repository';
 import type {
   NewStoreProposal,
@@ -12,7 +13,10 @@ import { establishments, storeProposals } from './schema';
 const STATUS_AFTER = { aprobar: 'aprobada', fusionar: 'fusionada', rechazar: 'rechazada' } as const;
 
 export class DrizzleStoreProposalRepository implements StoreProposalRepository {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly outbox: OutboxPublisher,
+  ) {}
 
   async save(proposal: NewStoreProposal): Promise<void> {
     const { lat, lng, ...rest } = proposal;
@@ -45,7 +49,7 @@ export class DrizzleStoreProposalRepository implements StoreProposalRepository {
     }));
   }
 
-  async decide(record: StoreProposalDecisionRecord): Promise<boolean> {
+  async decide(record: StoreProposalDecisionRecord, events: DomainEvent[]): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [decided] = await tx
         .update(storeProposals)
@@ -69,6 +73,7 @@ export class DrizzleStoreProposalRepository implements StoreProposalRepository {
               where id = ${decided.id}`,
         );
       }
+      for (const event of events) await this.outbox.publish(tx, event);
       return true;
     });
   }

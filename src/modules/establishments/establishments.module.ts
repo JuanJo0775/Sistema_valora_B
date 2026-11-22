@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DATABASE, type Database } from '../../shared/database/database.module';
+import { OutboxPublisher } from '../../shared/events';
 import { IdentityModule } from '../identity';
 import {
   ESTABLISHMENT_REPOSITORY,
@@ -33,25 +34,36 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     // Grill de la #27: propuestas de tiendas.
     {
       provide: ProposeStore,
-      inject: [DATABASE],
-      useFactory: (db: Database): ProposeStore =>
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ProposeStore =>
         new ProposeStore({
-          proposals: new DrizzleStoreProposalRepository(db),
+          proposals: new DrizzleStoreProposalRepository(db, outbox),
           clock: { now: () => new Date() },
         }),
     },
     {
       provide: StoreProposalsQueue,
-      inject: [DATABASE, ESTABLISHMENT_REPOSITORY],
-      useFactory: (db: Database, stores: EstablishmentRepository): StoreProposalsQueue =>
-        new StoreProposalsQueue({ proposals: new DrizzleStoreProposalRepository(db), stores }),
+      inject: [DATABASE, OutboxPublisher, ESTABLISHMENT_REPOSITORY],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        stores: EstablishmentRepository,
+      ): StoreProposalsQueue =>
+        new StoreProposalsQueue({
+          proposals: new DrizzleStoreProposalRepository(db, outbox),
+          stores,
+        }),
     },
     {
       provide: DecideStoreProposal,
-      inject: [DATABASE, ESTABLISHMENT_REPOSITORY],
-      useFactory: (db: Database, stores: EstablishmentRepository): DecideStoreProposal =>
+      inject: [DATABASE, OutboxPublisher, ESTABLISHMENT_REPOSITORY],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        stores: EstablishmentRepository,
+      ): DecideStoreProposal =>
         new DecideStoreProposal({
-          proposals: new DrizzleStoreProposalRepository(db),
+          proposals: new DrizzleStoreProposalRepository(db, outbox),
           stores,
           clock: { now: () => new Date() },
         }),

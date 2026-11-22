@@ -1,3 +1,4 @@
+import type { DomainEvent } from '../../../shared/events';
 import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentType } from './establishment-repository';
 
@@ -35,7 +36,8 @@ export interface StoreProposalRepository {
   pending(): Promise<NewStoreProposal[]>;
   // Aprobar crea la tienda con el id de la propuesta, en la misma transacción. false si la propuesta
   // no existe o ya se decidió.
-  decide(record: StoreProposalDecisionRecord): Promise<boolean>;
+  // Los eventos se guardan con la decisión (ADR-015) y solo si se decidió.
+  decide(record: StoreProposalDecisionRecord, events: DomainEvent[]): Promise<boolean>;
 }
 
 export const STORE_PROPOSAL_REPOSITORY = Symbol('STORE_PROPOSAL_REPOSITORY');
