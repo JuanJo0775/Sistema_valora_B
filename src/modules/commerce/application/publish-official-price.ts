@@ -20,6 +20,16 @@ export interface PublishOfficialPriceRequest {
   priceCop: number;
 }
 
+// D2 y D3: solo un comercio verificado publica. La capa HTTP la traduce a 403.
+export class MerchantNotVerifiedError extends Error {
+  readonly code = 'MERCHANT_NOT_VERIFIED';
+
+  constructor() {
+    super('Tu tienda todavía no está verificada: podrás publicar precios cuando se apruebe.');
+    this.name = 'MerchantNotVerifiedError';
+  }
+}
+
 // RF-016 con la D4 del grill comercial: el comercio publica o cambia el precio oficial de su tienda.
 export class PublishOfficialPrice {
   constructor(private readonly ports: PublishOfficialPricePorts) {}
@@ -27,8 +37,9 @@ export class PublishOfficialPrice {
   async execute(request: PublishOfficialPriceRequest): Promise<OfficialPrice> {
     const { claims, prices, clock } = this.ports;
     const claim = await claims.findByAccount(request.accountId);
+    if (claim?.status !== 'verificado') throw new MerchantNotVerifiedError();
     const price: OfficialPrice = {
-      establishmentId: claim?.establishmentId ?? '',
+      establishmentId: claim.establishmentId,
       presentationId: request.presentationId,
       priceCop: request.priceCop,
       confirmedAt: clock.now(),
