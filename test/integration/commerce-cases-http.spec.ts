@@ -6,6 +6,7 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
 import { ImportEstablishments } from '../../src/modules/establishments';
+import { PurgeDeletedAccounts } from '../../src/modules/identity/application/purge-deleted-accounts';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
 import { contractErrors } from '../support/contract';
@@ -158,5 +159,36 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
     ]);
 
     expect(responses.map((r) => r.status)).toEqual([400, 404, 401, 403]);
+  });
+
+  // ADR-032 con el hallazgo de B7: borrar la cuenta de un comercio no deja nada suyo en commerce.
+  it('al borrar la cuenta de un comercio no queda su nombre, su teléfono ni su cuenta, y se retira su oficial', async () => {
+    // Luis no tenía tienda: la registra y publica su oficial.
+    await post(luis, '/commerce/claims', claimBody).expect(201);
+    await relay();
+    await request(server)
+      .put('/v1/commerce/prices')
+      .set('Cookie', luis.cookie)
+      .set('X-CSRF-Token', luis.csrfToken)
+      .send({ presentationId: riceId, priceCop: 2700 })
+      .expect(200);
+    await relay();
+    // Su eliminación ya venció (ADR-032: 10 días de gracia).
+    await db.execute(
+      sql`update identity.accounts set deletion_scheduled_for = now() - interval '1 day' where id = ${luis.accountId}`,
+    );
+
+    await expect(app.get(PurgeDeletedAccounts).execute()).resolves.toMatchObject({ purged: 1 });
+    await relay();
+
+    const left = await db.execute<{ total: string }>(
+      sql`select (select count(*) from commerce.merchant_claims where account_id = ${luis.accountId})
+              + (select count(*) from commerce.merchant_claim_rejections where account_id = ${luis.accountId})
+              + (select count(*) from commerce.merchant_claims where phone = '3001234567')
+              + (select count(*) from commerce.official_prices where establishment_id = ${storeId})
+              as total`,
+    );
+    expect(left.rows[0]?.total).toBe('0');
+    expect((await compare().expect(200)).body).toMatchObject({ results: [] });
   });
 });
