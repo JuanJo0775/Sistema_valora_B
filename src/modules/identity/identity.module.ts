@@ -10,6 +10,7 @@ import {
 import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/account-repository';
 import type { AttemptLimiter } from './application/attempt-limiter';
 import { ChangeRole } from './application/change-role';
+import { GrantMerchantRole } from './application/grant-merchant-role';
 import { DeleteOwnAccount } from './application/delete-own-account';
 import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
 import { RestoreAccount } from './application/restore-account';
@@ -304,11 +305,25 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         clock: Clock,
       ): ChangeRole => new ChangeRole({ accounts, limiter, clock }),
     },
+    // D3 del grill comercial: commerce lo pide al verificar una tienda.
+    {
+      provide: GrantMerchantRole,
+      inject: [ACCOUNT_REPOSITORY, CLOCK],
+      useFactory: (accounts: AccountRepository, clock: Clock): GrantMerchantRole =>
+        new GrantMerchantRole({ accounts, clock }),
+    },
     SessionGuard,
     VerifiedEmailGuard,
   ],
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
-  exports: [ResolveSession, SessionGuard, VerifiedEmailGuard, ReporterIdentity, ChangeRole],
+  exports: [
+    ResolveSession,
+    SessionGuard,
+    VerifiedEmailGuard,
+    ReporterIdentity,
+    ChangeRole,
+    GrantMerchantRole,
+  ],
 })
 export class IdentityModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}

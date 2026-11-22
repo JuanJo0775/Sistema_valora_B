@@ -128,10 +128,12 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
     expect(responses.map((response) => response.status)).toEqual([
       400, 400, 400, 400, 401, 403, 403,
     ]);
-    expect((responses[5]?.body as { code: string }).code).toBe('EMAIL_NOT_VERIFIED');
+    expect((responses[5].body as { code: string }).code).toBe('EMAIL_NOT_VERIFIED');
   });
 
   it('GET /commerce/me: 404 para una cuenta sin tienda', async () => {
-    await me(await account()).expect(404);
+    const response = await me(await account());
+
+    expect(response.status).toBe(404);
   });
 });

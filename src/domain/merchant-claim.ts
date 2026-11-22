@@ -1,3 +1,5 @@
+import { DomainError } from './domain-error';
+
 type Point = { lat: number; lng: number };
 
 // D2 del grill comercial: quien registra un comercio debe estar a 50 m o menos de la tienda.
@@ -16,6 +18,15 @@ function distanceMeters(a: Point, b: Point): number {
   return 2 * EARTH_RADIUS_METERS * Math.asin(Math.sqrt(h));
 }
 
+// Regla de negocio incumplida: la capa HTTP la traduce a 422 NOT_AT_ESTABLISHMENT.
+export class NotAtEstablishmentError extends DomainError {
+  readonly code = 'NOT_AT_ESTABLISHMENT';
+
+  constructor() {
+    super('Para registrar la tienda tienes que estar en ella: tu ubicación está a más de 50 m.');
+  }
+}
+
 // La ubicación de la persona solo se usa aquí, para esta comparación: nunca se guarda (EC-08).
 export function isAtEstablishment(person: Point, establishment: Point): boolean {
   return distanceMeters(person, establishment) <= PRESENCE_RADIUS_METERS;
@@ -25,9 +36,11 @@ export function isAtEstablishment(person: Point, establishment: Point): boolean 
 const NIT_WEIGHTS = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
 
 function checkDigit(digits: string): number {
-  const sum = [...digits]
-    .reverse()
-    .reduce((total, digit, index) => total + Number(digit) * (NIT_WEIGHTS[index] ?? 0), 0);
+  let sum = 0;
+  // De derecha a izquierda: el último dígito lleva el primer peso.
+  for (let index = 0; index < digits.length; index += 1) {
+    sum += Number(digits.at(-1 - index)) * (NIT_WEIGHTS[index] ?? 0);
+  }
   const remainder = sum % 11;
   return remainder < 2 ? remainder : 11 - remainder;
 }

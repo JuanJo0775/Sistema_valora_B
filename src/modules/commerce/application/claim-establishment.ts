@@ -1,7 +1,16 @@
-import { isAtEstablishment, isValidNit } from '../../../domain/merchant-claim';
+import {
+  isAtEstablishment,
+  isValidNit,
+  NotAtEstablishmentError,
+} from '../../../domain/merchant-claim';
 import type { MerchantClaimRepository } from './merchant-claims';
 
+export { NotAtEstablishmentError } from '../../../domain/merchant-claim';
+
 type Point = { lat: number; lng: number };
+
+// Versión vigente de las condiciones para comercios que acepta quien registra su tienda (D2).
+export const MERCHANT_TERMS_VERSION = '2026-11';
 
 export interface ClaimEstablishmentPorts {
   // La tienda del mapa, por la interfaz pública de establishments.
@@ -41,16 +50,6 @@ export class EstablishmentNotFoundError extends Error {
   constructor() {
     super('La tienda no existe.');
     this.name = 'EstablishmentNotFoundError';
-  }
-}
-
-// Regla de negocio incumplida: la capa HTTP la traduce a 422.
-export class NotAtEstablishmentError extends Error {
-  readonly code = 'NOT_AT_ESTABLISHMENT';
-
-  constructor() {
-    super('Para registrar la tienda tienes que estar en ella: tu ubicación está a más de 50 m.');
-    this.name = 'NotAtEstablishmentError';
   }
 }
 

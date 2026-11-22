@@ -4,6 +4,8 @@ export type { Role } from './application/account-repository';
 export { ReporterIdentity, type ReporterPseudonym } from './application/reporter-identity';
 // Grill de la #73, pregunta 4: el comando identity:set-role.
 export { ChangeRole } from './application/change-role';
+// D3 del grill comercial: commerce lo usa al verificar una tienda.
+export { GrantMerchantRole } from './application/grant-merchant-role';
 export {
   AllowSuspended,
   type AuthenticatedSession,
