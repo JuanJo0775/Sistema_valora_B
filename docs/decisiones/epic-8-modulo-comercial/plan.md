@@ -5,7 +5,7 @@
 **Decisiones:** `grill.md` (D1 a D8). **Contrato:** `contrato-api.md`.
 **Fuera de alcance (Corte 3):** varias tiendas por cuenta (D3), oficiales en el historial de 30 días (D8), alertas al consumidor (RF-019), texto libre en promociones (D6), procesamiento del archivo en segundo plano (D7).
 
-> **Regla de EC-05:** antes del **primer commit de código** del módulo, el equipo registra la estimación de esfuerzo (tabla de abajo) con su fecha en AS-E4, sección 4. Al terminar cada paso se anota el esfuerzo real. Este plan **no propone cifras**.
+> **Regla de EC-05:** antes del **primer commit de código** del módulo, el equipo registra la estimación de esfuerzo (tabla de abajo) con su fecha en AS-E4, sección 4. Al terminar cada paso se anota el esfuerzo real.
 
 ## Pasos (cada uno es una rama y un pull request)
 
@@ -29,28 +29,28 @@ Orden: B1 → (B2, B3, B7) → (B4, B5, B6) → B8 → B9. El frontend empieza c
 | F4 | F#168 | `feat/comparacion-precio-oficial` | Fuente «Oficial», discrepancia, bloque de promociones | Vitest + axe | Tipos regenerados; accesibilidad AA |
 | F5 | F#169 | `feat/comercios-datos-denuncias` | Datos de la tienda, denuncia, cola del moderador | Vitest | Revisión de nombre y ubicación visible |
 
-## Estimación de esfuerzo (EC-05) — la llena el equipo antes del primer commit
+## Estimación de esfuerzo (EC-05), registrada antes del primer commit de código
 
-Fecha de la estimación: ____ · Método: ____ (por ejemplo, horas ideales por persona, consenso del equipo)
+Fecha de la estimación: 21-nov-2026 · Hecha por Claude Code a pedido del equipo (Sara) · Método: horas de trabajo con asistencia de Claude Code, por analogía con issues ya cerradas de tamaño parecido (#27 propuestas de tiendas, #178 inicio con Google, #106 municipios). Incluye pruebas, contrato, revisión y CI.
 
 | Paso | Estimado (h) | Real (h) | Desviación |
 |---|---|---|---|
-| B1 | | | |
-| B2 | | | |
-| B3 | | | |
-| B7 | | | |
-| B4 | | | |
-| B5 | | | |
-| B6 | | | |
-| B8 | | | |
-| B9 | | | |
-| ADR y diagramas | | | |
-| F1 | | | |
-| F2 | | | |
-| F3 | | | |
-| F4 | | | |
-| F5 | | | |
-| **Total** | | | **Meta: 30 % o menos** |
+| B1 | 8 | | |
+| B2 | 6 | | |
+| B3 | 8 | | |
+| B7 | 5 | | |
+| B4 | 10 | | |
+| B5 | 6 | | |
+| B6 | 8 | | |
+| B8 | 8 | | |
+| B9 | 6 | | |
+| ADR y diagramas | 4 | | |
+| F1 | 6 | | |
+| F2 | 8 | | |
+| F3 | 5 | | |
+| F4 | 6 | | |
+| F5 | 6 | | |
+| **Total** | **100** | | **Meta: 30 % o menos** |
 
 ## Riesgos y decisiones abiertas
 
