@@ -28,3 +28,26 @@ export interface MerchantClaimRepository {
   // La solicitud y sus eventos se confirman juntos o no se guarda ninguno (ADR-015).
   save(claim: MerchantClaim, events: DomainEvent[]): Promise<void>;
 }
+
+// Solicitud cerrada porque su tienda propuesta no se aprobó: sale de las activas, así la cuenta puede
+// registrar otra tienda, y queda en el historial con el motivo.
+export interface MerchantClaimRejection {
+  accountId: string;
+  establishmentId: string;
+  reason: string;
+  rejectedAt: Date;
+}
+
+// Puerto para resolver la solicitud pre-aprobada cuando se decide su tienda propuesta (D2).
+export interface ProposedClaimResolutions extends Pick<MerchantClaimRepository, 'ownerOf'> {
+  // La solicitud pre-aprobada de esa tienda propuesta, o null.
+  pendingFor(establishmentId: string): Promise<MerchantClaim | null>;
+  // La deja verificada en esa tienda, con sus eventos en la misma transacción (ADR-015).
+  verify(
+    accountId: string,
+    establishmentId: string,
+    verifiedAt: Date,
+    events: DomainEvent[],
+  ): Promise<void>;
+  reject(rejection: MerchantClaimRejection): Promise<void>;
+}
