@@ -12,6 +12,7 @@ import {
   type ProductImportRepository,
 } from './application/import-catalog';
 import { PresentationExists } from './application/presentation-exists';
+import { PresentationsByBarcode } from './application/presentations-by-barcode';
 import { PresentationFreshness } from './application/presentation-freshness';
 import { PresentationLabels } from './application/presentation-labels';
 import { PresentationsForPricing } from './application/presentations-for-pricing';
@@ -154,6 +155,13 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
         });
       },
     },
+    // D7 del grill comercial (#205): commerce carga precios por código de barras.
+    {
+      provide: PresentationsByBarcode,
+      inject: [PRODUCT_REPOSITORY],
+      useFactory: (products: ProductRepository): PresentationsByBarcode =>
+        new PresentationsByBarcode(products),
+    },
     {
       provide: PresentationExists,
       inject: [PRODUCT_REPOSITORY],
@@ -203,6 +211,7 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
     MirrorProductImages,
     WholesaleReferenceOf,
     PresentationExists,
+    PresentationsByBarcode,
     ProductForComparison,
     PresentationFreshness,
     PresentationLabels,
