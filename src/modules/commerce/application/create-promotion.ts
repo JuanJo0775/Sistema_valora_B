@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { freshnessOf, ttlDaysFor } from '../../../domain/freshness';
-import { type PromotionOffer, promotedPriceCop, promotionStatus } from '../../../domain/promotion';
+import {
+  assertValidDates,
+  assertValidOffer,
+  type PromotionOffer,
+  promotedPriceCop,
+  promotionStatus,
+} from '../../../domain/promotion';
 import { createEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 import type { OfficialPriceRepository } from './official-prices';
@@ -57,6 +63,8 @@ export class CreatePromotion {
       official &&
       freshnessOf({ observedAt: official.confirmedAt, now, ttlDays: ttlDaysFor(isFresh) });
     if (!official || officialFreshness !== 'vigente') throw new OfficialPriceRequiredError();
+    assertValidOffer(request.offer, official.priceCop);
+    assertValidDates({ ...request, now });
     const promotion: Promotion = {
       id: randomUUID(),
       establishmentId,
