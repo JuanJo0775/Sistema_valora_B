@@ -1,3 +1,4 @@
+import { InvalidPromotionError } from '../../../domain/promotion';
 import type { DomainEvent } from '../../../shared/events';
 import {
   CreatePromotion,
@@ -118,5 +119,18 @@ describe('publicar una promoción (RF-017, D6 del grill comercial)', () => {
     await expect(create.execute(request())).rejects.toThrow(OfficialPriceRequiredError);
     expect(saved).toEqual([]);
     expect(events).toEqual([]);
+  });
+
+  it.each([
+    [
+      'un precio especial que no baja el oficial',
+      { offer: { type: 'precio_especial', specialPriceCop: 2600 } },
+    ],
+    ['más de 30 días', { validUntil: '2026-12-31' }],
+  ] as [string, Partial<CreatePromotionRequest>][])('%s no se publica', async (_case, change) => {
+    const { create, saved } = setup();
+
+    await expect(create.execute(request(change))).rejects.toThrow(InvalidPromotionError);
+    expect(saved).toEqual([]);
   });
 });
