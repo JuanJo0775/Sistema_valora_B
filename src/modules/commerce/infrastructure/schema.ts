@@ -125,3 +125,18 @@ export const merchantCases = commerceSchema.table(
     ),
   ],
 );
+
+// B9 (#209): lo ya avisado por correo a cada comercio (un aviso por clave) y el día del correo, para
+// no repetirlo. Se borra con la cuenta (ADR-032).
+export const merchantNotices = commerceSchema.table(
+  'merchant_notices',
+  {
+    accountId: uuid('account_id').notNull(),
+    key: text('key').notNull(),
+    notifiedOn: date('notified_on', { mode: 'string' }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.accountId, table.key] }),
+    index('merchant_notices_day_idx').on(table.accountId, table.notifiedOn),
+  ],
+);
