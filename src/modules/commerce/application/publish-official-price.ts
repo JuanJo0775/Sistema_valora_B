@@ -1,4 +1,5 @@
 import { DomainError } from '../../../domain/domain-error';
+import { assertPlausiblePrice } from '../../../domain/price-plausibility';
 import { createEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 import {
@@ -45,6 +46,7 @@ export class PublishOfficialPrice {
   constructor(private readonly ports: PublishOfficialPricePorts) {}
 
   async execute(request: PublishOfficialPriceRequest): Promise<OfficialPrice> {
+    assertPlausiblePrice(request.priceCop);
     const { claims, prices, clock } = this.ports;
     const claim = await claims.findByAccount(request.accountId);
     if (claim?.status !== 'verificado') throw new MerchantNotVerifiedError();
