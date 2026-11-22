@@ -11,7 +11,7 @@ export interface MerchantProfileView {
   establishment: { id: string; name: string };
   responsibleName: string;
   informal: boolean;
-  verifiedAt: Date;
+  verifiedAt: Date | null;
 }
 
 // GET /commerce/me: lo que el comercio ve de sí mismo. Nunca una ubicación (EC-08).

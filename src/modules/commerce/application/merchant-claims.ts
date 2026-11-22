@@ -11,8 +11,10 @@ export interface MerchantClaim {
   informal: boolean;
   phone: string;
   acceptedTermsVersion: string;
-  status: 'verificado';
-  verifiedAt: Date;
+  // pre_aprobado: la tienda era nueva y espera la aprobación de su propuesta (D2).
+  status: 'pre_aprobado' | 'verificado';
+  // null mientras está pre-aprobado.
+  verifiedAt: Date | null;
 }
 
 // Puerto hacia el esquema commerce.

@@ -17,12 +17,13 @@ export const merchantClaims = commerceSchema.table(
     phone: text('phone').notNull(),
     acceptedTermsVersion: text('accepted_terms_version').notNull(),
     status: text('status').notNull(),
-    verifiedAt: timestamp('verified_at', { withTimezone: true }).notNull(),
+    // null mientras está pre-aprobado (D2).
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
   },
   (table) => [
     // D3: un dueño por tienda. La llave primaria ya deja una tienda por cuenta.
     uniqueIndex('merchant_claims_establishment_idx').on(table.establishmentId),
-    check('merchant_claims_status_valid', sql`${table.status} in ('verificado')`),
+    check('merchant_claims_status_valid', sql`${table.status} in ('pre_aprobado', 'verificado')`),
     check('merchant_claims_informal_without_nit', sql`${table.informal} = (${table.nit} is null)`),
   ],
 );
