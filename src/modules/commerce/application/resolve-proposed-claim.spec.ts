@@ -126,4 +126,34 @@ describe('la tienda propuesta por un comercio pre-aprobado se decide (D2 del gri
     ]);
     expect(events).toEqual([]);
   });
+
+  it('rechazada: la solicitud se cierra con el motivo del moderador y la cuenta queda libre', async () => {
+    const { resolve, active, rejections, events } = setup();
+
+    await resolve.execute({
+      proposalId: 'propuesta-1',
+      decision: 'rechazar',
+      note: 'No encontramos la tienda en esa dirección',
+    });
+
+    expect(active).toEqual([]);
+    expect(rejections).toEqual([
+      {
+        accountId: 'cuenta-de-don-luis',
+        establishmentId: 'propuesta-1',
+        reason: 'No encontramos la tienda en esa dirección',
+        rejectedAt: now,
+      },
+    ]);
+    expect(events).toEqual([]);
+  });
+
+  it('una propuesta de un reportante, sin comercio pre-aprobado, no cambia nada', async () => {
+    const { resolve, active, events } = setup();
+
+    await resolve.execute({ proposalId: 'otra-propuesta', decision: 'aprobar', note });
+
+    expect(active).toEqual([preApproved]);
+    expect(events).toEqual([]);
+  });
 });
