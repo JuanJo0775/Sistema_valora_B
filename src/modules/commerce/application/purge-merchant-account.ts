@@ -1,8 +1,8 @@
-import { createEvent, type DomainEvent } from '../../../shared/events';
-import { OFFICIAL_PRICE_WITHDRAWN } from './decide-merchant-case';
+import type { DomainEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 import type { OfficialPriceRepository } from './official-prices';
-import { PROMOTION_WITHDRAWN, type PromotionRepository } from './promotions';
+import type { PromotionRepository } from './promotions';
+import { withdrawalEvents } from './withdrawals';
 
 export interface MerchantPurges {
   // En una transacción: borra la solicitud y el historial de la cuenta, y los precios oficiales y las
@@ -30,14 +30,7 @@ export class PurgeMerchantAccount {
       return;
     }
     const { establishmentId } = claim;
-    const events = [
-      ...(await prices.listFor(establishmentId)).map(({ presentationId }) =>
-        createEvent(OFFICIAL_PRICE_WITHDRAWN, 1, { establishmentId, presentationId }),
-      ),
-      ...(await promotions.listFor(establishmentId)).map(({ id, presentationId }) =>
-        createEvent(PROMOTION_WITHDRAWN, 1, { id, establishmentId, presentationId }),
-      ),
-    ];
+    const events = await withdrawalEvents(establishmentId, prices, promotions);
     await purges.purge(accountId, establishmentId, events);
   }
 }

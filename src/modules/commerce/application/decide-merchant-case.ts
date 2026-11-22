@@ -2,7 +2,8 @@ import { createEvent } from '../../../shared/events';
 import type { MerchantCaseRepository, MerchantRevocations } from './merchant-cases';
 import type { MerchantClaim } from './merchant-claims';
 import type { OfficialPriceRepository } from './official-prices';
-import { PROMOTION_WITHDRAWN, type PromotionRepository } from './promotions';
+import type { PromotionRepository } from './promotions';
+import { withdrawalEvents } from './withdrawals';
 
 export interface DecideMerchantCasePorts {
   cases: Pick<MerchantCaseRepository, 'findPending' | 'close'>;
@@ -30,7 +31,6 @@ export class MerchantCaseNotFoundError extends Error {
 }
 
 export const MERCHANT_REVOKED = 'MerchantRevoked';
-export const OFFICIAL_PRICE_WITHDRAWN = 'OfficialPriceWithdrawn';
 
 // D3 del grill comercial: el moderador revoca el comercio (se retira todo al instante y la cuenta
 // vuelve a reportante) o descarta el caso.
@@ -55,8 +55,6 @@ export class DecideMerchantCase {
     const claim = await claims.findByEstablishment(establishmentId);
     if (!claim) return;
     const { accountId } = claim;
-    const withdrawnPrices = await prices.listFor(establishmentId);
-    const withdrawnPromotions = await promotions.listFor(establishmentId);
     await revocations.revoke(
       {
         accountId,
@@ -67,12 +65,7 @@ export class DecideMerchantCase {
       },
       [
         createEvent(MERCHANT_REVOKED, 1, { accountId, establishmentId }),
-        ...withdrawnPrices.map(({ presentationId }) =>
-          createEvent(OFFICIAL_PRICE_WITHDRAWN, 1, { establishmentId, presentationId }),
-        ),
-        ...withdrawnPromotions.map(({ id, presentationId }) =>
-          createEvent(PROMOTION_WITHDRAWN, 1, { id, establishmentId, presentationId }),
-        ),
+        ...(await withdrawalEvents(establishmentId, prices, promotions)),
       ],
     );
   }
