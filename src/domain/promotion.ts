@@ -1,5 +1,7 @@
 import { colombiaDate } from './colombia-date';
+import { DomainError } from './domain-error';
 import type { Freshness } from './freshness';
+import { PLAUSIBILITY_PARAMS } from './price-plausibility';
 
 // D6 del grill comercial (ADR-009, ADR-026): las promociones de un comercio verificado. Van siempre
 // aparte de los resultados de la comparación y nunca cambian el orden.
@@ -44,5 +46,39 @@ export function promotedPriceCop(offer: PromotionOffer, officialPriceCop: number
       return offer.specialPriceCop;
     case 'pague_x_lleve_y':
       return Math.round((officialPriceCop * offer.payX) / offer.takeY);
+  }
+}
+
+// Regla incumplida (422) con código estable.
+export class InvalidPromotionError extends DomainError {
+  readonly code = 'INVALID_PROMOTION';
+}
+
+const isIntegerIn = (value: number, min: number, max = Number.MAX_SAFE_INTEGER): boolean =>
+  Number.isInteger(value) && value >= min && value <= max;
+
+// D6 y EC-06: el «antes» es el oficial vigente, así que la promoción siempre baja el precio.
+export function assertValidOffer(offer: PromotionOffer, officialPriceCop: number): void {
+  switch (offer.type) {
+    case 'descuento_porcentual':
+      if (!isIntegerIn(offer.percent, 1, 90)) {
+        throw new InvalidPromotionError('El descuento debe ser un número entero de 1 a 90 %.');
+      }
+      return;
+    case 'precio_especial':
+      if (
+        !isIntegerIn(offer.specialPriceCop, PLAUSIBILITY_PARAMS.minPriceCop, officialPriceCop - 1)
+      ) {
+        throw new InvalidPromotionError(
+          'El precio especial debe ser menor que tu precio oficial y de al menos $100.',
+        );
+      }
+      return;
+    case 'pague_x_lleve_y':
+      if (!isIntegerIn(offer.payX, 1) || !isIntegerIn(offer.takeY, offer.payX + 1)) {
+        throw new InvalidPromotionError(
+          'En «pague X lleve Y», Y debe ser mayor que X y X al menos 1.',
+        );
+      }
   }
 }
