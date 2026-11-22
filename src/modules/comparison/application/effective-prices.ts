@@ -2,7 +2,7 @@ import type { PriceSource } from '../../../domain/initial-price';
 import type { Discrepancy } from '../../../domain/official-vs-reported';
 import type { CurrentPrice } from './current-prices';
 import type { OfficialPriceCopy } from './official-price-copies';
-import type { StoreReports } from './official-resolution';
+import { resolveOfficial, type StoreReports } from './official-resolution';
 
 // #218: el precio que se muestra de una presentación en una tienda, con la misma regla en la
 // comparación, la ficha de la tienda, la canasta de hoy y el conteo de precios.
@@ -26,21 +26,45 @@ export interface EffectivePricesInput {
 const placeOf = (place: { presentationId: string; establishmentId: string }) =>
   `${place.presentationId}:${place.establishmentId}`;
 
-export async function effectivePrices({
-  current,
-  officials,
-}: EffectivePricesInput): Promise<EffectivePrice[]> {
-  const withOfficial = new Set(officials.map(placeOf));
-  const community = current.filter((price) => !withOfficial.has(placeOf(price)));
-  return Promise.resolve([
-    ...community,
-    ...officials.map((official): EffectivePrice => ({
-      presentationId: official.presentationId,
-      establishmentId: official.establishmentId,
+// D1 y ADR-008: el oficial, o la mediana de la comunidad si la corrobora (con el oficial al lado).
+async function officialOrReported(
+  official: OfficialPriceCopy,
+  { reliability, ttlDaysOf, now }: EffectivePricesInput,
+): Promise<EffectivePrice> {
+  const place = {
+    presentationId: official.presentationId,
+    establishmentId: official.establishmentId,
+    status: 'vigente' as const,
+  };
+  const ttlDays = ttlDaysOf(official.presentationId);
+  const { resolved, reports } = await resolveOfficial(official, reliability, now, ttlDays);
+  const chosen =
+    resolved.kind === 'discrepancia'
+      ? reports.find((report) => report.reportId === resolved.reportId)
+      : undefined;
+  if (resolved.kind === 'oficial' || !chosen) {
+    return {
+      ...place,
       priceCop: official.priceCop,
       observedAt: official.confirmedAt,
-      status: 'vigente',
       source: 'oficial',
-    })),
-  ]);
+    };
+  }
+  return {
+    reportId: chosen.reportId,
+    ...place,
+    priceCop: chosen.priceCop,
+    observedAt: chosen.observedAt,
+    source: 'comunidad',
+    discrepancy: resolved.discrepancy,
+  };
+}
+
+export async function effectivePrices(input: EffectivePricesInput): Promise<EffectivePrice[]> {
+  const { current, officials } = input;
+  const withOfficial = new Set(officials.map(placeOf));
+  const community = current.filter((price) => !withOfficial.has(placeOf(price)));
+  const resolved: EffectivePrice[] = [];
+  for (const official of officials) resolved.push(await officialOrReported(official, input));
+  return [...community, ...resolved];
 }
