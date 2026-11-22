@@ -29,4 +29,23 @@ describe('archivo de precios oficiales (D7 del grill comercial)', () => {
       'El precio debe ser un número entero de pesos entre $100 y $5.000.000, sin puntos.',
     );
   });
+
+  it('un código de barras repetido: vale la primera fila y las siguientes son error', () => {
+    const file = 'codigo_barras;precio\n111;2600\n222;3000\n111;2700';
+
+    const { rows, errors } = readPriceFile(file);
+
+    expect(rows.map((r) => [r.row, r.barcode, r.priceCop])).toEqual([
+      [2, '111', 2600],
+      [3, '222', 3000],
+    ]);
+    expect(errors).toEqual([
+      {
+        row: 4,
+        barcode: '111',
+        code: 'DUPLICATE_ROW',
+        message: 'Este código de barras ya está en la fila 2.',
+      },
+    ]);
+  });
 });
