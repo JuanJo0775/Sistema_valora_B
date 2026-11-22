@@ -1,5 +1,11 @@
 import type { MerchantCase } from './merchant-cases';
-import { ReportMerchant, type ReportMerchantRequest } from './report-merchant';
+import {
+  MerchantNotFoundError,
+  MerchantReportOpenError,
+  OwnEstablishmentError,
+  ReportMerchant,
+  type ReportMerchantRequest,
+} from './report-merchant';
 
 const now = new Date('2026-11-22T15:00:00Z');
 const STORE = 'tienda-esperanza';
@@ -49,5 +55,29 @@ describe('denunciar un comercio (D2 y D3 del grill comercial)', () => {
         createdAt: now,
       },
     ]);
+  });
+
+  it('una tienda sin dueño no tiene comercio que denunciar', async () => {
+    const { report, cases } = setup({});
+
+    await expect(report.execute(request())).rejects.toThrow(MerchantNotFoundError);
+    expect(cases).toEqual([]);
+  });
+
+  it('el dueño no denuncia su propia tienda', async () => {
+    const { report, cases } = setup();
+
+    await expect(report.execute(request({ accountId: 'cuenta-del-dueno' }))).rejects.toThrow(
+      OwnEstablishmentError,
+    );
+    expect(cases).toEqual([]);
+  });
+
+  it('una segunda denuncia de la misma cuenta sobre la misma tienda, abierta la primera, no se acepta', async () => {
+    const { report, cases } = setup();
+    await report.execute(request());
+
+    await expect(report.execute(request())).rejects.toThrow(MerchantReportOpenError);
+    expect(cases).toHaveLength(1);
   });
 });
