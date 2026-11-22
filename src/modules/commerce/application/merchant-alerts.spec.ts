@@ -68,12 +68,15 @@ describe('avisos para el comercio (GET /commerce/alerts)', () => {
         kind: 'vence_pronto',
         presentationId: 'arroz',
         productName: 'Arroz Diana · 500 g',
+        // La última confirmación: un aviso por cada vez que el precio está por vencer.
+        confirmedAt: daysAgo(13),
         message: 'Tu precio oficial de Arroz Diana · 500 g vence mañana: reconfírmalo.',
       },
       {
         kind: 'vencido',
         presentationId: 'aceite',
         productName: 'Aceite Gourmet · 1 l',
+        confirmedAt: daysAgo(15),
         message:
           'Tu precio oficial de Aceite Gourmet · 1 l ya no está vigente: reconfírmalo para que vuelva a contar.',
       },
