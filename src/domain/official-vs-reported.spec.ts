@@ -78,4 +78,18 @@ describe('precio oficial frente a reportado (D1 del grill comercial, ADR-008)', 
       priceCop: 4000,
     });
   });
+
+  it('los reportes que ya salieron de la vigencia de la categoría no cuentan', () => {
+    // El oficial no cambia hace un mes; los reportes son de hace 20 días y el TTL es de 14.
+    const old = { observedAt: daysAgo(20) };
+
+    expect(
+      officialVsReported({
+        official: { priceCop: 4000, changedAt: daysAgo(30) },
+        reports: [report(4800, old), report(4800, old)],
+        now,
+        ttlDays: 14,
+      }),
+    ).toEqual({ kind: 'oficial', priceCop: 4000 });
+  });
 });
