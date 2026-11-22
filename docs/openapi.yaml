@@ -2077,7 +2077,13 @@ paths:
     post:
       tags: [Comercios]
       operationId: bulkOfficialPrices
-      summary: Carga masiva de precios oficiales por plantilla CSV (RF-016, ADR-016)
+      summary: Cargar precios oficiales por archivo CSV (RF-016, D7)
+      description: >-
+        D7 del grill comercial (#205, ADR-027). Se procesa al momento. El archivo es «CSV UTF-8» con
+        el encabezado codigo_barras;precio y una fila por producto, separada por punto y coma; máximo
+        1.000 filas y 1 MB. Las filas buenas se publican juntas y quedan reconfirmadas (D4); las malas
+        se informan con su número de fila de Excel. Subir el mismo archivo otra vez actualiza sin
+        duplicar. Nunca crea un producto: un código que no está en Valora falla con UNKNOWN_BARCODE.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2086,9 +2092,49 @@ paths:
         required: true
         content:
           text/csv:
-            schema: { type: string }
+            schema:
+              type: string
+              example: |
+                codigo_barras;precio
+                7702511000014;2600
       responses:
-        '202': { description: Archivo recibido para procesar }
+        '200':
+          description: Cuántas filas se publicaron y cuáles fallaron.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [published, errors]
+                properties:
+                  published: { type: integer, minimum: 0 }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [row, barcode, code, message]
+                      properties:
+                        row: { type: integer, minimum: 2, description: Número de la fila en Excel. }
+                        barcode: { type: string }
+                        code: { type: string, enum: [INVALID_PRICE, DUPLICATE_ROW, UNKNOWN_BARCODE] }
+                        message: { type: string }
+        '400':
+          description: VALIDATION_ERROR, el archivo no tiene el encabezado codigo_barras;precio o no es texto CSV.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN o MERCHANT_NOT_VERIFIED, como en PUT /commerce/prices.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: PAYLOAD_TOO_LARGE, más de 1.000 filas o de 1 MB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /commerce/promotions:
     post:
       tags: [Comercios]
