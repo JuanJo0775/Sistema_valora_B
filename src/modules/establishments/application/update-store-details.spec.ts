@@ -1,4 +1,4 @@
-import type { OpeningHours } from '../../../domain/opening-hours';
+import { InvalidOpeningHoursError, type OpeningHours } from '../../../domain/opening-hours';
 import type { EstablishmentDetail } from './establishment-repository';
 import type { StoreCorrection, StoreDetailsChange } from './store-details';
 import { UpdateStoreDetails, type UpdateStoreDetailsRequest } from './update-store-details';
@@ -116,5 +116,16 @@ describe('el comercio corrige los datos de su tienda (D5 del grill comercial)', 
     expect(corrections).toEqual([
       expect.objectContaining({ establishmentId: STORE.id, name: 'Tienda El Sol', location }),
     ]);
+  });
+
+  it('un horario inválido se rechaza sin aplicar nada', async () => {
+    const { update, applied, corrections } = setup();
+    const wrong = { ...hours, lunes: { opens: '20:00', closes: '07:00' } };
+
+    await expect(
+      update.execute(request({ openingHours: wrong, phone: '3001234567' })),
+    ).rejects.toThrow(InvalidOpeningHoursError);
+    expect(applied).toEqual([]);
+    expect(corrections).toEqual([]);
   });
 });
