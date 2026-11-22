@@ -23,7 +23,18 @@ export class ResolveProposedClaim {
     const { claims, clock } = this.ports;
     const claim = await claims.pendingFor(decision.proposalId);
     if (!claim) return;
-    const { accountId, establishmentId } = claim;
+    const { accountId } = claim;
+    // Fusionar: la propuesta era una tienda que ya estaba en el mapa.
+    const establishmentId = decision.mergeInto ?? claim.establishmentId;
+    if (decision.decision === 'fusionar' && (await claims.ownerOf(establishmentId)) !== null) {
+      await claims.reject({
+        accountId,
+        establishmentId,
+        reason: 'La tienda que propusiste ya estaba en el mapa y tiene dueño.',
+        rejectedAt: clock.now(),
+      });
+      return;
+    }
     await claims.verify(accountId, establishmentId, clock.now(), [
       createEvent(MERCHANT_VERIFIED, 1, { accountId, establishmentId }),
     ]);
