@@ -32,6 +32,7 @@ import { PriceHistoryController } from './http/price-history.controller';
 import { StorePricesController } from './http/store-prices.controller';
 import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
 import { DrizzleOfficialPriceCopies } from './infrastructure/drizzle-official-price-copies';
+import { DrizzlePromotionCopies } from './infrastructure/drizzle-promotion-copies';
 import { DrizzlePriceHistory } from './infrastructure/drizzle-price-history';
 import { onPriceAssessed } from './infrastructure/price-assessed-handler';
 import {
@@ -87,6 +88,7 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
           stores,
           prices: new DrizzleCurrentPrices(db),
           officials: new DrizzleOfficialPriceCopies(db),
+          promotionCopies: new DrizzlePromotionCopies(db),
           reliability,
           references,
           clock: { now: () => new Date() },
