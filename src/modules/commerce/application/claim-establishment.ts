@@ -1,3 +1,4 @@
+import { isAtEstablishment } from '../../../domain/merchant-claim';
 import type { MerchantClaimRepository } from './merchant-claims';
 
 type Point = { lat: number; lng: number };
@@ -27,12 +28,26 @@ export interface ClaimResult {
   establishmentId: string;
 }
 
+// Regla de negocio incumplida: la capa HTTP la traduce a 422.
+export class NotAtEstablishmentError extends Error {
+  readonly code = 'NOT_AT_ESTABLISHMENT';
+
+  constructor() {
+    super('Para registrar la tienda tienes que estar en ella: tu ubicación está a más de 50 m.');
+    this.name = 'NotAtEstablishmentError';
+  }
+}
+
 // RF-015 con la D2 del grill comercial: una cuenta registra como suya una tienda del mapa.
 export class ClaimEstablishment {
   constructor(private readonly ports: ClaimEstablishmentPorts) {}
 
   async execute(request: ClaimRequest): Promise<ClaimResult> {
-    const { claims, roles, clock } = this.ports;
+    const { establishments, claims, roles, clock } = this.ports;
+    const establishment = await establishments.find(request.establishmentId);
+    if (establishment && !isAtEstablishment(request.location, establishment)) {
+      throw new NotAtEstablishmentError();
+    }
     await claims.save({
       accountId: request.accountId,
       establishmentId: request.establishmentId,
