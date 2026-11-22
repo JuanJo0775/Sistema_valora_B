@@ -44,10 +44,19 @@ const price = (
   ...change,
 });
 
-function setup(prices: CurrentPrice[], presentations: Map<string, PresentationForPricing>) {
+function setup(
+  prices: CurrentPrice[],
+  presentations: Map<string, PresentationForPricing>,
+  contact: {
+    openingHours?: Record<string, { opens: string; closes: string } | null>;
+    phone?: string;
+  } = {},
+) {
   const asked: { refs: PriceRef[]; ttlDays: number }[] = [];
   const storePrices = new StorePrices({
     stores: { find: (id) => Promise.resolve(id === store.id ? store : null) },
+    // D5 (#207): el horario y el teléfono que puso el comercio.
+    contacts: { of: () => Promise.resolve(contact) },
     presentations: { of: () => Promise.resolve(presentations) },
     prices: { findByEstablishment: () => Promise.resolve(prices) },
     reliability: {
@@ -144,5 +153,24 @@ describe('precios vigentes de una tienda (RF-008, grill de la #28)', () => {
       establishment: store,
       prices: [],
     });
+  });
+
+  // D5 del grill comercial (#207): datos del negocio, nunca de una persona (EC-08).
+  it('la ficha trae el horario y el teléfono que puso el comercio', async () => {
+    const day = { opens: '07:00', closes: '20:00' };
+    const openingHours = {
+      lunes: day,
+      martes: day,
+      miercoles: day,
+      jueves: day,
+      viernes: day,
+      sabado: day,
+      domingo: null,
+    };
+    const { storePrices } = setup([], new Map(), { openingHours, phone: '6067441234' });
+
+    const result = await storePrices.of(store.id, { onlyCurrent: false });
+
+    expect(result?.establishment).toEqual({ ...store, openingHours, phone: '6067441234' });
   });
 });
