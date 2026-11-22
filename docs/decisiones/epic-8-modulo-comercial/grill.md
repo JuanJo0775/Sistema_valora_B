@@ -66,6 +66,14 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Qué condiciones puede tener? | **Fijas, sin texto libre:** máximo por cliente (número), hasta agotar existencias (sí/no), medio de pago (cualquiera, efectivo o tarjeta) | Sin publicidad, teléfonos ni datos personales; no hay que moderar; se muestran y prueban igual |
 | ¿Cambian el orden? | **Nunca** (ADR-009): van en `promotions`, aparte de `results` | Neutralidad |
 
+**Precisiones al construir B6 (#206, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Promoción que empieza en el futuro? | Se puede publicar con fecha de inicio futura: queda **«programada»** y la comparación no la muestra hasta que empiece | El comercio prepara la promoción del fin de semana con tiempo |
+| ¿Duración máxima? | **30 días** (valor provisional, en un solo lugar). Para más tiempo se publica otra | Una promoción de meses es un precio normal disfrazado de descuento (EC-06) |
+| ¿Cómo se pausa y se reactiva? | El estado se **calcula al leer** con la vigencia del oficial: no se guarda. Reconfirmar el oficial la reactiva sola | Un solo lugar para la regla; nada que sincronizar |
+
 ## D7. Carga de precios por archivo (ADR-027)
 
 | Pregunta | Decisión | Razón |
