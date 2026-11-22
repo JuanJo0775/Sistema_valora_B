@@ -13,14 +13,18 @@ import {
   CatalogModule,
   PresentationExists,
   PresentationFreshness,
+  PresentationLabels,
   PresentationsByBarcode,
 } from '../catalog';
-import { IdentityModule, ReporterIdentity } from '../identity';
+import { ComparisonModule, OfficialDiscrepancies } from '../comparison';
+import { IdentityModule, NotifyAccount, ReporterIdentity } from '../identity';
 import { ClaimEstablishment } from './application/claim-establishment';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
 import { CreatePromotion } from './application/create-promotion';
 import { DecideMerchantCase } from './application/decide-merchant-case';
+import { MerchantAlerts } from './application/merchant-alerts';
 import { MerchantCasesQueue } from './application/merchant-cases-queue';
+import { SendMerchantDigests } from './application/send-merchant-digests';
 import { PurgeMerchantAccount } from './application/purge-merchant-account';
 import { ReportMerchant } from './application/report-merchant';
 import { MerchantOfficialPrices } from './application/merchant-official-prices';
@@ -32,7 +36,10 @@ import { UpdateMyEstablishment } from './application/update-my-establishment';
 import { UploadOfficialPrices } from './application/upload-official-prices';
 import { WithdrawPromotion } from './application/withdraw-promotion';
 import { type ProposalDecision, ResolveProposedClaim } from './application/resolve-proposed-claim';
+import { AlertsController } from './http/alerts.controller';
 import { EstablishmentController } from './http/establishment.controller';
+import { DrizzleMerchantNotices } from './infrastructure/drizzle-merchant-notices';
+import { MerchantDigestScheduler } from './infrastructure/merchant-digest-scheduler';
 import { MerchantCasesController } from './http/merchant-cases.controller';
 import { DrizzleMerchantRevocations } from './infrastructure/drizzle-merchant-revocations';
 import { MerchantController } from './http/merchant.controller';
@@ -46,13 +53,14 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
 // EPIC-B08: comercios verificados (D1 a D8 del grill comercial). B1 (#201) y B2 (#202): registro y
 // perfil. B3 (#203): precios oficiales.
 @Module({
-  imports: [IdentityModule, EstablishmentsModule, CatalogModule],
+  imports: [IdentityModule, EstablishmentsModule, CatalogModule, ComparisonModule],
   controllers: [
     MerchantController,
     OfficialPricesController,
     PromotionsController,
     EstablishmentController,
     MerchantCasesController,
+    AlertsController,
   ],
   providers: [
     {
@@ -110,6 +118,51 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
           },
         }),
     },
+    // B9 (#209): avisos del comercio y su resumen diario por correo.
+    {
+      provide: MerchantAlerts,
+      inject: [
+        DATABASE,
+        OutboxPublisher,
+        PresentationFreshness,
+        PresentationLabels,
+        OfficialDiscrepancies,
+      ],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        presentations: PresentationFreshness,
+        labels: PresentationLabels,
+        discrepancies: OfficialDiscrepancies,
+      ): MerchantAlerts =>
+        new MerchantAlerts({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
+          presentations,
+          labels: { labelsOf: (ids) => labels.of(ids) },
+          discrepancies,
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: SendMerchantDigests,
+      inject: [DATABASE, MerchantAlerts, NotifyAccount],
+      useFactory: (
+        db: Database,
+        alerts: MerchantAlerts,
+        notify: NotifyAccount,
+      ): SendMerchantDigests => {
+        const notices = new DrizzleMerchantNotices(db);
+        return new SendMerchantDigests({
+          merchants: notices,
+          alerts,
+          notices,
+          notify,
+          clock: { now: () => new Date() },
+        });
+      },
+    },
+    MerchantDigestScheduler,
     // D2 y D3 (#208): denuncias, disputas y revocación.
     {
       provide: ReportMerchant,

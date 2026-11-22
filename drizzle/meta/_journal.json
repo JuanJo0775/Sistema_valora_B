@@ -295,6 +295,13 @@
       "when": 1795363240001,
       "tag": "0041_commerce-claim-outcome",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1795365889662,
+      "tag": "0042_commerce-merchant-notices",
+      "breakpoints": true
     }
   ]
 }

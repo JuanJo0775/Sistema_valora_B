@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { OfficialPriceCopies, OfficialPriceCopy } from '../application/official-price-copies';
 import { officialPrices } from './schema';
@@ -12,5 +12,12 @@ export class DrizzleOfficialPriceCopies implements OfficialPriceCopies {
       .select()
       .from(officialPrices)
       .where(inArray(officialPrices.presentationId, presentationIds));
+  }
+
+  async findByEstablishment(establishmentId: string): Promise<OfficialPriceCopy[]> {
+    return this.db
+      .select()
+      .from(officialPrices)
+      .where(eq(officialPrices.establishmentId, establishmentId));
   }
 }

@@ -13,4 +13,6 @@ export interface OfficialPriceCopy {
 // Puerto hacia la tabla propia del módulo.
 export interface OfficialPriceCopies {
   findByPresentations(presentationIds: string[]): Promise<OfficialPriceCopy[]>;
+  // B9 (#209): los de una tienda, para avisarle sus discrepancias.
+  findByEstablishment(establishmentId: string): Promise<OfficialPriceCopy[]>;
 }

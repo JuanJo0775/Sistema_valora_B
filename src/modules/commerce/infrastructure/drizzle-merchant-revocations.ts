@@ -7,6 +7,7 @@ import {
   merchantCases,
   merchantClaimRejections,
   merchantClaims,
+  merchantNotices,
   officialPrices,
   promotions,
 } from './schema';
@@ -63,6 +64,7 @@ export class DrizzleMerchantRevocations implements MerchantRevocations, Merchant
       await tx
         .delete(merchantClaimRejections)
         .where(eq(merchantClaimRejections.accountId, accountId));
+      await tx.delete(merchantNotices).where(eq(merchantNotices.accountId, accountId));
       if (establishmentId !== null) await withdrawPublished(tx, establishmentId);
       for (const event of events) await this.outbox.publish(tx, event);
     });

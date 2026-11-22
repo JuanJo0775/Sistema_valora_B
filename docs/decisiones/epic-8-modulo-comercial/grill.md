@@ -59,6 +59,13 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Cuánto vale un precio oficial sin reconfirmar? | **La misma vigencia de los reportes** (ADR-005: 7 días frescos, 14 el resto; «por confirmar» y «desactualizado» como hoy). Valores provisionales y configurables en un solo lugar | Una sola regla para oficiales y reportados (neutralidad); un fresco de hace un mes no puede verse vigente |
 | ¿Cómo reconfirma un comercio con muchos productos? | Botón **«Todos mis precios siguen igual»** (un toque reconfirma todos); editar un precio lo reconfirma; **subir el archivo** reconfirma lo que trae; **recordatorio** un día antes (aviso en `/comercios` y correo con Resend) | Con 1.000 productos es un toque por semana. Se descartó que el comercio elija el periodo: podría dejar precios viejos como vigentes durante meses |
 
+**Precisiones al construir B9 (#209, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Cada cuánto llega correo? | **Máximo uno al día**, desde las 7:00 a. m. de Colombia, y **solo si hay algo nuevo**: un precio que vence mañana o una discrepancia que todavía no se le avisó. Lo demás sigue visible en `/comercios` | Un comercio con una discrepancia sin corregir no recibe el mismo correo cada día |
+| ¿Quién conoce el correo? | Solo `identity`: `commerce` pide «avisar a esta cuenta» y nunca ve la dirección | Datos personales en un solo lugar (EC-08, Ley 1581) |
+
 ## D5. Evidencias y correcciones de la tienda (ADR-022, `establishments`)
 
 | Pregunta | Decisión | Razón |

@@ -2084,6 +2084,43 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /commerce/alerts:
+    get:
+      tags: [Comercios]
+      operationId: listMerchantAlerts
+      summary: Los avisos del comercio (RF-016, D4, ADR-008)
+      description: >-
+        B9 (#209). Solo un comercio verificado. vence_pronto: a un precio oficial le queda un día o
+        menos de vigencia (D4); vencido: ya no está vigente; discrepancia: la comunidad corrobora otro
+        precio (D1, ADR-008). Cada aviso trae el texto listo para mostrar. Los avisos nuevos también
+        llegan por correo, en un resumen de máximo uno al día desde las 7:00 a. m. de Colombia
+        (precisiones de D4); el correo lo envía identity, y commerce nunca lo conoce (EC-08).
+      x-corte: 3
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Avisos de hoy.
+          headers:
+            Cache-Control:
+              description: Dato de la propia cuenta.
+              schema: { type: string, example: 'private, no-store' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/MerchantAlert' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN o MERCHANT_NOT_VERIFIED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /commerce/establishment:
     patch:
       tags: [Comercios]
@@ -2657,6 +2694,24 @@ components:
             verifiedAt: { type: [string, 'null'], format: date-time }
         reason: { type: string }
         createdAt: { type: string, format: date-time }
+    MerchantAlert:
+      type: object
+      description: Un aviso del comercio (#209). Los campos de precio solo vienen en discrepancia.
+      additionalProperties: false
+      required: [kind, presentationId, productName, message]
+      properties:
+        kind: { type: string, enum: [vence_pronto, vencido, discrepancia] }
+        presentationId: { type: string, format: uuid }
+        productName: { type: string }
+        message: { type: string, description: Texto listo para mostrar. }
+        confirmedAt:
+          type: string
+          format: date-time
+          description: En vence_pronto y vencido, la última confirmación del oficial.
+        officialPriceCop: { type: integer }
+        reportedPriceCop: { type: integer, description: La mediana de los reportes que corroboran. }
+        reports: { type: integer, minimum: 2 }
+        since: { type: string, format: date-time }
     MerchantUnlocks:
       type: array
       description: Lo que el comercio pre-aprobado podrá hacer al aprobarse su tienda (D2).
