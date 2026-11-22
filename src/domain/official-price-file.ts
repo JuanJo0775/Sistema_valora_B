@@ -50,50 +50,48 @@ export class InvalidPriceFileError extends Error {
 
 const HEADER = 'codigo_barras;precio';
 
-// Sin la marca de orden de bytes que agrega Excel, sin espacios y en minúsculas.
+// La marca de orden de bytes que Excel agrega al inicio de un «CSV UTF-8».
+const BYTE_ORDER_MARK = String.fromCharCode(0xfeff);
+
+// Sin esa marca, sin espacios y en minúsculas.
 const normalizedHeader = (line: string): string =>
-  line.replace(/^﻿/, '').replace(/\s/g, '').toLowerCase();
+  (line.startsWith(BYTE_ORDER_MARK) ? line.slice(1) : line).replace(/\s/g, '').toLowerCase();
 
 const { minPriceCop, maxPriceCop } = PLAUSIBILITY_PARAMS;
 // ADR-030: el mismo piso y techo absolutos que un reporte y que un oficial publicado uno a uno.
 const isValidPrice = (price: string): boolean =>
   /^\d+$/.test(price) && Number(price) >= minPriceCop && Number(price) <= maxPriceCop;
 
+const INVALID_PRICE_MESSAGE = `El precio debe ser un número entero de pesos entre $${money.format(minPriceCop)} y $${money.format(maxPriceCop)}, sin puntos.`;
+
+// Las filas con datos, con su número de Excel. El archivo completo se rechaza si no se puede leer.
+function dataLines(text: string): { row: number; cells: string[] }[] {
+  const lines = text.split(/\r?\n/);
+  if (normalizedHeader(lines[0] ?? '') !== HEADER) throw new InvalidPriceFileError();
+  const data = lines
+    .map((line, index) => ({ row: index + 1, line }))
+    .filter(({ row, line }) => row > 1 && line.trim() !== '');
+  if (data.length > MAX_PRICE_FILE_ROWS) throw new PriceFileTooLargeError();
+  return data.map(({ row, line }) => ({ row, cells: line.split(';').map((cell) => cell.trim()) }));
+}
+
 export function readPriceFile(text: string): PriceFile {
   const rows: PriceFileRow[] = [];
   const errors: PriceFileError[] = [];
   // La fila donde apareció cada código por primera vez.
   const firstRow = new Map<string, number>();
-  const lines = text.split(/\r?\n/);
-  if (normalizedHeader(lines[0] ?? '') !== HEADER) throw new InvalidPriceFileError();
-  if (lines.slice(1).filter((line) => line.trim() !== '').length > MAX_PRICE_FILE_ROWS) {
-    throw new PriceFileTooLargeError();
-  }
-  lines.forEach((line, index) => {
-    if (index === 0 || line.trim() === '') return;
-    const row = index + 1;
-    const [barcode = '', price = ''] = line.split(';').map((cell) => cell.trim());
-    if (!isValidPrice(price)) {
-      errors.push({
-        row,
-        barcode,
-        code: 'INVALID_PRICE',
-        message: `El precio debe ser un número entero de pesos entre $${money.format(minPriceCop)} y $${money.format(maxPriceCop)}, sin puntos.`,
-      });
-      return;
-    }
+  for (const { row, cells } of dataLines(text)) {
+    const [barcode = '', price = ''] = cells;
     const first = firstRow.get(barcode);
-    if (first !== undefined) {
-      errors.push({
-        row,
-        barcode,
-        code: 'DUPLICATE_ROW',
-        message: `Este código de barras ya está en la fila ${String(first)}.`,
-      });
-      return;
+    if (!isValidPrice(price)) {
+      errors.push({ row, barcode, code: 'INVALID_PRICE', message: INVALID_PRICE_MESSAGE });
+    } else if (first !== undefined) {
+      const message = `Este código de barras ya está en la fila ${String(first)}.`;
+      errors.push({ row, barcode, code: 'DUPLICATE_ROW', message });
+    } else {
+      firstRow.set(barcode, row);
+      rows.push({ row, barcode, priceCop: Number(price) });
     }
-    firstRow.set(barcode, row);
-    rows.push({ row, barcode, priceCop: Number(price) });
-  });
+  }
   return { rows, errors };
 }
