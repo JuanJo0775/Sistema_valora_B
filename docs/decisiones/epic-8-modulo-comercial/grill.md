@@ -14,6 +14,14 @@ Base: ADR-008 (el oficial es la referencia; discrepancia corroborada = diferenci
 
 Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 → entra $4.800 al orden y se muestra «Oficial $4.000 · Reportado $4.800».
 
+**Precisiones al construir B4 (#204, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Y si los reportes no coinciden entre sí? | Hay discrepancia solo si **2 o más** reportes están **del mismo lado** (todos más caros o todos más baratos, a más de 5 %) y son **más** que los reportes recientes que coinciden con el oficial | Un reporte más caro y otro más barato no corroboran lo mismo; si la mayoría ve el precio oficial, gana el oficial |
+| ¿Qué es la «última actualización» del oficial? | Cuando el comercio **cambia el precio**. Reconfirmar («Todos mis precios siguen igual») no reinicia la cuenta | Reconfirmar no puede borrar una discrepancia que la comunidad sigue viendo |
+| ¿Qué pantallas cambian en B4? | Solo la comparación de un producto. Los precios de una tienda, la canasta de hoy y el conteo de precios por tienda van en una issue aparte | Mantener el PR pequeño |
+
 ## D2. Cómo se prueba que alguien es dueño de un comercio (ADR-025)
 
 | Pregunta | Decisión | Razón |
