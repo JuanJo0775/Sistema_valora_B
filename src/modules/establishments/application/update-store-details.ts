@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import type { OpeningHours } from '../../../domain/opening-hours';
+import { equivalentStoreNames } from '../../../domain/store-proposal';
 import type { StoreCorrections, StoreDetailsChange, StoreDetailsRepository } from './store-details';
 
 export interface UpdateStoreDetailsPorts {
@@ -22,18 +24,50 @@ export interface UpdateStoreDetailsResult {
   inReview: ('name' | 'location')[];
 }
 
+// D5: un nombre igual al de otra tienda a menos de esta distancia pasa por el moderador.
+export const NEIGHBOR_NAME_METERS = 50;
+
 // D5 del grill comercial: el comercio corrige los datos de su tienda; commerce lo pide por la
 // interfaz pública de establishments.
 export class UpdateStoreDetails {
   constructor(private readonly ports: UpdateStoreDetailsPorts) {}
 
   async execute(request: UpdateStoreDetailsRequest): Promise<UpdateStoreDetailsResult> {
+    const { stores, corrections, clock } = this.ports;
+    const name = request.name?.trim();
+    const nameInReview = name !== undefined && (await this.copiesANeighbor(request, name));
     const change: StoreDetailsChange = {
       ...(request.openingHours === undefined ? {} : { openingHours: request.openingHours }),
       ...(request.phone === undefined ? {} : { phone: request.phone }),
-      ...(request.name === undefined ? {} : { name: request.name.trim() }),
+      ...(name === undefined || nameInReview ? {} : { name }),
     };
-    await this.ports.stores.applyDetails(request.establishmentId, change);
-    return { applied: Object.keys(change) as (keyof StoreDetailsChange)[], inReview: [] };
+    await stores.applyDetails(request.establishmentId, change);
+    if (nameInReview) {
+      await corrections.propose({
+        id: randomUUID(),
+        establishmentId: request.establishmentId,
+        name,
+        proposerKey: request.proposerKey,
+        createdAt: clock.now(),
+      });
+    }
+    return {
+      applied: Object.keys(change) as (keyof StoreDetailsChange)[],
+      inReview: nameInReview ? ['name'] : [],
+    };
+  }
+
+  // RF-005 RN3 (#27): el nombre es equivalente al de otra tienda cercana.
+  private async copiesANeighbor(
+    { establishmentId }: UpdateStoreDetailsRequest,
+    name: string,
+  ): Promise<boolean> {
+    const { stores } = this.ports;
+    const store = await stores.findById(establishmentId);
+    if (!store) return false;
+    const neighbors = await stores.findWithinMeters(store, NEIGHBOR_NAME_METERS);
+    return neighbors.some(
+      (neighbor) => neighbor.id !== establishmentId && equivalentStoreNames(neighbor.name, name),
+    );
   }
 }
