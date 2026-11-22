@@ -28,6 +28,14 @@ export interface ClaimResult {
   establishmentId: string;
 }
 
+// No es una regla de negocio: la capa HTTP la traduce a 404 NOT_FOUND.
+export class EstablishmentNotFoundError extends Error {
+  constructor() {
+    super('La tienda no existe.');
+    this.name = 'EstablishmentNotFoundError';
+  }
+}
+
 // Regla de negocio incumplida: la capa HTTP la traduce a 422.
 export class NotAtEstablishmentError extends Error {
   readonly code = 'NOT_AT_ESTABLISHMENT';
@@ -45,7 +53,8 @@ export class ClaimEstablishment {
   async execute(request: ClaimRequest): Promise<ClaimResult> {
     const { establishments, claims, roles, clock } = this.ports;
     const establishment = await establishments.find(request.establishmentId);
-    if (establishment && !isAtEstablishment(request.location, establishment)) {
+    if (!establishment) throw new EstablishmentNotFoundError();
+    if (!isAtEstablishment(request.location, establishment)) {
       throw new NotAtEstablishmentError();
     }
     await claims.save({
