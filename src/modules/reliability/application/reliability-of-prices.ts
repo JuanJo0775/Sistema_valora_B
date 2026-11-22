@@ -5,7 +5,7 @@ import {
 } from '../../../domain/reliability';
 import type { ScoredReport } from '../../../domain/report-window';
 import { isReliable } from './standing';
-import type { ObservationStore, ReputationStore } from './stores';
+import type { Observation, ObservationStore, ReputationStore } from './stores';
 
 export interface PriceRef {
   presentationId: string;
@@ -17,6 +17,14 @@ export interface PriceRef {
 export interface PriceReliability extends PriceRef {
   level: ReliabilityLevel;
   confirmations: number;
+}
+
+// Un reporte de la tienda con su nivel, para compararlo con el precio oficial (#204).
+export interface ReportAtStore {
+  reportId: string;
+  priceCop: number;
+  observedAt: Date;
+  level: ReliabilityLevel;
 }
 
 export interface ReliabilityOfPricesPorts {
@@ -38,7 +46,6 @@ export class ReliabilityOfPrices {
   constructor(private readonly ports: ReliabilityOfPricesPorts) {}
 
   async of(prices: PriceRef[], ttlDays: number): Promise<PriceReliability[]> {
-    const now = this.ports.clock.now();
     const results: PriceReliability[] = [];
     for (const price of prices) {
       const inStore = await this.ports.observations.forPresentation(price.presentationId, [
@@ -46,20 +53,57 @@ export class ReliabilityOfPrices {
       ]);
       const candidate = inStore.find((seen) => seen.reportId === price.reportId);
       if (!candidate) continue;
-      // Los que están en revisión o descartados no confirman ni contradicen un precio.
-      const others = inStore.filter((seen) => seen !== candidate && isReliable(seen));
-      const reputations = await this.ports.reputations.valuesOf(
-        [candidate, ...others].map((seen) => seen.reporterKey),
-      );
-      const { score, corroborations } = reliabilityScore({
-        candidate: toScored(candidate),
-        others: others.map(toScored),
-        reputationOf: (key) => reputations.get(key) ?? 0.5,
-        now,
-        ttlDays,
-      });
-      results.push({ ...price, level: reliabilityLevel(score), confirmations: corroborations });
+      const { level, confirmations } = await this.score(candidate, inStore, ttlDays);
+      results.push({ ...price, level, confirmations });
     }
     return results;
+  }
+
+  // D1 del grill comercial (#204): los reportes de la tienda, uno por persona (el más reciente, así
+  // son independientes), con su nivel. Sin la clave de quien reportó (EC-08).
+  async reportsAt(
+    presentationId: string,
+    establishmentId: string,
+    ttlDays: number,
+  ): Promise<ReportAtStore[]> {
+    const inStore = await this.ports.observations.forPresentation(presentationId, [
+      establishmentId,
+    ]);
+    const latest = new Map<string, Observation>();
+    for (const seen of inStore) {
+      const current = latest.get(seen.reporterKey);
+      if (!current || seen.observedAt > current.observedAt) latest.set(seen.reporterKey, seen);
+    }
+    const results: ReportAtStore[] = [];
+    for (const seen of latest.values()) {
+      const { level } = await this.score(seen, inStore, ttlDays);
+      results.push({
+        reportId: seen.reportId,
+        priceCop: seen.priceCop,
+        observedAt: seen.observedAt,
+        level,
+      });
+    }
+    return results;
+  }
+
+  private async score(
+    candidate: Observation,
+    inStore: Observation[],
+    ttlDays: number,
+  ): Promise<{ level: ReliabilityLevel; confirmations: number }> {
+    // Los que están en revisión o descartados no confirman ni contradicen un precio.
+    const others = inStore.filter((seen) => seen !== candidate && isReliable(seen));
+    const reputations = await this.ports.reputations.valuesOf(
+      [candidate, ...others].map((seen) => seen.reporterKey),
+    );
+    const { score, corroborations } = reliabilityScore({
+      candidate: toScored(candidate),
+      others: others.map(toScored),
+      reputationOf: (key) => reputations.get(key) ?? 0.5,
+      now: this.ports.clock.now(),
+      ttlDays,
+    });
+    return { level: reliabilityLevel(score), confirmations: corroborations };
   }
 }
