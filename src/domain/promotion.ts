@@ -82,3 +82,29 @@ export function assertValidOffer(offer: PromotionOffer, officialPriceCop: number
       }
   }
 }
+
+// Precisión de D6 (22-nov-2026): una promoción dura como mucho 30 días. Valor PROVISIONAL.
+export const MAX_PROMOTION_DAYS = 30;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysBetween = (from: string, until: string): number =>
+  (Date.parse(`${until}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS;
+
+export function assertValidDates({
+  validFrom,
+  validUntil,
+  now,
+}: Pick<PromotionStatusInput, 'validFrom' | 'validUntil' | 'now'>): void {
+  if (validUntil < validFrom) {
+    throw new InvalidPromotionError('La fecha final no puede ser anterior a la de inicio.');
+  }
+  if (validUntil < colombiaDate(now)) {
+    throw new InvalidPromotionError('La fecha final ya pasó.');
+  }
+  // Los dos días cuentan: del 22 al 21 del mes siguiente son 30 días.
+  if (daysBetween(validFrom, validUntil) + 1 > MAX_PROMOTION_DAYS) {
+    throw new InvalidPromotionError(
+      `Una promoción dura como mucho ${String(MAX_PROMOTION_DAYS)} días: publica otra para seguir.`,
+    );
+  }
+}
