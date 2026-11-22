@@ -14,6 +14,20 @@ export interface PromotionStatusInput {
   officialFreshness: Freshness;
 }
 
-export function promotionStatus({ officialFreshness }: PromotionStatusInput): PromotionStatus {
+// Colombia está en UTC-5 todo el año (no cambia de hora).
+const COLOMBIA_OFFSET_MS = -5 * 60 * 60 * 1000;
+const colombiaDate = (instant: Date): string =>
+  new Date(instant.getTime() + COLOMBIA_OFFSET_MS).toISOString().slice(0, 10);
+
+export function promotionStatus({
+  validFrom,
+  validUntil,
+  now,
+  officialFreshness,
+}: PromotionStatusInput): PromotionStatus {
+  // Las fechas AAAA-MM-DD se comparan bien como texto.
+  const today = colombiaDate(now);
+  if (today > validUntil) return 'vencida';
+  if (today < validFrom) return 'programada';
   return officialFreshness === 'vigente' ? 'activa' : 'pausada';
 }
