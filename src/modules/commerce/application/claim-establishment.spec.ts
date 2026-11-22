@@ -4,6 +4,7 @@ import {
   type ClaimRequest,
   EstablishmentHasOwnerError,
   EstablishmentNotFoundError,
+  InvalidNitError,
   NotAtEstablishmentError,
 } from './claim-establishment';
 import type { MerchantClaim } from './merchant-claims';
@@ -122,5 +123,14 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
 
     await expect(claim.execute(request())).rejects.toThrow(AccountHasEstablishmentError);
     expect(claims).toEqual([own]);
+  });
+
+  it('un NIT con el dígito de verificación equivocado se rechaza: está mal escrito', async () => {
+    const { claim, claims } = setup();
+
+    await expect(claim.execute(request({ nit: '800.197.268-5' }))).rejects.toThrow(
+      InvalidNitError,
+    );
+    expect(claims).toEqual([]);
   });
 });
