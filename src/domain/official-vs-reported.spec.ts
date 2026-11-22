@@ -60,4 +60,13 @@ describe('precio oficial frente a reportado (D1 del grill comercial, ADR-008)', 
   it('un solo reporte distinto no basta para corroborar', () => {
     expect(resolve([report(4800)])).toEqual({ kind: 'oficial', priceCop: 4000 });
   });
+
+  it('los reportes de confiabilidad baja no corroboran', () => {
+    expect(resolve([report(4800, { reliable: false }), report(4800, { reliable: false })])).toEqual(
+      {
+        kind: 'oficial',
+        priceCop: 4000,
+      },
+    );
+  });
 });
