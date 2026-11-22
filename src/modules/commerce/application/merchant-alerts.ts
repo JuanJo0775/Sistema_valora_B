@@ -31,7 +31,7 @@ interface AlertBase {
 }
 
 export type MerchantAlert =
-  | (AlertBase & { kind: 'vence_pronto' | 'vencido' })
+  | (AlertBase & { kind: 'vence_pronto' | 'vencido'; confirmedAt: Date })
   | (AlertBase & Omit<DiscrepancyNotice, 'presentationId'> & { kind: 'discrepancia' });
 
 const money = new Intl.NumberFormat('es-CO');
@@ -67,6 +67,7 @@ export class MerchantAlerts {
         kind: due,
         presentationId: price.presentationId,
         productName,
+        confirmedAt: price.confirmedAt,
         message:
           due === 'vence_pronto'
             ? `Tu precio oficial de ${productName} vence mañana: reconfírmalo.`
