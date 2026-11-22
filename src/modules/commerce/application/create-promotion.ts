@@ -1,13 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { freshnessOf, ttlDaysFor } from '../../../domain/freshness';
-import {
-  assertValidDates,
-  assertValidOffer,
-  type PromotionOffer,
-  promotedPriceCop,
-  promotionStatus,
-} from '../../../domain/promotion';
+import { assertValidDates, assertValidOffer, type PromotionOffer } from '../../../domain/promotion';
 import { createEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 import type { OfficialPriceRepository } from './official-prices';
@@ -17,6 +11,7 @@ import {
   type PromotionConditions,
   type PromotionRepository,
   type PromotionView,
+  promotionView,
 } from './promotions';
 import { verifiedEstablishmentOf } from './publish-official-price';
 
@@ -81,11 +76,6 @@ export class CreatePromotion {
         createdAt: promotion.createdAt.toISOString(),
       }),
     ]);
-    return {
-      ...promotion,
-      status: promotionStatus({ ...promotion, now, officialFreshness }),
-      officialPriceCop: official.priceCop,
-      promotedPriceCop: promotedPriceCop(promotion.offer, official.priceCop),
-    };
+    return promotionView(promotion, official, isFresh, now);
   }
 }
