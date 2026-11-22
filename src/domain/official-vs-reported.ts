@@ -62,7 +62,14 @@ export function officialVsReported({
   const higher = recent.filter(above);
   const lower = recent.filter(below);
   const corroborating = higher.length >= lower.length ? higher : lower;
-  if (corroborating.length < DISCREPANCY_PARAMS.minReports) {
+  const opposite = corroborating === higher ? lower : higher;
+  // Y son más que los que coinciden con el oficial y que los del otro lado.
+  const agreeing = recent.length - higher.length - lower.length;
+  if (
+    corroborating.length < DISCREPANCY_PARAMS.minReports ||
+    corroborating.length <= agreeing ||
+    corroborating.length <= opposite.length
+  ) {
     return { kind: 'oficial', priceCop: official.priceCop };
   }
   const chosen = median(corroborating);
