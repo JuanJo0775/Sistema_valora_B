@@ -1922,6 +1922,11 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/MerchantProfile' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN, un moderador no tiene perfil de comercio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404':
           description: La cuenta no tiene una tienda registrada.
           content:
