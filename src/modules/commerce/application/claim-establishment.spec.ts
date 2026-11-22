@@ -1,4 +1,9 @@
-import { ClaimEstablishment, type ClaimRequest, NotAtEstablishmentError } from './claim-establishment';
+import {
+  ClaimEstablishment,
+  type ClaimRequest,
+  EstablishmentNotFoundError,
+  NotAtEstablishmentError,
+} from './claim-establishment';
 import type { MerchantClaim } from './merchant-claims';
 
 const now = new Date('2026-11-21T15:00:00Z');
@@ -77,5 +82,14 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
     await expect(claim.execute(far)).rejects.toThrow(NotAtEstablishmentError);
     expect(claims).toEqual([]);
     expect(merchants).toEqual([]);
+  });
+
+  it('una tienda que no está en el mapa se rechaza: va por la propuesta de tienda (B2)', async () => {
+    const { claim, claims } = setup();
+
+    await expect(claim.execute(request({ establishmentId: 'no-existe' }))).rejects.toThrow(
+      EstablishmentNotFoundError,
+    );
+    expect(claims).toEqual([]);
   });
 });
