@@ -1,4 +1,4 @@
-import { ClaimEstablishment, type ClaimRequest } from './claim-establishment';
+import { ClaimEstablishment, type ClaimRequest, NotAtEstablishmentError } from './claim-establishment';
 import type { MerchantClaim } from './merchant-claims';
 
 const now = new Date('2026-11-21T15:00:00Z');
@@ -66,5 +66,16 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
         verifiedAt: now,
       },
     ]);
+  });
+
+  it('a más de 50 m de la tienda se rechaza, sin guardar nada ni cambiar el rol', async () => {
+    const { claim, claims, merchants } = setup();
+
+    // A unos 110 m de la tienda.
+    const far = request({ location: { lat: STORE.lat + 0.001, lng: STORE.lng } });
+
+    await expect(claim.execute(far)).rejects.toThrow(NotAtEstablishmentError);
+    expect(claims).toEqual([]);
+    expect(merchants).toEqual([]);
   });
 });
