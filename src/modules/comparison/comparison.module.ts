@@ -143,15 +143,24 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
     // B#120: la canasta básica de hoy en un municipio.
     {
       provide: FeaturedProducts,
-      inject: [DATABASE, EstablishmentsWithinRadius, PresentationsForPricing, ProductSummaries],
+      inject: [
+        DATABASE,
+        EstablishmentsWithinRadius,
+        PresentationsForPricing,
+        ProductSummaries,
+        ReliabilityOfPrices,
+      ],
       useFactory: (
         db: Database,
         stores: EstablishmentsWithinRadius,
         presentations: PresentationsForPricing,
         products: ProductSummaries,
+        reliability: ReliabilityOfPrices,
       ): FeaturedProducts =>
         new FeaturedProducts({
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
+          reliability,
           stores,
           presentations,
           products,

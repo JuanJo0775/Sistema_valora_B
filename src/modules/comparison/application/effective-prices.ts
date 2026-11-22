@@ -1,3 +1,4 @@
+import { freshnessOf } from '../../../domain/freshness';
 import type { PriceSource } from '../../../domain/initial-price';
 import type { Discrepancy } from '../../../domain/official-vs-reported';
 import type { CurrentPrice } from './current-prices';
@@ -61,10 +62,21 @@ async function officialOrReported(
 }
 
 export async function effectivePrices(input: EffectivePricesInput): Promise<EffectivePrice[]> {
-  const { current, officials } = input;
-  const withOfficial = new Set(officials.map(placeOf));
+  const { current, officials, ttlDaysOf, now } = input;
+  const withCommunity = new Set(current.map(placeOf));
+  const applicableOfficials = officials.filter(
+    (official) =>
+      !withCommunity.has(placeOf(official)) ||
+      freshnessOf({
+        observedAt: official.confirmedAt,
+        now: official.confirmedAt > now ? official.confirmedAt : now,
+        ttlDays: ttlDaysOf(official.presentationId),
+      }) === 'vigente',
+  );
+  const withOfficial = new Set(applicableOfficials.map(placeOf));
   const community = current.filter((price) => !withOfficial.has(placeOf(price)));
   const resolved: EffectivePrice[] = [];
-  for (const official of officials) resolved.push(await officialOrReported(official, input));
+  for (const official of applicableOfficials)
+    resolved.push(await officialOrReported(official, input));
   return [...community, ...resolved];
 }

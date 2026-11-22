@@ -10,6 +10,8 @@ interface FeaturedPriceResponse {
   presentationId: string;
   label: string;
   priceCop: number;
+  source: FeaturedPrice['source'];
+  discrepancy?: Omit<NonNullable<FeaturedPrice['discrepancy']>, 'since'> & { since: string };
   unitPrice: { valueCop: number; per: string };
   establishment: {
     id: string;
@@ -48,8 +50,15 @@ interface HeaderTarget {
 }
 
 // Se muestra redondeado; el valor exacto no sale de la aplicación.
-const toPriceResponse = ({ unitPrice, ...price }: FeaturedPrice): FeaturedPriceResponse => ({
+const toPriceResponse = ({
+  unitPrice,
+  discrepancy,
+  ...price
+}: FeaturedPrice): FeaturedPriceResponse => ({
   ...price,
+  ...(discrepancy === undefined
+    ? {}
+    : { discrepancy: { ...discrepancy, since: discrepancy.since.toISOString() } }),
   unitPrice: { valueCop: unitPrice.displayCop, per: unitPrice.per },
 });
 
