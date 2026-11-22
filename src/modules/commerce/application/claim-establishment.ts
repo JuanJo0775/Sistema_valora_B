@@ -56,6 +56,16 @@ export class EstablishmentHasOwnerError extends Error {
   }
 }
 
+// D3: una tienda por cuenta. La capa HTTP la traduce a 409.
+export class AccountHasEstablishmentError extends Error {
+  readonly code = 'ACCOUNT_HAS_ESTABLISHMENT';
+
+  constructor() {
+    super('Tu cuenta ya tiene una tienda registrada.');
+    this.name = 'AccountHasEstablishmentError';
+  }
+}
+
 // RF-015 con la D2 del grill comercial: una cuenta registra como suya una tienda del mapa.
 export class ClaimEstablishment {
   constructor(private readonly ports: ClaimEstablishmentPorts) {}
@@ -66,6 +76,9 @@ export class ClaimEstablishment {
     if (!establishment) throw new EstablishmentNotFoundError();
     if (!isAtEstablishment(request.location, establishment)) {
       throw new NotAtEstablishmentError();
+    }
+    if ((await claims.establishmentOf(request.accountId)) !== null) {
+      throw new AccountHasEstablishmentError();
     }
     if ((await claims.ownerOf(request.establishmentId)) !== null) {
       throw new EstablishmentHasOwnerError();
