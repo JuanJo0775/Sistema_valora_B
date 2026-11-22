@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type { OfficialPrice, OfficialPriceRepository } from '../application/official-prices';
@@ -31,6 +31,24 @@ export class DrizzleOfficialPriceRepository implements OfficialPriceRepository {
         });
       for (const event of events) await this.outbox.publish(tx, event);
     });
+  }
+
+  async findOne(establishmentId: string, presentationId: string): Promise<OfficialPrice | null> {
+    const [found] = await this.db
+      .select({
+        establishmentId: officialPrices.establishmentId,
+        presentationId: officialPrices.presentationId,
+        priceCop: officialPrices.priceCop,
+        confirmedAt: officialPrices.confirmedAt,
+      })
+      .from(officialPrices)
+      .where(
+        and(
+          eq(officialPrices.establishmentId, establishmentId),
+          eq(officialPrices.presentationId, presentationId),
+        ),
+      );
+    return found ?? null;
   }
 
   async listFor(establishmentId: string): Promise<OfficialPrice[]> {
