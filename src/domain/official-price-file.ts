@@ -33,6 +33,8 @@ const isValidPrice = (price: string): boolean =>
 export function readPriceFile(text: string): PriceFile {
   const rows: PriceFileRow[] = [];
   const errors: PriceFileError[] = [];
+  // La fila donde apareció cada código por primera vez.
+  const firstRow = new Map<string, number>();
   text.split(/\r?\n/).forEach((line, index) => {
     if (index === 0 || line.trim() === '') return;
     const row = index + 1;
@@ -46,6 +48,17 @@ export function readPriceFile(text: string): PriceFile {
       });
       return;
     }
+    const first = firstRow.get(barcode);
+    if (first !== undefined) {
+      errors.push({
+        row,
+        barcode,
+        code: 'DUPLICATE_ROW',
+        message: `Este código de barras ya está en la fila ${String(first)}.`,
+      });
+      return;
+    }
+    firstRow.set(barcode, row);
     rows.push({ row, barcode, priceCop: Number(price) });
   });
   return { rows, errors };
