@@ -1,4 +1,4 @@
-import { isAtEstablishment } from '../../../domain/merchant-claim';
+import { isAtEstablishment, isValidNit } from '../../../domain/merchant-claim';
 import type { MerchantClaimRepository } from './merchant-claims';
 
 type Point = { lat: number; lng: number };
@@ -26,6 +26,14 @@ export interface ClaimRequest {
 export interface ClaimResult {
   status: 'verificado';
   establishmentId: string;
+}
+
+// Dato de entrada inválido: la capa HTTP lo traduce a 400 VALIDATION_ERROR.
+export class InvalidNitError extends Error {
+  constructor() {
+    super('El NIT no es válido: revisa los números y el dígito de verificación.');
+    this.name = 'InvalidNitError';
+  }
 }
 
 // No es una regla de negocio: la capa HTTP la traduce a 404 NOT_FOUND.
@@ -71,6 +79,7 @@ export class ClaimEstablishment {
   constructor(private readonly ports: ClaimEstablishmentPorts) {}
 
   async execute(request: ClaimRequest): Promise<ClaimResult> {
+    if (request.nit !== undefined && !isValidNit(request.nit)) throw new InvalidNitError();
     const { establishments, claims, roles, clock } = this.ports;
     const establishment = await establishments.find(request.establishmentId);
     if (!establishment) throw new EstablishmentNotFoundError();
