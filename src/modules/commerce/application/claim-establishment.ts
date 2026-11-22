@@ -17,6 +17,8 @@ export interface ClaimEstablishmentPorts {
   // La tienda del mapa, por la interfaz pública de establishments.
   establishments: { find(establishmentId: string): Promise<Point | null> };
   claims: Pick<MerchantClaimRepository, 'ownerOf' | 'establishmentOf' | 'save'>;
+  // Precisión de D3 (#208): quien está en una tienda con dueño abre una disputa para el moderador.
+  disputes: { open(establishmentId: string, accountId: string): Promise<void> };
   clock: { now(): Date };
 }
 
@@ -116,6 +118,9 @@ export class ClaimEstablishment {
     if ((await claims.establishmentOf(accountId)) !== null) {
       throw new AccountHasEstablishmentError();
     }
-    if ((await claims.ownerOf(establishmentId)) !== null) throw new EstablishmentHasOwnerError();
+    if ((await claims.ownerOf(establishmentId)) !== null) {
+      await this.ports.disputes.open(establishmentId, accountId);
+      throw new EstablishmentHasOwnerError();
+    }
   }
 }

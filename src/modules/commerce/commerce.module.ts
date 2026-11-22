@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
 import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
@@ -33,6 +34,7 @@ import { OfficialPricesController } from './http/official-prices.controller';
 import { PromotionsController } from './http/promotions.controller';
 import { DrizzlePromotionRepository } from './infrastructure/drizzle-promotion-repository';
 import { DrizzleOfficialPriceRepository } from './infrastructure/drizzle-official-price-repository';
+import { DrizzleMerchantCaseRepository } from './infrastructure/drizzle-merchant-case-repository';
 import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchant-claim-repository';
 
 // EPIC-B08: comercios verificados (D1 a D8 del grill comercial). B1 (#201) y B2 (#202): registro y
@@ -171,15 +173,33 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
     },
     {
       provide: ClaimEstablishment,
-      inject: [DATABASE, EstablishmentDetails, OutboxPublisher],
+      inject: [DATABASE, EstablishmentDetails, OutboxPublisher, ReporterIdentity],
       useFactory: (
         db: Database,
         establishments: EstablishmentDetails,
         outbox: OutboxPublisher,
+        identities: ReporterIdentity,
       ): ClaimEstablishment =>
         new ClaimEstablishment({
           establishments,
           claims: new DrizzleMerchantClaimRepository(db, outbox),
+          // Precisión de D3 (#208): una disputa por cuenta y tienda mientras esté abierta, con la
+          // clave seudónima de quien la abre (EC-08).
+          disputes: {
+            open: async (establishmentId, accountId) => {
+              const cases = new DrizzleMerchantCaseRepository(db);
+              const { reporterKey } = await identities.of(accountId);
+              if (await cases.hasOpen(establishmentId, reporterKey)) return;
+              await cases.open({
+                id: randomUUID(),
+                establishmentId,
+                kind: 'disputa',
+                reporterKey,
+                reason: 'Otra cuenta, estando en la tienda, intentó registrarla.',
+                createdAt: new Date(),
+              });
+            },
+          },
           clock: { now: () => new Date() },
         }),
     },
