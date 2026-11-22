@@ -210,7 +210,7 @@ Uno de los 12 municipios del Quindío, con el código de la aplicación: `armeni
 - **Mismos tipos, tipo en Valora y limpieza por nombre** que en Armenia. Quedaron fuera 65 panaderías, 61 comercios sin nombre y 2 tiendas que no venden comida.
 - **Listas** (`revisar = no`): supermercados, minimercados, fruterías y carnicerías, y las tiendas `general` cuyo nombre dice que son de barrio o de comida. Es la decisión del equipo del 22-nov: el mismo criterio de Armenia, para que salgan en el mapa.
 - **Por revisar** (`revisar = sí`): las `general` con nombres que no dicen qué venden, y nombres dudosos: «S» (Filandia), «Fonda la Carmelita» (Quimbaya) y «Estadero el Oasis» (Salento). Fondas y estaderos suelen ser bares.
-- **Resultado:** 137 tiendas nuevas, 105 listas y 32 por revisar.
+- **Resultado:** 137 tiendas nuevas, 105 listas y 32 por revisar. **El 22-nov-2026 la integrante que dirige el backend aprobó las 32**: las 137 quedan con `revisar = no`. La tabla muestra cómo llegaron de la consulta.
 
 | Municipio  | Listas | Por revisar |
 | ---------- | ------ | ----------- |
@@ -230,7 +230,7 @@ Uno de los 12 municipios del Quindío, con el código de la aplicación: `armeni
 
 ### Qué falta (el equipo)
 
-1. **Las filas con `revisar = sí`** (26 de Armenia y 32 de los otros municipios) son tiendas `general` con nombres que no dicen qué venden («Casa Blanca», «La 72», «Misceláneas», «Variedades»…). Hay que confirmar que venden productos de la canasta. Si no, se borra la fila.
+1. **Las 26 filas de Armenia con `revisar = sí`** son tiendas `general` con nombres que no dicen qué venden («Casa Blanca», «La 72», «Misceláneas», «Variedades»…). Hay que confirmar que venden productos de la canasta. Si no, se borra la fila.
 2. **Tiendas cerradas o que se mudaron:** OpenStreetMap puede estar desactualizado. Basta con revisar las que el equipo conozca.
 3. **Tipo:** si una tienda quedó con un tipo que no le corresponde (por ejemplo, un minimercado marcado como `barrio`), se cambia la columna `tipo`.
 4. **No cambiar** `osm_id`, `lat`, `lng`, `fuente` ni `fecha_consulta`: son la trazabilidad del dato.

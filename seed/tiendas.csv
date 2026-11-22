@@ -184,14 +184,14 @@ way/357939597;Supermercado Laureles;supermercado;;4.5599145;-75.6555278;armenia;
 node/10092342970;Ventanilla Verde;supermercado;;4.5341168;-75.7019032;armenia;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
 way/272170150;Ventanilla Verde;supermercado;Calle 23 16-21;4.5326964;-75.6756722;armenia;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-12
 way/475122692;Almacén Buenavista;supermercado;;4.3596851;-75.7386822;buenavista;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/13869946256;40 Grados;barrio;;4.5244050;-75.6440262;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/9544168520;Amareto;barrio;;4.5316128;-75.6402053;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/5973378394;Ana Leidy;barrio;;4.5323546;-75.6425629;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/13869946256;40 Grados;barrio;;4.5244050;-75.6440262;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/9544168520;Amareto;barrio;;4.5316128;-75.6402053;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/5973378394;Ana Leidy;barrio;;4.5323546;-75.6425629;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/4479586803;Ara;descuento;;4.5215591;-75.6490046;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/460423451;Ara;descuento;;4.5275232;-75.6415711;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/677184945;Ara;descuento;;4.4277677;-75.7190930;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/1524792342;Ara;descuento;;4.5147648;-75.6448761;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/11018988588;California;barrio;;4.5337217;-75.6398960;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/11018988588;California;barrio;;4.5337217;-75.6398960;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/4742374473;Carnes El Rancho;barrio;;4.5295460;-75.6428896;calarca;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/11247151371;Comfenalco;supermercado;;4.5288059;-75.6414775;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/7064962152;D1;descuento;;4.5225268;-75.6477699;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
@@ -201,47 +201,47 @@ way/1343920014;D1;descuento;;4.5278669;-75.6414314;calarca;supermarket;no;© col
 node/4742374472;Distribuidora Pijao;barrio;;4.5294832;-75.6427448;calarca;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12328914202;Distrifuver;barrio;;4.5232194;-75.6436035;calarca;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12328875002;Don express;barrio;;4.5306489;-75.6423343;calarca;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/11097499655;El Cacique;barrio;;4.5277822;-75.6416817;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/11097499655;El Cacique;barrio;;4.5277822;-75.6416817;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12450032033;El Cafetal;minimercado;;4.5333521;-75.6398737;calarca;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/5145747532;El Cafeterito;supermercado;;4.5357943;-75.6391393;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/647534860;El Container;barrio;;4.5310875;-75.6342211;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/10983173374;El Hueco de Medellín;barrio;;4.5299674;-75.6403958;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/647534860;El Container;barrio;;4.5310875;-75.6342211;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/10983173374;El Hueco de Medellín;barrio;;4.5299674;-75.6403958;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12613426902;El Laguito;barrio;;4.5361666;-75.6390406;calarca;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/451573377;El Progreso;supermercado;;4.5312316;-75.6423432;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/6875657824;El Punto del Pollo y El Pescado;barrio;;4.5301255;-75.6424888;calarca;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/1182801066;El rincón de Kike;barrio;;4.5280588;-75.6420484;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/12165861315;El Romboy;barrio;;4.5239940;-75.6367485;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/5381940150;El Vaivén;barrio;;4.4997794;-75.6727581;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/1182801066;El rincón de Kike;barrio;;4.5280588;-75.6420484;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/12165861315;El Romboy;barrio;;4.5239940;-75.6367485;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/5381940150;El Vaivén;barrio;;4.4997794;-75.6727581;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/321917430;Fruver La Granja;barrio;;4.5289004;-75.6432091;calarca;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/324606294;Jefe de Jefes;barrio;;4.5200489;-75.6502020;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/11247151372;Kalarcity;barrio;;4.5288644;-75.6416899;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/450887273;Kiosko El Pescador;barrio;;4.5323893;-75.6452391;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/324606294;Jefe de Jefes;barrio;;4.5200489;-75.6502020;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/11247151372;Kalarcity;barrio;;4.5288644;-75.6416899;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/450887273;Kiosko El Pescador;barrio;;4.5323893;-75.6452391;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/1149705208;La Bodega del Canasto;supermercado;;4.5313627;-75.6431496;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/5024979273;La Bonanza;barrio;;4.5213768;-75.6484491;calarca;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12328894201;La boutique de carnes;barrio;;4.5310503;-75.6426681;calarca;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/13172031227;La Curva;barrio;;4.5325666;-75.6623532;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/321919235;La Esquina;barrio;;4.5166555;-75.6465515;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/13172031227;La Curva;barrio;;4.5325666;-75.6623532;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/321919235;La Esquina;barrio;;4.5166555;-75.6465515;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12328875001;La macarena;barrio;;4.5303432;-75.6430269;calarca;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/681758041;Los Billares;barrio;;4.5001886;-75.6724248;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/321917144;Mai;barrio;;4.5207878;-75.6526322;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/5695650038;Manila Store;barrio;;4.5234501;-75.6465919;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/1182798836;Mega Store;barrio;;4.5287142;-75.6414423;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/681758041;Los Billares;barrio;;4.5001886;-75.6724248;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/321917144;Mai;barrio;;4.5207878;-75.6526322;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/5695650038;Manila Store;barrio;;4.5234501;-75.6465919;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/1182798836;Mega Store;barrio;;4.5287142;-75.6414423;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/4548536639;Mercamos;supermercado;;4.5307327;-75.6433314;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/499411496;Mercamos;supermercado;;4.5233743;-75.6469720;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/5271851297;Mercampo Express;barrio;;4.5213597;-75.6489634;calarca;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/6164867704;Minimarket de Pili;barrio;;4.5206388;-75.6516590;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/324606272;Minimercado El Veci;supermercado;;4.5202286;-75.6500168;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/517800562;Miscelánea Duque;barrio;;4.5250679;-75.6422124;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/321921736;Miscelania Valdepeñas;barrio;;4.5144139;-75.6578550;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/324605738;Montecarlo;barrio;;4.5169985;-75.6554942;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/321918134;Olga;barrio;;4.5210041;-75.6525541;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/517800562;Miscelánea Duque;barrio;;4.5250679;-75.6422124;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/321921736;Miscelania Valdepeñas;barrio;;4.5144139;-75.6578550;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/324605738;Montecarlo;barrio;;4.5169985;-75.6554942;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/321918134;Olga;barrio;;4.5210041;-75.6525541;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/321922199;Olímpica;supermercado;;4.5296888;-75.6425431;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/12862586882;Parador El Cafetal Calarqueño;barrio;;4.5009217;-75.6691794;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/12862586882;Parador El Cafetal Calarqueño;barrio;;4.5009217;-75.6691794;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/5732454004;Placita Las Américas;barrio;;4.5274020;-75.6436927;calarca;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12453796334;Pollo Sabroso - La Negra;barrio;;4.5265400;-75.6416613;calarca;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/6164867705;Portal de Veracruz;barrio;;4.5205948;-75.6515488;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/6164867705;Portal de Veracruz;barrio;;4.5205948;-75.6515488;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12574989437;Revuelteria El Paisa;barrio;;4.5300815;-75.6423388;calarca;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-way/321921541;Rojas;barrio;;4.5202018;-75.6529665;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+way/321921541;Rojas;barrio;;4.5202018;-75.6529665;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/4562768727;Súper Inter;supermercado;;4.5295808;-75.6402977;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/303695826;Súper Inter - Centenario;supermercado;;4.5316486;-75.6395993;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12446571728;Supertienda El Paisa;minimercado;;4.5340814;-75.6395576;calarca;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
@@ -256,8 +256,8 @@ node/5767121058;Tienda mixta Luza;supermercado;;4.5266250;-75.6439805;calarca;su
 way/321918254;Tienda Mixta Valdepeñas;barrio;;4.5151867;-75.6573120;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/324605155;Tienda Paty's;barrio;;4.5163846;-75.6558490;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/8870955670;Tiendas D1;descuento;;4.4280542;-75.7196432;calarca;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/12396910272;Todo City;barrio;;4.5313676;-75.6409308;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/11872995782;Variedades Kevin de Calarcá;barrio;;4.5307740;-75.6417053;calarca;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/12396910272;Todo City;barrio;;4.5313676;-75.6409308;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/11872995782;Variedades Kevin de Calarcá;barrio;;4.5307740;-75.6417053;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/5857586885;Ventanilla Betania;barrio;;4.5203619;-75.6498644;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/5761776113;Ventanilla Las Partidas;barrio;;4.5247669;-75.6430148;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/5027574276;Ventanilla Raylu;barrio;;4.5303347;-75.6411369;calarca;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
@@ -280,7 +280,7 @@ node/2738667089;Frutas y verduras;barrio;;4.6751586;-75.6587551;filandia;greengr
 node/12899566726;Mercaahorro;supermercado;;4.6753812;-75.6579918;filandia;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/2685788835;Mundo natural;minimercado;;4.6759445;-75.6582757;filandia;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/2738667108;Rincón paisa;supermercado;;4.6771348;-75.6563301;filandia;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/11809323072;S;supermercado;;4.6714089;-75.6565658;filandia;supermarket;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/11809323072;S;supermercado;;4.6714089;-75.6565658;filandia;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/2738667111;Tienda;supermercado;;4.6760743;-75.6555960;filandia;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/5379011592;Tienda el Crucero;minimercado;;4.6561272;-75.7059901;filandia;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/268154532;Ventanilla de Café;minimercado;;4.6793029;-75.6973309;filandia;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
@@ -292,7 +292,7 @@ node/9435149080;Ara;descuento;;4.5671436;-75.7511588;montenegro;supermarket;no;�
 node/13321299200;D1;descuento;;4.5174292;-75.7846546;montenegro;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/4346644400;Don Pollo;barrio;;4.5669652;-75.7526123;montenegro;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/9419473204;La gran esquina;barrio;;4.5656858;-75.7523528;montenegro;butcher;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/14374723313;Los Mandarinos;barrio;;4.5397599;-75.7669105;montenegro;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/14374723313;Los Mandarinos;barrio;;4.5397599;-75.7669105;montenegro;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/437044520;Mercamos;supermercado;;4.5666079;-75.7498813;montenegro;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/436483024;Olímpica;supermercado;;4.5669551;-75.7509586;montenegro;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/1393704271;Supermercado Tienda del Quindío;supermercado;;4.5668262;-75.7524151;montenegro;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
@@ -303,7 +303,7 @@ way/489960191;Fruver Sandra;barrio;;4.3339597;-75.7044632;pijao;greengrocer;no;�
 node/12319529129;Tienda La Mazorca;minimercado;;4.3351207;-75.7049876;pijao;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 way/437689096;Ara;descuento;;4.6219551;-75.7631403;quimbaya;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12407913601;D1;descuento;;4.6232120;-75.7670452;quimbaya;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/10756246527;Fonda la Carmelita;barrio;;4.5981177;-75.7588963;quimbaya;general;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/10756246527;Fonda la Carmelita;barrio;;4.5981177;-75.7588963;quimbaya;general;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12103269645;La 6ta;minimercado;;4.6230094;-75.7660477;quimbaya;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12407913106;La economia;minimercado;;4.6233120;-75.7619903;quimbaya;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/12407913702;La séptima;barrio;;4.6233560;-75.7619968;quimbaya;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
@@ -313,7 +313,7 @@ node/12413292002;Aliado super inter;minimercado;;4.6378545;-75.5694201;salento;c
 way/1414181636;Ara;descuento;;4.6396378;-75.5719549;salento;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/8657094317;Casa Villanueva;minimercado;Avenida-Vda. San Juan;4.5901817;-75.6334404;salento;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/9318978189;D1;descuento;;4.6379407;-75.5706228;salento;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
-node/2974417067;Estadero el Oasis;minimercado;;4.5173261;-75.5850026;salento;convenience;sí;© colaboradores de OpenStreetMap, ODbL;2026-11-22
+node/2974417067;Estadero el Oasis;minimercado;;4.5173261;-75.5850026;salento;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/9354493217;La Esquina;supermercado;Carrera 9 # 8-63;4.6343181;-75.5709359;salento;supermarket;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/11396996769;La tienda de Laura;minimercado;;4.6194373;-75.6036930;salento;convenience;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
 node/6383634087;Lore;barrio;Calle 4;4.6382910;-75.5690948;salento;greengrocer;no;© colaboradores de OpenStreetMap, ODbL;2026-11-22
