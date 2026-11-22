@@ -70,7 +70,9 @@ export class ReliabilityOfPrices {
       establishmentId,
     ]);
     const latest = new Map<string, Observation>();
-    for (const seen of inStore) {
+    // Solo el precio normal: una oferta es temporal y no contradice al oficial.
+    const comparable = inStore.filter((seen) => isReliable(seen) && seen.priceType === 'normal');
+    for (const seen of comparable) {
       const current = latest.get(seen.reporterKey);
       if (!current || seen.observedAt > current.observedAt) latest.set(seen.reporterKey, seen);
     }
