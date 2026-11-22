@@ -101,4 +101,20 @@ describe('el comercio corrige los datos de su tienda (D5 del grill comercial)', 
       },
     ]);
   });
+
+  // D5: mover el punto cambia la distancia, que entra al orden neutral y a «tiendas cercanas».
+  it('un cambio de ubicación siempre va a revisión, junto con el nombre si también lo necesita', async () => {
+    const { update, applied, corrections } = setup([
+      { id: 'vecina', name: 'Minimercado El Sol', distanceM: 40 },
+    ]);
+    const location = { lat: 4.534, lng: -75.6812 };
+
+    const result = await update.execute(request({ location, name: 'Tienda El Sol' }));
+
+    expect(result).toEqual({ applied: [], inReview: ['name', 'location'] });
+    expect(applied).toEqual([{ establishmentId: STORE.id, change: {} }]);
+    expect(corrections).toEqual([
+      expect.objectContaining({ establishmentId: STORE.id, name: 'Tienda El Sol', location }),
+    ]);
+  });
 });
