@@ -1,5 +1,9 @@
 import type { DomainEvent } from '../../../shared/events';
-import { CreatePromotion, type CreatePromotionRequest } from './create-promotion';
+import {
+  CreatePromotion,
+  type CreatePromotionRequest,
+  OfficialPriceRequiredError,
+} from './create-promotion';
 import type { MerchantClaim } from './merchant-claims';
 import type { OfficialPrice } from './official-prices';
 import type { Promotion } from './promotions';
@@ -98,5 +102,21 @@ describe('publicar una promoción (RF-017, D6 del grill comercial)', () => {
         payload: { ...promotion, id: saved[0]?.id, createdAt: now.toISOString() },
       }),
     ]);
+  });
+
+  // D6 y EC-06: el «antes» siempre es un precio real y reciente.
+  it.each([
+    ['sin precio oficial', []],
+    // Confirmado hace 20 días: con 14 de TTL está «por confirmar».
+    [
+      'con el oficial por confirmar',
+      [{ ...official, confirmedAt: new Date('2026-11-02T15:00:00Z') }],
+    ],
+  ] as [string, OfficialPrice[]][])('%s no se publica', async (_case, officials) => {
+    const { create, saved, events } = setup(officials);
+
+    await expect(create.execute(request())).rejects.toThrow(OfficialPriceRequiredError);
+    expect(saved).toEqual([]);
+    expect(events).toEqual([]);
   });
 });
