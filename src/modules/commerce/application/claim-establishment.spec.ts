@@ -1,4 +1,5 @@
 import {
+  AccountHasEstablishmentError,
   ClaimEstablishment,
   type ClaimRequest,
   EstablishmentHasOwnerError,
@@ -113,5 +114,13 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
     await expect(claim.execute(request())).rejects.toThrow(EstablishmentHasOwnerError);
     expect(claims).toEqual([owner]);
     expect(merchants).toEqual([]);
+  });
+
+  it('una cuenta que ya tiene una tienda no puede registrar otra (una por cuenta)', async () => {
+    const own = verifiedClaim('cuenta-de-dona-rosa', 'otra-tienda');
+    const { claim, claims } = setup({ claims: [own] });
+
+    await expect(claim.execute(request())).rejects.toThrow(AccountHasEstablishmentError);
+    expect(claims).toEqual([own]);
   });
 });
