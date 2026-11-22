@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
 import { CatalogModule } from './modules/catalog';
+import { CommerceModule } from './modules/commerce';
 import { ComparisonModule } from './modules/comparison';
 import { EstablishmentsModule } from './modules/establishments';
 import { IdentityModule } from './modules/identity';
@@ -22,6 +23,8 @@ import { EventsModule } from './shared/events';
     PricingModule,
     ReliabilityModule,
     ComparisonModule,
+    // Corte 3 (EPIC-B08): nadie del núcleo lo importa (EC-05).
+    CommerceModule,
   ],
   controllers: [HealthController],
 })

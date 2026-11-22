@@ -1816,7 +1816,14 @@ paths:
     post:
       tags: [Comercios]
       operationId: claimEstablishment
-      summary: Solicitar el perfil de un establecimiento (RF-015)
+      summary: Registrar como suya una tienda del mapa (RF-015)
+      description: >-
+        D2 y D3 del grill comercial (#201). Solo un reportante con el correo verificado. La persona
+        debe estar a 50 m o menos de la tienda: location es la ubicación del celular en ese momento,
+        solo sirve para comprobarlo y no se guarda (EC-08). Si todo está bien, la cuenta queda
+        verificada como dueña de la tienda y su rol pasa a comercio. Una tienda por cuenta y un dueño
+        por tienda. El NIT es opcional; sin NIT, el comercio es informal. Su dígito de verificación
+        solo detecta errores al escribir: no se consulta a la DIAN.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -1827,11 +1834,104 @@ paths:
           application/json:
             schema:
               type: object
-              required: [establishmentId]
+              additionalProperties: false
+              required: [establishmentId, responsibleName, phone, acceptedTermsVersion, location]
               properties:
                 establishmentId: { type: string, format: uuid }
+                responsibleName: { type: string, minLength: 2, maxLength: 80, example: Rosa Gómez }
+                nit:
+                  type: string
+                  description: Con su dígito de verificación, con o sin puntos.
+                  example: 800.197.268-4
+                phone:
+                  type: string
+                  pattern: '^(3\d{9}|60\d{8})$'
+                  description: Celular (10 dígitos que empiezan por 3) o fijo (60 + 8 dígitos).
+                  example: '3001234567'
+                acceptedTermsVersion:
+                  type: string
+                  description: Versión vigente de las condiciones para comercios.
+                  example: '2026-11'
+                location:
+                  type: object
+                  additionalProperties: false
+                  required: [lat, lng]
+                  description: Ubicación del celular en el momento. No se guarda.
+                  properties:
+                    lat: { type: number, minimum: -90, maximum: 90 }
+                    lng: { type: number, minimum: -180, maximum: 180 }
       responses:
-        '202': { description: Solicitud en verificación }
+        '201':
+          description: La cuenta quedó verificada como dueña de la tienda y su rol es comercio.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status, establishmentId]
+                properties:
+                  status: { type: string, enum: [verificado] }
+                  establishmentId: { type: string, format: uuid }
+        '400':
+          description: >-
+            Datos inválidos (VALIDATION_ERROR), también un NIT cuyo dígito de verificación no
+            corresponde o una versión de las condiciones que no es la vigente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: >-
+            code FORBIDDEN: la cuenta no es reportante (ya es comercio o moderador). code
+            EMAIL_NOT_VERIFIED: la cuenta aún no verificó su correo (ADR-029). También
+            CSRF_TOKEN_INVALID y ACCOUNT_SUSPENDED, como en toda ruta con sesión.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: >-
+            code ESTABLISHMENT_HAS_OWNER: la tienda ya tiene dueño. code ACCOUNT_HAS_ESTABLISHMENT: la
+            cuenta ya tiene una tienda.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code NOT_AT_ESTABLISHMENT, la ubicación está a más de 50 m de la tienda.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /commerce/me:
+    get:
+      tags: [Comercios]
+      operationId: getMerchantProfile
+      summary: Perfil del comercio de la sesión (RF-015)
+      description: >-
+        D3 del grill comercial (#201): la tienda de la cuenta y su estado. Nunca una ubicación (EC-08).
+      x-corte: 3
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Perfil del comercio.
+          headers:
+            Cache-Control:
+              description: Dato de la propia cuenta.
+              schema: { type: string, example: 'private, no-store' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MerchantProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN, un moderador no tiene perfil de comercio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: La cuenta no tiene una tienda registrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /commerce/prices:
     put:
       tags: [Comercios]
@@ -1947,7 +2047,7 @@ components:
         code FORBIDDEN: el rol no tiene permiso. code CSRF_TOKEN_INVALID: falta la cabecera
         X-CSRF-Token o no coincide con la sesión. code ACCOUNT_SUSPENDED: la cuenta está suspendida y
         su sesión solo sirve para ver el estado de sus reportes, apelar y cerrar sesión (#71). code
-        EMAIL_NOT_VERIFIED: solo en POST /reports, la cuenta aún no verificó su correo (ADR-029).
+        EMAIL_NOT_VERIFIED: solo en POST /reports y POST /commerce/claims, la cuenta aún no verificó su correo (ADR-029).
         INVALID_PASSWORD y LAST_MODERATOR_CANNOT_DELETE: solo en POST /me/account-deletion (ADR-032).
       content:
         application/json:
@@ -2001,15 +2101,31 @@ components:
           type: string
           format: date-time
           description: Cuándo se borra la cuenta de forma definitiva si no se restaura.
+    MerchantProfile:
+      type: object
+      additionalProperties: false
+      required: [status, establishment, responsibleName, informal, verifiedAt]
+      properties:
+        status: { type: string, enum: [verificado] }
+        establishment:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        responsibleName: { type: string }
+        informal: { type: boolean, description: Sin NIT. }
+        verifiedAt: { type: string, format: date-time }
     Error:
       type: object
       description: >-
         Única forma de error de la API (issue #41). Solo tiene code y message; la única excepción es
         availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84) y scheduledFor en el 403 ACCOUNT_PENDING_DELETION (PendingDeletionError, ADR-032). Valores de code:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
-        CONFLICT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
+        CONFLICT (409), ESTABLISHMENT_HAS_OWNER (409), ACCOUNT_HAS_ESTABLISHMENT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:

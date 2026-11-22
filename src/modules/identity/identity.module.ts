@@ -10,6 +10,7 @@ import {
 import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/account-repository';
 import type { AttemptLimiter } from './application/attempt-limiter';
 import { ChangeRole } from './application/change-role';
+import { GrantMerchantRole } from './application/grant-merchant-role';
 import { DeleteOwnAccount } from './application/delete-own-account';
 import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
 import { RestoreAccount } from './application/restore-account';
@@ -341,6 +342,20 @@ export class IdentityModule implements OnModuleInit {
           reporterKey: payload.reporterKey,
           suspendedUntil: new Date(payload.suspendedUntil),
         });
+      },
+    );
+    // D3 del grill comercial: commerce avisa que verificó una tienda y la cuenta pasa a comercio.
+    // Solo se conoce el nombre del evento: identity no importa commerce. El cambio va en la
+    // transacción del suscriptor; si falla, el relé lo reintenta (ADR-015).
+    this.bus.subscribe(
+      'identity.accounts',
+      'MerchantVerified',
+      async (event: DomainEvent, tx: Transaction) => {
+        const payload = event.payload as { accountId: string };
+        await new GrantMerchantRole({
+          accounts: new DrizzleAccountRepository(tx),
+          clock: { now: () => new Date() },
+        }).execute(payload.accountId);
       },
     );
   }
