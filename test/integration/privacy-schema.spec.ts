@@ -136,6 +136,36 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     expect(named(/^token$|^verification_token$|^plain_token$/)).toEqual([]);
   });
 
+  // ADR-033: el restablecimiento de contraseña vive en identity, guarda solo el hash del token y fechas
+  // (ni el correo, ni la IP, ni la contraseña) y se borra en cascada con la cuenta.
+  it('la tabla de restablecimiento de contraseña solo guarda el hash del token y fechas', () => {
+    const resets = columns
+      .filter((column) => column.table_name === 'password_resets')
+      .map((column) => `${column.table_schema}.${column.column_name}`)
+      .sort();
+
+    expect(resets).toEqual([
+      'identity.account_id',
+      'identity.created_at',
+      'identity.expires_at',
+      'identity.id',
+      'identity.token_hash',
+      'identity.used_at',
+    ]);
+    expect(named(/^token$|^reset_token$|^plain_token$/)).toEqual([]);
+  });
+
+  it('la llave de password_resets borra en cascada con la cuenta (la purga no deja enlaces)', async () => {
+    const result = await db.execute<{ delete_rule: string }>(
+      sql`select rc.delete_rule from information_schema.referential_constraints rc
+          join information_schema.table_constraints tc on tc.constraint_name = rc.constraint_name
+          where tc.table_schema = 'identity' and tc.table_name = 'password_resets'
+            and tc.constraint_type = 'FOREIGN KEY'`,
+    );
+
+    expect(result.rows.map((row) => row.delete_rule)).toEqual(['CASCADE']);
+  });
+
   // ADR-032: la eliminación pendiente es solo una fecha dentro de identity.accounts. La cuenta se borra por
   // completo: ninguna otra tabla guarda una copia ni una «cuenta borrada» con sus datos.
   it('la eliminación pendiente solo guarda una fecha en identity.accounts', () => {

@@ -39,13 +39,14 @@ Desde ADR-029, `POST /v1/reports` también exige el correo verificado: un report
 | `POST /v1/moderation/roles` | 401 | 403 | Permitido | 403 | 403 |
 | `GET /v1/auth/session` | 401 | Permitido | Permitido | Permitido | Permitido |
 | `POST /v1/auth/logout` | 401 | Permitido | Permitido | Permitido | Permitido |
+| `POST /v1/me/password` (ADR-033) | 401 | Permitido | Permitido | Permitido | Permitido |
 | `POST /v1/me/account-deletion` (ADR-032) | 401 | Permitido | Permitido (salvo el último moderador: 403 `LAST_MODERATOR_CANNOT_DELETE`) | Permitido | Permitido |
 
-**85 casos**, todos en verde (`authorization-matrix.spec.ts`). `POST /v1/me/account-deletion` no está en esos 85 casos porque con el cuerpo vacío responde 400 y con una contraseña mala 403 `INVALID_PASSWORD`, que la matriz leería como «sin permiso»; su control de sesión, CSRF y rol (cualquiera) se prueba en `account-deletion-http.spec.ts` y `route-guardian.spec.ts`. Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
+**85 casos**, todos en verde (`authorization-matrix.spec.ts`). `POST /v1/me/password` tampoco está en esos 85 casos por la misma razón (con el cuerpo vacío responde 400 y con la contraseña actual mala, 403 `INVALID_PASSWORD`); su control de sesión y CSRF se prueba en `password-reset-http.spec.ts` y `route-guardian.spec.ts`, y puede usarla cualquier rol. `POST /v1/me/account-deletion` no está en esos 85 casos porque con el cuerpo vacío responde 400 y con una contraseña mala 403 `INVALID_PASSWORD`, que la matriz leería como «sin permiso»; su control de sesión, CSRF y rol (cualquiera) se prueba en `account-deletion-http.spec.ts` y `route-guardian.spec.ts`. Las rutas que modifican datos además exigen la cabecera `X-CSRF-Token` (403 `CSRF_TOKEN_INVALID` sin ella; probado en `identity-http.spec.ts` y `moderation-http.spec.ts`).
 
 ## Rutas públicas
 
-`GET /v1/health`, `GET /v1/products`, `GET /v1/products/{productId}`, `GET /v1/products/{productId}/comparison`, `GET /v1/featured-products` (B#120), `GET /v1/establishments` (#116), `GET /v1/establishments/nearby`, `GET /v1/establishments/{establishmentId}/prices` (#28), `POST /v1/auth/register`, `POST /v1/auth/login` y `POST /v1/auth/restore-account` (ADR-032; la credencial es el correo con la contraseña).
+`GET /v1/health`, `GET /v1/products`, `GET /v1/products/{productId}`, `GET /v1/products/{productId}/comparison`, `GET /v1/featured-products` (B#120), `GET /v1/establishments` (#116), `GET /v1/establishments/nearby`, `GET /v1/establishments/{establishmentId}/prices` (#28), `POST /v1/auth/register`, `POST /v1/auth/login` y `POST /v1/auth/restore-account` (ADR-032; la credencial es el correo con la contraseña), `POST /v1/auth/forgot-password` y `POST /v1/auth/reset-password` (ADR-033; la credencial de la segunda es el token del enlace del correo, y la primera responde siempre 202).
 
 ## Guardián de rutas (RNF-010)
 

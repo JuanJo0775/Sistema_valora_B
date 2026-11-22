@@ -1,3 +1,4 @@
+import type { AccountDeletionRepository } from './account-deletion-repository';
 import type { Account } from './account-repository';
 import type { Clock } from './clock';
 import type { GoogleAccountLinks } from './google-account-links';
@@ -16,6 +17,8 @@ export interface GoogleIdentity {
 
 export interface SignInWithGooglePorts {
   links: GoogleAccountLinks;
+  // ADR-033: entrar con Google una cuenta vinculada con la eliminación pendiente la restaura.
+  deletion: Pick<AccountDeletionRepository, 'cancel'>;
   sessions: SessionRepository;
   clock: Clock;
 }
@@ -45,9 +48,11 @@ export class SignInWithGoogle {
 
   async execute(identity: GoogleIdentity): Promise<SignInWithGoogleResult> {
     if (!identity.emailVerified) throw new GoogleEmailNotVerifiedError();
-    const linked = await this.ports.links.findBySubject(identity.subject);
+    const linked = await this.restoreIfPending(
+      await this.ports.links.findBySubject(identity.subject),
+      identity.subject,
+    );
     if (linked) {
-      rejectPendingDeletion(linked);
       // Misma sesión que el inicio con contraseña (ADR-014).
       return { outcome: 'signed-in', ...(await startSession(this.ports, linked.id)) };
     }
@@ -72,5 +77,20 @@ export class SignInWithGoogle {
       email,
       suggestedName: identity.name,
     };
+  }
+
+  // ADR-033: una cuenta vinculada a este sub de Google con la eliminación pendiente (ADR-032) se restaura al
+  // entrar: Google ya probó quién es, y una cuenta creada con Google no tiene contraseña para usar
+  // POST /auth/restore-account. Si la purga ganó la carrera (la cuenta ya no existe), sigue como cuenta nueva.
+  private async restoreIfPending(
+    account: Account | null,
+    subject: string,
+  ): Promise<Account | null> {
+    if (!account?.deletionScheduledFor) return account;
+    if (await this.ports.deletion.cancel(account.id)) return account;
+    // cancel() es condicional: devolvió false porque otra petición ya restauró la cuenta o la purga la borró.
+    return this.ports.links
+      .findBySubject(subject)
+      .then((again) => (again?.deletionScheduledFor ? null : again));
   }
 }

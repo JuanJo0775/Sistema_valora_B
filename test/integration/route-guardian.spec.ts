@@ -24,6 +24,10 @@ const PUBLIC_ROUTES = new Set([
   'POST /auth/login',
   // ADR-029: el token del correo es la credencial; no lleva sesión.
   'POST /auth/verify-email',
+  // ADR-033: igual que verify-email, el token del correo es la credencial; forgot-password responde siempre
+  // igual y no lleva sesión.
+  'POST /auth/forgot-password',
+  'POST /auth/reset-password',
   // ADR-032: igual que el login, la credencial es el correo con la contraseña; no lleva sesión.
   'POST /auth/restore-account',
   // ADR-029, fase 2 (#181): entrar con Google. Aún no hay sesión; el callback y complete exigen sus
@@ -39,6 +43,8 @@ const ANY_ROLE_ROUTES = new Set([
   'POST /auth/resend-verification',
   // ADR-032: derecho de supresión; cualquier rol, también una cuenta suspendida.
   'POST /me/account-deletion',
+  // ADR-033: cambiar o crear la propia contraseña; cualquier rol, también una cuenta suspendida.
+  'POST /me/password',
 ]);
 
 describe('guardián de rutas (RNF-010)', () => {

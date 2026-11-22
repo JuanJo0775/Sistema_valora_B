@@ -53,11 +53,13 @@ Desde la app, sin intervención del equipo: la opción de eliminar la cuenta, co
 |---|---|
 | `identity.accounts`: correo, nombre, hash de la contraseña, versión y fecha de la política aceptada, fecha de verificación, suspensión y la clave seudónima (`reporter_key`) | Los **reportes de precios** y su historial (`pricing.reports`, solo con un identificador interno que ya no corresponde a ninguna cuenta), porque la comunidad depende de ellos |
 | `identity.sessions`: todas las sesiones | La **reputación**, las observaciones y las **marcas** de `reliability`, las **propuestas** de producto y de tienda y la bitácora de moderación, todas con la clave seudónima |
-| `identity.email_verifications`: los enlaces de verificación | La bitácora inmutable de cambios de rol (`identity.role_changes`: ids, sin correo) |
+| `identity.email_verifications` e `identity.password_resets`: los enlaces de verificación y de restablecimiento de contraseña | La bitácora inmutable de cambios de rol (`identity.role_changes`: ids, sin correo) |
 
 **Por qué lo que se conserva no identifica a nadie.** La clave seudónima es `HMAC-SHA256(REPORTER_KEY_SECRET, id de la cuenta)`. La única tabla que la unía a una persona era `identity.accounts`, que se borra. Sin la cuenta no hay correo ni nombre al que llegar, y quien se registre de nuevo con el mismo correo recibe un id nuevo, otra clave y reputación neutra. Los reportes de una misma persona siguen pudiendo agruparse entre sí (es un seudónimo), pero no vincularse con ella.
 
 **Salvedades.** Los respaldos de la base (Neon) y los registros del proveedor de correo (Resend) conservan datos hasta que vence su retención. Un moderador no puede eliminar su cuenta si es el último (403 `LAST_MODERATOR_CANNOT_DELETE`). Una cuenta suspendida también puede eliminarse y volver a registrarse sin la suspensión; el derecho de supresión pesa más.
+
+**Contraseña olvidada y creada desde la sesión (ADR-033).** `POST /v1/auth/forgot-password` guarda en `identity.password_resets` solo el hash SHA-256 de un token aleatorio y sus fechas (vence en 1 hora, un solo uso, un enlace vigente por cuenta); el token viaja únicamente en el correo y no se escribe en registros. Responde igual exista o no la cuenta y no envía nada si está pendiente de eliminación. Al restablecer se cierran todas las sesiones y el correo queda verificado. Una cuenta creada con Google puede crear su primera contraseña con ese enlace o con `POST /v1/me/password` (sesión de 10 minutos o menos). Entrar de nuevo con Google durante los 10 días de gracia restaura una cuenta de Google pendiente de eliminación.
 
 **Pruebas:** `test/integration/account-deletion-http.spec.ts` (solicitud, gracia, restauración, purga con reloj controlado, transacción, concurrencia, moderador único y límite), los casos de uso en `src/modules/identity/application`, `privacy-schema.spec.ts` y las pruebas de contrato y del guardián de rutas.
 

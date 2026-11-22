@@ -59,7 +59,7 @@ describe('sincronización de la cola sin conexión (PR-08, #30)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals, reliability.bursts, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals, reliability.bursts, catalog.presentations, catalog.products, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,

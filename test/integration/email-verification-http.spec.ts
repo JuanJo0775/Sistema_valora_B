@@ -36,7 +36,7 @@ describe('verificación de correo por HTTP (ADR-029)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts`,
     );
   });
 

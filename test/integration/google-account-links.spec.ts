@@ -38,7 +38,7 @@ describe('vínculo con Google en la base (#180)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, identity.role_changes`,
     );
   });
 

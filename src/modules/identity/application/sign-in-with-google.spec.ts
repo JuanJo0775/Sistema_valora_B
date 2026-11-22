@@ -21,7 +21,12 @@ const ana = {
 function setup(accounts: ConstructorParameters<typeof InMemoryGoogleLinks>[0] = []) {
   const links = new InMemoryGoogleLinks(accounts);
   const sessions = new CreatedSessions();
-  const signIn = new SignInWithGoogle({ links, sessions, clock: { now: () => now } });
+  const signIn = new SignInWithGoogle({
+    links,
+    deletion: links,
+    sessions,
+    clock: { now: () => now },
+  });
   return { links, sessions, signIn };
 }
 
@@ -124,25 +129,60 @@ describe('entrar con Google (ADR-029, fase 2)', () => {
     expect(sessions.created).toHaveLength(1);
   });
 
-  // ADR-032, como el login: durante los 10 días de gracia no se abre sesión; se dice cuándo se borra y
-  // la PWA ofrece restaurarla.
-  it.each([
-    ['ya vinculada a ese sub', { googleSubject: '109876543210987654321' }],
-    ['encontrada por el correo', {}],
-  ])(
-    'una cuenta %s con eliminación pendiente no abre sesión, no se vincula y dice cuándo se borra',
-    async (_case, extra) => {
-      const scheduledFor = new Date('2026-11-28T10:00:00Z');
-      const { links, sessions, signIn } = setup([
-        { ...ana, ...extra, deletionScheduledFor: scheduledFor },
-      ]);
+  // ADR-033: Google ya probó quién es y una cuenta creada con Google no tiene contraseña para usar
+  // POST /auth/restore-account: entrar con Google la restaura.
+  it('una cuenta ya vinculada a ese sub con eliminación pendiente se restaura y abre sesión', async () => {
+    const scheduledFor = new Date('2026-11-28T10:00:00Z');
+    const { links, sessions, signIn } = setup([
+      {
+        ...ana,
+        passwordHash: null,
+        googleSubject: '109876543210987654321',
+        deletionScheduledFor: scheduledFor,
+      },
+    ]);
 
-      const attempt = signIn.execute(google());
+    const result = await signIn.execute(google());
 
-      await expect(attempt).rejects.toThrow(AccountPendingDeletionError);
-      await expect(attempt).rejects.toMatchObject({ scheduledFor });
-      expect(sessions.created).toHaveLength(0);
-      expect(links.links).toHaveLength(0);
-    },
-  );
+    expect(result).toMatchObject({ outcome: 'signed-in', token: expect.any(String) as unknown });
+    expect(links.cancelled).toEqual([ana.id]);
+    expect(sessions.created).toEqual([
+      expect.objectContaining({ accountId: ana.id, createdAt: now }),
+    ]);
+    expect(links.links).toHaveLength(0);
+  });
+
+  it('si la purga ganó la carrera, la cuenta ya no existe y la persona sigue como cuenta nueva', async () => {
+    const account = {
+      ...ana,
+      googleSubject: '109876543210987654321',
+      deletionScheduledFor: new Date('2026-11-28T10:00:00Z'),
+    };
+    const { links, sessions, signIn } = setup([account]);
+    links.cancelFails = true;
+    // La purga borra la cuenta entre la consulta y la cancelación.
+    const find = jest.spyOn(links, 'findBySubject');
+    find.mockResolvedValueOnce(account).mockResolvedValue(null);
+    jest.spyOn(links, 'findByEmail').mockResolvedValue(null);
+
+    const result = await signIn.execute(google());
+
+    expect(result).toMatchObject({ outcome: 'needs-policy' });
+    expect(sessions.created).toHaveLength(0);
+  });
+
+  // ADR-032, como el login: una cuenta con contraseña encontrada solo por el correo no se vincula ni abre
+  // sesión durante la gracia; se restaura con POST /auth/restore-account.
+  it('una cuenta con contraseña encontrada por el correo con eliminación pendiente no abre sesión, no se vincula y dice cuándo se borra', async () => {
+    const scheduledFor = new Date('2026-11-28T10:00:00Z');
+    const { links, sessions, signIn } = setup([{ ...ana, deletionScheduledFor: scheduledFor }]);
+
+    const attempt = signIn.execute(google());
+
+    await expect(attempt).rejects.toThrow(AccountPendingDeletionError);
+    await expect(attempt).rejects.toMatchObject({ scheduledFor });
+    expect(sessions.created).toHaveLength(0);
+    expect(links.links).toHaveLength(0);
+    expect(links.cancelled).toHaveLength(0);
+  });
 });

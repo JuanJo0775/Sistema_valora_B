@@ -302,6 +302,13 @@
       "when": 1795365889662,
       "tag": "0042_commerce-merchant-notices",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795375922281,
+      "tag": "0043_identity-password-resets",
+      "breakpoints": true
     }
   ]
 }

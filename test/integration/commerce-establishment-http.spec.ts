@@ -42,7 +42,7 @@ describe('datos de la tienda por HTTP (#207)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, establishments.store_corrections`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, establishments.store_corrections`,
     );
     const stores = app.get(ImportEstablishments);
     await stores.save({ id: storeId, name: 'Tienda La Esperanza', type: 'barrio', ...STORE });

@@ -17,6 +17,8 @@ export interface StoredSession extends NewSession {
   accountSuspendedUntil: Date | null;
   // ADR-029: cuándo verificó su correo la cuenta dueña de la sesión (null: sin verificar).
   accountEmailVerifiedAt: Date | null;
+  // ADR-033: si la cuenta tiene contraseña (las creadas con Google nacen sin ella).
+  accountHasPassword: boolean;
 }
 
 // Puerto del repositorio: solo los métodos que los casos de uso usan hoy.

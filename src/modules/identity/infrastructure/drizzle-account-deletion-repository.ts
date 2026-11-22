@@ -6,7 +6,7 @@ import type {
   AccountDeletionRepository,
   ScheduleOutcome,
 } from '../application/account-deletion-repository';
-import { accounts, emailVerifications, sessions } from './schema';
+import { accounts, emailVerifications, passwordResets, sessions } from './schema';
 
 // ADR-032. Cada método es una transacción. Las filas que deciden se bloquean con FOR UPDATE, así dos
 // peticiones a la vez se turnan y ninguna deja la cuenta a medias.
@@ -123,6 +123,7 @@ export class DrizzleAccountDeletionRepository implements AccountDeletionReposito
       // (accounts.reporter_key): no queda ningún vínculo de la reputación con una persona (ADR-032).
       await tx.delete(sessions).where(eq(sessions.accountId, accountId));
       await tx.delete(emailVerifications).where(eq(emailVerifications.accountId, accountId));
+      await tx.delete(passwordResets).where(eq(passwordResets.accountId, accountId));
       await tx.delete(accounts).where(eq(accounts.id, accountId));
       for (const event of events) await this.outbox.publish(tx, event);
       return true;
