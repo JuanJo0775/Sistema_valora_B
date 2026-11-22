@@ -1,3 +1,4 @@
+import { DomainError } from '../../../domain/domain-error';
 import { createEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 import {
@@ -30,6 +31,15 @@ export class MerchantNotVerifiedError extends Error {
   }
 }
 
+// Regla incumplida (422), con el mismo código que en los reportes.
+export class UnknownPresentationError extends DomainError {
+  readonly code = 'UNKNOWN_PRESENTATION';
+
+  constructor() {
+    super('Esa presentación no está en Valora: propón el producto.');
+  }
+}
+
 // RF-016 con la D4 del grill comercial: el comercio publica o cambia el precio oficial de su tienda.
 export class PublishOfficialPrice {
   constructor(private readonly ports: PublishOfficialPricePorts) {}
@@ -38,6 +48,9 @@ export class PublishOfficialPrice {
     const { claims, prices, clock } = this.ports;
     const claim = await claims.findByAccount(request.accountId);
     if (claim?.status !== 'verificado') throw new MerchantNotVerifiedError();
+    if (!(await this.ports.presentations.exists(request.presentationId))) {
+      throw new UnknownPresentationError();
+    }
     const price: OfficialPrice = {
       establishmentId: claim.establishmentId,
       presentationId: request.presentationId,
