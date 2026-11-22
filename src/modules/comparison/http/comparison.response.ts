@@ -14,16 +14,24 @@ export interface ComparisonItemResponse {
     // Grill de la #106: sin la ubicación del usuario no hay distancia.
     distanceM?: number;
   };
-  reportId: string;
+  // #204: un precio oficial no viene de un reporte ni se califica.
+  reportId?: string;
   presentationId: string;
   priceCop: number;
   unitPrice: { valueCop: number; per: string };
   source: string;
   freshness: string;
   isCheapest: boolean;
-  reliability: string;
-  confirmations: number;
+  reliability?: string;
+  confirmations?: number;
   observedAt: string;
+  // D1 (#204): solo con discrepancia corroborada.
+  discrepancy?: {
+    officialPriceCop: number;
+    reportedPriceCop: number;
+    reports: number;
+    since: string;
+  };
 }
 
 export interface ComparisonResponse {
@@ -63,7 +71,7 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
         municipality: establishment.municipality,
         ...(establishment.distanceM === undefined ? {} : { distanceM: establishment.distanceM }),
       },
-      reportId: item.reportId,
+      ...(item.reportId === undefined ? {} : { reportId: item.reportId }),
       presentationId: item.presentationId,
       priceCop: item.priceCop,
       // Se muestra redondeado; el orden ya usó el valor exacto.
@@ -71,9 +79,17 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
       source: item.source,
       freshness: item.freshness,
       isCheapest: item.isCheapest,
-      reliability: item.reliability,
-      confirmations: item.confirmations,
+      ...(item.reliability === undefined ? {} : { reliability: item.reliability }),
+      ...(item.confirmations === undefined ? {} : { confirmations: item.confirmations }),
       observedAt: item.observedAt.toISOString(),
+      ...(item.discrepancy === undefined
+        ? {}
+        : {
+            discrepancy: {
+              ...item.discrepancy,
+              since: item.discrepancy.since.toISOString(),
+            },
+          }),
     })),
     promotions: [],
     ...(comparison.wholesaleReference === undefined

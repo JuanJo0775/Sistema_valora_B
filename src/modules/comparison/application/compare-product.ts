@@ -7,6 +7,7 @@ import {
 } from '../../../domain/neutral-ranking';
 import { savingsPercent } from '../../../domain/savings';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
+import { type Discrepancy, officialVsReported } from '../../../domain/official-vs-reported';
 import { isRecentReference } from '../../../domain/wholesale-reference';
 import type { Municipality } from '../../../domain/municipality';
 import type { ProductForComparisonView, WholesaleReferenceView } from '../../catalog';
@@ -16,8 +17,9 @@ import type {
   NearbyEstablishment,
   WithinRadiusQuery,
 } from '../../establishments';
-import type { PriceRef, PriceReliability } from '../../reliability';
+import type { PriceRef, PriceReliability, ReportAtStore } from '../../reliability';
 import type { CurrentPrices } from './current-prices';
+import type { OfficialPriceCopies, OfficialPriceCopy } from './official-price-copies';
 
 // Puertos hacia las consultas públicas de catalog y establishments (grill de la #15, pregunta 2).
 export interface ProductLookup {
@@ -53,12 +55,20 @@ export interface Clock {
 // Puerto hacia la consulta pública de reliability (grill de la #31, pregunta 6).
 export interface PricesReliability {
   of(prices: PriceRef[], ttlDays: number): Promise<PriceReliability[]>;
+  // D1 (#204): los reportes recientes de la tienda, uno por persona, con su nivel.
+  reportsAt(
+    presentationId: string,
+    establishmentId: string,
+    ttlDays: number,
+  ): Promise<ReportAtStore[]>;
 }
 
 export interface CompareProductPorts {
   products: ProductLookup;
   stores: StoresWithinRadius;
   prices: Pick<CurrentPrices, 'findByPresentations'>;
+  // #204: la copia del precio oficial de commerce.
+  officials: OfficialPriceCopies;
   reliability: PricesReliability;
   // Grill de la #34: la referencia SIPSA más reciente del producto, por la consulta pública de catalog.
   references: { latestFor(productId: string): Promise<WholesaleReferenceView | null> };
@@ -90,20 +100,25 @@ export interface CompareProductInput {
 export interface ComparisonItem {
   // Sin la ubicación del usuario (#106) no hay distancia.
   establishment: EstablishmentDetail & { distanceM?: number };
-  // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo.
-  reportId: string;
+  // Grill de la #32, pregunta 3: el reporte que se muestra, para poder marcarlo. Un precio oficial
+  // no viene de un reporte (#204).
+  reportId?: string;
   presentationId: string;
   priceCop: number;
   unitPrice: UnitPrice;
-  // Grill de la #15, pregunta 7; B#135: de la comunidad o un dato inicial de la semilla.
-  source: PriceSource;
+  // Grill de la #15, pregunta 7; B#135: de la comunidad o un dato inicial de la semilla. #204: oficial,
+  // publicado por el comercio.
+  source: PriceSource | 'oficial';
   freshness: Freshness;
   // Grill de la #15, pregunta 6: el precio por unidad más bajo entre los no desactualizados.
   isCheapest: boolean;
-  // Grill de la #31: el nivel que calcula reliability, o en_revision si el precio es sospechoso.
-  reliability: 'alta' | 'media' | 'baja' | 'en_revision';
-  confirmations: number;
+  // Grill de la #31: el nivel que calcula reliability, o en_revision si el precio es sospechoso. Un
+  // precio oficial no se califica (#204).
+  reliability?: 'alta' | 'media' | 'baja' | 'en_revision';
+  confirmations?: number;
   observedAt: Date;
+  // D1 (#204): la comunidad corrobora otro precio; el oficial se muestra al lado con aviso.
+  discrepancy?: Discrepancy;
 }
 
 export interface Comparison {
@@ -173,13 +188,16 @@ function toResults(ranked: Candidate[], reliability: PriceReliability[]): Compar
   const cheapest = lowestUnitPrice(ranked.filter((candidate) => !isStale(candidate)));
   const byPlace = new Map(reliability.map((assessed) => [placeOf(assessed), assessed]));
   return ranked.map((candidate) => {
+    const isCheapest =
+      !isStale(candidate) &&
+      cheapest !== undefined &&
+      candidate.unitPrice.compareTo(cheapest) === 0;
+    // #204: el oficial no se califica.
+    if (candidate.item.source === 'oficial') return { ...candidate.item, isCheapest };
     const assessed = byPlace.get(placeOf(candidate));
     return {
       ...candidate.item,
-      isCheapest:
-        !isStale(candidate) &&
-        cheapest !== undefined &&
-        candidate.unitPrice.compareTo(cheapest) === 0,
+      isCheapest,
       // Sin evaluación (precios anteriores a la #31) cuenta como baja.
       reliability: candidate.inReview ? 'en_revision' : (assessed?.level ?? 'baja'),
       confirmations: candidate.inReview ? 0 : (assessed?.confirmations ?? 0),
@@ -199,13 +217,11 @@ export class CompareProduct {
 
     const ranked = rankInGroups(await this.candidatesFor(product, input), input);
     const reliability = await this.ports.reliability.of(
-      ranked
-        .filter((candidate) => !candidate.inReview)
-        .map(({ presentationId, establishmentId, item }) => ({
-          presentationId,
-          establishmentId,
-          reportId: item.reportId,
-        })),
+      ranked.flatMap(({ presentationId, establishmentId, item, inReview }) =>
+        inReview || item.reportId === undefined
+          ? []
+          : [{ presentationId, establishmentId, reportId: item.reportId }],
+      ),
       ttlDaysFor(product.isFresh),
     );
     const reference = await this.ports.references.latestFor(product.id);
@@ -253,7 +269,8 @@ export class CompareProduct {
   ): Promise<Candidate[]> {
     const presentations = new Map(product.presentations.map((p) => [p.id, p]));
     const prices = await this.ports.prices.findByPresentations([...presentations.keys()]);
-    const ids = [...new Set(prices.map((price) => price.establishmentId))];
+    const officials = await this.ports.officials.findByPresentations([...presentations.keys()]);
+    const ids = [...new Set([...prices, ...officials].map((price) => price.establishmentId))];
     const { lat, lng, municipality } = input;
     const stores: ComparisonItem['establishment'][] =
       lat !== undefined && lng !== undefined
@@ -270,8 +287,10 @@ export class CompareProduct {
     const ttlDays = ttlDaysFor(product.isFresh);
 
     const candidates: Candidate[] = [];
+    // #204: donde hay oficial, el precio de la comunidad no sale aparte (la tienda sale una vez).
+    const withOfficial = new Set(officials.map(placeOf));
     // Un precio sin tienda en el radio (o sin presentación conocida) no entra.
-    for (const price of prices) {
+    for (const price of prices.filter((p) => !withOfficial.has(placeOf(p)))) {
       const establishment = storesById.get(price.establishmentId);
       const presentation = presentations.get(price.presentationId);
       if (!establishment || !presentation) continue;
@@ -296,6 +315,64 @@ export class CompareProduct {
         observedAt: item.observedAt,
       });
     }
+    // #204: el precio oficial de la tienda, o la mediana de la comunidad si la corrobora (D1).
+    for (const official of officials) {
+      const establishment = storesById.get(official.establishmentId);
+      const presentation = presentations.get(official.presentationId);
+      if (!establishment || !presentation) continue;
+      const shown = await this.officialOrReported(official, now, ttlDays);
+      const item: Candidate['item'] = {
+        establishment,
+        ...shown,
+        presentationId: official.presentationId,
+        unitPrice: calculateUnitPrice(shown.priceCop, presentation),
+        freshness: freshnessAt(shown.observedAt, now, ttlDays),
+      };
+      candidates.push({
+        item,
+        inReview: false,
+        establishmentId: establishment.id,
+        presentationId: item.presentationId,
+        unitPrice: item.unitPrice,
+        distanceMeters: establishment.distanceM ?? 0,
+        observedAt: item.observedAt,
+      });
+    }
     return candidates;
+  }
+
+  // D1 y ADR-008: el oficial, salvo que los reportes recientes y confiables corroboren otro precio.
+  private async officialOrReported(
+    official: OfficialPriceCopy,
+    now: Date,
+    ttlDays: number,
+  ): Promise<
+    Pick<ComparisonItem, 'priceCop' | 'source' | 'observedAt' | 'reportId' | 'discrepancy'>
+  > {
+    const reports = await this.ports.reliability.reportsAt(
+      official.presentationId,
+      official.establishmentId,
+      ttlDays,
+    );
+    const resolved = officialVsReported({
+      official: { priceCop: official.priceCop, changedAt: official.priceChangedAt },
+      reports: reports.map((report) => ({ ...report, reliable: report.level !== 'baja' })),
+      now,
+      ttlDays,
+    });
+    const chosen =
+      resolved.kind === 'discrepancia'
+        ? reports.find((report) => report.reportId === resolved.reportId)
+        : undefined;
+    if (resolved.kind === 'oficial' || !chosen) {
+      return { priceCop: official.priceCop, source: 'oficial', observedAt: official.confirmedAt };
+    }
+    return {
+      priceCop: chosen.priceCop,
+      source: 'comunidad',
+      observedAt: chosen.observedAt,
+      reportId: chosen.reportId,
+      discrepancy: resolved.discrepancy,
+    };
   }
 }

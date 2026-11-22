@@ -1,0 +1,16 @@
+// D1 y D4 del grill comercial (#204): la copia del precio oficial que comparison guarda con los
+// eventos de commerce.
+export interface OfficialPriceCopy {
+  presentationId: string;
+  establishmentId: string;
+  priceCop: number;
+  // La vigencia cuenta desde aquí (ADR-005).
+  confirmedAt: Date;
+  // Solo los reportes posteriores corroboran una discrepancia (D1).
+  priceChangedAt: Date;
+}
+
+// Puerto hacia la tabla propia del módulo.
+export interface OfficialPriceCopies {
+  findByPresentations(presentationIds: string[]): Promise<OfficialPriceCopy[]>;
+}

@@ -253,6 +253,13 @@
       "when": 1795313365692,
       "tag": "0035_commerce-official-prices",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795316559160,
+      "tag": "0036_comparison-official-prices",
+      "breakpoints": true
     }
   ]
 }
