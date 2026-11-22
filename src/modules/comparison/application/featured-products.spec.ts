@@ -316,3 +316,68 @@ describe('imagen del producto en la canasta básica', () => {
     expect(byId.get('leche')).not.toHaveProperty('image');
   });
 });
+
+describe('canasta básica paginada por desplazamiento', () => {
+  const prices = [
+    price('arroz-500g', donJose.id, 2500),
+    price('arroz-1kg', ara.id, 4400),
+    price('leche-1l', donJose.id, 4800),
+  ];
+  const area = { municipality: 'armenia', radiusKm: 1.5 } as const;
+  const idsOf = (items: { productId: string }[]) => items.map(({ productId }) => productId);
+
+  it('sin offset empieza en el primer producto y dice el total y si hay más', async () => {
+    const result = await setup(prices).of({ ...area, limit: 1 });
+
+    expect(idsOf(result.items)).toEqual(['arroz']);
+    expect(result.total).toBe(2);
+    expect(result.hasMore).toBe(true);
+  });
+
+  it('con offset sigue donde terminó la página anterior y la última no tiene más', async () => {
+    const result = await setup(prices).of({ ...area, limit: 1, offset: 1 });
+
+    expect(idsOf(result.items)).toEqual(['leche']);
+    expect(result.total).toBe(2);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('más allá del final responde vacío con el total', async () => {
+    const result = await setup(prices).of({ ...area, limit: 5, offset: 10 });
+
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(2);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('las páginas de a uno suman la lista completa, sin repetir', async () => {
+    const featured = setup(prices);
+    const all = await featured.of({ ...area, limit: 50 });
+    const pages = await Promise.all(
+      [0, 1].map((offset) => featured.of({ ...area, limit: 1, offset })),
+    );
+
+    expect(pages.flatMap(({ items }) => idsOf(items))).toEqual(idsOf(all.items));
+  });
+
+  it('el total cuenta solo los productos de la categoría pedida', async () => {
+    const result = await setup(prices).of({ ...area, category: 'dairy-eggs', limit: 5 });
+
+    expect(result.total).toBe(1);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('con la ubicación, el total cuenta solo los productos de las tiendas del radio', async () => {
+    // Ara (900 m) y Don José (350 m) están en el radio; Éxito no.
+    const result = await setup([...prices, price('leche-1l', exito.id, 4000)]).of({
+      lat: 4.5339,
+      lng: -75.6811,
+      radiusKm: 1.5,
+      limit: 1,
+      offset: 1,
+    });
+
+    expect(result.total).toBe(2);
+    expect(idsOf(result.items)).toEqual(['leche']);
+  });
+});
