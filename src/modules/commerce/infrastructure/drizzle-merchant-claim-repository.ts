@@ -108,6 +108,20 @@ export class DrizzleMerchantClaimRepository
     return (await this.findByAccount(accountId))?.establishmentId ?? null;
   }
 
+  async wasRevokedFrom(accountId: string, establishmentId: string): Promise<boolean> {
+    const [found] = await this.db
+      .select({ id: merchantClaimRejections.id })
+      .from(merchantClaimRejections)
+      .where(
+        and(
+          eq(merchantClaimRejections.accountId, accountId),
+          eq(merchantClaimRejections.establishmentId, establishmentId),
+          eq(merchantClaimRejections.outcome, 'revocado'),
+        ),
+      );
+    return found !== undefined;
+  }
+
   async lastRejection(accountId: string): Promise<MerchantClaimRejection | null> {
     const [row] = await this.db
       .select({

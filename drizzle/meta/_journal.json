@@ -288,6 +288,13 @@
       "when": 1795362858830,
       "tag": "0040_commerce-merchant-cases",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795363240001,
+      "tag": "0041_commerce-claim-outcome",
+      "breakpoints": true
     }
   ]
 }

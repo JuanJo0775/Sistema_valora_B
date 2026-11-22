@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."merchant_claim_rejections" ADD COLUMN "outcome" text DEFAULT 'rechazado' NOT NULL;

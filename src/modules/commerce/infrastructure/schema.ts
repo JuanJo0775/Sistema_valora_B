@@ -53,6 +53,8 @@ export const merchantClaimRejections = commerceSchema.table(
     establishmentId: uuid('establishment_id').notNull(),
     reason: text('reason').notNull(),
     rejectedAt: timestamp('rejected_at', { withTimezone: true }).notNull(),
+    // Precisión de D3 (#208): rechazada (su tienda propuesta no se aprobó) o revocada por un moderador.
+    outcome: text('outcome').notNull().default('rechazado'),
   },
   (table) => [index('merchant_claim_rejections_account_idx').on(table.accountId, table.rejectedAt)],
 );
