@@ -284,8 +284,10 @@ export class CompareProduct {
     const ttlDays = ttlDaysFor(product.isFresh);
 
     const candidates: Candidate[] = [];
+    // #204: donde hay oficial, el precio de la comunidad no sale aparte (la tienda sale una vez).
+    const withOfficial = new Set(officials.map(placeOf));
     // Un precio sin tienda en el radio (o sin presentación conocida) no entra.
-    for (const price of prices) {
+    for (const price of prices.filter((p) => !withOfficial.has(placeOf(p)))) {
       const establishment = storesById.get(price.establishmentId);
       const presentation = presentations.get(price.presentationId);
       if (!establishment || !presentation) continue;
