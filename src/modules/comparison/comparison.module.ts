@@ -38,6 +38,7 @@ import {
   onOfficialPricePublished,
   onOfficialPricesReconfirmed,
 } from './infrastructure/official-price-handlers';
+import { onPromotionPublished, onPromotionWithdrawn } from './infrastructure/promotion-handlers';
 import {
   onPriceAssessedForHistory,
   onPriceWithdrawnForHistory,
@@ -51,6 +52,8 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
 
 // Receptor de los eventos del precio oficial (#204).
 const OFFICIAL_PRICES_CONSUMER = 'comparison.official_prices';
+// Receptor de los eventos de las promociones (#206).
+const PROMOTIONS_CONSUMER = 'comparison.promotions';
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
@@ -201,5 +204,8 @@ export class ComparisonModule implements OnModuleInit {
       'OfficialPricesReconfirmed',
       onOfficialPricesReconfirmed,
     );
+    // D6 (#206): la copia de las promociones, siempre aparte de los resultados (ADR-009).
+    this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionPublished', onPromotionPublished);
+    this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionWithdrawn', onPromotionWithdrawn);
   }
 }
