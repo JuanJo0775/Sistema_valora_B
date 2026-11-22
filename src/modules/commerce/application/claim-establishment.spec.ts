@@ -7,6 +7,7 @@ import {
   InvalidNitError,
   NotAtEstablishmentError,
 } from './claim-establishment';
+import type { DomainEvent } from '../../../shared/events';
 import type { MerchantClaim } from './merchant-claims';
 
 const now = new Date('2026-11-21T15:00:00Z');
@@ -15,7 +16,8 @@ const STORE = { id: 'tienda-esperanza', lat: 4.5339, lng: -75.6811 };
 // Dobles en memoria detrás de los puertos: la tienda del mapa, las solicitudes y el cambio de rol.
 function setup(options: { claims?: MerchantClaim[] } = {}) {
   const claims = [...(options.claims ?? [])];
-  const merchants: string[] = [];
+  // Eventos guardados junto con la solicitud, en la misma transacción (ADR-015).
+  const events: DomainEvent[] = [];
   const claim = new ClaimEstablishment({
     establishments: {
       find: (id) => Promise.resolve(id === STORE.id ? { lat: STORE.lat, lng: STORE.lng } : null),
@@ -25,20 +27,15 @@ function setup(options: { claims?: MerchantClaim[] } = {}) {
         Promise.resolve(claims.find((c) => c.establishmentId === id)?.accountId ?? null),
       establishmentOf: (accountId) =>
         Promise.resolve(claims.find((c) => c.accountId === accountId)?.establishmentId ?? null),
-      save: (saved) => {
+      save: (saved, published) => {
         claims.push(saved);
-        return Promise.resolve();
-      },
-    },
-    roles: {
-      grantMerchant: (accountId) => {
-        merchants.push(accountId);
+        events.push(...published);
         return Promise.resolve();
       },
     },
     clock: { now: () => now },
   });
-  return { claim, claims, merchants };
+  return { claim, claims, events };
 }
 
 const verifiedClaim = (accountId: string, establishmentId: string): MerchantClaim => ({
@@ -66,13 +63,22 @@ const request = (overrides: Partial<ClaimRequest> = {}): ClaimRequest => ({
 });
 
 describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del grill comercial)', () => {
-  it('en la tienda y sin dueño, queda verificado, es comercio y no se guarda su ubicación', async () => {
-    const { claim, claims, merchants } = setup();
+  it('en la tienda y sin dueño, queda verificado, avisa MerchantVerified y no guarda su ubicación', async () => {
+    const { claim, claims, events } = setup();
 
     const result = await claim.execute(request());
 
     expect(result).toEqual({ status: 'verificado', establishmentId: STORE.id });
-    expect(merchants).toEqual(['cuenta-de-dona-rosa']);
+    // identity lo recibe y cambia el rol a comercio (D3); no se pierde aunque falle una vez.
+    expect(events).toEqual([
+      {
+        id: expect.any(String) as unknown,
+        type: 'MerchantVerified',
+        version: 1,
+        occurredAt: expect.any(Date) as unknown,
+        payload: { accountId: 'cuenta-de-dona-rosa', establishmentId: STORE.id },
+      },
+    ]);
     expect(claims).toEqual([
       {
         accountId: 'cuenta-de-dona-rosa',
@@ -88,15 +94,15 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
     ]);
   });
 
-  it('a más de 50 m de la tienda se rechaza, sin guardar nada ni cambiar el rol', async () => {
-    const { claim, claims, merchants } = setup();
+  it('a más de 50 m de la tienda se rechaza, sin guardar nada ni avisar', async () => {
+    const { claim, claims, events } = setup();
 
     // A unos 110 m de la tienda.
     const far = request({ location: { lat: STORE.lat + 0.001, lng: STORE.lng } });
 
     await expect(claim.execute(far)).rejects.toThrow(NotAtEstablishmentError);
     expect(claims).toEqual([]);
-    expect(merchants).toEqual([]);
+    expect(events).toEqual([]);
   });
 
   it('una tienda que no está en el mapa se rechaza: va por la propuesta de tienda (B2)', async () => {
@@ -110,11 +116,11 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
 
   it('una tienda que ya tiene dueño se rechaza y el dueño no cambia', async () => {
     const owner = verifiedClaim('cuenta-del-dueno', STORE.id);
-    const { claim, claims, merchants } = setup({ claims: [owner] });
+    const { claim, claims, events } = setup({ claims: [owner] });
 
     await expect(claim.execute(request())).rejects.toThrow(EstablishmentHasOwnerError);
     expect(claims).toEqual([owner]);
-    expect(merchants).toEqual([]);
+    expect(events).toEqual([]);
   });
 
   it('una cuenta que ya tiene una tienda no puede registrar otra (una por cuenta)', async () => {

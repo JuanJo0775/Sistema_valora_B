@@ -8,6 +8,17 @@ import {
 import type { MerchantClaim } from '../../src/modules/commerce/application/merchant-claims';
 import { DrizzleMerchantClaimRepository } from '../../src/modules/commerce/infrastructure/drizzle-merchant-claim-repository';
 import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
+import { createEvent, OutboxPublisher } from '../../src/shared/events';
+
+const verified = () =>
+  createEvent('MerchantVerified', 1, {
+    accountId: claim.accountId,
+    establishmentId: claim.establishmentId,
+  });
+const outboxTypes = async (db: NodePgDatabase) =>
+  (await db.execute<{ type: string }>(sql`select type from shared.outbox`)).rows.map(
+    (row) => row.type,
+  );
 
 const claim: MerchantClaim = {
   accountId: 'c0111111-1111-4111-8111-111111111111',
@@ -35,7 +46,7 @@ describe('solicitudes de comercio en el esquema commerce (RF-015, #201)', () => 
       }),
     });
     db = drizzle(pool);
-    claims = new DrizzleMerchantClaimRepository(db);
+    claims = new DrizzleMerchantClaimRepository(db, new OutboxPublisher());
   });
 
   afterAll(async () => {
@@ -43,11 +54,14 @@ describe('solicitudes de comercio en el esquema commerce (RF-015, #201)', () => 
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate commerce.merchant_claims`);
+    await db.execute(sql`truncate commerce.merchant_claims, shared.outbox`);
   });
 
-  it('guarda la solicitud y la encuentra por la cuenta y por la tienda', async () => {
-    await claims.save(claim);
+  it('guarda la solicitud con su evento y la encuentra por la cuenta y por la tienda', async () => {
+    await claims.save(claim, [verified()]);
+
+    // ADR-015: la solicitud y MerchantVerified se confirman juntos.
+    await expect(outboxTypes(db)).resolves.toEqual(['MerchantVerified']);
 
     await expect(claims.findByAccount(claim.accountId)).resolves.toEqual(claim);
     await expect(claims.ownerOf(claim.establishmentId)).resolves.toBe(claim.accountId);
@@ -61,19 +75,22 @@ describe('solicitudes de comercio en el esquema commerce (RF-015, #201)', () => 
   });
 
   // Dos personas registran la misma tienda al mismo tiempo: la base deja una sola (D3).
-  it('una segunda cuenta para la misma tienda se rechaza aunque llegue a la vez', async () => {
-    await claims.save(claim);
+  it('una segunda cuenta para la misma tienda se rechaza aunque llegue a la vez, sin evento', async () => {
+    await claims.save(claim, [verified()]);
 
     await expect(
-      claims.save({ ...claim, accountId: 'c0333333-3333-4333-8333-333333333333' }),
+      claims.save({ ...claim, accountId: 'c0333333-3333-4333-8333-333333333333' }, [verified()]),
     ).rejects.toThrow(EstablishmentHasOwnerError);
+    await expect(outboxTypes(db)).resolves.toEqual(['MerchantVerified']);
   });
 
   it('una segunda tienda para la misma cuenta se rechaza aunque llegue a la vez', async () => {
-    await claims.save(claim);
+    await claims.save(claim, [verified()]);
 
     await expect(
-      claims.save({ ...claim, establishmentId: 'c0444444-4444-4444-8444-444444444444' }),
+      claims.save({ ...claim, establishmentId: 'c0444444-4444-4444-8444-444444444444' }, [
+        verified(),
+      ]),
     ).rejects.toThrow(AccountHasEstablishmentError);
   });
 });

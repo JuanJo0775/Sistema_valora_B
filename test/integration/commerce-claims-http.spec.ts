@@ -6,6 +6,7 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { OutboxRelay } from '../../src/shared/events';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Tienda de prueba: solo existe dentro de esta prueba.
@@ -42,7 +43,7 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, establishments.establishments`,
+      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments`,
     );
     await app.get(ImportEstablishments).save({
       id: storeId,
@@ -63,12 +64,14 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
   };
   const me = (as: SignedIn) => request(server).get('/v1/commerce/me').set('Cookie', as.cookie);
 
-  it('201: en la tienda queda verificado, su rol pasa a comercio y ve su perfil', async () => {
+  it('201: en la tienda queda verificado, su rol pasa a comercio por el evento y ve su perfil', async () => {
     const rosa = await account();
 
     const response = await claim(rosa).expect(201);
 
     expect(response.body).toEqual({ status: 'verificado', establishmentId: storeId });
+    // identity cambia el rol al recibir MerchantVerified del outbox (ADR-015).
+    await app.get(OutboxRelay).runOnce();
     const session = await request(server).get('/v1/auth/session').set('Cookie', rosa.cookie);
     expect((session.body as { role: string }).role).toBe('comercio');
     const profile = await me(rosa).expect(200).expect('Cache-Control', 'private, no-store');
