@@ -1,6 +1,7 @@
 import {
   ClaimEstablishment,
   type ClaimRequest,
+  EstablishmentHasOwnerError,
   EstablishmentNotFoundError,
   NotAtEstablishmentError,
 } from './claim-establishment';
@@ -37,6 +38,18 @@ function setup(options: { claims?: MerchantClaim[] } = {}) {
   });
   return { claim, claims, merchants };
 }
+
+const verifiedClaim = (accountId: string, establishmentId: string): MerchantClaim => ({
+  accountId,
+  establishmentId,
+  responsibleName: 'Otra persona',
+  nit: null,
+  informal: true,
+  phone: '3109876543',
+  acceptedTermsVersion: '2026-11',
+  status: 'verificado',
+  verifiedAt: new Date('2026-11-20T10:00:00Z'),
+});
 
 const request = (overrides: Partial<ClaimRequest> = {}): ClaimRequest => ({
   accountId: 'cuenta-de-dona-rosa',
@@ -91,5 +104,14 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
       EstablishmentNotFoundError,
     );
     expect(claims).toEqual([]);
+  });
+
+  it('una tienda que ya tiene dueño se rechaza y el dueño no cambia', async () => {
+    const owner = verifiedClaim('cuenta-del-dueno', STORE.id);
+    const { claim, claims, merchants } = setup({ claims: [owner] });
+
+    await expect(claim.execute(request())).rejects.toThrow(EstablishmentHasOwnerError);
+    expect(claims).toEqual([owner]);
+    expect(merchants).toEqual([]);
   });
 });
