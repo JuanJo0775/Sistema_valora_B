@@ -1,4 +1,8 @@
-import { assertValidOpeningHours, InvalidOpeningHoursError, type OpeningHours } from './opening-hours';
+import {
+  assertValidOpeningHours,
+  InvalidOpeningHoursError,
+  type OpeningHours,
+} from './opening-hours';
 
 const day = { opens: '07:00', closes: '20:00' };
 // Lunes a sábado de 7:00 a 20:00 y el domingo cerrado.
