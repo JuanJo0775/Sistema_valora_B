@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { EstablishmentDetails, EstablishmentsModule } from '../establishments';
-import { GrantMerchantRole, IdentityModule } from '../identity';
+import { IdentityModule } from '../identity';
+import { OutboxPublisher } from '../../shared/events';
 import { ClaimEstablishment } from './application/claim-establishment';
 import { MerchantProfile } from './application/merchant-profile';
 import { MerchantController } from './http/merchant.controller';
@@ -14,24 +15,30 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
   providers: [
     {
       provide: ClaimEstablishment,
-      inject: [DATABASE, EstablishmentDetails, GrantMerchantRole],
+      inject: [DATABASE, EstablishmentDetails, OutboxPublisher],
       useFactory: (
         db: Database,
         establishments: EstablishmentDetails,
-        roles: GrantMerchantRole,
+        outbox: OutboxPublisher,
       ): ClaimEstablishment =>
         new ClaimEstablishment({
           establishments,
-          claims: new DrizzleMerchantClaimRepository(db),
-          roles: { grantMerchant: (accountId) => roles.execute(accountId) },
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
           clock: { now: () => new Date() },
         }),
     },
     {
       provide: MerchantProfile,
-      inject: [DATABASE, EstablishmentDetails],
-      useFactory: (db: Database, establishments: EstablishmentDetails): MerchantProfile =>
-        new MerchantProfile({ claims: new DrizzleMerchantClaimRepository(db), establishments }),
+      inject: [DATABASE, OutboxPublisher, EstablishmentDetails],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        establishments: EstablishmentDetails,
+      ): MerchantProfile =>
+        new MerchantProfile({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          establishments,
+        }),
     },
   ],
 })

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import {
   AccountHasEstablishmentError,
   EstablishmentHasOwnerError,
@@ -20,11 +21,18 @@ function ownershipConflict(error: unknown): Error | null {
 }
 
 export class DrizzleMerchantClaimRepository implements MerchantClaimRepository {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly outbox: OutboxPublisher,
+  ) {}
 
-  async save(claim: MerchantClaim): Promise<void> {
+  // ADR-015: la solicitud y sus eventos se confirman juntos o no se guarda ninguno.
+  async save(claim: MerchantClaim, events: DomainEvent[]): Promise<void> {
     try {
-      await this.db.insert(merchantClaims).values(claim);
+      await this.db.transaction(async (tx) => {
+        await tx.insert(merchantClaims).values(claim);
+        for (const event of events) await this.outbox.publish(tx, event);
+      });
     } catch (error) {
       throw ownershipConflict(error) ?? error;
     }

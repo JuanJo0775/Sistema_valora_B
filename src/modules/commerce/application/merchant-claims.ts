@@ -1,3 +1,5 @@
+import type { DomainEvent } from '../../../shared/events';
+
 // D2 y D3 del grill comercial: la solicitud con la que una cuenta se vuelve dueña de una tienda.
 // No guarda la ubicación del celular: solo sirvió para comprobar la presencia (EC-08).
 export interface MerchantClaim {
@@ -21,5 +23,6 @@ export interface MerchantClaimRepository {
   establishmentOf(accountId: string): Promise<string | null>;
   // La solicitud de la cuenta, o null si no tiene tienda.
   findByAccount(accountId: string): Promise<MerchantClaim | null>;
-  save(claim: MerchantClaim): Promise<void>;
+  // La solicitud y sus eventos se confirman juntos o no se guarda ninguno (ADR-015).
+  save(claim: MerchantClaim, events: DomainEvent[]): Promise<void>;
 }

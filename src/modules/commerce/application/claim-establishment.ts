@@ -3,6 +3,7 @@ import {
   isValidNit,
   NotAtEstablishmentError,
 } from '../../../domain/merchant-claim';
+import { createEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 
 export { NotAtEstablishmentError } from '../../../domain/merchant-claim';
@@ -16,8 +17,6 @@ export interface ClaimEstablishmentPorts {
   // La tienda del mapa, por la interfaz pública de establishments.
   establishments: { find(establishmentId: string): Promise<Point | null> };
   claims: Pick<MerchantClaimRepository, 'ownerOf' | 'establishmentOf' | 'save'>;
-  // Cambio de rol reportante → comercio, por la interfaz pública de identity (D3).
-  roles: { grantMerchant(accountId: string): Promise<void> };
   clock: { now(): Date };
 }
 
@@ -73,6 +72,10 @@ export class AccountHasEstablishmentError extends Error {
   }
 }
 
+// D3: identity lo recibe y cambia el rol a comercio. Va por el outbox para que el cambio no se pierda
+// si falla una vez (ADR-015); identity no importa commerce, solo conoce el nombre del evento.
+export const MERCHANT_VERIFIED = 'MerchantVerified';
+
 // RF-015 con la D2 del grill comercial: una cuenta registra como suya una tienda del mapa.
 export class ClaimEstablishment {
   constructor(private readonly ports: ClaimEstablishmentPorts) {}
@@ -81,19 +84,22 @@ export class ClaimEstablishment {
     if (request.nit !== undefined && !isValidNit(request.nit)) throw new InvalidNitError();
     await this.ensurePresence(request);
     await this.ensureNoOwnership(request);
-    const { claims, roles, clock } = this.ports;
-    await claims.save({
-      accountId: request.accountId,
-      establishmentId: request.establishmentId,
-      responsibleName: request.responsibleName.trim(),
-      nit: request.nit ?? null,
-      informal: request.nit === undefined,
-      phone: request.phone,
-      acceptedTermsVersion: request.acceptedTermsVersion,
-      status: 'verificado',
-      verifiedAt: clock.now(),
-    });
-    await roles.grantMerchant(request.accountId);
+    const { claims, clock } = this.ports;
+    const { accountId, establishmentId } = request;
+    await claims.save(
+      {
+        accountId: request.accountId,
+        establishmentId: request.establishmentId,
+        responsibleName: request.responsibleName.trim(),
+        nit: request.nit ?? null,
+        informal: request.nit === undefined,
+        phone: request.phone,
+        acceptedTermsVersion: request.acceptedTermsVersion,
+        status: 'verificado',
+        verifiedAt: clock.now(),
+      },
+      [createEvent(MERCHANT_VERIFIED, 1, { accountId, establishmentId })],
+    );
     return { status: 'verificado', establishmentId: request.establishmentId };
   }
 

@@ -305,25 +305,11 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         clock: Clock,
       ): ChangeRole => new ChangeRole({ accounts, limiter, clock }),
     },
-    // D3 del grill comercial: commerce lo pide al verificar una tienda.
-    {
-      provide: GrantMerchantRole,
-      inject: [ACCOUNT_REPOSITORY, CLOCK],
-      useFactory: (accounts: AccountRepository, clock: Clock): GrantMerchantRole =>
-        new GrantMerchantRole({ accounts, clock }),
-    },
     SessionGuard,
     VerifiedEmailGuard,
   ],
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
-  exports: [
-    ResolveSession,
-    SessionGuard,
-    VerifiedEmailGuard,
-    ReporterIdentity,
-    ChangeRole,
-    GrantMerchantRole,
-  ],
+  exports: [ResolveSession, SessionGuard, VerifiedEmailGuard, ReporterIdentity, ChangeRole],
 })
 export class IdentityModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}
@@ -356,6 +342,20 @@ export class IdentityModule implements OnModuleInit {
           reporterKey: payload.reporterKey,
           suspendedUntil: new Date(payload.suspendedUntil),
         });
+      },
+    );
+    // D3 del grill comercial: commerce avisa que verificó una tienda y la cuenta pasa a comercio.
+    // Solo se conoce el nombre del evento: identity no importa commerce. El cambio va en la
+    // transacción del suscriptor; si falla, el relé lo reintenta (ADR-015).
+    this.bus.subscribe(
+      'identity.accounts',
+      'MerchantVerified',
+      async (event: DomainEvent, tx: Transaction) => {
+        const payload = event.payload as { accountId: string };
+        await new GrantMerchantRole({
+          accounts: new DrizzleAccountRepository(tx),
+          clock: { now: () => new Date() },
+        }).execute(payload.accountId);
       },
     );
   }
