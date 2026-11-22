@@ -1913,13 +1913,15 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: >-
-            code ESTABLISHMENT_HAS_OWNER: la tienda ya tiene dueño. code ACCOUNT_HAS_ESTABLISHMENT: la
-            cuenta ya tiene una tienda.
+            code ESTABLISHMENT_HAS_OWNER: la tienda ya tiene dueño; queda una disputa para el
+            moderador (#208). code ACCOUNT_HAS_ESTABLISHMENT: la cuenta ya tiene una tienda.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '422':
-          description: code NOT_AT_ESTABLISHMENT, la ubicación está a más de 50 m de la tienda.
+          description: >-
+            code NOT_AT_ESTABLISHMENT: la ubicación está a más de 50 m de la tienda. code
+            REVOKED_FROM_ESTABLISHMENT: un moderador revocó a esta cuenta de esta tienda (#208).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1952,6 +1954,133 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '404':
           description: La cuenta no tiene una tienda registrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /establishments/{establishmentId}/merchant-reports:
+    post:
+      tags: [Comercios]
+      operationId: reportMerchant
+      summary: Denunciar un comercio («no es de quien dice») (RF-015, D2)
+      description: >-
+        D2 y D3 del grill comercial (#208). Cualquier cuenta con sesión, sobre una tienda que tiene
+        comercio, nunca la propia, y una denuncia abierta por cuenta y tienda. Se guarda la clave
+        seudónima de quien denuncia, nunca su cuenta (EC-08). El moderador decide en
+        GET /moderation/merchant-cases.
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: establishmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '202':
+          description: Denuncia recibida, pendiente del moderador.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [pendiente] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: La tienda no tiene un comercio registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: code MERCHANT_REPORT_OPEN, ya denunció este comercio y el caso sigue abierto.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code OWN_ESTABLISHMENT, no se denuncia la tienda propia.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /moderation/merchant-cases:
+    get:
+      tags: [Moderación]
+      operationId: listMerchantCases
+      summary: Denuncias y disputas de comercios pendientes (RF-015, D2)
+      description: >-
+        Solo el rol moderador (#208). La más antigua primero. Una disputa se abre sola cuando otra
+        cuenta, estando en la tienda (presencia, D2), intenta registrar una tienda que ya tiene dueño.
+        Trae los datos del comercio para verificarlo; nunca quién abrió el caso ni la cuenta del
+        dueño (EC-08). Sin caché.
+      x-corte: 3
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Casos pendientes.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/MerchantCase' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /moderation/merchant-cases/{caseId}/decision:
+    post:
+      tags: [Moderación]
+      operationId: decideMerchantCase
+      summary: Revocar el comercio o descartar el caso (RF-015, D3)
+      description: >-
+        Solo el rol moderador (#208). revocar retira al instante los precios oficiales y las
+        promociones de la tienda, devuelve la cuenta a reportante, cierra los casos abiertos de esa
+        tienda y deja anotado quién, cuándo y por qué; esa cuenta no puede volver a registrar esa
+        tienda. descartar cierra el caso sin tocar el comercio. Siempre con motivo.
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision, note]
+              properties:
+                decision: { type: string, enum: [revocar, descartar] }
+                note: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '204': { description: Decisión registrada. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: El caso no existe o ya se decidió.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2500,6 +2629,34 @@ components:
           id: { type: string, format: uuid }
           name: { type: string }
           distanceM: { type: integer, minimum: 0 }
+    MerchantCase:
+      type: object
+      description: Una denuncia o una disputa sobre un comercio (D2, D3); sin quién la abrió (EC-08).
+      additionalProperties: false
+      required: [id, kind, establishment, owner, reason, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [denuncia, disputa] }
+        establishment:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        owner:
+          type: [object, 'null']
+          description: El comercio, para verificarlo; null si ya no existe.
+          additionalProperties: false
+          required: [responsibleName, nit, phone, status, verifiedAt]
+          properties:
+            responsibleName: { type: string }
+            nit: { type: [string, 'null'] }
+            phone: { type: string }
+            status: { type: string, enum: [pre_aprobado, verificado] }
+            verifiedAt: { type: [string, 'null'], format: date-time }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
     MerchantUnlocks:
       type: array
       description: Lo que el comercio pre-aprobado podrá hacer al aprobarse su tienda (D2).
@@ -2515,7 +2672,12 @@ components:
       additionalProperties: false
       required: [status, reason, rejectedAt]
       properties:
-        status: { type: string, enum: [rechazado] }
+        status:
+          type: string
+          enum: [rechazado, revocado]
+          description: >-
+            rechazado, la tienda propuesta no se aprobó (#202); revocado, un moderador revocó el
+            comercio (#208).
         reason: { type: string, description: Motivo del moderador o de la fusión. }
         rejectedAt: { type: string, format: date-time }
     ActiveMerchantProfile:
@@ -2541,9 +2703,9 @@ components:
         Única forma de error de la API (issue #41). Solo tiene code y message; la única excepción es
         availableFrom en el 409 DUPLICATE_REPORT (ConflictError, #84) y scheduledFor en el 403 ACCOUNT_PENDING_DELETION (PendingDeletionError, ADR-032). Valores de code:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), MERCHANT_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
-        CONFLICT (409), ESTABLISHMENT_HAS_OWNER (409), ACCOUNT_HAS_ESTABLISHMENT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
+        CONFLICT (409), ESTABLISHMENT_HAS_OWNER (409), ACCOUNT_HAS_ESTABLISHMENT (409), MERCHANT_REPORT_OPEN (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION, INVALID_OPENING_HOURS y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION, INVALID_OPENING_HOURS, OWN_ESTABLISHMENT, REVOKED_FROM_ESTABLISHMENT y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:
