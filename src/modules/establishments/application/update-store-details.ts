@@ -42,18 +42,23 @@ export class UpdateStoreDetails {
       ...(name === undefined || nameInReview ? {} : { name }),
     };
     await stores.applyDetails(request.establishmentId, change);
-    if (nameInReview) {
+    // D5: la ubicación siempre pasa por el moderador; el nombre, si copia el de una vecina.
+    const inReview = {
+      ...(nameInReview ? { name } : {}),
+      ...(request.location === undefined ? {} : { location: request.location }),
+    };
+    if (Object.keys(inReview).length > 0) {
       await corrections.propose({
         id: randomUUID(),
         establishmentId: request.establishmentId,
-        name,
+        ...inReview,
         proposerKey: request.proposerKey,
         createdAt: clock.now(),
       });
     }
     return {
       applied: Object.keys(change) as (keyof StoreDetailsChange)[],
-      inReview: nameInReview ? ['name'] : [],
+      inReview: Object.keys(inReview) as ('name' | 'location')[],
     };
   }
 
