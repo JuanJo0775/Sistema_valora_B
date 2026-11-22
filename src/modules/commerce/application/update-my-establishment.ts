@@ -1,11 +1,10 @@
+import type { OpeningHours } from '../../../domain/opening-hours';
 import type { MerchantClaimRepository } from './merchant-claims';
 import { verifiedEstablishmentOf } from './publish-official-price';
 
-type DayHours = { opens: string; closes: string } | null;
-
 // D5: lo que el comercio puede pedir cambiar de su tienda.
 export interface StoreDetailsUpdate {
-  openingHours?: Record<string, DayHours>;
+  openingHours?: OpeningHours;
   phone?: string;
   name?: string;
   location?: { lat: number; lng: number };

@@ -11,6 +11,7 @@ export { ProposeStore } from './application/propose-store';
 export { PendingStoreProposalName } from './application/pending-store-proposal-name';
 // D5 (#207): datos del negocio para la ficha de la tienda.
 export { StoreContactOf } from './application/store-contact-of';
+export { UpdateStoreDetails } from './application/update-store-details';
 export type { StoreContact } from './application/store-details';
 export { EstablishmentNames } from './application/establishment-names';
 export { EstablishmentsAround } from './application/establishments-around';

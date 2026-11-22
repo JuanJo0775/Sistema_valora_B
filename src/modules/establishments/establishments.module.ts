@@ -20,6 +20,10 @@ import { DecideStoreProposal } from './application/decide-store-proposal';
 import { ListNearbyEstablishments } from './application/list-nearby-establishments';
 import { PendingStoreProposalName } from './application/pending-store-proposal-name';
 import { StoreContactOf } from './application/store-contact-of';
+import { DecideStoreCorrection } from './application/decide-store-correction';
+import { StoreCorrectionsQueue } from './application/store-corrections-queue';
+import { UpdateStoreDetails } from './application/update-store-details';
+import { DrizzleStoreCorrectionRepository } from './infrastructure/drizzle-store-correction-repository';
 import { ProposeStore } from './application/propose-store';
 import { SearchEstablishments } from './application/search-establishments';
 import { StoreProposalsQueue } from './application/store-proposals-queue';
@@ -33,6 +37,35 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
   // B#131: GET /establishments y /nearby viven en comparison, que suma el conteo de precios.
   controllers: [StoreProposalsController],
   providers: [
+    // D5 (#207): datos de la tienda y correcciones.
+    {
+      provide: UpdateStoreDetails,
+      inject: [DATABASE],
+      useFactory: (db: Database): UpdateStoreDetails =>
+        new UpdateStoreDetails({
+          stores: new DrizzleEstablishmentRepository(db),
+          corrections: new DrizzleStoreCorrectionRepository(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: StoreCorrectionsQueue,
+      inject: [DATABASE],
+      useFactory: (db: Database): StoreCorrectionsQueue =>
+        new StoreCorrectionsQueue({
+          corrections: new DrizzleStoreCorrectionRepository(db),
+          stores: new DrizzleEstablishmentRepository(db),
+        }),
+    },
+    {
+      provide: DecideStoreCorrection,
+      inject: [DATABASE],
+      useFactory: (db: Database): DecideStoreCorrection =>
+        new DecideStoreCorrection({
+          corrections: new DrizzleStoreCorrectionRepository(db),
+          clock: { now: () => new Date() },
+        }),
+    },
     {
       provide: StoreContactOf,
       inject: [DATABASE],
@@ -144,6 +177,7 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
   ],
   exports: [
     StoreContactOf,
+    UpdateStoreDetails,
     ProposeStore,
     PendingStoreProposalName,
     ListNearbyEstablishments,
