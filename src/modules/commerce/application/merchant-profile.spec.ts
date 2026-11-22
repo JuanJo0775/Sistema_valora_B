@@ -1,4 +1,4 @@
-import type { MerchantClaim } from './merchant-claims';
+import type { MerchantClaim, MerchantClaimRejection } from './merchant-claims';
 import { MerchantProfile } from './merchant-profile';
 
 const claim: MerchantClaim = {
@@ -13,11 +13,13 @@ const claim: MerchantClaim = {
   verifiedAt: new Date('2026-11-21T15:00:00Z'),
 };
 
-function setup(claims: MerchantClaim[]) {
+function setup(claims: MerchantClaim[], rejections: MerchantClaimRejection[] = []) {
   return new MerchantProfile({
     claims: {
       findByAccount: (accountId) =>
         Promise.resolve(claims.find((c) => c.accountId === accountId) ?? null),
+      lastRejection: (accountId) =>
+        Promise.resolve(rejections.findLast((r) => r.accountId === accountId) ?? null),
     },
     establishments: {
       find: (id) =>
@@ -73,6 +75,24 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
         'avisos_de_precio',
         'datos_de_la_tienda',
       ],
+    });
+  });
+
+  it('rechazada y sin otra tienda: muestra el motivo para que pueda intentarlo de nuevo', async () => {
+    const rejectedAt = new Date('2026-11-22T09:00:00Z');
+    const rejection: MerchantClaimRejection = {
+      accountId: 'cuenta-de-don-luis',
+      establishmentId: 'propuesta-1',
+      reason: 'No encontramos la tienda en esa dirección',
+      rejectedAt,
+    };
+
+    const profile = await setup([], [rejection]).find('cuenta-de-don-luis');
+
+    expect(profile).toEqual({
+      status: 'rechazado',
+      reason: 'No encontramos la tienda en esa dirección',
+      rejectedAt,
     });
   });
 });
