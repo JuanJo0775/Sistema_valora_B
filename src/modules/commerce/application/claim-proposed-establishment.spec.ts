@@ -1,5 +1,5 @@
 import type { DomainEvent } from '../../../shared/events';
-import { AccountHasEstablishmentError } from './claim-establishment';
+import { AccountHasEstablishmentError, InvalidNitError } from './claim-establishment';
 import {
   ClaimProposedEstablishment,
   type ProposedClaimRequest,
@@ -98,5 +98,12 @@ describe('registrar un comercio con una tienda que no está en el mapa (RF-015, 
       ),
     ).rejects.toThrow(AccountHasEstablishmentError);
     expect(proposed).toHaveLength(1);
+  });
+
+  it('un NIT mal escrito se rechaza sin proponer la tienda', async () => {
+    const { claim, proposed } = setup();
+
+    await expect(claim.execute(request({ nit: '800.197.268-5' }))).rejects.toThrow(InvalidNitError);
+    expect(proposed).toEqual([]);
   });
 });
