@@ -7,6 +7,7 @@ export type {
 } from './application/wholesale-references';
 export { MirrorProductImages, mirrorSummary } from './application/mirror-product-images';
 export { PresentationExists } from './application/presentation-exists';
+export { PresentationsByBarcode } from './application/presentations-by-barcode';
 export { PresentationFreshness } from './application/presentation-freshness';
 export { PresentationLabels } from './application/presentation-labels';
 export { PresentationsForPricing } from './application/presentations-for-pricing';

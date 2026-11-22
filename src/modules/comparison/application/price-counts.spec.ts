@@ -1,5 +1,6 @@
 import type { PresentationForPricing } from '../../catalog';
 import type { CurrentPrice } from './current-prices';
+import type { OfficialPriceCopy } from './official-price-copies';
 import { PriceCounts } from './price-counts';
 
 const now = new Date('2026-11-16T14:00:00Z');
@@ -29,7 +30,11 @@ const price = (
   ...change,
 });
 
-function setup(prices: CurrentPrice[], presentations: Map<string, PresentationForPricing>) {
+function setup(
+  prices: CurrentPrice[],
+  presentations: Map<string, PresentationForPricing>,
+  officials: OfficialPriceCopy[] = [],
+) {
   const asked: string[][] = [];
   const counts = new PriceCounts({
     prices: {
@@ -38,6 +43,12 @@ function setup(prices: CurrentPrice[], presentations: Map<string, PresentationFo
         return Promise.resolve(prices.filter((p) => ids.includes(p.establishmentId)));
       },
     },
+    // #218: la copia del precio oficial y los reportes de cada tienda.
+    officials: {
+      findByEstablishments: (ids) =>
+        Promise.resolve(officials.filter((o) => ids.includes(o.establishmentId))),
+    },
+    reliability: { reportsAt: () => Promise.resolve([]) },
     presentations: { of: () => Promise.resolve(presentations) },
     clock: { now: () => now },
   });
@@ -109,5 +120,27 @@ describe('cuántos precios vigentes tiene cada tienda (B#131)', () => {
 
     expect((await counts.of([])).size).toBe(0);
     expect(asked).toEqual([]);
+  });
+
+  // #218: el mapa cuenta el precio oficial como cualquier precio de la tienda.
+  it('cuenta el oficial vigente de una tienda sin precio de la comunidad; el desactualizado no', async () => {
+    const official = (presentationId: string, confirmedDaysAgo: number): OfficialPriceCopy => ({
+      presentationId,
+      establishmentId: 'tienda-rosa',
+      priceCop: 2600,
+      confirmedAt: daysAgo(confirmedDaysAgo),
+      priceChangedAt: daysAgo(confirmedDaysAgo),
+    });
+    const { counts } = setup(
+      [],
+      new Map([
+        ['arroz', presentation()],
+        ['leche', presentation()],
+      ]),
+      // El arroz se confirmó hace 2 días; la leche hace 40 (desactualizada con 14 de TTL).
+      [official('arroz', 2), official('leche', 40)],
+    );
+
+    await expect(counts.of(['tienda-rosa'])).resolves.toEqual(new Map([['tienda-rosa', 1]]));
   });
 });

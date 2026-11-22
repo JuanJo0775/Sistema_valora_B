@@ -20,14 +20,21 @@ interface StorePricesResponse {
     productId: string;
     presentationId: string;
     productName: string;
-    reportId: string;
+    // #218: un precio oficial no viene de un reporte ni se califica.
+    reportId?: string;
     priceCop: number;
     unitPrice: { valueCop: number; per: string };
     source: string;
     freshness: string;
-    reliability: string;
-    confirmations: number;
+    reliability?: string;
+    confirmations?: number;
     observedAt: string;
+    discrepancy?: {
+      officialPriceCop: number;
+      reportedPriceCop: number;
+      reports: number;
+      since: string;
+    };
   }[];
 }
 
@@ -54,11 +61,14 @@ export class StorePricesController {
     if (!result) throw new NotFoundException();
     return {
       establishment: result.establishment,
-      prices: result.prices.map(({ unitPrice, observedAt, ...item }) => ({
+      prices: result.prices.map(({ unitPrice, observedAt, discrepancy, ...item }) => ({
         ...item,
         // Se muestra redondeado; el valor exacto no sale de la aplicación.
         unitPrice: { valueCop: unitPrice.displayCop, per: unitPrice.per },
         observedAt: observedAt.toISOString(),
+        ...(discrepancy === undefined
+          ? {}
+          : { discrepancy: { ...discrepancy, since: discrepancy.since.toISOString() } }),
       })),
     };
   }

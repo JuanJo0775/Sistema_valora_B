@@ -1,3 +1,4 @@
+import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import { and, asc, eq, isNotNull, isNull, lte } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
@@ -10,7 +11,10 @@ import { accounts, emailVerifications, sessions } from './schema';
 // ADR-032. Cada método es una transacción. Las filas que deciden se bloquean con FOR UPDATE, así dos
 // peticiones a la vez se turnan y ninguna deja la cuenta a medias.
 export class DrizzleAccountDeletionRepository implements AccountDeletionRepository {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly outbox: OutboxPublisher,
+  ) {}
 
   async credentialsOf(accountId: string): Promise<AccountCredentials | null> {
     const [found] = await this.db
@@ -99,7 +103,7 @@ export class DrizzleAccountDeletionRepository implements AccountDeletionReposito
     return due.map((row) => row.id);
   }
 
-  purge(accountId: string, now: Date): Promise<boolean> {
+  purge(accountId: string, now: Date, events: DomainEvent[]): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       // Se vuelve a comprobar dentro de la transacción: si la persona restauró la cuenta entre la
       // consulta de pendientes y ahora, no se borra.
@@ -120,6 +124,7 @@ export class DrizzleAccountDeletionRepository implements AccountDeletionReposito
       await tx.delete(sessions).where(eq(sessions.accountId, accountId));
       await tx.delete(emailVerifications).where(eq(emailVerifications.accountId, accountId));
       await tx.delete(accounts).where(eq(accounts.id, accountId));
+      for (const event of events) await this.outbox.publish(tx, event);
       return true;
     });
   }

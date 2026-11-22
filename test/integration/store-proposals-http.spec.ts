@@ -117,6 +117,8 @@ describe('propuestas de tiendas por HTTP (RF-005, #27)', () => {
       expect(response.body).toEqual({
         items: [
           {
+            // D5 (#207): la cola trae también correcciones; esta es una tienda propuesta.
+            kind: 'tienda',
             id,
             name: 'Tienda Esperanza',
             type: 'barrio',

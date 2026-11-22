@@ -26,14 +26,19 @@ import {
   EstablishmentNotFoundError,
   InvalidNitError,
 } from '../application/claim-establishment';
+import {
+  ClaimProposedEstablishment,
+  type ProposedClaimResult,
+} from '../application/claim-proposed-establishment';
 import { MerchantProfile, type MerchantProfileView } from '../application/merchant-profile';
 import { ClaimEstablishmentDto } from './merchant.dto';
 
-// RF-015 con las D2 y D3 del grill comercial (#201).
+// RF-015 con las D2 y D3 del grill comercial (#201, #202).
 @Controller('commerce')
 export class MerchantController {
   constructor(
     private readonly claimEstablishment: ClaimEstablishment,
+    private readonly claimProposedEstablishment: ClaimProposedEstablishment,
     private readonly merchantProfile: MerchantProfile,
   ) {}
 
@@ -45,16 +50,32 @@ export class MerchantController {
   async claim(
     @Body() body: ClaimEstablishmentDto,
     @CurrentSession() session: AuthenticatedSession,
-  ): Promise<ClaimResult> {
+  ): Promise<ClaimResult | ProposedClaimResult> {
+    const { establishmentId, newEstablishment } = body;
+    if ((establishmentId === undefined) === (newEstablishment === undefined)) {
+      throw new RequestValidationError(
+        'establishmentId: envía la tienda del mapa (establishmentId) o la tienda nueva (newEstablishment), no las dos',
+      );
+    }
+    const claim = {
+      accountId: session.accountId,
+      responsibleName: body.responsibleName,
+      ...(body.nit === undefined ? {} : { nit: body.nit }),
+      phone: body.phone,
+      acceptedTermsVersion: body.acceptedTermsVersion,
+      location: { lat: body.location.lat, lng: body.location.lng },
+    };
     try {
+      if (newEstablishment) {
+        const { address, ...store } = newEstablishment;
+        return await this.claimProposedEstablishment.execute({
+          ...claim,
+          newEstablishment: { ...store, ...(address === undefined ? {} : { address }) },
+        });
+      }
       return await this.claimEstablishment.execute({
-        accountId: session.accountId,
-        establishmentId: body.establishmentId,
-        responsibleName: body.responsibleName,
-        ...(body.nit === undefined ? {} : { nit: body.nit }),
-        phone: body.phone,
-        acceptedTermsVersion: body.acceptedTermsVersion,
-        location: { lat: body.location.lat, lng: body.location.lng },
+        ...claim,
+        establishmentId: establishmentId ?? '',
       });
     } catch (error) {
       if (error instanceof InvalidNitError) {
@@ -72,7 +93,7 @@ export class MerchantController {
   }
 
   // Dato de la propia cuenta: nunca en una caché compartida.
-  // El reportante sin tienda recibe 404; en B2 lo usa la cuenta pre-aprobada.
+  // El reportante sin tienda recibe 404; la cuenta pre-aprobada sigue siendo reportante.
   @Get('me')
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(SessionGuard)

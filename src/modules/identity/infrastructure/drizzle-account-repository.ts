@@ -69,6 +69,15 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
     await this.db.update(accounts).set({ suspendedUntil: until }).where(eq(accounts.id, accountId));
   }
 
+  // B9 (#209): solo identity conoce el correo; null si no está verificado o la cuenta no existe.
+  async verifiedEmailOf(accountId: string): Promise<string | null> {
+    const [found] = await this.db
+      .select({ email: accounts.email, verifiedAt: accounts.emailVerifiedAt })
+      .from(accounts)
+      .where(eq(accounts.id, accountId));
+    return found?.verifiedAt ? found.email : null;
+  }
+
   async applyRoleChange(change: RoleChange): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx

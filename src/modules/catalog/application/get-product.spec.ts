@@ -41,6 +41,10 @@ class InMemoryProductRepository implements ProductRepository {
     return Promise.reject(new Error('GetProduct no comprueba presentaciones'));
   }
 
+  presentationIdsByBarcodes(): Promise<Map<string, string>> {
+    return Promise.reject(new Error('GetProduct no busca por lote de códigos'));
+  }
+
   findForComparison(): Promise<null> {
     return Promise.reject(new Error('GetProduct no consulta para la comparación'));
   }

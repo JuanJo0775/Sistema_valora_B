@@ -6,6 +6,8 @@ import {
   DistanceNeedsLocationError,
 } from './compare-product';
 import type { CurrentPrice } from './current-prices';
+import type { OfficialPriceCopy } from './official-price-copies';
+import type { PromotionCopy } from './promotion-copies';
 
 const productId = '11111111-1111-4111-8111-111111111111';
 const missingId = '99999999-9999-4999-8999-999999999999';
@@ -19,6 +21,14 @@ interface Fixture {
   reliability?: Record<string, { level: 'alta' | 'media' | 'baja'; confirmations: number }>;
   // Grill de la #34: la referencia SIPSA más reciente del producto.
   reference?: WholesaleReferenceView | null;
+  // #204: la copia del precio oficial y los reportes recientes de cada tienda.
+  officials?: OfficialPriceCopy[];
+  // #206: la copia de las promociones.
+  promotions?: PromotionCopy[];
+  reports?: Record<
+    string,
+    { reportId: string; priceCop: number; daysAgo: number; level: 'alta' | 'media' | 'baja' }[]
+  >;
 }
 
 // Dobles de los puertos: el catálogo, las tiendas, price_current, reliability y el reloj.
@@ -28,6 +38,9 @@ function setup({
   stores = [],
   reliability = {},
   reference = null,
+  officials = [],
+  promotions = [],
+  reports = {},
 }: Fixture = {}) {
   return new CompareProduct({
     products: {
@@ -63,7 +76,22 @@ function setup({
       findByPresentations: (ids) =>
         Promise.resolve(prices.filter((price) => ids.includes(price.presentationId))),
     },
+    promotionCopies: {
+      findByPresentations: (ids) =>
+        Promise.resolve(promotions.filter((promotion) => ids.includes(promotion.presentationId))),
+    },
+    officials: {
+      findByPresentations: (ids) =>
+        Promise.resolve(officials.filter((official) => ids.includes(official.presentationId))),
+    },
     reliability: {
+      reportsAt: (_presentationId, establishmentId) =>
+        Promise.resolve(
+          (reports[establishmentId] ?? []).map(({ daysAgo, ...report }) => ({
+            ...report,
+            observedAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
+          })),
+        ),
       of: (refs) =>
         Promise.resolve(
           refs.map((ref) => ({
@@ -382,6 +410,169 @@ describe('comparar los precios de un producto', () => {
       await expect(
         setup(fixture).execute(withoutLocation({ municipality: 'calarca', sort: 'distance' })),
       ).rejects.toThrow(DistanceNeedsLocationError);
+    });
+  });
+
+  // D1 del grill comercial (#204): el precio oficial entra a la comparación.
+  describe('con precio oficial', () => {
+    const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    // El comercio publicó $2.200 hace 3 días y lo reconfirmó hace 1.
+    const official = (establishmentId: string, priceCop = 2200): OfficialPriceCopy => ({
+      presentationId: 'p-500g',
+      establishmentId,
+      priceCop,
+      confirmedAt: daysAgo(1),
+      priceChangedAt: daysAgo(3),
+    });
+
+    it('la tienda con precio oficial sale con fuente oficial, sin reporte ni confiabilidad', async () => {
+      const comparison = await setup({ stores: [store('a')], officials: [official('a')] }).execute(
+        input(),
+      );
+
+      expect(comparison?.results).toEqual([
+        {
+          establishment: store('a'),
+          presentationId: 'p-500g',
+          priceCop: 2200,
+          unitPrice: expect.anything() as unknown,
+          source: 'oficial',
+          freshness: 'vigente',
+          isCheapest: true,
+          observedAt: daysAgo(1),
+        },
+      ]);
+    });
+
+    it('con precio oficial, la tienda sale una sola vez: el oficial reemplaza su precio de la comunidad', async () => {
+      const comparison = await setup({
+        stores: [store('a'), store('b')],
+        prices: [price('a', 2500), price('b', 2400)],
+        officials: [official('a')],
+      }).execute(input());
+
+      expect(
+        comparison?.results.map((item) => [item.establishment.id, item.source, item.priceCop]),
+      ).toEqual([
+        ['a', 'oficial', 2200],
+        ['b', 'comunidad', 2400],
+      ]);
+    });
+
+    it('con discrepancia corroborada entra la mediana de la comunidad, con su reporte y el oficial al lado', async () => {
+      const comparison = await setup({
+        stores: [store('a'), store('b')],
+        prices: [price('b', 2400)],
+        officials: [official('a')],
+        // Dos reportes confiables, después del cambio del oficial y a más de 5 %.
+        reports: {
+          a: [
+            { reportId: 'r-alto', priceCop: 2700, daysAgo: 2, level: 'media' },
+            { reportId: 'r-medio', priceCop: 2600, daysAgo: 1, level: 'alta' },
+          ],
+        },
+      }).execute(input());
+
+      // La mediana ($2.600) entra al orden: la tienda b ($2.400) queda primero.
+      expect(comparison?.results.map((item) => item.establishment.id)).toEqual(['b', 'a']);
+      expect(comparison?.results[1]).toEqual({
+        establishment: store('a'),
+        reportId: 'r-medio',
+        presentationId: 'p-500g',
+        priceCop: 2600,
+        unitPrice: expect.anything() as unknown,
+        source: 'comunidad',
+        freshness: 'vigente',
+        isCheapest: false,
+        reliability: 'media',
+        confirmations: 0,
+        observedAt: daysAgo(1),
+        discrepancy: {
+          officialPriceCop: 2200,
+          reportedPriceCop: 2600,
+          reports: 2,
+          since: daysAgo(2),
+        },
+      });
+    });
+
+    it('los reportes de confiabilidad baja no le quitan el lugar al oficial', async () => {
+      const comparison = await setup({
+        stores: [store('a')],
+        officials: [official('a')],
+        reports: {
+          a: [
+            { reportId: 'r-1', priceCop: 2700, daysAgo: 1, level: 'baja' },
+            { reportId: 'r-2', priceCop: 2600, daysAgo: 1, level: 'baja' },
+          ],
+        },
+      }).execute(input());
+
+      expect(comparison?.results.map((item) => [item.source, item.priceCop])).toEqual([
+        ['oficial', 2200],
+      ]);
+    });
+  });
+
+  // D6 del grill comercial (#206) y ADR-009: las promociones van aparte y no cambian el orden.
+  describe('con promociones', () => {
+    const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const official = (establishmentId: string, confirmedDaysAgo = 1): OfficialPriceCopy => ({
+      presentationId: 'p-500g',
+      establishmentId,
+      priceCop: 2200,
+      confirmedAt: daysAgo(confirmedDaysAgo),
+      priceChangedAt: daysAgo(confirmedDaysAgo),
+    });
+    // El reloj de la prueba es el 12 de noviembre: esta va del 10 al 20.
+    const promotion = (
+      id: string,
+      establishmentId: string,
+      dates = { validFrom: '2026-11-10', validUntil: '2026-11-20' },
+    ): PromotionCopy => ({
+      id,
+      establishmentId,
+      presentationId: 'p-500g',
+      offer: { type: 'descuento_porcentual', percent: 10 },
+      conditions: { maxPerCustomer: 2, whileStocksLast: true, paymentMethod: 'efectivo' },
+      ...dates,
+    });
+    const fixture = {
+      stores: [store('a'), store('b'), store('c'), store('d')],
+      prices: [price('d', 2500)],
+      // c no tiene el oficial vigente: confirmado hace 20 días (TTL de 14).
+      officials: [official('a'), official('b'), official('c', 20)],
+      promotions: [
+        promotion('activa', 'a'),
+        promotion('vencida', 'b', { validFrom: '2026-11-01', validUntil: '2026-11-05' }),
+        promotion('pausada', 'c'),
+        promotion('fuera-del-radio', 'lejana'),
+      ],
+    };
+
+    it('solo salen las activas de las tiendas del área, con el oficial y el precio con la promoción', async () => {
+      const comparison = await setup(fixture).execute(input());
+
+      expect(comparison?.promotions).toEqual([
+        {
+          id: 'activa',
+          establishment: store('a'),
+          presentationId: 'p-500g',
+          offer: { type: 'descuento_porcentual', percent: 10 },
+          conditions: { maxPerCustomer: 2, whileStocksLast: true, paymentMethod: 'efectivo' },
+          validFrom: '2026-11-10',
+          validUntil: '2026-11-20',
+          officialPriceCop: 2200,
+          promotedPriceCop: 1980,
+        },
+      ]);
+    });
+
+    it('los resultados son idénticos con y sin promociones (ADR-009)', async () => {
+      const withPromotions = await setup(fixture).execute(input());
+      const without = await setup({ ...fixture, promotions: [] }).execute(input());
+
+      expect(withPromotions?.results).toEqual(without?.results);
     });
   });
 });

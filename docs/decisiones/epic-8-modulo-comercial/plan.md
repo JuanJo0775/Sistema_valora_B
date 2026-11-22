@@ -59,6 +59,12 @@ Fecha de la estimación: 21-nov-2026 · Hecha por Claude Code a pedido del equip
 - **Ubicación falseada:** la verificación por presencia no es infalible; lo cubren las denuncias (B8).
 - **Correo:** los avisos (B9) dependen de Resend en producción (`EMAIL_PROVIDER=resend`).
 
+## Nota para el frontend (#218)
+
+- Regenerar los tipos de `docs/openapi.yaml`. En la ficha de la tienda, `reportId`, `reliability` y `confirmations` se omiten con `source: oficial`. La acción de marcar un reporte requiere `reportId`.
+- En la canasta, `cheapest` y `priciest` incluyen `source` y pueden traer `discrepancy`, con la misma forma que en la comparación y la ficha. El ahorro ya viene calculado sobre esos precios efectivos.
+- En el mapa, `priceCount` mantiene su tipo e incluye precios oficiales. Cada presentación se cuenta una vez por tienda.
+
 ## Reparto sugerido
 
 B1, B2 y B3 en orden (base del módulo). Después, en paralelo: B4 (núcleo de la comparación), B5 y B6 (comercio), B7 (soporte). El frontend sigue a cada contrato. Los responsables los asigna el equipo en las issues.

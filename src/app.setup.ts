@@ -18,6 +18,8 @@ export function configureApp(app: INestApplication): void {
   // comprime tipos de texto (JSON), así que las fotos de /media/ y lo ya comprimido pasan intactos, y
   // agrega Vary: Accept-Encoding. Va antes de todo lo demás para cubrir también los errores.
   (app as NestExpressApplication).use(compression({ threshold: COMPRESSION_THRESHOLD_BYTES }));
+  // D7 (#205): el archivo de precios oficiales llega como text/csv. 1.000 filas caben de sobra en 1 MB.
+  (app as NestExpressApplication).useBodyParser('text', { type: 'text/csv', limit: '1mb' });
   app.setGlobalPrefix(API_PREFIX);
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new ErrorFilter(app.get(HttpAdapterHost)));

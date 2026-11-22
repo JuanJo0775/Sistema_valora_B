@@ -1,6 +1,8 @@
+import type { StoreContact } from '../../establishments';
 import type { PresentationForPricing } from '../../catalog';
 import type { PriceRef, PriceReliability } from '../../reliability';
 import type { CurrentPrice } from './current-prices';
+import type { OfficialPriceCopy } from './official-price-copies';
 import { StorePrices } from './store-prices';
 
 const now = new Date('2026-11-15T14:00:00Z');
@@ -44,13 +46,31 @@ const price = (
   ...change,
 });
 
-function setup(prices: CurrentPrice[], presentations: Map<string, PresentationForPricing>) {
+function setup(
+  prices: CurrentPrice[],
+  presentations: Map<string, PresentationForPricing>,
+  contact: StoreContact = {},
+  officials: OfficialPriceCopy[] = [],
+  reports: { reportId: string; priceCop: number; hoursAgo: number }[] = [],
+) {
   const asked: { refs: PriceRef[]; ttlDays: number }[] = [];
   const storePrices = new StorePrices({
     stores: { find: (id) => Promise.resolve(id === store.id ? store : null) },
+    // D5 (#207): el horario y el teléfono que puso el comercio.
+    contacts: { of: () => Promise.resolve(contact) },
     presentations: { of: () => Promise.resolve(presentations) },
     prices: { findByEstablishment: () => Promise.resolve(prices) },
+    // #218: la copia del precio oficial de la tienda.
+    officials: { findByEstablishment: () => Promise.resolve(officials) },
     reliability: {
+      reportsAt: () =>
+        Promise.resolve(
+          reports.map(({ hoursAgo: hours, ...report }) => ({
+            ...report,
+            observedAt: hoursAgo(hours),
+            level: 'alta' as const,
+          })),
+        ),
       of: (refs, ttlDays): Promise<PriceReliability[]> => {
         asked.push({ refs, ttlDays });
         return Promise.resolve(refs.map((ref) => ({ ...ref, level: 'media', confirmations: 1 })));
@@ -143,6 +163,88 @@ describe('precios vigentes de una tienda (RF-008, grill de la #28)', () => {
     await expect(storePrices.of(store.id, { onlyCurrent: false })).resolves.toEqual({
       establishment: store,
       prices: [],
+    });
+  });
+
+  // D5 del grill comercial (#207): datos del negocio, nunca de una persona (EC-08).
+  it('la ficha trae el horario y el teléfono que puso el comercio', async () => {
+    const day = { opens: '07:00', closes: '20:00' };
+    const openingHours = {
+      lunes: day,
+      martes: day,
+      miercoles: day,
+      jueves: day,
+      viernes: day,
+      sabado: day,
+      domingo: null,
+    };
+    const { storePrices } = setup([], new Map(), { openingHours, phone: '6067441234' });
+
+    const result = await storePrices.of(store.id, { onlyCurrent: false });
+
+    expect(result?.establishment).toEqual({ ...store, openingHours, phone: '6067441234' });
+  });
+
+  // #218: la ficha de la tienda usa la misma regla del precio oficial que la comparación (D1).
+  describe('con precio oficial', () => {
+    const presentations = new Map([
+      ['arroz-500g', presentation('arroz', 'Arroz Diana · 500 g')],
+      ['aceite-1l', presentation('aceite', 'Aceite Gourmet · 1 l')],
+    ]);
+    const official = (presentationId: string, priceCop: number): OfficialPriceCopy => ({
+      presentationId,
+      establishmentId: store.id,
+      priceCop,
+      confirmedAt: hoursAgo(5),
+      priceChangedAt: hoursAgo(48),
+    });
+
+    it('el oficial sale con fuente oficial, sin reporte ni confiabilidad', async () => {
+      const { storePrices } = setup([], presentations, {}, [official('aceite-1l', 9000)]);
+
+      const result = await storePrices.of(store.id, { onlyCurrent: false });
+
+      expect(result?.prices).toEqual([
+        {
+          productId: 'aceite',
+          presentationId: 'aceite-1l',
+          productName: 'Aceite Gourmet · 1 l',
+          priceCop: 9000,
+          unitPrice: expect.anything() as unknown,
+          source: 'oficial',
+          freshness: 'vigente',
+          observedAt: hoursAgo(5),
+        },
+      ]);
+    });
+
+    it('con discrepancia corroborada sale la mediana de la comunidad con el oficial al lado', async () => {
+      const { storePrices } = setup(
+        [],
+        presentations,
+        {},
+        [official('arroz-500g', 2200)],
+        [
+          { reportId: 'r-1', priceCop: 2700, hoursAgo: 3 },
+          { reportId: 'r-2', priceCop: 2600, hoursAgo: 2 },
+        ],
+      );
+
+      const result = await storePrices.of(store.id, { onlyCurrent: false });
+
+      expect(result?.prices).toEqual([
+        expect.objectContaining({
+          reportId: 'r-2',
+          priceCop: 2600,
+          source: 'comunidad',
+          discrepancy: {
+            officialPriceCop: 2200,
+            reportedPriceCop: 2600,
+            reports: 2,
+            since: hoursAgo(3),
+          },
+        }),
+      ]);
     });
   });
 });

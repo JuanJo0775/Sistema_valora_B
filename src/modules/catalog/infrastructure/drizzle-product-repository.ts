@@ -86,6 +86,16 @@ export class DrizzleProductRepository implements ProductRepository {
     return product ? [product] : [];
   }
 
+  // D7 del grill comercial (#205): los códigos conocidos, en una sola consulta.
+  async presentationIdsByBarcodes(barcodes: string[]): Promise<Map<string, string>> {
+    if (barcodes.length === 0) return new Map();
+    const rows = await this.db
+      .select({ id: presentations.id, barcode: presentations.barcode })
+      .from(presentations)
+      .where(inArray(presentations.barcode, barcodes));
+    return new Map(rows.flatMap(({ id, barcode }) => (barcode === null ? [] : [[barcode, id]])));
+  }
+
   async presentationExists(presentationId: string): Promise<boolean> {
     const [found] = await this.db
       .select({ id: presentations.id })

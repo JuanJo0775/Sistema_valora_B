@@ -2,7 +2,7 @@ import { Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../shared/config/env.validation';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
-import { type DomainEvent, EventBus } from '../../shared/events';
+import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
 import {
   ACCOUNT_DELETION_REPOSITORY,
   type AccountDeletionRepository,
@@ -11,6 +11,8 @@ import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/accoun
 import type { AttemptLimiter } from './application/attempt-limiter';
 import { ChangeRole } from './application/change-role';
 import { GrantMerchantRole } from './application/grant-merchant-role';
+import { RevokeMerchantRole } from './application/revoke-merchant-role';
+import { NotifyAccount } from './application/notify-account';
 import { DeleteOwnAccount } from './application/delete-own-account';
 import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
 import { RestoreAccount } from './application/restore-account';
@@ -234,9 +236,9 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
     // ADR-032: eliminación de la cuenta con 10 días de gracia, restauración y purga.
     {
       provide: ACCOUNT_DELETION_REPOSITORY,
-      inject: [DATABASE],
-      useFactory: (db: Database): AccountDeletionRepository =>
-        new DrizzleAccountDeletionRepository(db),
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): AccountDeletionRepository =>
+        new DrizzleAccountDeletionRepository(db, outbox),
     },
     {
       provide: DeleteOwnAccount,
@@ -305,11 +307,25 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         clock: Clock,
       ): ChangeRole => new ChangeRole({ accounts, limiter, clock }),
     },
+    // B9 (#209): otro módulo avisa a una cuenta sin conocer su correo (EC-08).
+    {
+      provide: NotifyAccount,
+      inject: [DATABASE, EMAIL_SENDER],
+      useFactory: (db: Database, sender: EmailSender): NotifyAccount =>
+        new NotifyAccount({ accounts: new DrizzleAccountRepository(db), sender }),
+    },
     SessionGuard,
     VerifiedEmailGuard,
   ],
   // Otros módulos protegen sus rutas con el guard (en la #16, POST /reports de pricing).
-  exports: [ResolveSession, SessionGuard, VerifiedEmailGuard, ReporterIdentity, ChangeRole],
+  exports: [
+    ResolveSession,
+    SessionGuard,
+    VerifiedEmailGuard,
+    ReporterIdentity,
+    ChangeRole,
+    NotifyAccount,
+  ],
 })
 export class IdentityModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}
@@ -353,6 +369,18 @@ export class IdentityModule implements OnModuleInit {
       async (event: DomainEvent, tx: Transaction) => {
         const payload = event.payload as { accountId: string };
         await new GrantMerchantRole({
+          accounts: new DrizzleAccountRepository(tx),
+          clock: { now: () => new Date() },
+        }).execute(payload.accountId);
+      },
+    );
+    // D3 del grill comercial (#208): el comercio revocado vuelve a reportante.
+    this.bus.subscribe(
+      'identity.accounts',
+      'MerchantRevoked',
+      async (event: DomainEvent, tx: Transaction) => {
+        const payload = event.payload as { accountId: string };
+        await new RevokeMerchantRole({
           accounts: new DrizzleAccountRepository(tx),
           clock: { now: () => new Date() },
         }).execute(payload.accountId);

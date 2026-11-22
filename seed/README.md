@@ -4,7 +4,7 @@ Esta carpeta tiene los datos iniciales de Valora (issue #51, RF-014). Los revisa
 
 | Archivo                 | Qué tiene                                                                         | De dónde sale                                                     |
 | ----------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `tiendas.csv`           | Tiendas de Armenia con nombre, tipo, dirección y coordenadas                      | OpenStreetMap (una consulta autorizada, 12-nov-2026)              |
+| `tiendas.csv`           | Tiendas del Quindío con nombre, tipo, dirección, coordenadas y municipio          | OpenStreetMap (consultas autorizadas, 12 y 22-nov-2026)           |
 | `productos.csv`         | Productos y presentaciones de la canasta                                          | Revisión del equipo en tienda y en olimpica.com (#118)            |
 | `muestra-exactitud.csv` | Precios que el equipo vio en la tienda, para medir la exactitud (PR-22, opcional) | Visitas del equipo (#93)                                          |
 | `sipsa.csv`             | Precios mayoristas por kilo de referencia (opcional)                              | Boletín SIPSA del DANE, copiado a mano por el equipo (#34)        |
@@ -178,9 +178,14 @@ No se carga a la base: sirve para medir qué tan exactos son los precios que pub
 
 ## `tiendas.csv`
 
+### Columna `municipio` (#213)
+
+Uno de los 12 municipios del Quindío, con el código de la aplicación: `armenia`, `buenavista`, `calarca`, `circasia`, `cordoba`, `filandia`, `genova`, `la-tebaida`, `montenegro`, `pijao`, `quimbaya` o `salento`. Otro valor es un error de la fila. La tienda sale en el mapa y en la comparación de ese municipio.
+
 ### De dónde sale
 
-- **Una sola consulta** a OpenStreetMap (Overpass API), autorizada por la integrante que dirige el backend. Datos del 12 de noviembre de 2026 (hora UTC).
+- **Armenia:** una consulta a OpenStreetMap (Overpass API), autorizada por la integrante que dirige el backend. Datos del 12 de noviembre de 2026 (hora UTC). Lo que sigue en esta sección es de esa consulta.
+- **Los otros 11 municipios (#213):** una segunda consulta, autorizada el 21-nov-2026, con datos del 22 de noviembre de 2026. Usó **los mismos criterios** (ver «Los otros municipios», más abajo).
 - **Zona:** el límite oficial del municipio de Armenia (relación OSM 1343039).
 - **Tipos de comercio:** `supermarket`, `convenience`, `general`, `greengrocer`, `butcher` y `bakery`.
 - **Resultado:** 384 comercios.
@@ -199,9 +204,33 @@ No se carga a la base: sirve para medir qué tan exactos son los precios que pub
 | Repetidas                                | Los nombres repetidos que no son cadenas están a más de 800 m entre sí: son sucursales distintas, no la misma tienda dos veces (criterio de 50 m de RF-005 RN3)                                                                                                          | ninguna fusión                               |
 | Revisión manual del equipo (11-nov-2026) | Se quitaron 27 tiendas más, sin cambiar las demás                                                                                                                                                                                                                        | quedan **184** (158 listas y 26 por revisar) |
 
+### Los otros municipios (#213, 22-nov-2026)
+
+- **Zona:** el límite de cada municipio dentro del departamento del Quindío (OSM, `admin_level` 6).
+- **Mismos tipos, tipo en Valora y limpieza por nombre** que en Armenia. Quedaron fuera 65 panaderías, 61 comercios sin nombre y 2 tiendas que no venden comida.
+- **Listas** (`revisar = no`): supermercados, minimercados, fruterías y carnicerías, y las tiendas `general` cuyo nombre dice que son de barrio o de comida. Es la decisión del equipo del 22-nov: el mismo criterio de Armenia, para que salgan en el mapa.
+- **Por revisar** (`revisar = sí`): las `general` con nombres que no dicen qué venden, y nombres dudosos: «S» (Filandia), «Fonda la Carmelita» (Quimbaya) y «Estadero el Oasis» (Salento). Fondas y estaderos suelen ser bares.
+- **Resultado:** 137 tiendas nuevas, 105 listas y 32 por revisar. **El 22-nov-2026 la integrante que dirige el backend aprobó las 32**: las 137 quedan con `revisar = no`. La tabla muestra cómo llegaron de la consulta.
+
+| Municipio  | Listas | Por revisar |
+| ---------- | ------ | ----------- |
+| Calarcá    | 50     | 28          |
+| Filandia   | 13     | 1           |
+| Salento    | 10     | 1           |
+| Montenegro | 9      | 1           |
+| Circasia   | 8      | 0           |
+| Quimbaya   | 7      | 1           |
+| Pijao      | 3      | 0           |
+| Génova     | 2      | 0           |
+| La Tebaida | 2      | 0           |
+| Buenavista | 1      | 0           |
+| Córdoba    | 0      | 0           |
+
+**Córdoba no tiene ninguna tienda en OpenStreetMap** con estos tipos, y Génova, La Tebaida y Buenavista tienen muy pocas. Las tiendas que falten llegan por sugerencia de la comunidad (RF-005), o el equipo las agrega a mano en este archivo con su municipio.
+
 ### Qué falta (el equipo)
 
-1. **Las 26 filas con `revisar = sí`** son tiendas `general` con nombres que no dicen qué venden («Casa Blanca», «La 72», «Misceláneas», «Variedades»…). Hay que confirmar que venden productos de la canasta. Si no, se borra la fila.
+1. **Las 26 filas de Armenia con `revisar = sí`** son tiendas `general` con nombres que no dicen qué venden («Casa Blanca», «La 72», «Misceláneas», «Variedades»…). Hay que confirmar que venden productos de la canasta. Si no, se borra la fila.
 2. **Tiendas cerradas o que se mudaron:** OpenStreetMap puede estar desactualizado. Basta con revisar las que el equipo conozca.
 3. **Tipo:** si una tienda quedó con un tipo que no le corresponde (por ejemplo, un minimercado marcado como `barrio`), se cambia la columna `tipo`.
 4. **No cambiar** `osm_id`, `lat`, `lng`, `fuente` ni `fecha_consulta`: son la trazabilidad del dato.

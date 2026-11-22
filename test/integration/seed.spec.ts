@@ -11,7 +11,9 @@ import { RunSeed } from '../../src/modules/imports/application/run-seed';
 import { CsvSeedSource } from '../../src/modules/imports/infrastructure/csv-seed-source';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 
-const STORES_HEADER = 'osm_id;nombre;tipo;direccion;lat;lng;tipo_osm;revisar;fuente;fecha_consulta';
+// #213: con la columna municipio.
+const STORES_HEADER =
+  'osm_id;nombre;tipo;direccion;lat;lng;municipio;tipo_osm;revisar;fuente;fecha_consulta';
 const PRODUCTS_HEADER =
   'producto;marca;categoria;cantidad;unidad;unidades_empaque;codigo_barras;verificar;fuente;responsable;fecha';
 
@@ -19,9 +21,9 @@ const PRODUCTS_HEADER =
 const storesCsv = (address: string): string =>
   [
     STORES_HEADER,
-    `node/1;Tienda de prueba A;barrio;${address};4.5339;-75.6811;general;no;Prueba;2026-11-12`,
-    'node/2;Tienda de prueba B;descuento;;4.5400;-75.6800;supermarket;no;Prueba;2026-11-12',
-    'node/3;Tienda pendiente;barrio;;4.5450;-75.6700;general;sí;Prueba;2026-11-12',
+    `node/1;Tienda de prueba A;barrio;${address};4.5339;-75.6811;armenia;general;no;Prueba;2026-11-12`,
+    'node/2;Tienda de prueba B;descuento;;4.5400;-75.6800;armenia;supermarket;no;Prueba;2026-11-12',
+    'node/3;Tienda pendiente;barrio;;4.5450;-75.6700;armenia;general;sí;Prueba;2026-11-12',
   ].join('\n');
 const productsCsv = [
   PRODUCTS_HEADER,

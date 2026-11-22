@@ -118,4 +118,46 @@ describe('repositorio de productos con Drizzle', () => {
         .values({ id: 'b71d0e22-3c4f-4a5b-9c6d-7e8f9a0b1c2d', ...presentation }),
     ).rejects.toThrow();
   });
+
+  // D7 del grill comercial (#205): el archivo de precios oficiales trae códigos de barras.
+  it('da la presentación de cada código de barras conocido, en una sola consulta', async () => {
+    await db.insert(products).values({
+      id: riceId,
+      name: 'Arroz blanco',
+      brand: 'Diana',
+      categoryCode: 'grains-groceries',
+    });
+    await db.insert(presentations).values([
+      {
+        id: '9a2e7c10-1b2d-4e3f-8a9b-0c1d2e3f4a5b',
+        productId: riceId,
+        quantity: '1',
+        unit: 'kg',
+        barcode: '7702511000014',
+      },
+      {
+        id: 'b71d0e22-3c4f-4a5b-9c6d-7e8f9a0b1c2d',
+        productId: riceId,
+        quantity: '500',
+        unit: 'g',
+        barcode: '7702511000021',
+      },
+    ]);
+
+    const found = await new DrizzleProductRepository(db).presentationIdsByBarcodes([
+      '7702511000014',
+      '7702511000021',
+      '9999999999999',
+    ]);
+
+    expect(found).toEqual(
+      new Map([
+        ['7702511000014', '9a2e7c10-1b2d-4e3f-8a9b-0c1d2e3f4a5b'],
+        ['7702511000021', 'b71d0e22-3c4f-4a5b-9c6d-7e8f9a0b1c2d'],
+      ]),
+    );
+    await expect(new DrizzleProductRepository(db).presentationIdsByBarcodes([])).resolves.toEqual(
+      new Map(),
+    );
+  });
 });

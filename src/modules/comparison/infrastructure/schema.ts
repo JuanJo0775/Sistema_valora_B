@@ -1,14 +1,18 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  date,
   index,
   integer,
+  jsonb,
   pgSchema,
   primaryKey,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { PromotionOffer } from '../../../domain/promotion';
+import type { PromotionConditionsCopy } from '../application/promotion-copies';
 
 // Esquema propio del módulo (ADR-003, ADR-021). Ningún otro módulo lee estas tablas.
 export const comparisonSchema = pgSchema('comparison');
@@ -57,4 +61,39 @@ export const priceHistory = comparisonSchema.table(
     ),
     index('price_history_presentation_idx').on(table.presentationId, table.observedAt),
   ],
+);
+
+// D1 y D4 del grill comercial (#204): copia del precio oficial de cada presentación en cada tienda,
+// llenada con los eventos de commerce (comparison no importa commerce, EC-05).
+export const officialPrices = comparisonSchema.table(
+  'official_prices',
+  {
+    presentationId: uuid('presentation_id').notNull(),
+    establishmentId: uuid('establishment_id').notNull(),
+    priceCop: integer('price_cop').notNull(),
+    // Vigencia del oficial (ADR-005): cuenta desde la última confirmación.
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull(),
+    // Última vez que cambió el precio: solo los reportes posteriores corroboran (D1).
+    priceChangedAt: timestamp('price_changed_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.presentationId, table.establishmentId] }),
+    index('official_prices_establishment_idx').on(table.establishmentId),
+  ],
+);
+
+// D6 del grill comercial (#206): copia de las promociones, llenada con los eventos de commerce.
+// Van siempre aparte de los resultados (ADR-009).
+export const promotions = comparisonSchema.table(
+  'promotions',
+  {
+    id: uuid('id').primaryKey(),
+    establishmentId: uuid('establishment_id').notNull(),
+    presentationId: uuid('presentation_id').notNull(),
+    offer: jsonb('offer').$type<PromotionOffer>().notNull(),
+    conditions: jsonb('conditions').$type<PromotionConditionsCopy>().notNull(),
+    validFrom: date('valid_from', { mode: 'string' }).notNull(),
+    validUntil: date('valid_until', { mode: 'string' }).notNull(),
+  },
+  (table) => [index('promotions_presentation_idx').on(table.presentationId)],
 );

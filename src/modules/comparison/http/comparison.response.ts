@@ -14,23 +14,48 @@ export interface ComparisonItemResponse {
     // Grill de la #106: sin la ubicación del usuario no hay distancia.
     distanceM?: number;
   };
-  reportId: string;
+  // #204: un precio oficial no viene de un reporte ni se califica.
+  reportId?: string;
   presentationId: string;
   priceCop: number;
   unitPrice: { valueCop: number; per: string };
   source: string;
   freshness: string;
   isCheapest: boolean;
-  reliability: string;
-  confirmations: number;
+  reliability?: string;
+  confirmations?: number;
   observedAt: string;
+  // D1 (#204): solo con discrepancia corroborada.
+  discrepancy?: {
+    officialPriceCop: number;
+    reportedPriceCop: number;
+    reports: number;
+    since: string;
+  };
+}
+
+// D6 (#206): una promoción activa, con la oferta aplanada como en el esquema Promotion.
+export interface PromotionResponse {
+  id: string;
+  establishment: ComparisonItemResponse['establishment'];
+  presentationId: string;
+  type: string;
+  percent?: number;
+  specialPriceCop?: number;
+  payX?: number;
+  takeY?: number;
+  conditions: { maxPerCustomer?: number; whileStocksLast: boolean; paymentMethod: string };
+  validFrom: string;
+  validUntil: string;
+  officialPriceCop: number;
+  promotedPriceCop: number;
 }
 
 export interface ComparisonResponse {
   productId: string;
   criteria: { sort: string; radiusKm?: number; municipality?: string };
   results: ComparisonItemResponse[];
-  promotions: [];
+  promotions: PromotionResponse[];
   // Grill de la #34: referencia SIPSA aparte, nunca precio de una tienda.
   wholesaleReference?: {
     source: string;
@@ -45,25 +70,29 @@ export interface ComparisonResponse {
   savingsPercent?: number;
 }
 
+type Establishment = Comparison['results'][number]['establishment'];
+
+const toEstablishment = (
+  establishment: Establishment,
+): ComparisonItemResponse['establishment'] => ({
+  id: establishment.id,
+  name: establishment.name,
+  type: establishment.type,
+  ...(establishment.address === undefined ? {} : { address: establishment.address }),
+  ...(establishment.neighborhood === undefined ? {} : { neighborhood: establishment.neighborhood }),
+  lat: establishment.lat,
+  lng: establishment.lng,
+  municipality: establishment.municipality,
+  ...(establishment.distanceM === undefined ? {} : { distanceM: establishment.distanceM }),
+});
+
 export function toComparisonResponse(comparison: Comparison): ComparisonResponse {
   return {
     productId: comparison.productId,
     criteria: comparison.criteria,
     results: comparison.results.map(({ establishment, unitPrice, ...item }) => ({
-      establishment: {
-        id: establishment.id,
-        name: establishment.name,
-        type: establishment.type,
-        ...(establishment.address === undefined ? {} : { address: establishment.address }),
-        ...(establishment.neighborhood === undefined
-          ? {}
-          : { neighborhood: establishment.neighborhood }),
-        lat: establishment.lat,
-        lng: establishment.lng,
-        municipality: establishment.municipality,
-        ...(establishment.distanceM === undefined ? {} : { distanceM: establishment.distanceM }),
-      },
-      reportId: item.reportId,
+      establishment: toEstablishment(establishment),
+      ...(item.reportId === undefined ? {} : { reportId: item.reportId }),
       presentationId: item.presentationId,
       priceCop: item.priceCop,
       // Se muestra redondeado; el orden ya usó el valor exacto.
@@ -71,11 +100,29 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
       source: item.source,
       freshness: item.freshness,
       isCheapest: item.isCheapest,
-      reliability: item.reliability,
-      confirmations: item.confirmations,
+      ...(item.reliability === undefined ? {} : { reliability: item.reliability }),
+      ...(item.confirmations === undefined ? {} : { confirmations: item.confirmations }),
       observedAt: item.observedAt.toISOString(),
+      ...(item.discrepancy === undefined
+        ? {}
+        : {
+            discrepancy: {
+              ...item.discrepancy,
+              since: item.discrepancy.since.toISOString(),
+            },
+          }),
     })),
-    promotions: [],
+    promotions: comparison.promotions.map(({ establishment, offer, conditions, ...promotion }) => ({
+      id: promotion.id,
+      establishment: toEstablishment(establishment),
+      presentationId: promotion.presentationId,
+      ...offer,
+      conditions: { ...conditions },
+      validFrom: promotion.validFrom,
+      validUntil: promotion.validUntil,
+      officialPriceCop: promotion.officialPriceCop,
+      promotedPriceCop: promotion.promotedPriceCop,
+    })),
     ...(comparison.wholesaleReference === undefined
       ? {}
       : { wholesaleReference: { ...comparison.wholesaleReference } }),
