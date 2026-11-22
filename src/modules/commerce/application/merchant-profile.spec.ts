@@ -24,7 +24,9 @@ function setup(claims: MerchantClaim[]) {
         Promise.resolve(
           id === 'tienda-esperanza'
             ? { name: 'Tienda La Esperanza', lat: 4.5339, lng: -75.6811 }
-            : null,
+            : id === 'propuesta-1'
+              ? { name: 'Tienda El Paraíso', lat: 4.4613, lng: -75.6674 }
+              : null,
         ),
     },
   });
@@ -45,5 +47,32 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
 
   it('una cuenta sin tienda registrada no tiene perfil de comercio', async () => {
     expect(await setup([claim]).find('otra-cuenta')).toBeNull();
+  });
+
+  it('pre-aprobado: muestra la tienda propuesta y lo que se desbloquea al aprobarla', async () => {
+    const preApproved: MerchantClaim = {
+      ...claim,
+      accountId: 'cuenta-de-don-luis',
+      establishmentId: 'propuesta-1',
+      status: 'pre_aprobado',
+      verifiedAt: null,
+    };
+
+    const profile = await setup([preApproved]).find('cuenta-de-don-luis');
+
+    expect(profile).toEqual({
+      status: 'pre_aprobado',
+      establishment: { id: 'propuesta-1', name: 'Tienda El Paraíso' },
+      responsibleName: 'Rosa Gómez',
+      informal: true,
+      verifiedAt: null,
+      unlocks: [
+        'precios_oficiales',
+        'carga_por_archivo',
+        'promociones',
+        'avisos_de_precio',
+        'datos_de_la_tienda',
+      ],
+    });
   });
 });
