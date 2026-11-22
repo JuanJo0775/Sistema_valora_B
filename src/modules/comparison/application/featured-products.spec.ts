@@ -7,6 +7,8 @@ import type {
 import { MissingAreaError } from './compare-product';
 import type { CurrentPrice } from './current-prices';
 import { FeaturedProducts } from './featured-products';
+import type { OfficialPriceCopy } from './official-price-copies';
+import type { StoreReports } from './official-resolution';
 
 const now = new Date('2026-11-16T14:00:00Z');
 const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000);
@@ -91,10 +93,17 @@ const distances = new Map([
   [ara.id, 900],
 ]);
 
-function setup(prices: CurrentPrice[], asked: WithinRadiusQuery[] = []) {
+function setup(
+  prices: CurrentPrice[],
+  asked: WithinRadiusQuery[] = [],
+  officials: OfficialPriceCopy[] = [],
+  reliability: StoreReports = { reportsAt: () => Promise.resolve([]) },
+) {
   const stores = [donJose, ara, exito];
   return new FeaturedProducts({
     prices: { findAll: () => Promise.resolve(prices) },
+    officials: { findAll: () => Promise.resolve(officials) },
+    reliability,
     stores: {
       find: (query: WithinRadiusQuery) => {
         asked.push(query);
@@ -314,5 +323,64 @@ describe('imagen del producto en la canasta básica', () => {
       attribution: 'Open Food Facts, CC BY-SA',
     });
     expect(byId.get('leche')).not.toHaveProperty('image');
+  });
+});
+
+describe('precio efectivo en la canasta (#218)', () => {
+  const official: OfficialPriceCopy = {
+    presentationId: 'arroz-500g',
+    establishmentId: donJose.id,
+    priceCop: 2000,
+    confirmedAt: hoursAgo(72),
+    priceChangedAt: hoursAgo(72),
+  };
+
+  it('incluye tiendas con solo precio oficial y calcula el ahorro con ese precio', async () => {
+    const featured = setup([price('arroz-500g', ara.id, 4000)], [], [official]);
+    const result = await featured.of({ municipality: 'armenia', radiusKm: 1.5, limit: 5 });
+
+    expect(result.storesWithPrices).toBe(2);
+    expect(result.items[0]).toMatchObject({
+      storeCount: 2,
+      cheapest: { priceCop: 2000, source: 'oficial' },
+      priciest: { priceCop: 4000, source: 'comunidad' },
+      savingsPercent: 50,
+    });
+  });
+
+  it('usa la mediana corroborada para ordenar y calcular el ahorro', async () => {
+    const featured = setup(
+      [price('arroz-500g', ara.id, 4000), price('arroz-500g', donJose.id, 3600)],
+      [],
+      [official],
+      {
+        reportsAt: () =>
+          Promise.resolve([
+            { reportId: 'r1', priceCop: 2900, observedAt: hoursAgo(2), level: 'alta' },
+            { reportId: 'r2', priceCop: 3100, observedAt: hoursAgo(1), level: 'alta' },
+          ]),
+      },
+    );
+    const result = await featured.of({ municipality: 'armenia', radiusKm: 1.5, limit: 5 });
+
+    expect(result.items[0]).toMatchObject({
+      cheapest: {
+        priceCop: 2900,
+        source: 'comunidad',
+        discrepancy: { officialPriceCop: 2000, reportedPriceCop: 2900, reports: 2 },
+      },
+      savingsPercent: 28,
+    });
+  });
+
+  it('conserva el reporte vigente cuando el oficial expiró', async () => {
+    const featured = setup(
+      [price('arroz-500g', donJose.id, 2500)],
+      [],
+      [{ ...official, confirmedAt: hoursAgo(24 * 30) }],
+    );
+    const result = await featured.of({ municipality: 'armenia', radiusKm: 1.5, limit: 5 });
+
+    expect(result.items[0]?.cheapest).toMatchObject({ priceCop: 2500, source: 'comunidad' });
   });
 });

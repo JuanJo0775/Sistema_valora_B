@@ -21,7 +21,7 @@ import type {
 import type { PriceRef, PriceReliability, ReportAtStore } from '../../reliability';
 import type { CurrentPrices } from './current-prices';
 import type { OfficialPriceCopies, OfficialPriceCopy } from './official-price-copies';
-import { resolveOfficial } from './official-resolution';
+import { effectivePrices } from './effective-prices';
 import type { PromotionCopies, PromotionCopy } from './promotion-copies';
 
 // Puertos hacia las consultas públicas de catalog y establishments (grill de la #15, pregunta 2).
@@ -304,23 +304,32 @@ export class CompareProduct {
     const now = this.ports.clock.now();
     const ttlDays = ttlDaysFor(product.isFresh);
 
+    // #204 y #218: el precio efectivo de cada tienda del área (el oficial reemplaza al de la
+    // comunidad, o entra la mediana si la comunidad lo corrobora, D1). Solo las tiendas del radio.
+    const inArea = (place: { establishmentId: string }) => storesById.has(place.establishmentId);
+    const effective = await effectivePrices({
+      current: prices.filter(inArea),
+      officials: officials.filter(inArea),
+      reliability: this.ports.reliability,
+      ttlDaysOf: () => ttlDays,
+      now,
+    });
     const candidates: Candidate[] = [];
-    // #204: donde hay oficial, el precio de la comunidad no sale aparte (la tienda sale una vez).
-    const withOfficial = new Set(officials.map(placeOf));
-    // Un precio sin tienda en el radio (o sin presentación conocida) no entra.
-    for (const price of prices.filter((p) => !withOfficial.has(placeOf(p)))) {
+    // Un precio de una presentación desconocida no entra.
+    for (const price of effective) {
       const establishment = storesById.get(price.establishmentId);
       const presentation = presentations.get(price.presentationId);
       if (!establishment || !presentation) continue;
       const item: Candidate['item'] = {
         establishment,
-        reportId: price.reportId,
+        ...(price.reportId === undefined ? {} : { reportId: price.reportId }),
         presentationId: price.presentationId,
         priceCop: price.priceCop,
         unitPrice: calculateUnitPrice(price.priceCop, presentation),
         source: price.source,
         freshness: freshnessAt(price.observedAt, now, ttlDays),
         observedAt: price.observedAt,
+        ...(price.discrepancy === undefined ? {} : { discrepancy: price.discrepancy }),
       };
       candidates.push({
         item,
@@ -329,29 +338,6 @@ export class CompareProduct {
         presentationId: item.presentationId,
         unitPrice: item.unitPrice,
         // Sin ubicación todas empatan en distancia; decide el resto de la cadena (#21).
-        distanceMeters: establishment.distanceM ?? 0,
-        observedAt: item.observedAt,
-      });
-    }
-    // #204: el precio oficial de la tienda, o la mediana de la comunidad si la corrobora (D1).
-    for (const official of officials) {
-      const establishment = storesById.get(official.establishmentId);
-      const presentation = presentations.get(official.presentationId);
-      if (!establishment || !presentation) continue;
-      const shown = await this.officialOrReported(official, now, ttlDays);
-      const item: Candidate['item'] = {
-        establishment,
-        ...shown,
-        presentationId: official.presentationId,
-        unitPrice: calculateUnitPrice(shown.priceCop, presentation),
-        freshness: freshnessAt(shown.observedAt, now, ttlDays),
-      };
-      candidates.push({
-        item,
-        inReview: false,
-        establishmentId: establishment.id,
-        presentationId: item.presentationId,
-        unitPrice: item.unitPrice,
         distanceMeters: establishment.distanceM ?? 0,
         observedAt: item.observedAt,
       });
@@ -386,35 +372,5 @@ export class CompareProduct {
         },
       ];
     });
-  }
-
-  // D1 y ADR-008: el oficial, salvo que los reportes recientes y confiables corroboren otro precio.
-  private async officialOrReported(
-    official: OfficialPriceCopy,
-    now: Date,
-    ttlDays: number,
-  ): Promise<
-    Pick<ComparisonItem, 'priceCop' | 'source' | 'observedAt' | 'reportId' | 'discrepancy'>
-  > {
-    const { resolved, reports } = await resolveOfficial(
-      official,
-      this.ports.reliability,
-      now,
-      ttlDays,
-    );
-    const chosen =
-      resolved.kind === 'discrepancia'
-        ? reports.find((report) => report.reportId === resolved.reportId)
-        : undefined;
-    if (resolved.kind === 'oficial' || !chosen) {
-      return { priceCop: official.priceCop, source: 'oficial', observedAt: official.confirmedAt };
-    }
-    return {
-      priceCop: chosen.priceCop,
-      source: 'comunidad',
-      observedAt: chosen.observedAt,
-      reportId: chosen.reportId,
-      discrepancy: resolved.discrepancy,
-    };
   }
 }

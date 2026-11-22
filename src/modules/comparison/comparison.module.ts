@@ -119,6 +119,7 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
           contacts,
           presentations,
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
           reliability,
           clock: { now: () => new Date() },
         }),
@@ -142,15 +143,24 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
     // B#120: la canasta básica de hoy en un municipio.
     {
       provide: FeaturedProducts,
-      inject: [DATABASE, EstablishmentsWithinRadius, PresentationsForPricing, ProductSummaries],
+      inject: [
+        DATABASE,
+        EstablishmentsWithinRadius,
+        PresentationsForPricing,
+        ProductSummaries,
+        ReliabilityOfPrices,
+      ],
       useFactory: (
         db: Database,
         stores: EstablishmentsWithinRadius,
         presentations: PresentationsForPricing,
         products: ProductSummaries,
+        reliability: ReliabilityOfPrices,
       ): FeaturedProducts =>
         new FeaturedProducts({
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
+          reliability,
           stores,
           presentations,
           products,
@@ -160,10 +170,16 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
     // B#131: cuántos precios vigentes tiene cada tienda de una lista.
     {
       provide: PriceCounts,
-      inject: [DATABASE, PresentationsForPricing],
-      useFactory: (db: Database, presentations: PresentationsForPricing): PriceCounts =>
+      inject: [DATABASE, PresentationsForPricing, ReliabilityOfPrices],
+      useFactory: (
+        db: Database,
+        presentations: PresentationsForPricing,
+        reliability: ReliabilityOfPrices,
+      ): PriceCounts =>
         new PriceCounts({
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
+          reliability,
           presentations,
           clock: { now: () => new Date() },
         }),

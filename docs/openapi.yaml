@@ -533,13 +533,10 @@ paths:
                           productId,
                           presentationId,
                           productName,
-                          reportId,
                           priceCop,
                           unitPrice,
                           source,
                           freshness,
-                          reliability,
-                          confirmations,
                           observedAt,
                         ]
                       properties:
@@ -551,7 +548,7 @@ paths:
                         reportId:
                           type: string
                           format: uuid
-                          description: El reporte cuyo precio se muestra; sirve para marcarlo (RF-013).
+                          description: El reporte cuyo precio se muestra (RF-013). Se omite para un oficial (#218).
                         priceCop: { type: integer, minimum: 1 }
                         unitPrice:
                           type: object
@@ -561,9 +558,10 @@ paths:
                             per: { type: string, enum: [100g, 100ml, und] }
                         source: { type: string, enum: [comunidad, oficial, siembra] }
                         freshness: { type: string, enum: [vigente, por_confirmar, desactualizado] }
-                        reliability: { type: string, enum: [alta, media, baja, en_revision] }
-                        confirmations: { type: integer, minimum: 0 }
+                        reliability: { type: string, enum: [alta, media, baja, en_revision], description: Se omite para un oficial. }
+                        confirmations: { type: integer, minimum: 0, description: Se omite para un oficial. }
                         observedAt: { type: string, format: date-time }
+                        discrepancy: { $ref: '#/components/schemas/PriceDiscrepancy' }
         '304': { description: Los precios no cambiaron desde el ETag enviado }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404':
@@ -2864,6 +2862,7 @@ components:
             Cuántas presentaciones tienen hoy un precio en la tienda, con el mismo criterio que
             GET /establishments/{establishmentId}/prices con onlyCurrent=true: no cuentan los
             desactualizados ni los que están en revisión; los por confirmar sí cuentan.
+            Incluye los precios oficiales y cuenta cada presentación una sola vez (#218).
     Municipality:
       type: string
       description: Municipio del Quindío (#106). Las tiendas de la semilla son de Armenia.
@@ -2933,18 +2932,19 @@ components:
           type: string
           format: date-time
           description: Cuándo se vio el precio; en un precio oficial, su última confirmación.
-        discrepancy:
-          type: object
-          additionalProperties: false
-          description: >-
-            Solo con discrepancia corroborada (D1, ADR-008): el oficial se muestra al lado del precio
-            que entra al orden, con aviso.
-          required: [officialPriceCop, reportedPriceCop, reports, since]
-          properties:
-            officialPriceCop: { type: integer }
-            reportedPriceCop: { type: integer, description: La mediana de los reportes que corroboran. }
-            reports: { type: integer, minimum: 2, description: Cuántos reportes la corroboran. }
-            since: { type: string, format: date-time, description: El más antiguo de esos reportes. }
+        discrepancy: { $ref: '#/components/schemas/PriceDiscrepancy' }
+    PriceDiscrepancy:
+      type: object
+      additionalProperties: false
+      description: >-
+        Solo con discrepancia corroborada (D1, ADR-008): el oficial se muestra al lado del precio
+        que entra al orden, con aviso.
+      required: [officialPriceCop, reportedPriceCop, reports, since]
+      properties:
+        officialPriceCop: { type: integer }
+        reportedPriceCop: { type: integer, description: La mediana de los reportes que corroboran. }
+        reports: { type: integer, minimum: 2, description: Cuántos reportes la corroboran. }
+        since: { type: string, format: date-time, description: El más antiguo de esos reportes. }
     Promotion:
       type: object
       description: >-
@@ -3073,7 +3073,7 @@ components:
     FeaturedPrice:
       type: object
       description: Un precio vigente de la canasta básica de hoy, con la tienda donde está (B#128).
-      required: [presentationId, label, priceCop, unitPrice, establishment]
+      required: [presentationId, label, priceCop, source, unitPrice, establishment]
       properties:
         presentationId: { type: string, format: uuid }
         label:
@@ -3081,6 +3081,8 @@ components:
           example: Arroz Diana · 500 g
           description: Producto y presentación, como label del historial.
         priceCop: { type: integer, minimum: 1 }
+        source: { type: string, enum: [comunidad, oficial, siembra] }
+        discrepancy: { $ref: '#/components/schemas/PriceDiscrepancy' }
         unitPrice:
           type: object
           description: Redondeado al peso entero con la mitad hacia arriba (RF-004).

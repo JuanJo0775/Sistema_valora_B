@@ -12,11 +12,16 @@ import type {
   WithinRadiusQuery,
 } from '../../establishments';
 import { freshnessAt, MissingAreaError } from './compare-product';
-import type { CurrentPrice, CurrentPrices } from './current-prices';
+import type { CurrentPrices } from './current-prices';
+import { type EffectivePrice, effectivePrices } from './effective-prices';
+import type { OfficialPriceCopies } from './official-price-copies';
+import type { StoreReports } from './official-resolution';
 
 // Puertos hacia las consultas públicas de establishments y catalog (por su index.ts).
 export interface FeaturedProductsPorts {
   prices: Pick<CurrentPrices, 'findAll'>;
+  officials: Pick<OfficialPriceCopies, 'findAll'>;
+  reliability: StoreReports;
   stores: {
     // B#128: con la ubicación del usuario, las tiendas del radio con su distancia.
     find(query: WithinRadiusQuery): Promise<NearbyEstablishment[]>;
@@ -44,6 +49,8 @@ export interface FeaturedPrice {
   presentationId: string;
   label: string;
   priceCop: number;
+  source: EffectivePrice['source'];
+  discrepancy?: NonNullable<EffectivePrice['discrepancy']>;
   unitPrice: UnitPrice;
   // distanceM solo con la ubicación del usuario.
   // H-06: la dirección y el barrio distinguen tiendas de la misma cadena.
@@ -81,7 +88,7 @@ export interface FeaturedProductsResult {
 type Store = EstablishmentDetail & { distanceM?: number };
 
 interface Offer extends RankableOffer {
-  price: CurrentPrice;
+  price: EffectivePrice;
   presentation: PresentationForPricing;
   establishment: Store;
 }
@@ -100,6 +107,8 @@ const toPrice = (offer: Offer): FeaturedPrice => ({
   presentationId: offer.presentationId,
   label: offer.presentation.label,
   priceCop: offer.price.priceCop,
+  source: offer.price.source,
+  ...(offer.price.discrepancy === undefined ? {} : { discrepancy: offer.price.discrepancy }),
   unitPrice: offer.unitPrice,
   establishment: {
     id: offer.establishment.id,
@@ -194,15 +203,29 @@ export class FeaturedProducts {
 
   // Los precios vigentes de las tiendas del área, con su presentación y su precio por unidad.
   private async offersIn(input: FeaturedProductsInput): Promise<Offer[]> {
-    const { prices, presentations } = this.ports;
-    const current = await prices.findAll();
-    const [inArea, known] = await Promise.all([
-      this.storesIn([...new Set(current.map((price) => price.establishmentId))], input),
-      presentations.of([...new Set(current.map((price) => price.presentationId))]),
-    ]);
+    const { prices, officials, presentations, reliability, clock } = this.ports;
+    const [current, official] = await Promise.all([prices.findAll(), officials.findAll()]);
+    const places = [...current, ...official];
+    const inArea = await this.storesIn(
+      [...new Set(places.map((price) => price.establishmentId))],
+      input,
+    );
     const storesById = new Map(inArea.map((store) => [store.id, store]));
-    const now = this.ports.clock.now();
-    return current.flatMap((price) => {
+    const isInArea = (price: { establishmentId: string }) => storesById.has(price.establishmentId);
+    const localPrices = current.filter(isInArea);
+    const localOfficials = official.filter(isInArea);
+    const known = await presentations.of([
+      ...new Set([...localPrices, ...localOfficials].map((price) => price.presentationId)),
+    ]);
+    const now = clock.now();
+    const effective = await effectivePrices({
+      current: localPrices,
+      officials: localOfficials.filter((price) => known.has(price.presentationId)),
+      reliability,
+      ttlDaysOf: (id) => ttlDaysFor(known.get(id)?.isFresh ?? false),
+      now,
+    });
+    return effective.flatMap((price) => {
       const establishment = storesById.get(price.establishmentId);
       const presentation = known.get(price.presentationId);
       if (!establishment || !presentation) return [];
