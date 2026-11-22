@@ -40,9 +40,13 @@ export interface PromotionRepository {
   save(promotion: Promotion, events: DomainEvent[]): Promise<void>;
   // Las de la tienda, la más reciente primero.
   listFor(establishmentId: string): Promise<Promotion[]>;
+  findById(promotionId: string): Promise<Promotion | null>;
+  // Con sus eventos, en la misma transacción (ADR-015).
+  delete(promotionId: string, events: DomainEvent[]): Promise<void>;
 }
 
 export const PROMOTION_PUBLISHED = 'PromotionPublished';
+export const PROMOTION_WITHDRAWN = 'PromotionWithdrawn';
 
 // D6: el estado y los precios de hoy. Sin oficial (retirado al revocar, B8), queda pausada.
 export function promotionView(
