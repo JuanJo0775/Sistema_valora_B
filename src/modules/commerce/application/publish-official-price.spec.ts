@@ -1,7 +1,7 @@
 import type { DomainEvent } from '../../../shared/events';
 import type { MerchantClaim } from './merchant-claims';
 import type { OfficialPrice } from './official-prices';
-import { PublishOfficialPrice } from './publish-official-price';
+import { MerchantNotVerifiedError, PublishOfficialPrice } from './publish-official-price';
 
 const now = new Date('2026-11-22T10:00:00Z');
 const STORE = 'tienda-esperanza';
@@ -72,5 +72,18 @@ describe('publicar un precio oficial (RF-016, D4 del grill comercial)', () => {
         payload: { ...price, confirmedAt: now.toISOString() },
       }),
     ]);
+  });
+
+  it.each([
+    ['pre-aprobado', [{ ...merchant, status: 'pre_aprobado', verifiedAt: null }]],
+    ['sin tienda', []],
+  ] as [string, MerchantClaim[]][])('%s no publica precios oficiales', async (_case, claims) => {
+    const { publish, prices, events } = setup(claims);
+
+    await expect(
+      publish.execute({ accountId: 'cuenta-de-dona-rosa', presentationId: RICE, priceCop: 2600 }),
+    ).rejects.toThrow(MerchantNotVerifiedError);
+    expect(prices).toEqual([]);
+    expect(events).toEqual([]);
   });
 });
