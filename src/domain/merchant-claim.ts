@@ -20,3 +20,22 @@ function distanceMeters(a: Point, b: Point): number {
 export function isAtEstablishment(person: Point, establishment: Point): boolean {
   return distanceMeters(person, establishment) <= PRESENCE_RADIUS_METERS;
 }
+
+// Pesos de la DIAN para el dígito de verificación, del dígito de la derecha hacia la izquierda.
+const NIT_WEIGHTS = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
+
+function checkDigit(digits: string): number {
+  const sum = [...digits]
+    .reverse()
+    .reduce((total, digit, index) => total + Number(digit) * (NIT_WEIGHTS[index] ?? 0), 0);
+  const remainder = sum % 11;
+  return remainder < 2 ? remainder : 11 - remainder;
+}
+
+// «800.197.268-4» o «800197268-4». Solo detecta errores al escribir: no consulta a la DIAN, así que
+// no dice si el NIT existe ni de quién es (eso lo cubren la presencia y las denuncias).
+export function isValidNit(nit: string): boolean {
+  const [, number, digit] = /^(\d{1,15})-(\d)$/.exec(nit.replaceAll('.', '')) ?? [];
+  if (number === undefined || digit === undefined) return false;
+  return checkDigit(number) === Number(digit);
+}
