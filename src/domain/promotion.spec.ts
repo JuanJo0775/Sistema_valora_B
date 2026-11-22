@@ -1,4 +1,4 @@
-import { promotionStatus } from './promotion';
+import { promotedPriceCop, promotionStatus } from './promotion';
 
 // 22 de noviembre de 2026, 10:00 a. m. en Colombia (UTC-5).
 const now = new Date('2026-11-22T15:00:00Z');
@@ -37,5 +37,19 @@ describe('estado de una promoción (D6 del grill comercial, ADR-009)', () => {
     expect(promotionStatus({ ...week, now: lastNight, officialFreshness: 'vigente' })).toBe(
       'activa',
     );
+  });
+});
+
+describe('precio con la promoción, a partir del oficial (D6)', () => {
+  it('20 % de descuento sobre $2.600 deja $2.080', () => {
+    expect(promotedPriceCop({ type: 'descuento_porcentual', percent: 20 }, 2600)).toBe(2080);
+  });
+
+  it('un precio especial de $2.300 es ese precio', () => {
+    expect(promotedPriceCop({ type: 'precio_especial', specialPriceCop: 2300 }, 2600)).toBe(2300);
+  });
+
+  it('pague 2 lleve 3 de $2.600 deja cada unidad en $1.733', () => {
+    expect(promotedPriceCop({ type: 'pague_x_lleve_y', payX: 2, takeY: 3 }, 2600)).toBe(1733);
   });
 });
