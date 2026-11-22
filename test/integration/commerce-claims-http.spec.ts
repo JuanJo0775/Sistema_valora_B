@@ -43,7 +43,7 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments`,
+      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.merchant_claim_rejections`,
     );
     await app.get(ImportEstablishments).save({
       id: storeId,
@@ -138,5 +138,100 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
     const response = await me(await account());
 
     expect(response.status).toBe(404);
+  });
+
+  describe('tienda que no está en el mapa (D2, #202)', () => {
+    const HERE = { lat: 4.4613, lng: -75.6674 };
+    const newStoreBody = {
+      newEstablishment: { name: 'Tienda El Paraíso', type: 'barrio', municipality: 'cordoba' },
+      responsibleName: 'Luis Ramírez',
+      phone: '3157654321',
+      acceptedTermsVersion: '2026-11',
+      location: HERE,
+    };
+    const decide = (as: SignedIn, proposalId: string, decision: string) =>
+      request(server)
+        .post(`/v1/moderation/store-proposals/${proposalId}/decision`)
+        .set('Cookie', as.cookie)
+        .set('X-CSRF-Token', as.csrfToken)
+        .send({ decision, note: 'Revisada por el moderador' });
+    const roleOf = async (as: SignedIn) =>
+      (
+        (await request(server).get('/v1/auth/session').set('Cookie', as.cookie)).body as {
+          role: string;
+        }
+      ).role;
+    // StoreProposalDecided llega a commerce y su MerchantVerified llega a identity.
+    const deliverEvents = async () => {
+      await app.get(OutboxRelay).runOnce();
+      await app.get(OutboxRelay).runOnce();
+    };
+
+    it('201 pre-aprobado; al aprobarse la tienda queda verificado y es comercio', async () => {
+      const [luis, moderator] = await Promise.all([account(), account('moderador')]);
+
+      const response = await claim(luis, newStoreBody).expect(201);
+
+      const { establishmentId } = response.body as { establishmentId: string };
+      expect(response.body).toEqual({
+        status: 'pre_aprobado',
+        establishmentId,
+        unlocks: [
+          'precios_oficiales',
+          'carga_por_archivo',
+          'promociones',
+          'avisos_de_precio',
+          'datos_de_la_tienda',
+        ],
+      });
+      expect((await me(luis).expect(200)).body).toMatchObject({
+        status: 'pre_aprobado',
+        establishment: { id: establishmentId, name: 'Tienda El Paraíso' },
+      });
+      expect(await roleOf(luis)).toBe('reportante');
+
+      await decide(moderator, establishmentId, 'aprobar').expect(204);
+      await deliverEvents();
+
+      expect(await roleOf(luis)).toBe('comercio');
+      expect((await me(luis).expect(200)).body).toMatchObject({
+        status: 'verificado',
+        establishment: { id: establishmentId, name: 'Tienda El Paraíso' },
+      });
+    });
+
+    it('al rechazarse la tienda ve el motivo y puede registrar otra', async () => {
+      const [luis, moderator] = await Promise.all([account(), account('moderador')]);
+      const { establishmentId } = (await claim(luis, newStoreBody).expect(201)).body as {
+        establishmentId: string;
+      };
+
+      await decide(moderator, establishmentId, 'rechazar').expect(204);
+      await deliverEvents();
+
+      expect((await me(luis).expect(200)).body).toEqual({
+        status: 'rechazado',
+        reason: 'Revisada por el moderador',
+        rejectedAt: expect.any(String) as unknown,
+      });
+      expect(await roleOf(luis)).toBe('reportante');
+      await claim(luis).expect(201);
+    });
+
+    it('400 sin tienda o con las dos formas a la vez', async () => {
+      const luis = await account();
+      const { newEstablishment, ...withoutStore } = newStoreBody;
+
+      const responses = await Promise.all([
+        claim(luis, withoutStore),
+        claim(luis, { ...newStoreBody, establishmentId: storeId }),
+        claim(luis, {
+          ...newStoreBody,
+          newEstablishment: { ...newEstablishment, municipality: 'pereira' },
+        }),
+      ]);
+
+      expect(responses.map((response) => response.status)).toEqual([400, 400, 400]);
+    });
   });
 });
