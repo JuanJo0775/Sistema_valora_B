@@ -11,6 +11,7 @@ import { ACCOUNT_REPOSITORY, type AccountRepository } from './application/accoun
 import type { AttemptLimiter } from './application/attempt-limiter';
 import { ChangeRole } from './application/change-role';
 import { GrantMerchantRole } from './application/grant-merchant-role';
+import { RevokeMerchantRole } from './application/revoke-merchant-role';
 import { DeleteOwnAccount } from './application/delete-own-account';
 import { PurgeDeletedAccounts } from './application/purge-deleted-accounts';
 import { RestoreAccount } from './application/restore-account';
@@ -353,6 +354,18 @@ export class IdentityModule implements OnModuleInit {
       async (event: DomainEvent, tx: Transaction) => {
         const payload = event.payload as { accountId: string };
         await new GrantMerchantRole({
+          accounts: new DrizzleAccountRepository(tx),
+          clock: { now: () => new Date() },
+        }).execute(payload.accountId);
+      },
+    );
+    // D3 del grill comercial (#208): el comercio revocado vuelve a reportante.
+    this.bus.subscribe(
+      'identity.accounts',
+      'MerchantRevoked',
+      async (event: DomainEvent, tx: Transaction) => {
+        const payload = event.payload as { accountId: string };
+        await new RevokeMerchantRole({
           accounts: new DrizzleAccountRepository(tx),
           clock: { now: () => new Date() },
         }).execute(payload.accountId);

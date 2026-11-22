@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
   MerchantCase,
@@ -26,6 +26,16 @@ export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
 
   async open(merchantCase: MerchantCase): Promise<void> {
     await this.db.insert(merchantCases).values(merchantCase);
+  }
+
+  // Los pendientes, el más antiguo primero.
+  async pending(): Promise<MerchantCase[]> {
+    const rows = await this.db
+      .select(caseColumns)
+      .from(merchantCases)
+      .where(eq(merchantCases.status, 'pendiente'))
+      .orderBy(asc(merchantCases.createdAt));
+    return rows.map(toCase);
   }
 
   async findPending(caseId: string): Promise<MerchantCase | null> {

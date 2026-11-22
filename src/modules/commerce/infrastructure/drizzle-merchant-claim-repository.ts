@@ -59,6 +59,15 @@ export class DrizzleMerchantClaimRepository
     return row ? toClaim(row) : null;
   }
 
+  // La solicitud activa de la tienda (verificada o pre-aprobada), o null.
+  async findByEstablishment(establishmentId: string): Promise<MerchantClaim | null> {
+    const [row] = await this.db
+      .select()
+      .from(merchantClaims)
+      .where(eq(merchantClaims.establishmentId, establishmentId));
+    return row ? toClaim(row) : null;
+  }
+
   async pendingFor(establishmentId: string): Promise<MerchantClaim | null> {
     const [row] = await this.db
       .select()
