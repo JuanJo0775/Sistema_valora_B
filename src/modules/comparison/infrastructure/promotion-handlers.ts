@@ -13,8 +13,20 @@ interface PromotionWithdrawnV1 {
 }
 
 export async function onPromotionPublished(event: DomainEvent, tx: Transaction): Promise<void> {
-  const { createdAt: _createdAt, ...promotion } = event.payload as unknown as PromotionPublishedV1;
-  await tx.insert(promotions).values(promotion).onConflictDoNothing();
+  const payload = event.payload as unknown as PromotionPublishedV1;
+  // createdAt no hace falta en la copia.
+  await tx
+    .insert(promotions)
+    .values({
+      id: payload.id,
+      establishmentId: payload.establishmentId,
+      presentationId: payload.presentationId,
+      offer: payload.offer,
+      conditions: payload.conditions,
+      validFrom: payload.validFrom,
+      validUntil: payload.validUntil,
+    })
+    .onConflictDoNothing();
 }
 
 export async function onPromotionWithdrawn(event: DomainEvent, tx: Transaction): Promise<void> {

@@ -68,7 +68,9 @@ describe('límites de cada tipo de promoción (D6, EC-06)', () => {
     { type: 'precio_especial', specialPriceCop: 2599 },
     { type: 'pague_x_lleve_y', payX: 1, takeY: 2 },
   ])('se acepta %o con un oficial de $2.600', (offer) => {
-    expect(() => assertValidOffer(offer, 2600)).not.toThrow();
+    expect(() => {
+      assertValidOffer(offer, 2600);
+    }).not.toThrow();
   });
 
   it.each<[string, PromotionOffer]>([
@@ -80,15 +82,17 @@ describe('límites de cada tipo de promoción (D6, EC-06)', () => {
     ['pague 3 lleve 3', { type: 'pague_x_lleve_y', payX: 3, takeY: 3 }],
     ['pague 0 lleve 2', { type: 'pague_x_lleve_y', payX: 0, takeY: 2 }],
   ])('se rechaza %s', (_case, offer) => {
-    expect(() => assertValidOffer(offer, 2600)).toThrow(InvalidPromotionError);
+    expect(() => {
+      assertValidOffer(offer, 2600);
+    }).toThrow(InvalidPromotionError);
   });
 });
 
 describe('fechas de una promoción (D6, precisiones del 22-nov)', () => {
   it('se acepta de hoy a 29 días después: 30 días contando los dos extremos', () => {
-    expect(() =>
-      assertValidDates({ validFrom: '2026-11-22', validUntil: '2026-12-21', now }),
-    ).not.toThrow();
+    expect(() => {
+      assertValidDates({ validFrom: '2026-11-22', validUntil: '2026-12-21', now });
+    }).not.toThrow();
   });
 
   it.each([
@@ -96,6 +100,8 @@ describe('fechas de una promoción (D6, precisiones del 22-nov)', () => {
     ['un final antes del inicio', '2026-11-25', '2026-11-24'],
     ['un final que ya pasó', '2026-11-15', '2026-11-21'],
   ])('se rechaza %s', (_case, validFrom, validUntil) => {
-    expect(() => assertValidDates({ validFrom, validUntil, now })).toThrow(InvalidPromotionError);
+    expect(() => {
+      assertValidDates({ validFrom, validUntil, now });
+    }).toThrow(InvalidPromotionError);
   });
 });
