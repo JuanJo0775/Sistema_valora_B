@@ -119,6 +119,7 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
           contacts,
           presentations,
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
           reliability,
           clock: { now: () => new Date() },
         }),
