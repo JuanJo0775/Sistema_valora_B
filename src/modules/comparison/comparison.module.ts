@@ -32,12 +32,14 @@ import { PriceHistoryController } from './http/price-history.controller';
 import { StorePricesController } from './http/store-prices.controller';
 import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
 import { DrizzleOfficialPriceCopies } from './infrastructure/drizzle-official-price-copies';
+import { DrizzlePromotionCopies } from './infrastructure/drizzle-promotion-copies';
 import { DrizzlePriceHistory } from './infrastructure/drizzle-price-history';
 import { onPriceAssessed } from './infrastructure/price-assessed-handler';
 import {
   onOfficialPricePublished,
   onOfficialPricesReconfirmed,
 } from './infrastructure/official-price-handlers';
+import { onPromotionPublished, onPromotionWithdrawn } from './infrastructure/promotion-handlers';
 import {
   onPriceAssessedForHistory,
   onPriceWithdrawnForHistory,
@@ -51,6 +53,8 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
 
 // Receptor de los eventos del precio oficial (#204).
 const OFFICIAL_PRICES_CONSUMER = 'comparison.official_prices';
+// Receptor de los eventos de las promociones (#206).
+const PROMOTIONS_CONSUMER = 'comparison.promotions';
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
@@ -84,6 +88,7 @@ const OFFICIAL_PRICES_CONSUMER = 'comparison.official_prices';
           stores,
           prices: new DrizzleCurrentPrices(db),
           officials: new DrizzleOfficialPriceCopies(db),
+          promotionCopies: new DrizzlePromotionCopies(db),
           reliability,
           references,
           clock: { now: () => new Date() },
@@ -201,5 +206,8 @@ export class ComparisonModule implements OnModuleInit {
       'OfficialPricesReconfirmed',
       onOfficialPricesReconfirmed,
     );
+    // D6 (#206): la copia de las promociones, siempre aparte de los resultados (ADR-009).
+    this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionPublished', onPromotionPublished);
+    this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionWithdrawn', onPromotionWithdrawn);
   }
 }

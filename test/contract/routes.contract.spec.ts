@@ -4,11 +4,8 @@ import { AppModule } from '../../src/app.module';
 import { contractRoutes } from '../support/contract';
 import { routesOf } from '../support/routes';
 
-// Rutas del módulo comercial que aún no se construyen (corte 3). Las ya construidas (#201 a #205)
-// se vigilan como las demás.
-const LATER = /^\w+ \/commerce\/promotions/;
-
-// Grill de la #25, pregunta 2: toda ruta del código está en el contrato, y al revés.
+// Grill de la #25, pregunta 2: toda ruta del código está en el contrato, y al revés. Desde la #206
+// ya no queda ninguna ruta comercial reservada sin construir.
 describe('inventario de rutas frente a docs/openapi.yaml (PR-09, #25)', () => {
   let app: INestApplication;
   let inCode: string[];
@@ -30,7 +27,7 @@ describe('inventario de rutas frente a docs/openapi.yaml (PR-09, #25)', () => {
     expect(inCode.filter((route) => !inContract.includes(route))).toEqual([]);
   });
 
-  it('toda ruta del contrato existe en el código, salvo las comerciales pendientes', () => {
-    expect(inContract.filter((route) => !LATER.test(route) && !inCode.includes(route))).toEqual([]);
+  it('toda ruta del contrato existe en el código', () => {
+    expect(inContract.filter((route) => !inCode.includes(route))).toEqual([]);
   });
 });

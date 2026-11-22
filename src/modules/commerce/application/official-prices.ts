@@ -15,6 +15,8 @@ export interface OfficialPriceRepository {
   save(price: OfficialPrice, events: DomainEvent[]): Promise<void>;
   // D7: las filas buenas de un archivo, todas en una transacción con sus eventos.
   saveAll(prices: OfficialPrice[], events: DomainEvent[]): Promise<void>;
+  // El de una presentación en la tienda, o null (D6: la promoción lo exige).
+  findOne(establishmentId: string, presentationId: string): Promise<OfficialPrice | null>;
   // Los de la tienda, en el orden en que se publicaron.
   listFor(establishmentId: string): Promise<OfficialPrice[]>;
   // Confirma todos los de la tienda a la vez, con sus eventos. Devuelve cuántos.

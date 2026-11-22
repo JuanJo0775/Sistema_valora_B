@@ -34,11 +34,28 @@ export interface ComparisonItemResponse {
   };
 }
 
+// D6 (#206): una promoción activa, con la oferta aplanada como en el esquema Promotion.
+export interface PromotionResponse {
+  id: string;
+  establishment: ComparisonItemResponse['establishment'];
+  presentationId: string;
+  type: string;
+  percent?: number;
+  specialPriceCop?: number;
+  payX?: number;
+  takeY?: number;
+  conditions: { maxPerCustomer?: number; whileStocksLast: boolean; paymentMethod: string };
+  validFrom: string;
+  validUntil: string;
+  officialPriceCop: number;
+  promotedPriceCop: number;
+}
+
 export interface ComparisonResponse {
   productId: string;
   criteria: { sort: string; radiusKm?: number; municipality?: string };
   results: ComparisonItemResponse[];
-  promotions: [];
+  promotions: PromotionResponse[];
   // Grill de la #34: referencia SIPSA aparte, nunca precio de una tienda.
   wholesaleReference?: {
     source: string;
@@ -53,24 +70,28 @@ export interface ComparisonResponse {
   savingsPercent?: number;
 }
 
+type Establishment = Comparison['results'][number]['establishment'];
+
+const toEstablishment = (
+  establishment: Establishment,
+): ComparisonItemResponse['establishment'] => ({
+  id: establishment.id,
+  name: establishment.name,
+  type: establishment.type,
+  ...(establishment.address === undefined ? {} : { address: establishment.address }),
+  ...(establishment.neighborhood === undefined ? {} : { neighborhood: establishment.neighborhood }),
+  lat: establishment.lat,
+  lng: establishment.lng,
+  municipality: establishment.municipality,
+  ...(establishment.distanceM === undefined ? {} : { distanceM: establishment.distanceM }),
+});
+
 export function toComparisonResponse(comparison: Comparison): ComparisonResponse {
   return {
     productId: comparison.productId,
     criteria: comparison.criteria,
     results: comparison.results.map(({ establishment, unitPrice, ...item }) => ({
-      establishment: {
-        id: establishment.id,
-        name: establishment.name,
-        type: establishment.type,
-        ...(establishment.address === undefined ? {} : { address: establishment.address }),
-        ...(establishment.neighborhood === undefined
-          ? {}
-          : { neighborhood: establishment.neighborhood }),
-        lat: establishment.lat,
-        lng: establishment.lng,
-        municipality: establishment.municipality,
-        ...(establishment.distanceM === undefined ? {} : { distanceM: establishment.distanceM }),
-      },
+      establishment: toEstablishment(establishment),
       ...(item.reportId === undefined ? {} : { reportId: item.reportId }),
       presentationId: item.presentationId,
       priceCop: item.priceCop,
@@ -91,7 +112,17 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
             },
           }),
     })),
-    promotions: [],
+    promotions: comparison.promotions.map(({ establishment, offer, conditions, ...promotion }) => ({
+      id: promotion.id,
+      establishment: toEstablishment(establishment),
+      presentationId: promotion.presentationId,
+      ...offer,
+      conditions: { ...conditions },
+      validFrom: promotion.validFrom,
+      validUntil: promotion.validUntil,
+      officialPriceCop: promotion.officialPriceCop,
+      promotedPriceCop: promotion.promotedPriceCop,
+    })),
     ...(comparison.wholesaleReference === undefined
       ? {}
       : { wholesaleReference: { ...comparison.wholesaleReference } }),

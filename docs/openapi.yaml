@@ -2140,6 +2140,12 @@ paths:
       tags: [Comercios]
       operationId: createPromotion
       summary: Publicar una promoción con reglas y vigencia (RF-017, EC-06)
+      description: >-
+        D6 del grill comercial (#206). Solo un comercio verificado, sobre el precio oficial VIGENTE de
+        una presentación de su tienda (si no, 422 OFFICIAL_PRICE_REQUIRED). Condiciones fijas, sin
+        texto libre. Dura como mucho 30 días; puede empezar en el futuro (queda programada). Si el
+        oficial deja de estar vigente se pausa sola y reconfirmarlo la reactiva. Va siempre aparte
+        de los resultados de la comparación y nunca cambia el orden (ADR-009).
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2150,7 +2156,84 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/Promotion' }
       responses:
-        '201': { description: Promoción publicada en colección aparte }
+        '201':
+          description: Promoción publicada, con su estado de hoy.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MerchantPromotion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN o MERCHANT_NOT_VERIFIED, como en PUT /commerce/prices.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: >-
+            code OFFICIAL_PRICE_REQUIRED: no hay precio oficial vigente de esa presentación. code
+            INVALID_PROMOTION: la oferta no baja el oficial, está fuera de sus límites o las fechas
+            no sirven (final antes del inicio o ya pasado, o más de 30 días).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    get:
+      tags: [Comercios]
+      operationId: listMerchantPromotions
+      summary: Las promociones del comercio con su estado de hoy (RF-017)
+      x-corte: 3
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: La más reciente primero.
+          headers:
+            Cache-Control:
+              description: Dato de la propia cuenta.
+              schema: { type: string, example: 'private, no-store' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/MerchantPromotion' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN o MERCHANT_NOT_VERIFIED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /commerce/promotions/{promotionId}:
+    delete:
+      tags: [Comercios]
+      operationId: withdrawPromotion
+      summary: Retirar una promoción propia (RF-017)
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: promotionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Retirada; deja de salir en la comparación. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN o MERCHANT_NOT_VERIFIED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: No existe o es de otra tienda.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 components:
   securitySchemes:
     sessionCookie:
@@ -2328,7 +2411,7 @@ components:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), MERCHANT_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
         CONFLICT (409), ESTABLISHMENT_HAS_OWNER (409), ACCOUNT_HAS_ESTABLISHMENT (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:
@@ -2515,18 +2598,76 @@ components:
             since: { type: string, format: date-time, description: El más antiguo de esos reportes. }
     Promotion:
       type: object
-      required: [presentationId, type, validUntil]
+      description: >-
+        D6 del grill comercial (#206). Según type: percent (descuento_porcentual, entero de 1 a 90),
+        specialPriceCop (precio_especial, menor que el oficial y de al menos $100) o payX y takeY
+        (pague_x_lleve_y, takeY mayor que payX).
+      additionalProperties: false
+      required: [presentationId, type, conditions, validFrom, validUntil]
       properties:
-        id: { type: string, format: uuid, readOnly: true }
-        establishmentId: { type: string, format: uuid, readOnly: true }
         presentationId: { type: string, format: uuid }
         type: { type: string, enum: [descuento_porcentual, precio_especial, pague_x_lleve_y] }
-        percent: { type: number, minimum: 1, maximum: 90 }
-        specialPriceCop: { type: integer, minimum: 1 }
+        percent: { type: integer, minimum: 1, maximum: 90 }
+        specialPriceCop: { type: integer, minimum: 100 }
         payX: { type: integer, minimum: 1 }
         takeY: { type: integer, minimum: 2 }
+        conditions: { $ref: '#/components/schemas/PromotionConditions' }
+        validFrom: { type: string, format: date, description: Fecha de Colombia, incluida. }
+        validUntil: { type: string, format: date, description: Fecha de Colombia, incluida. }
+    PromotionConditions:
+      type: object
+      description: Condiciones fijas, sin texto libre (D6).
+      additionalProperties: false
+      required: [whileStocksLast, paymentMethod]
+      properties:
+        maxPerCustomer: { type: integer, minimum: 1, maximum: 99 }
+        whileStocksLast: { type: boolean }
+        paymentMethod: { type: string, enum: [cualquiera, efectivo, tarjeta] }
+    MerchantPromotion:
+      type: object
+      description: Una promoción del comercio con su estado calculado hoy (D6).
+      additionalProperties: false
+      required: [id, establishmentId, presentationId, type, conditions, validFrom, validUntil, createdAt, status, officialPriceCop, promotedPriceCop]
+      properties:
+        id: { type: string, format: uuid }
+        establishmentId: { type: string, format: uuid }
+        presentationId: { type: string, format: uuid }
+        type: { type: string, enum: [descuento_porcentual, precio_especial, pague_x_lleve_y] }
+        percent: { type: integer }
+        specialPriceCop: { type: integer }
+        payX: { type: integer }
+        takeY: { type: integer }
+        conditions: { $ref: '#/components/schemas/PromotionConditions' }
         validFrom: { type: string, format: date }
         validUntil: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+        status:
+          type: string
+          enum: [activa, pausada, vencida, programada]
+          description: pausada si el oficial ya no está vigente; reconfirmarlo la reactiva.
+        officialPriceCop: { type: [integer, 'null'] }
+        promotedPriceCop:
+          type: [integer, 'null']
+          description: Precio de una unidad con la promoción; en pague X lleve Y, el promedio por unidad.
+    ComparisonPromotion:
+      type: object
+      description: Una promoción activa de una tienda del área, aparte de los resultados (ADR-009).
+      additionalProperties: false
+      required: [id, establishment, presentationId, type, conditions, validFrom, validUntil, officialPriceCop, promotedPriceCop]
+      properties:
+        id: { type: string, format: uuid }
+        establishment: { $ref: '#/components/schemas/Establishment' }
+        presentationId: { type: string, format: uuid }
+        type: { type: string, enum: [descuento_porcentual, precio_especial, pague_x_lleve_y] }
+        percent: { type: integer }
+        specialPriceCop: { type: integer }
+        payX: { type: integer }
+        takeY: { type: integer }
+        conditions: { $ref: '#/components/schemas/PromotionConditions' }
+        validFrom: { type: string, format: date }
+        validUntil: { type: string, format: date }
+        officialPriceCop: { type: integer, description: El «antes», el oficial vigente. }
+        promotedPriceCop: { type: integer, description: El precio de una unidad con la promoción. }
     Comparison:
       type: object
       required: [productId, criteria, results, promotions]
@@ -2552,9 +2693,9 @@ components:
         promotions:
           type: array
           description: >-
-            Siempre separadas del resultado; no alteran el orden. Vacío hasta el módulo comercial
-            (corte 3).
-          items: { $ref: '#/components/schemas/Promotion' }
+            Siempre separadas del resultado; no alteran el orden (ADR-009). Solo las activas de las
+            tiendas del área (#206).
+          items: { $ref: '#/components/schemas/ComparisonPromotion' }
         wholesaleReference:
           type: object
           description: >-
