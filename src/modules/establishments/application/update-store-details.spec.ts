@@ -80,4 +80,25 @@ describe('el comercio corrige los datos de su tienda (D5 del grill comercial)', 
     ]);
     expect(corrections).toEqual([]);
   });
+
+  // D5: la regla de duplicados de la #27 evita copiar el nombre de la tienda vecina.
+  it('un nombre equivalente al de otra tienda a menos de 50 m va a revisión', async () => {
+    const { update, applied, corrections } = setup([
+      { id: 'vecina', name: 'Minimercado El Sol', distanceM: 40 },
+    ]);
+
+    const result = await update.execute(request({ name: 'Tienda El Sol', phone: '3001234567' }));
+
+    expect(result).toEqual({ applied: ['phone'], inReview: ['name'] });
+    expect(applied).toEqual([{ establishmentId: STORE.id, change: { phone: '3001234567' } }]);
+    expect(corrections).toEqual([
+      {
+        id: expect.any(String) as unknown,
+        establishmentId: STORE.id,
+        name: 'Tienda El Sol',
+        proposerKey: 'clave-de-dona-rosa',
+        createdAt: now,
+      },
+    ]);
+  });
 });
