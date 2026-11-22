@@ -1,6 +1,16 @@
 import { sql } from 'drizzle-orm';
 import { MUNICIPALITY_CODES } from '../../../domain/municipality';
-import { check, customType, index, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  check,
+  customType,
+  index,
+  jsonb,
+  pgSchema,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
+import type { OpeningHours } from '../../../domain/opening-hours';
 
 export interface GeoPoint {
   lat: number;
@@ -29,6 +39,9 @@ export const establishments = establishmentsSchema.table(
     location: geographyPoint('location').notNull(),
     // Grill de la #106: municipio del Quindío; las tiendas de la semilla son de Armenia (#51).
     municipality: text('municipality').notNull().default('armenia'),
+    // D5 del grill comercial (#207): los pone el comercio verificado. Datos del negocio (EC-08).
+    openingHours: jsonb('opening_hours').$type<OpeningHours>(),
+    phone: text('phone'),
   },
   (table) => [
     check(
@@ -73,6 +86,34 @@ export const storeProposals = establishmentsSchema.table(
     check(
       'store_proposals_status_valid',
       sql`${table.status} in ('pendiente', 'aprobada', 'fusionada', 'rechazada')`,
+    ),
+  ],
+);
+
+// D5 del grill comercial (#207): correcciones de nombre o ubicación que pide un comercio y decide el
+// moderador, en la misma cola de las propuestas (#27). Solo la clave seudónima de quien la pide.
+export const storeCorrections = establishmentsSchema.table(
+  'store_corrections',
+  {
+    id: uuid('id').primaryKey(),
+    establishmentId: uuid('establishment_id').notNull(),
+    name: text('name'),
+    location: geographyPoint('location'),
+    proposerKey: text('proposer_key').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    status: text('status').notNull().default('pendiente'),
+    note: text('note'),
+    moderatorKey: text('moderator_key'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (table) => [
+    check(
+      'store_corrections_status_valid',
+      sql`${table.status} in ('pendiente', 'aprobada', 'rechazada')`,
+    ),
+    check(
+      'store_corrections_has_change',
+      sql`${table.name} is not null or ${table.location} is not null`,
     ),
   ],
 );

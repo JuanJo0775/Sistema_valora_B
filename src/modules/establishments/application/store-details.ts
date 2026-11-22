@@ -19,6 +19,12 @@ export interface StoreCorrection {
   createdAt: Date;
 }
 
+// D5: lo que la ficha pública muestra del negocio, si el comercio lo puso (EC-08: no es de una persona).
+export interface StoreContact {
+  openingHours?: OpeningHours;
+  phone?: string;
+}
+
 // Puertos hacia las tablas propias del módulo.
 export interface StoreDetailsRepository extends Pick<
   EstablishmentRepository,
