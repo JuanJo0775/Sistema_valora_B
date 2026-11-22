@@ -58,3 +58,22 @@ export const priceHistory = comparisonSchema.table(
     index('price_history_presentation_idx').on(table.presentationId, table.observedAt),
   ],
 );
+
+// D1 y D4 del grill comercial (#204): copia del precio oficial de cada presentación en cada tienda,
+// llenada con los eventos de commerce (comparison no importa commerce, EC-05).
+export const officialPrices = comparisonSchema.table(
+  'official_prices',
+  {
+    presentationId: uuid('presentation_id').notNull(),
+    establishmentId: uuid('establishment_id').notNull(),
+    priceCop: integer('price_cop').notNull(),
+    // Vigencia del oficial (ADR-005): cuenta desde la última confirmación.
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull(),
+    // Última vez que cambió el precio: solo los reportes posteriores corroboran (D1).
+    priceChangedAt: timestamp('price_changed_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.presentationId, table.establishmentId] }),
+    index('official_prices_establishment_idx').on(table.establishmentId),
+  ],
+);

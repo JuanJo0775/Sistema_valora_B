@@ -34,6 +34,10 @@ import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
 import { DrizzlePriceHistory } from './infrastructure/drizzle-price-history';
 import { onPriceAssessed } from './infrastructure/price-assessed-handler';
 import {
+  onOfficialPricePublished,
+  onOfficialPricesReconfirmed,
+} from './infrastructure/official-price-handlers';
+import {
   onPriceAssessedForHistory,
   onPriceWithdrawnForHistory,
 } from './infrastructure/price-history-handlers';
@@ -43,6 +47,9 @@ import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
 // Grill de la #83, pregunta 6: el receptor del historial y los eventos que lo llenan, para reconstruirlo.
 export const PRICE_HISTORY_CONSUMER = 'comparison.price_history';
 export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFlagged'];
+
+// Receptor de los eventos del precio oficial (#204).
+const OFFICIAL_PRICES_CONSUMER = 'comparison.official_prices';
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
@@ -180,5 +187,17 @@ export class ComparisonModule implements OnModuleInit {
     // Grill de la #83: el historial de precios, con los mismos eventos.
     this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceAssessed', onPriceAssessedForHistory);
     this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceWithdrawn', onPriceWithdrawnForHistory);
+    // D1 y D4 del grill comercial (#204): la copia del precio oficial. Solo se conoce el nombre de los
+    // eventos de commerce: el núcleo no importa commerce (EC-05).
+    this.bus.subscribe(
+      OFFICIAL_PRICES_CONSUMER,
+      'OfficialPricePublished',
+      onOfficialPricePublished,
+    );
+    this.bus.subscribe(
+      OFFICIAL_PRICES_CONSUMER,
+      'OfficialPricesReconfirmed',
+      onOfficialPricesReconfirmed,
+    );
   }
 }
