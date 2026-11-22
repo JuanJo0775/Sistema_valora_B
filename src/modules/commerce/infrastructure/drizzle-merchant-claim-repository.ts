@@ -59,6 +59,15 @@ export class DrizzleMerchantClaimRepository
     return row ? toClaim(row) : null;
   }
 
+  // La solicitud activa de la tienda (verificada o pre-aprobada), o null.
+  async findByEstablishment(establishmentId: string): Promise<MerchantClaim | null> {
+    const [row] = await this.db
+      .select()
+      .from(merchantClaims)
+      .where(eq(merchantClaims.establishmentId, establishmentId));
+    return row ? toClaim(row) : null;
+  }
+
   async pendingFor(establishmentId: string): Promise<MerchantClaim | null> {
     const [row] = await this.db
       .select()
@@ -108,6 +117,20 @@ export class DrizzleMerchantClaimRepository
     return (await this.findByAccount(accountId))?.establishmentId ?? null;
   }
 
+  async wasRevokedFrom(accountId: string, establishmentId: string): Promise<boolean> {
+    const [found] = await this.db
+      .select({ id: merchantClaimRejections.id })
+      .from(merchantClaimRejections)
+      .where(
+        and(
+          eq(merchantClaimRejections.accountId, accountId),
+          eq(merchantClaimRejections.establishmentId, establishmentId),
+          eq(merchantClaimRejections.outcome, 'revocado'),
+        ),
+      );
+    return found !== undefined;
+  }
+
   async lastRejection(accountId: string): Promise<MerchantClaimRejection | null> {
     const [row] = await this.db
       .select({
@@ -115,11 +138,13 @@ export class DrizzleMerchantClaimRepository
         establishmentId: merchantClaimRejections.establishmentId,
         reason: merchantClaimRejections.reason,
         rejectedAt: merchantClaimRejections.rejectedAt,
+        outcome: merchantClaimRejections.outcome,
       })
       .from(merchantClaimRejections)
       .where(eq(merchantClaimRejections.accountId, accountId))
       .orderBy(desc(merchantClaimRejections.rejectedAt))
       .limit(1);
-    return row ?? null;
+    // La restricción del esquema y el valor por defecto garantizan el resultado.
+    return row ? { ...row, outcome: row.outcome as 'rechazado' | 'revocado' } : null;
   }
 }

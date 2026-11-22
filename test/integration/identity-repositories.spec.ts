@@ -1,3 +1,4 @@
+import { OutboxPublisher } from '../../src/shared/events';
 import { sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -86,7 +87,9 @@ describe('repositorios de identity', () => {
       id: ana.id,
       passwordHash: null,
     });
-    await expect(new DrizzleAccountDeletionRepository(db).credentialsOf(ana.id)).resolves.toEqual({
+    await expect(
+      new DrizzleAccountDeletionRepository(db, new OutboxPublisher()).credentialsOf(ana.id),
+    ).resolves.toEqual({
       email: 'ana@correo.com',
       passwordHash: null,
     });

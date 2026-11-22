@@ -1,3 +1,4 @@
+import { createEvent } from '../../../shared/events';
 import type { AccountDeletionRepository } from './account-deletion-repository';
 import type { Clock } from './clock';
 
@@ -10,6 +11,8 @@ export interface PurgeResult {
   purged: number;
   failed: number;
 }
+
+export const ACCOUNT_PURGED = 'AccountPurged';
 
 // Cuántas cuentas se revisan por pasada; la siguiente sigue con las demás.
 const BATCH_SIZE = 100;
@@ -28,7 +31,9 @@ export class PurgeDeletedAccounts {
     let failed = 0;
     for (const accountId of due) {
       try {
-        if (await deletion.purge(accountId, now)) purged += 1;
+        // Hallazgo de B7 (#208): los otros módulos borran lo suyo de esa cuenta. Solo el id.
+        const events = [createEvent(ACCOUNT_PURGED, 1, { accountId })];
+        if (await deletion.purge(accountId, now, events)) purged += 1;
       } catch {
         // No se registra el id de la cuenta; la pasada siguiente lo reintenta.
         failed += 1;

@@ -134,7 +134,10 @@ describe('solicitudes de comercio en el esquema commerce (RF-015, #201)', () => 
       await claims.reject(rejection);
 
       await expect(claims.findByAccount(claim.accountId)).resolves.toBeNull();
-      await expect(claims.lastRejection(claim.accountId)).resolves.toEqual(rejection);
+      await expect(claims.lastRejection(claim.accountId)).resolves.toEqual({
+        ...rejection,
+        outcome: 'rechazado',
+      });
       await claims.save({ ...claim, establishmentId: existingStore }, [verified()]);
       await expect(claims.establishmentOf(claim.accountId)).resolves.toBe(existingStore);
     });

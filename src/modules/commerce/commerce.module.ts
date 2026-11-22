@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
 import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
@@ -18,6 +19,10 @@ import { IdentityModule, ReporterIdentity } from '../identity';
 import { ClaimEstablishment } from './application/claim-establishment';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
 import { CreatePromotion } from './application/create-promotion';
+import { DecideMerchantCase } from './application/decide-merchant-case';
+import { MerchantCasesQueue } from './application/merchant-cases-queue';
+import { PurgeMerchantAccount } from './application/purge-merchant-account';
+import { ReportMerchant } from './application/report-merchant';
 import { MerchantOfficialPrices } from './application/merchant-official-prices';
 import { MerchantProfile } from './application/merchant-profile';
 import { MerchantPromotions } from './application/merchant-promotions';
@@ -28,11 +33,14 @@ import { UploadOfficialPrices } from './application/upload-official-prices';
 import { WithdrawPromotion } from './application/withdraw-promotion';
 import { type ProposalDecision, ResolveProposedClaim } from './application/resolve-proposed-claim';
 import { EstablishmentController } from './http/establishment.controller';
+import { MerchantCasesController } from './http/merchant-cases.controller';
+import { DrizzleMerchantRevocations } from './infrastructure/drizzle-merchant-revocations';
 import { MerchantController } from './http/merchant.controller';
 import { OfficialPricesController } from './http/official-prices.controller';
 import { PromotionsController } from './http/promotions.controller';
 import { DrizzlePromotionRepository } from './infrastructure/drizzle-promotion-repository';
 import { DrizzleOfficialPriceRepository } from './infrastructure/drizzle-official-price-repository';
+import { DrizzleMerchantCaseRepository } from './infrastructure/drizzle-merchant-case-repository';
 import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchant-claim-repository';
 
 // EPIC-B08: comercios verificados (D1 a D8 del grill comercial). B1 (#201) y B2 (#202): registro y
@@ -44,6 +52,7 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
     OfficialPricesController,
     PromotionsController,
     EstablishmentController,
+    MerchantCasesController,
   ],
   providers: [
     {
@@ -99,6 +108,44 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
               });
             },
           },
+        }),
+    },
+    // D2 y D3 (#208): denuncias, disputas y revocación.
+    {
+      provide: ReportMerchant,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ReportMerchant =>
+        new ReportMerchant({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          cases: new DrizzleMerchantCaseRepository(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: MerchantCasesQueue,
+      inject: [DATABASE, OutboxPublisher, EstablishmentDetails],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        establishments: EstablishmentDetails,
+      ): MerchantCasesQueue =>
+        new MerchantCasesQueue({
+          cases: new DrizzleMerchantCaseRepository(db),
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          establishments,
+        }),
+    },
+    {
+      provide: DecideMerchantCase,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): DecideMerchantCase =>
+        new DecideMerchantCase({
+          cases: new DrizzleMerchantCaseRepository(db),
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
+          promotions: new DrizzlePromotionRepository(db, outbox),
+          revocations: new DrizzleMerchantRevocations(db, outbox),
+          clock: { now: () => new Date() },
         }),
     },
     // D6 (#206): promociones.
@@ -171,15 +218,33 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
     },
     {
       provide: ClaimEstablishment,
-      inject: [DATABASE, EstablishmentDetails, OutboxPublisher],
+      inject: [DATABASE, EstablishmentDetails, OutboxPublisher, ReporterIdentity],
       useFactory: (
         db: Database,
         establishments: EstablishmentDetails,
         outbox: OutboxPublisher,
+        identities: ReporterIdentity,
       ): ClaimEstablishment =>
         new ClaimEstablishment({
           establishments,
           claims: new DrizzleMerchantClaimRepository(db, outbox),
+          // Precisión de D3 (#208): una disputa por cuenta y tienda mientras esté abierta, con la
+          // clave seudónima de quien la abre (EC-08).
+          disputes: {
+            open: async (establishmentId, accountId) => {
+              const cases = new DrizzleMerchantCaseRepository(db);
+              const { reporterKey } = await identities.of(accountId);
+              if (await cases.hasOpen(establishmentId, reporterKey)) return;
+              await cases.open({
+                id: randomUUID(),
+                establishmentId,
+                kind: 'disputa',
+                reporterKey,
+                reason: 'Otra cuenta, estando en la tienda, intentó registrarla.',
+                createdAt: new Date(),
+              });
+            },
+          },
           clock: { now: () => new Date() },
         }),
     },
@@ -247,6 +312,20 @@ export class CommerceModule implements OnModuleInit {
           claims: new DrizzleMerchantClaimRepository(tx, this.outbox),
           clock: { now: () => new Date() },
         }).execute(event.payload as unknown as ProposalDecision);
+      },
+    );
+    // ADR-032 con el hallazgo de B7 (#208): al borrar una cuenta, nada de ella queda en commerce.
+    this.bus.subscribe(
+      'commerce.merchant_claims',
+      'AccountPurged',
+      async (event: DomainEvent, tx: Transaction) => {
+        const { accountId } = event.payload as { accountId: string };
+        await new PurgeMerchantAccount({
+          claims: new DrizzleMerchantClaimRepository(tx, this.outbox),
+          prices: new DrizzleOfficialPriceRepository(tx, this.outbox),
+          promotions: new DrizzlePromotionRepository(tx, this.outbox),
+          purges: new DrizzleMerchantRevocations(tx, this.outbox),
+        }).execute(accountId);
       },
     );
   }

@@ -39,6 +39,7 @@ import { onPriceAssessed } from './infrastructure/price-assessed-handler';
 import {
   onOfficialPricePublished,
   onOfficialPricesReconfirmed,
+  onOfficialPriceWithdrawn,
 } from './infrastructure/official-price-handlers';
 import { onPromotionPublished, onPromotionWithdrawn } from './infrastructure/promotion-handlers';
 import {
@@ -214,6 +215,11 @@ export class ComparisonModule implements OnModuleInit {
       OFFICIAL_PRICES_CONSUMER,
       'OfficialPricesReconfirmed',
       onOfficialPricesReconfirmed,
+    );
+    this.bus.subscribe(
+      OFFICIAL_PRICES_CONSUMER,
+      'OfficialPriceWithdrawn',
+      onOfficialPriceWithdrawn,
     );
     // D6 (#206): la copia de las promociones, siempre aparte de los resultados (ADR-009).
     this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionPublished', onPromotionPublished);

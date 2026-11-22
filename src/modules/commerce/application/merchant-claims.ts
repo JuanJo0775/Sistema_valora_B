@@ -23,6 +23,8 @@ export interface MerchantClaimRepository {
   ownerOf(establishmentId: string): Promise<string | null>;
   // La tienda de la cuenta, o null si no tiene (una por cuenta, D3).
   establishmentOf(accountId: string): Promise<string | null>;
+  // Precisión de D3 (#208): si un moderador revocó a esta cuenta de esa tienda.
+  wasRevokedFrom(accountId: string, establishmentId: string): Promise<boolean>;
   // La solicitud de la cuenta, o null si no tiene tienda.
   findByAccount(accountId: string): Promise<MerchantClaim | null>;
   // La solicitud y sus eventos se confirman juntos o no se guarda ninguno (ADR-015).
@@ -36,6 +38,8 @@ export interface MerchantClaimRejection {
   establishmentId: string;
   reason: string;
   rejectedAt: Date;
+  // Precisión de D3 (#208): sin él es un rechazo de la tienda propuesta (B2).
+  outcome?: 'rechazado' | 'revocado';
 }
 
 // Puerto para resolver la solicitud pre-aprobada cuando se decide su tienda propuesta (D2).

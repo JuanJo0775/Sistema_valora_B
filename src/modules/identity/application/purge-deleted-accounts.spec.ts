@@ -63,4 +63,17 @@ describe('purga de cuentas eliminadas (ADR-032)', () => {
     await expect(purge.execute()).resolves.toEqual({ purged: 1, failed: 0 });
     expect(deletion.accounts.size).toBe(0);
   });
+
+  // Hallazgo de B7, decisión del 22-nov (#208): los otros módulos borran lo suyo de esa cuenta.
+  it('avisa AccountPurged por cada cuenta borrada, solo con su id', async () => {
+    const { deletion, purge } = setup({ value: new Date(scheduled.getTime() + day) });
+    deletion.add(account('a', scheduled));
+    deletion.add(account('normal', null));
+
+    await purge.execute();
+
+    expect(deletion.events.map((event) => [event.type, event.version, event.payload])).toEqual([
+      ['AccountPurged', 1, { accountId: 'a' }],
+    ]);
+  });
 });

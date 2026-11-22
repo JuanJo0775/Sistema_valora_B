@@ -112,7 +112,7 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     // duplicado y ráfaga); privacy-public-responses.spec.ts verifica que nunca sale.
     // D3 del grill comercial (#201, #202): commerce guarda la cuenta DUEÑA de la tienda (no la de un
     // reportante) para «una tienda por cuenta»; solo la ve la propia cuenta en GET /commerce/me.
-    // Pendiente en #208 (ADR-032): al borrar la cuenta, commerce debe borrar estas filas.
+    // ADR-032 (#208): al borrar la cuenta, AccountPurged borra estas filas (commerce-cases-http.spec.ts).
   });
 
   // ADR-029: la verificación de correo vive en identity y no guarda el token en claro.

@@ -95,4 +95,24 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
       rejectedAt,
     });
   });
+
+  // Precisión de D3 (#208): el comercio revocado entiende qué pasó.
+  it('revocada por un moderador: muestra «revocado» con el motivo', async () => {
+    const rejectedAt = new Date('2026-11-23T12:00:00Z');
+    const revoked = {
+      accountId: 'cuenta-de-dona-rosa',
+      establishmentId: 'tienda-esperanza',
+      reason: 'Confirmado con el dueño real: suplantación',
+      rejectedAt,
+      outcome: 'revocado' as const,
+    };
+
+    const profile = await setup([], [revoked]).find('cuenta-de-dona-rosa');
+
+    expect(profile).toEqual({
+      status: 'revocado',
+      reason: 'Confirmado con el dueño real: suplantación',
+      rejectedAt,
+    });
+  });
 });

@@ -42,6 +42,16 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Cuántas tiendas por cuenta? | **Una** en el Corte 3. El perfil de comercio se guarda como algo propio de la cuenta, para que varias tiendas sean después un cambio aditivo | La mayoría de comercios objetivo tiene un solo local; el módulo queda pequeño (EC-05) |
 | Si se revoca el perfil (suplantación confirmada) o se elimina la cuenta (ADR-032), ¿qué pasa con lo publicado? | **Se retira todo al instante:** precios oficiales y promociones dejan de mostrarse (`OfficialPriceWithdrawn`, `PromotionWithdrawn`); la comparación vuelve a los reportes y datos iniciales. La tienda sigue en el mapa. Se anota quién revocó, cuándo y por qué. La cuenta vuelve a `reportante` y el moderador puede suspenderla con las reglas existentes | Un perfil revocado ya no es confiable; un precio falso no puede seguir engañando |
 
+**Precisiones al construir B8 (#208, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Un comercio revocado puede registrar la misma tienda? | **No esa tienda; otras sí** (estando en ellas). Si fue un error, el moderador revisa el caso | Si pudiera volver a registrarla al instante, revocar no serviría |
+| ¿Qué ve el comercio revocado? | **«Revocado» con el motivo** en `GET /commerce/me`, como el rechazo de B2; queda en el historial | Que entienda qué pasó |
+| ¿Límites de una denuncia? | No a la tienda propia, solo a tiendas con dueño y una abierta por cuenta y tienda. Se guarda la clave seudónima de quien denuncia (EC-08) | Sin spam ni denuncias a uno mismo |
+| ¿Cómo se abre una disputa? | Sola: cuando alguien que **está en la tienda** (presencia, D2) intenta registrar una tienda que ya tiene dueño. Sigue respondiendo 409 | El moderador decide con las dos partes |
+| ¿Y si se borra la cuenta (ADR-032)? | `identity` publica `AccountPurged`; `commerce` borra la solicitud, el historial y los casos de esa cuenta, y retira sus precios y promociones como al revocar | La cuenta se borra por completo (hallazgo de B7) |
+
 ## D4. Periodo de reconfirmación del precio oficial (ADR-005, ADR-016)
 
 | Pregunta | Decisión | Razón |

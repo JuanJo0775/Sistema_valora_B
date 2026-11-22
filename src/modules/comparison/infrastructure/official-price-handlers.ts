@@ -52,3 +52,22 @@ export async function onOfficialPricesReconfirmed(
     .set({ confirmedAt: new Date(payload.confirmedAt) })
     .where(and(eq(officialPrices.establishmentId, payload.establishmentId)));
 }
+
+// Datos de OfficialPriceWithdrawn versión 1 (commerce, #208).
+interface OfficialPriceWithdrawnV1 {
+  establishmentId: string;
+  presentationId: string;
+}
+
+// D3: al revocar el comercio o borrar su cuenta, la comparación vuelve a los reportes.
+export async function onOfficialPriceWithdrawn(event: DomainEvent, tx: Transaction): Promise<void> {
+  const payload = event.payload as unknown as OfficialPriceWithdrawnV1;
+  await tx
+    .delete(officialPrices)
+    .where(
+      and(
+        eq(officialPrices.establishmentId, payload.establishmentId),
+        eq(officialPrices.presentationId, payload.presentationId),
+      ),
+    );
+}

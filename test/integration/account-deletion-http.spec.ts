@@ -1,3 +1,4 @@
+import { OutboxPublisher } from '../../src/shared/events';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { eq, sql } from 'drizzle-orm';
@@ -60,7 +61,7 @@ describe('eliminación de la propia cuenta (ADR-032)', () => {
   };
   const purgeAt = (now: Date) =>
     new PurgeDeletedAccounts({
-      deletion: new DrizzleAccountDeletionRepository(db),
+      deletion: new DrizzleAccountDeletionRepository(db, new OutboxPublisher()),
       clock: { now: () => now },
     }).execute();
 

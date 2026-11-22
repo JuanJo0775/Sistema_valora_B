@@ -53,6 +53,8 @@ export const merchantClaimRejections = commerceSchema.table(
     establishmentId: uuid('establishment_id').notNull(),
     reason: text('reason').notNull(),
     rejectedAt: timestamp('rejected_at', { withTimezone: true }).notNull(),
+    // Precisión de D3 (#208): rechazada (su tienda propuesta no se aprobó) o revocada por un moderador.
+    outcome: text('outcome').notNull().default('rechazado'),
   },
   (table) => [index('merchant_claim_rejections_account_idx').on(table.accountId, table.rejectedAt)],
 );
@@ -95,5 +97,31 @@ export const promotions = commerceSchema.table(
   (table) => [
     index('promotions_establishment_idx').on(table.establishmentId),
     check('promotions_dates_order', sql`${table.validUntil} >= ${table.validFrom}`),
+  ],
+);
+
+// D2 y D3 (#208): denuncias y disputas que decide el moderador. Solo la clave seudónima de quien las
+// abre (EC-08); la decisión queda anotada (quién, cuándo y por qué).
+export const merchantCases = commerceSchema.table(
+  'merchant_cases',
+  {
+    id: uuid('id').primaryKey(),
+    establishmentId: uuid('establishment_id').notNull(),
+    kind: text('kind').notNull(),
+    reporterKey: text('reporter_key').notNull(),
+    reason: text('reason').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    status: text('status').notNull().default('pendiente'),
+    note: text('note'),
+    moderatorKey: text('moderator_key'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('merchant_cases_establishment_idx').on(table.establishmentId),
+    check('merchant_cases_kind_valid', sql`${table.kind} in ('denuncia', 'disputa')`),
+    check(
+      'merchant_cases_status_valid',
+      sql`${table.status} in ('pendiente', 'revocado', 'descartado')`,
+    ),
   ],
 );
