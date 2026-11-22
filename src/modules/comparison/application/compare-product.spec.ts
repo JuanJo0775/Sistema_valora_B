@@ -6,6 +6,7 @@ import {
   DistanceNeedsLocationError,
 } from './compare-product';
 import type { CurrentPrice } from './current-prices';
+import type { OfficialPriceCopy } from './official-price-copies';
 
 const productId = '11111111-1111-4111-8111-111111111111';
 const missingId = '99999999-9999-4999-8999-999999999999';
@@ -19,6 +20,12 @@ interface Fixture {
   reliability?: Record<string, { level: 'alta' | 'media' | 'baja'; confirmations: number }>;
   // Grill de la #34: la referencia SIPSA más reciente del producto.
   reference?: WholesaleReferenceView | null;
+  // #204: la copia del precio oficial y los reportes recientes de cada tienda.
+  officials?: OfficialPriceCopy[];
+  reports?: Record<
+    string,
+    { reportId: string; priceCop: number; daysAgo: number; level: 'alta' | 'media' | 'baja' }[]
+  >;
 }
 
 // Dobles de los puertos: el catálogo, las tiendas, price_current, reliability y el reloj.
@@ -28,6 +35,8 @@ function setup({
   stores = [],
   reliability = {},
   reference = null,
+  officials = [],
+  reports = {},
 }: Fixture = {}) {
   return new CompareProduct({
     products: {
@@ -63,7 +72,18 @@ function setup({
       findByPresentations: (ids) =>
         Promise.resolve(prices.filter((price) => ids.includes(price.presentationId))),
     },
+    officials: {
+      findByPresentations: (ids) =>
+        Promise.resolve(officials.filter((official) => ids.includes(official.presentationId))),
+    },
     reliability: {
+      reportsAt: (_presentationId, establishmentId) =>
+        Promise.resolve(
+          (reports[establishmentId] ?? []).map(({ daysAgo, ...report }) => ({
+            ...report,
+            observedAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000),
+          })),
+        ),
       of: (refs) =>
         Promise.resolve(
           refs.map((ref) => ({
@@ -382,6 +402,38 @@ describe('comparar los precios de un producto', () => {
       await expect(
         setup(fixture).execute(withoutLocation({ municipality: 'calarca', sort: 'distance' })),
       ).rejects.toThrow(DistanceNeedsLocationError);
+    });
+  });
+
+  // D1 del grill comercial (#204): el precio oficial entra a la comparación.
+  describe('con precio oficial', () => {
+    const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    // El comercio publicó $2.200 hace 3 días y lo reconfirmó hace 1.
+    const official = (establishmentId: string, priceCop = 2200): OfficialPriceCopy => ({
+      presentationId: 'p-500g',
+      establishmentId,
+      priceCop,
+      confirmedAt: daysAgo(1),
+      priceChangedAt: daysAgo(3),
+    });
+
+    it('la tienda con precio oficial sale con fuente oficial, sin reporte ni confiabilidad', async () => {
+      const comparison = await setup({ stores: [store('a')], officials: [official('a')] }).execute(
+        input(),
+      );
+
+      expect(comparison?.results).toEqual([
+        {
+          establishment: store('a'),
+          presentationId: 'p-500g',
+          priceCop: 2200,
+          unitPrice: expect.anything() as unknown,
+          source: 'oficial',
+          freshness: 'vigente',
+          isCheapest: true,
+          observedAt: daysAgo(1),
+        },
+      ]);
     });
   });
 });
