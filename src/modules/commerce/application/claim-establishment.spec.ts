@@ -128,9 +128,7 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
   it('un NIT con el dígito de verificación equivocado se rechaza: está mal escrito', async () => {
     const { claim, claims } = setup();
 
-    await expect(claim.execute(request({ nit: '800.197.268-5' }))).rejects.toThrow(
-      InvalidNitError,
-    );
+    await expect(claim.execute(request({ nit: '800.197.268-5' }))).rejects.toThrow(InvalidNitError);
     expect(claims).toEqual([]);
   });
 

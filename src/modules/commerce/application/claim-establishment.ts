@@ -80,18 +80,9 @@ export class ClaimEstablishment {
 
   async execute(request: ClaimRequest): Promise<ClaimResult> {
     if (request.nit !== undefined && !isValidNit(request.nit)) throw new InvalidNitError();
-    const { establishments, claims, roles, clock } = this.ports;
-    const establishment = await establishments.find(request.establishmentId);
-    if (!establishment) throw new EstablishmentNotFoundError();
-    if (!isAtEstablishment(request.location, establishment)) {
-      throw new NotAtEstablishmentError();
-    }
-    if ((await claims.establishmentOf(request.accountId)) !== null) {
-      throw new AccountHasEstablishmentError();
-    }
-    if ((await claims.ownerOf(request.establishmentId)) !== null) {
-      throw new EstablishmentHasOwnerError();
-    }
+    await this.ensurePresence(request);
+    await this.ensureNoOwnership(request);
+    const { claims, roles, clock } = this.ports;
     await claims.save({
       accountId: request.accountId,
       establishmentId: request.establishmentId,
@@ -105,5 +96,21 @@ export class ClaimEstablishment {
     });
     await roles.grantMerchant(request.accountId);
     return { status: 'verificado', establishmentId: request.establishmentId };
+  }
+
+  // D2: la tienda existe en el mapa y la persona está en ella.
+  private async ensurePresence({ establishmentId, location }: ClaimRequest): Promise<void> {
+    const establishment = await this.ports.establishments.find(establishmentId);
+    if (!establishment) throw new EstablishmentNotFoundError();
+    if (!isAtEstablishment(location, establishment)) throw new NotAtEstablishmentError();
+  }
+
+  // D3: una tienda por cuenta y un dueño por tienda.
+  private async ensureNoOwnership({ accountId, establishmentId }: ClaimRequest): Promise<void> {
+    const { claims } = this.ports;
+    if ((await claims.establishmentOf(accountId)) !== null) {
+      throw new AccountHasEstablishmentError();
+    }
+    if ((await claims.ownerOf(establishmentId)) !== null) throw new EstablishmentHasOwnerError();
   }
 }
