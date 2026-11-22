@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { DomainError } from '../../../domain/domain-error';
 import { freshnessOf, ttlDaysFor } from '../../../domain/freshness';
 import { type PromotionOffer, promotedPriceCop, promotionStatus } from '../../../domain/promotion';
 import { createEvent } from '../../../shared/events';
@@ -31,6 +32,17 @@ export interface CreatePromotionRequest {
   validUntil: string;
 }
 
+// D6: sin un oficial vigente no hay promoción (422).
+export class OfficialPriceRequiredError extends DomainError {
+  readonly code = 'OFFICIAL_PRICE_REQUIRED';
+
+  constructor() {
+    super(
+      'Para publicar una promoción, primero publica o reconfirma el precio oficial del producto.',
+    );
+  }
+}
+
 // RF-017 con la D6 del grill comercial: una promoción sobre el precio oficial vigente de su tienda.
 export class CreatePromotion {
   constructor(private readonly ports: CreatePromotionPorts) {}
@@ -38,8 +50,13 @@ export class CreatePromotion {
   async execute(request: CreatePromotionRequest): Promise<PromotionView> {
     const { claims, prices, presentations, promotions, clock } = this.ports;
     const establishmentId = await verifiedEstablishmentOf(claims, request.accountId);
-    const official = await prices.findOne(establishmentId, request.presentationId);
     const now = clock.now();
+    const official = await prices.findOne(establishmentId, request.presentationId);
+    const isFresh = (await presentations.isFresh(request.presentationId)) ?? false;
+    const officialFreshness =
+      official &&
+      freshnessOf({ observedAt: official.confirmedAt, now, ttlDays: ttlDaysFor(isFresh) });
+    if (!official || officialFreshness !== 'vigente') throw new OfficialPriceRequiredError();
     const promotion: Promotion = {
       id: randomUUID(),
       establishmentId,
@@ -56,17 +73,11 @@ export class CreatePromotion {
         createdAt: promotion.createdAt.toISOString(),
       }),
     ]);
-    const officialPriceCop = official?.priceCop ?? 0;
-    const officialFreshness = freshnessOf({
-      observedAt: official?.confirmedAt ?? now,
-      now,
-      ttlDays: ttlDaysFor((await presentations.isFresh(request.presentationId)) ?? false),
-    });
     return {
       ...promotion,
       status: promotionStatus({ ...promotion, now, officialFreshness }),
-      officialPriceCop,
-      promotedPriceCop: promotedPriceCop(promotion.offer, officialPriceCop),
+      officialPriceCop: official.priceCop,
+      promotedPriceCop: promotedPriceCop(promotion.offer, official.priceCop),
     };
   }
 }
