@@ -11,6 +11,7 @@ import {
 } from '../catalog';
 import {
   EstablishmentDetails,
+  StoreContactOf,
   EstablishmentsModule,
   EstablishmentsWithinRadius,
 } from '../establishments';
@@ -96,15 +97,23 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
     },
     {
       provide: StorePrices,
-      inject: [DATABASE, EstablishmentDetails, PresentationsForPricing, ReliabilityOfPrices],
+      inject: [
+        DATABASE,
+        EstablishmentDetails,
+        StoreContactOf,
+        PresentationsForPricing,
+        ReliabilityOfPrices,
+      ],
       useFactory: (
         db: Database,
         stores: EstablishmentDetails,
+        contacts: StoreContactOf,
         presentations: PresentationsForPricing,
         reliability: ReliabilityOfPrices,
       ): StorePrices =>
         new StorePrices({
           stores,
+          contacts,
           presentations,
           prices: new DrizzleCurrentPrices(db),
           reliability,

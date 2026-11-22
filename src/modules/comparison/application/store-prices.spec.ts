@@ -1,3 +1,4 @@
+import type { StoreContact } from '../../establishments';
 import type { PresentationForPricing } from '../../catalog';
 import type { PriceRef, PriceReliability } from '../../reliability';
 import type { CurrentPrice } from './current-prices';
@@ -47,10 +48,7 @@ const price = (
 function setup(
   prices: CurrentPrice[],
   presentations: Map<string, PresentationForPricing>,
-  contact: {
-    openingHours?: Record<string, { opens: string; closes: string } | null>;
-    phone?: string;
-  } = {},
+  contact: StoreContact = {},
 ) {
   const asked: { refs: PriceRef[]; ttlDays: number }[] = [];
   const storePrices = new StorePrices({

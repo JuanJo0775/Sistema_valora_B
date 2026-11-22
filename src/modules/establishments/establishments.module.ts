@@ -19,6 +19,7 @@ import {
 import { DecideStoreProposal } from './application/decide-store-proposal';
 import { ListNearbyEstablishments } from './application/list-nearby-establishments';
 import { PendingStoreProposalName } from './application/pending-store-proposal-name';
+import { StoreContactOf } from './application/store-contact-of';
 import { ProposeStore } from './application/propose-store';
 import { SearchEstablishments } from './application/search-establishments';
 import { StoreProposalsQueue } from './application/store-proposals-queue';
@@ -32,6 +33,12 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
   // B#131: GET /establishments y /nearby viven en comparison, que suma el conteo de precios.
   controllers: [StoreProposalsController],
   providers: [
+    {
+      provide: StoreContactOf,
+      inject: [DATABASE],
+      useFactory: (db: Database): StoreContactOf =>
+        new StoreContactOf(new DrizzleEstablishmentRepository(db)),
+    },
     {
       provide: PendingStoreProposalName,
       inject: [DATABASE, OutboxPublisher],
@@ -136,6 +143,7 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     },
   ],
   exports: [
+    StoreContactOf,
     ProposeStore,
     PendingStoreProposalName,
     ListNearbyEstablishments,
