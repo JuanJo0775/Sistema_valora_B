@@ -119,4 +119,26 @@ describe('reportes recientes de una tienda para el precio oficial', () => {
       { reportId: 'r-beto', priceCop: 4800, observedAt: hoursAgo(1), level: 'alta' },
     ]);
   });
+
+  it('sin los descartados, los que están en revisión ni las ofertas, que no son el precio normal', async () => {
+    const suspicious = {
+      verdict: {
+        status: 'sospechoso',
+        reason: 'rango',
+        median: 4000,
+        deviation: 0.5,
+        references: 3,
+      },
+    } as Partial<Observation>;
+    const reliability = setup([
+      observation('r-ana', 'ana', 4800, { moderation: 'descartado' }),
+      observation('r-beto', 'beto', 6000, suspicious),
+      observation('r-carla', 'carla', 3500, { priceType: 'oferta' }),
+      observation('r-dario', 'dario', 4800),
+    ]);
+
+    const reports = await reliability.reportsAt('arroz-500g', 'tienda-centro', 14);
+
+    expect(reports.map((r) => r.reportId)).toEqual(['r-dario']);
+  });
 });
