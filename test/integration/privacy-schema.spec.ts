@@ -106,13 +106,16 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     ).toEqual([
       'commerce.merchant_claim_rejections.account_id',
       'commerce.merchant_claims.account_id',
+      'commerce.merchant_notices.account_id',
       'pricing.reports.reporter_id',
     ]);
     // Grill de la #36, pregunta 1: reporter_id es una referencia interna de pricing (idempotencia,
     // duplicado y ráfaga); privacy-public-responses.spec.ts verifica que nunca sale.
     // D3 del grill comercial (#201, #202): commerce guarda la cuenta DUEÑA de la tienda (no la de un
     // reportante) para «una tienda por cuenta»; solo la ve la propia cuenta en GET /commerce/me.
-    // ADR-032 (#208): al borrar la cuenta, AccountPurged borra estas filas (commerce-cases-http.spec.ts).
+    // B9 (#209): merchant_notices recuerda lo avisado por correo al dueño, que nunca ve su correo.
+    // ADR-032 (#208): al borrar la cuenta, AccountPurged borra estas filas (commerce-cases-http.spec.ts
+    // y commerce-notices-repository.spec.ts).
   });
 
   // ADR-029: la verificación de correo vive en identity y no guarda el token en claro.
