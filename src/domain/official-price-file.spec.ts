@@ -1,4 +1,9 @@
-import { readPriceFile } from './official-price-file';
+import { PriceFileTooLargeError, readPriceFile } from './official-price-file';
+
+const fileWith = (rows: number) =>
+  ['codigo_barras;precio', ...Array.from({ length: rows }, (_, i) => `${String(i)};2600`)].join(
+    '\n',
+  );
 
 describe('archivo de precios oficiales (D7 del grill comercial)', () => {
   it('lee cada fila con su número de Excel, sin espacios ni líneas vacías', () => {
@@ -47,5 +52,10 @@ describe('archivo de precios oficiales (D7 del grill comercial)', () => {
         message: 'Este código de barras ya está en la fila 2.',
       },
     ]);
+  });
+
+  it('hasta 1.000 filas se lee; con 1.001 se rechaza el archivo completo', () => {
+    expect(readPriceFile(fileWith(1000)).rows).toHaveLength(1000);
+    expect(() => readPriceFile(fileWith(1001))).toThrow(PriceFileTooLargeError);
   });
 });
