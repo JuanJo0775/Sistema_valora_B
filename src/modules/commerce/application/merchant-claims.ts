@@ -19,5 +19,7 @@ export interface MerchantClaimRepository {
   ownerOf(establishmentId: string): Promise<string | null>;
   // La tienda de la cuenta, o null si no tiene (una por cuenta, D3).
   establishmentOf(accountId: string): Promise<string | null>;
+  // La solicitud de la cuenta, o null si no tiene tienda.
+  findByAccount(accountId: string): Promise<MerchantClaim | null>;
   save(claim: MerchantClaim): Promise<void>;
 }

@@ -22,7 +22,9 @@ function setup(claims: MerchantClaim[]) {
     establishments: {
       find: (id) =>
         Promise.resolve(
-          id === 'tienda-esperanza' ? { name: 'Tienda La Esperanza', lat: 4.5339, lng: -75.6811 } : null,
+          id === 'tienda-esperanza'
+            ? { name: 'Tienda La Esperanza', lat: 4.5339, lng: -75.6811 }
+            : null,
         ),
     },
   });

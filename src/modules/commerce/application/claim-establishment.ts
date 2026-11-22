@@ -6,7 +6,7 @@ type Point = { lat: number; lng: number };
 export interface ClaimEstablishmentPorts {
   // La tienda del mapa, por la interfaz pública de establishments.
   establishments: { find(establishmentId: string): Promise<Point | null> };
-  claims: MerchantClaimRepository;
+  claims: Pick<MerchantClaimRepository, 'ownerOf' | 'establishmentOf' | 'save'>;
   // Cambio de rol reportante → comercio, por la interfaz pública de identity (D3).
   roles: { grantMerchant(accountId: string): Promise<void> };
   clock: { now(): Date };
