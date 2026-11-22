@@ -1,14 +1,15 @@
 import { ConsoleLogger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import request from 'supertest';
 import { CACHE_PRICES } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
-import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
+import { officialPrices, priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { contractErrors } from '../support/contract';
 import { countAllRows } from '../support/count-rows';
 
 // Productos, presentaciones y tiendas de prueba: solo existen dentro de esta prueba.
@@ -41,7 +42,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate comparison.price_current, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate comparison.price_current, comparison.official_prices, catalog.presentations, catalog.products, establishments.establishments`,
     );
     const catalog = app.get(ImportCatalog);
     await catalog.save({
@@ -103,6 +104,61 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
   const featured = (query: Record<string, string>) =>
     request(server).get('/v1/featured-products').query(query);
 
+  it('muestra el mismo oficial en la comparación, la ficha y la canasta (#218)', async () => {
+    const confirmedAt = new Date(Date.now() - 60 * 60 * 1000);
+    await db.insert(officialPrices).values({
+      presentationId: rice500g,
+      establishmentId: ara,
+      priceCop: 1500,
+      confirmedAt,
+      priceChangedAt: confirmedAt,
+    });
+
+    try {
+      const compareRoute = '/products/:productId/comparison';
+      const storeRoute = '/establishments/:establishmentId/prices';
+      const comparison = await request(server)
+        .get(`/v1/products/${rice}/comparison`)
+        .query({ municipality: 'armenia', onlyCurrent: 'true' })
+        .expect(200);
+      const store = await request(server).get(`/v1/establishments/${ara}/prices`).expect(200);
+      const basket = await featured({ municipality: 'armenia' }).expect(200);
+      const map = await request(server)
+        .get('/v1/establishments')
+        .query({ municipality: 'armenia' })
+        .expect(200);
+      const expected = { presentationId: rice500g, priceCop: 1500, source: 'oficial' };
+
+      const { results } = comparison.body as { results: unknown[] };
+      expect(results[0]).toMatchObject({ ...expected, establishment: { id: ara } });
+      expect(results[0]).not.toHaveProperty('reportId');
+      const { prices } = store.body as { prices: { presentationId: string }[] };
+      const shown = prices.find((price) => price.presentationId === rice500g);
+      expect(shown).toMatchObject(expected);
+      expect(shown).not.toHaveProperty('reportId');
+      expect(shown).not.toHaveProperty('reliability');
+      expect(shown).not.toHaveProperty('confirmations');
+      const basketItems = (basket.body as { items: { productId: string }[] }).items;
+      const riceInBasket = basketItems.find((item) => item.productId === rice);
+      expect(riceInBasket).toMatchObject({ cheapest: expected, savingsPercent: 40 });
+
+      const mapItems = (map.body as { items: { id: string }[] }).items;
+      expect(mapItems.find((item) => item.id === ara)).toMatchObject({ priceCount: 2 });
+      expect([
+        ...contractErrors(`GET ${compareRoute}`, 200, comparison.body as unknown),
+        ...contractErrors(`GET ${storeRoute}`, 200, store.body as unknown),
+        ...contractErrors('GET /featured-products', 200, basket.body as unknown),
+        ...contractErrors('GET /establishments', 200, map.body as unknown),
+      ]).toEqual([]);
+    } finally {
+      await db
+        .delete(officialPrices)
+        .where(
+          and(eq(officialPrices.establishmentId, ara), eq(officialPrices.presentationId, rice500g)),
+        );
+    }
+  });
+
   it('responde 200 con el criterio y los productos con más tiendas primero, pública y con caché de 60 s', async () => {
     const response = await featured({ municipality: 'armenia' }).expect(200);
 
@@ -123,6 +179,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
             presentationId: rice1kg,
             label: 'Arroz Diana · 1 kg',
             priceCop: 4400,
+            source: 'comunidad',
             unitPrice: { valueCop: 440, per: '100g' },
             establishment: { id: ara, name: 'Ara Centro', address: 'Cl. 21 # 15-10' },
           },
@@ -131,6 +188,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
             presentationId: rice500g,
             label: 'Arroz Diana · 500 g',
             priceCop: 2500,
+            source: 'comunidad',
             unitPrice: { valueCop: 500, per: '100g' },
             establishment: {
               id: donJose,
@@ -150,6 +208,7 @@ describe('GET /v1/featured-products: canasta básica de hoy (B#120 y B#128)', ()
             presentationId: milk1l,
             label: 'Leche entera · 1 l',
             priceCop: 4800,
+            source: 'comunidad',
             unitPrice: { valueCop: 480, per: '100ml' },
             establishment: {
               id: donJose,
