@@ -71,4 +71,59 @@ describe('la tienda propuesta por un comercio pre-aprobado se decide (D2 del gri
       }),
     ]);
   });
+
+  it('fusionada con una tienda sin dueño: queda verificado en esa tienda', async () => {
+    const { resolve, active, events } = setup();
+
+    await resolve.execute({
+      proposalId: 'propuesta-1',
+      decision: 'fusionar',
+      mergeInto: 'tienda-existente',
+      note,
+    });
+
+    expect(active).toEqual([
+      {
+        ...preApproved,
+        establishmentId: 'tienda-existente',
+        status: 'verificado',
+        verifiedAt: now,
+      },
+    ]);
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: 'MerchantVerified',
+        payload: { accountId: 'cuenta-de-don-luis', establishmentId: 'tienda-existente' },
+      }),
+    ]);
+  });
+
+  it('fusionada con una tienda que ya tiene dueño: la solicitud se cierra y queda el motivo', async () => {
+    const owner: MerchantClaim = {
+      ...preApproved,
+      accountId: 'cuenta-del-dueno',
+      establishmentId: 'tienda-existente',
+      status: 'verificado',
+      verifiedAt: now,
+    };
+    const { resolve, active, rejections, events } = setup([preApproved, owner]);
+
+    await resolve.execute({
+      proposalId: 'propuesta-1',
+      decision: 'fusionar',
+      mergeInto: 'tienda-existente',
+      note,
+    });
+
+    expect(active).toEqual([owner]);
+    expect(rejections).toEqual([
+      {
+        accountId: 'cuenta-de-don-luis',
+        establishmentId: 'tienda-existente',
+        reason: 'La tienda que propusiste ya estaba en el mapa y tiene dueño.',
+        rejectedAt: now,
+      },
+    ]);
+    expect(events).toEqual([]);
+  });
 });
