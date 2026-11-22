@@ -2,38 +2,21 @@ import type { Account, AccountRepository } from './account-repository';
 import { FakeHasher, FakeLimiter, InMemoryDeletion } from './deletion-doubles.testing';
 import { InvalidCredentialsError, type LoginInput, TooManyAttemptsError } from './login';
 import { RestoreAccount } from './restore-account';
-import type { NewSession, SessionRepository, StoredSession } from './session-repository';
+import { CreatedSessions } from './session-doubles.testing';
 
 const now = new Date('2026-11-20T14:00:00Z');
 const scheduled = new Date('2026-11-28T10:00:00Z');
 const id = '11111111-1111-4111-8111-111111111111';
 
-class Sessions implements SessionRepository {
-  readonly created: NewSession[] = [];
-
-  create(session: NewSession): Promise<void> {
-    this.created.push(session);
-    return Promise.resolve();
-  }
-
-  findByTokenHash(): Promise<StoredSession | null> {
-    return Promise.reject(new Error('no se usa'));
-  }
-
-  touch(): Promise<void> {
-    return Promise.reject(new Error('no se usa'));
-  }
-
-  revoke(): Promise<void> {
-    return Promise.reject(new Error('no se usa'));
-  }
-}
-
-function setup(deletionScheduledFor: Date | null, blocked: Record<string, number> = {}) {
+function setup(
+  deletionScheduledFor: Date | null,
+  blocked: Record<string, number> = {},
+  passwordHash: string | null = 'hash:la-clave-de-ana',
+) {
   const deletion = new InMemoryDeletion();
   deletion.add({
     id,
-    passwordHash: 'hash:la-clave-de-ana',
+    passwordHash,
     role: 'reportante',
     deletionScheduledFor,
   });
@@ -57,7 +40,7 @@ function setup(deletionScheduledFor: Date | null, blocked: Record<string, number
     applyRoleChange: () => Promise.reject(new Error('no se usa')),
   };
   const hasher = new FakeHasher();
-  const sessions = new Sessions();
+  const sessions = new CreatedSessions();
   const limiter = new FakeLimiter(blocked);
   const restore = new RestoreAccount({
     accounts,
@@ -102,6 +85,19 @@ describe('restaurar una cuenta pendiente de eliminación (ADR-032)', () => {
     expect(hasher.verified).toHaveLength(1);
     expect(sessions.created).toHaveLength(0);
     expect(deletion.accounts.get(id)?.deletionScheduledFor ?? null).toEqual(state);
+  });
+
+  // ADR-029, fase 2 (#179): una cuenta creada con Google no se restaura con contraseña; vuelve a entrar con
+  // Google. El error es el genérico, sin revelar que la cuenta existe ni cómo se creó (EC-08).
+  it('una cuenta sin contraseña pendiente de eliminación da el error genérico y sigue pendiente', async () => {
+    const { deletion, hasher, sessions, limiter, restore } = setup(scheduled, {}, null);
+
+    await expect(restore.execute(input())).rejects.toThrow(InvalidCredentialsError);
+
+    expect(hasher.verified).toHaveLength(1);
+    expect(sessions.created).toHaveLength(0);
+    expect(deletion.accounts.get(id)?.deletionScheduledFor).toEqual(scheduled);
+    expect(limiter.recorded).toContain('login-correo:ana@correo.com');
   });
 
   it('comparte los límites del login: bloqueada, responde 429 sin verificar la contraseña', async () => {

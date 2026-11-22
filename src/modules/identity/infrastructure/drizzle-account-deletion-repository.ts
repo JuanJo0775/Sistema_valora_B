@@ -1,6 +1,7 @@
 import { and, asc, eq, isNotNull, isNull, lte } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
+  AccountCredentials,
   AccountDeletionRepository,
   ScheduleOutcome,
 } from '../application/account-deletion-repository';
@@ -11,12 +12,12 @@ import { accounts, emailVerifications, sessions } from './schema';
 export class DrizzleAccountDeletionRepository implements AccountDeletionRepository {
   constructor(private readonly db: NodePgDatabase) {}
 
-  async passwordHashOf(accountId: string): Promise<string | null> {
+  async credentialsOf(accountId: string): Promise<AccountCredentials | null> {
     const [found] = await this.db
-      .select({ passwordHash: accounts.passwordHash })
+      .select({ email: accounts.email, passwordHash: accounts.passwordHash })
       .from(accounts)
       .where(eq(accounts.id, accountId));
-    return found?.passwordHash ?? null;
+    return found ?? null;
   }
 
   schedule(input: { accountId: string; scheduledFor: Date; now: Date }): Promise<ScheduleOutcome> {

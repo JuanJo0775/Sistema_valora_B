@@ -16,6 +16,7 @@ import { TooManyAttemptsError } from '../application/attempt-limiter';
 import {
   AccountGoneError,
   DeleteOwnAccount,
+  InvalidConfirmationError,
   InvalidPasswordError,
   LastModeratorError,
 } from '../application/delete-own-account';
@@ -55,8 +56,10 @@ export class MeController {
     try {
       const { scheduledFor } = await this.deleteOwnAccount.execute({
         accountId: session.accountId,
-        password: body.password,
         ip: request.ip ?? 'desconocida',
+        ...(body.password === undefined
+          ? { confirmEmail: body.confirmEmail ?? '' }
+          : { password: body.password }),
       });
       // Todas las sesiones quedaron revocadas en el servidor; se limpia también la cookie del navegador.
       response.setHeader('Set-Cookie', clearedSessionCookie());
@@ -70,6 +73,9 @@ export class MeController {
       }
       if (error instanceof InvalidPasswordError) {
         throw new ForbiddenException({ code: 'INVALID_PASSWORD', message: error.message });
+      }
+      if (error instanceof InvalidConfirmationError) {
+        throw new ForbiddenException({ code: 'INVALID_CONFIRMATION', message: error.message });
       }
       if (error instanceof LastModeratorError) {
         throw new ForbiddenException({

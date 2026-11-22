@@ -1,9 +1,9 @@
 ﻿producto;marca;categoria;cantidad;unidad;unidades_empaque;codigo_barras;verificar;fuente;responsable;fecha;imagen_url;imagen_fuente;imagen_atribucion
-Arroz blanco;Diana;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
+Arroz blanco;Diana;grains-groceries;500;g;1;7702511000014;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/251/100/0014/front_es.8.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Arroz blanco;Diana;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
-Arroz blanco;Roa;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
+Arroz blanco;Roa;grains-groceries;500;g;1;7702552000097;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;https://images.openfoodfacts.org/images/products/770/255/200/0097/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Arroz blanco;Roa;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
-Aceite de girasol;Premier;grains-groceries;1000;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
+Aceite de girasol;Premier;grains-groceries;1000;ml;1;7701018007151;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;https://images.openfoodfacts.org/images/products/770/101/800/7151/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Aceite de girasol;Premier;grains-groceries;3000;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
 Aceite de girasol;Premier;grains-groceries;900;ml;1;;no;Verificado por el equipo con carulla.com (17-nov-2026);Sara Sanchez;2026-11-17;;;
 Azúcar blanca;Manuelita;grains-groceries;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
@@ -12,17 +12,17 @@ Lenteja;;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda
 Panela;;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
 Sal refinada;Refisal;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Pasta spaghetti;Doria;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
-Pasta spaghetti;Doria;grains-groceries;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
-Café molido;Sello Rojo;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
-Chocolate de mesa;Corona;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
+Pasta spaghetti;Doria;grains-groceries;500;g;1;7702085013021;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/208/501/3021/front_es.15.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Café molido;Sello Rojo;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;https://images.openfoodfacts.org/images/products/770/203/210/7957/front_en.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Chocolate de mesa;Corona;grains-groceries;250;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;https://images.openfoodfacts.org/images/products/770/200/708/4535/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Chocolate de mesa;Corona;grains-groceries;200;g;1;;no;Verificado por el equipo con carulla.com (17-nov-2026);Sara Sanchez;2026-11-17;;;
-Atún en aceite;Van Camp's;grains-groceries;160;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
-Leche entera;Colanta;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
-Leche entera;Alquería;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
+Atún en aceite;Van Camp's;grains-groceries;160;g;1;7702367002637;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/236/700/2637/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Leche entera;Colanta;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;https://images.openfoodfacts.org/images/products/770/212/900/1052/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Leche entera;Alquería;dairy-eggs;1100;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;https://images.openfoodfacts.org/images/products/770/217/700/4210/front_es.6.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Huevos rojos AA;;dairy-eggs;30;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
 Huevos rojos AA;;dairy-eggs;12;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Queso campesino;;dairy-eggs;500;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
-Pan tajado blanco;Bimbo;bakery;600;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
+Pan tajado blanco;Bimbo;bakery;600;g;1;7705326468727;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openfoodfacts.org/images/products/770/532/646/8727/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Papa pastusa;;fruits-vegetables;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
 Papa pastusa;;fruits-vegetables;2500;g;1;;no;Verificado por el equipo con carulla.com (17-nov-2026);Sara Sanchez;2026-11-17;;;
 Tomate chonto;;fruits-vegetables;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
@@ -37,8 +37,8 @@ Agua sin gas;Cristal;beverages;600;ml;1;;no;Revisado por el equipo: producto de 
 Detergente en polvo;Fab;household-cleaning;1;kg;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
 Lavaloza en crema;Axion;household-cleaning;450;g;1;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
 Papel higiénico doble hoja;Familia;household-cleaning;12;und;1;;no;Revisado por el equipo: producto de tienda y supermercado;Juan Naranjo;2026-11-15;;;
-Crema dental;Colgate;personal-care;75;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;;;
-Jabón de baño;Protex;personal-care;110;g;3;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;;;
+Crema dental;Colgate;personal-care;75;ml;1;;no;Revisado por el equipo: producto de tienda y supermercado;Laura Velez;2026-11-15;https://images.openfoodfacts.org/images/products/000/000/001/5063/front_es.6.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Jabón de baño;Protex;personal-care;110;g;3;;no;Revisado por el equipo: producto de tienda y supermercado;Sara Sanchez;2026-11-15;https://images.openbeautyfacts.org/images/products/869/349/505/0791/front_fr.5.400.jpg;open_food_facts;Open Beauty Facts, CC BY-SA
 Aceite de soya;Olímpica;grains-groceries;900;ml;1;7701008626058;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Aceite de soya;Olímpica;grains-groceries;3;l;1;7701008625204;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Aceite mezcla vegetal;Diana;grains-groceries;900;ml;1;7702028000330;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
@@ -57,21 +57,21 @@ Café instantáneo liofilizado;Buendía;grains-groceries;170;g;1;7707211630929;n
 Azúcar morena;Riopaila;grains-groceries;1;kg;1;7702127008022;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Azúcar blanca;Incauca;grains-groceries;2.5;kg;1;7702059405029;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Pasta fideo;Doria;grains-groceries;500;g;1;7702085013069;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/208/501/3069/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
-Pasta conchas;Doria;grains-groceries;250;g;1;7702085012215;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
+Pasta conchas;Doria;grains-groceries;250;g;1;7702085012215;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/208/500/1974/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Leche condensada;Colombina;grains-groceries;400;g;1;7702097066558;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/209/706/6558/front_en.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Leche en polvo entera;Klim;dairy-eggs;360;g;1;7702024034605;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/202/403/4605/front_es.7.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Leche en polvo;El Rodeo;dairy-eggs;375;g;1;7702024402831;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/202/440/2831/front_es.7.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Crema de leche;Nestlé;dairy-eggs;186;g;1;7702024017769;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/202/401/7769/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Yogur de fresa;Alpina;dairy-eggs;1000;g;1;7702001043934;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/200/104/3934/front_es.7.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Kumis;Alpina;dairy-eggs;1;kg;1;7702001048113;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/200/104/8113/front_fr.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
-Avena líquida;Alpina;dairy-eggs;250;g;4;7702001054107;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
+Avena líquida;Alpina;dairy-eggs;250;g;4;7702001054107;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/200/104/4542/front_en.30.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Mantequilla con sal;Alpina;dairy-eggs;250;g;1;7702001020393;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/200/102/0393/front_es.6.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
-Queso mozzarella tajado;Alpina;dairy-eggs;400;g;1;7702001121762;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
+Queso mozzarella tajado;Alpina;dairy-eggs;400;g;1;7702001121762;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/200/112/1755/front_es.34.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Huevos de codorniz;Agopol;dairy-eggs;15;und;1;7709752757691;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Salchicha para perro caliente;Zenú;meat-fish;480;g;1;7701101261491;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/110/126/1491/front_es.5.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Jamón;Cunit;meat-fish;400;g;1;7701101280799;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/110/128/0799/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Pan tajado integral;Bimbo;bakery;650;g;1;7705326073365;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/532/607/3365/front_en.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
-Arepa con queso;Don Maíz;bakery;350;g;1;7702417000170;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
+Arepa con queso;Don Maíz;bakery;350;g;1;7702417000170;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/200/000/013/9784/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Jugo de naranja;Hit;beverages;1;l;1;7702090023893;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/209/002/3893/front_en.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Gaseosa Colombiana;Postobón;beverages;400;ml;1;7702090032017;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openfoodfacts.org/images/products/770/209/003/2017/front_fr.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
 Gaseosa manzana sin azúcar;Postobón;beverages;1.5;l;1;7702090037722;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
@@ -83,9 +83,9 @@ Jabón en barra para ropa;Rey;household-cleaning;300;g;3;7702166006058;no;Verifi
 Detergente en polvo;Dersa;household-cleaning;1000;g;1;7702166004542;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Detergente líquido;Dersa;household-cleaning;2;l;1;7702166060012;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Blanqueador;Clorox;household-cleaning;1.8;l;1;7702213640556;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
-Suavizante de ropa;Suavitel;household-cleaning;970;ml;2;7702010282652;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
-Lavaloza líquido;Axion;household-cleaning;720;ml;1;7702010382062;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
-Limpiapisos;Fabuloso;household-cleaning;1;l;1;7702010225123;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
+Suavizante de ropa;Suavitel;household-cleaning;970;ml;2;7702010282652;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openproductsfacts.org/images/products/750/954/668/4468/front_es.7.400.jpg;open_food_facts;Open Products Facts, CC BY-SA
+Lavaloza líquido;Axion;household-cleaning;720;ml;1;7702010382062;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openproductsfacts.org/images/products/750/954/667/0591/front_es.3.400.jpg;open_food_facts;Open Products Facts, CC BY-SA
+Limpiapisos;Fabuloso;household-cleaning;1;l;1;7702010225123;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;https://images.openproductsfacts.org/images/products/750/103/591/0041/front_xx.10.400.jpg;open_food_facts;Open Products Facts, CC BY-SA
 Esponja multiuso;Olímpica;household-cleaning;1;und;3;7701008596818;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Servilletas;Olímpica;household-cleaning;100;und;1;7701008626065;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Toalla de cocina;Familia;household-cleaning;80;und;1;7702026060619;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
@@ -95,3 +95,82 @@ Pañales etapa 5;Winny;personal-care;30;und;1;7701021114174;no;Verificado por el
 Shampoo anticaspa;Vitane;personal-care;400;ml;1;7702113023121;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Desodorante en crema;Speed Stick;personal-care;100;g;2;7702010971822;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
 Crema dental;Fortident;personal-care;128;g;1;7702006404891;no;Verificado por el equipo con olimpica.com (16-nov-2026);Sara Sanchez;2026-11-16;;;
+Sal refinada;Refisal;grains-groceries;1000;g;1;7703812101202;no;Página de D1, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;https://images.openfoodfacts.org/images/products/770/381/210/1202/front_es.8.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Café molido;Sello Rojo;grains-groceries;300;g;1;7702032109227;no;Página de D1, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Mayonesa;Fruco;grains-groceries;400;g;1;7702047141212;no;Página de D1, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Salsa de tomate;Fruco;grains-groceries;500;g;1;7702047141120;no;Página de D1, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Harina de maíz blanco precocida;P.A.N.;grains-groceries;800;g;1;7702084138039;no;Página de D1, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Leche condensada;La Lechera;grains-groceries;320;g;1;7702024075011;no;Página de D1, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;https://images.openfoodfacts.org/images/products/770/202/407/5011/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Azúcar blanca;;grains-groceries;1;kg;1;;no;Página de D1, ficha del producto (21-nov-2026), sin marca fija (la ficha dice ELRE/MAYA/ZUKA/RIO);Sara Sanchez;2026-11-21;;;
+Azúcar morena;;grains-groceries;1;kg;1;;no;Página de D1, ficha del producto (21-nov-2026), sin marca fija (la ficha dice ELRE/MAYA/ZUKA/RIO);Juan Naranjo;2026-11-21;;;
+Garbanzo;;grains-groceries;500;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 El Estío;Laura Velez;2026-11-21;;;
+Arveja verde seca;;grains-groceries;500;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 El Estío;Sara Sanchez;2026-11-21;;;
+Arroz blanco;;grains-groceries;500;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Albar;Juan Naranjo;2026-11-21;;;
+Aceite de soya;;grains-groceries;900;ml;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Don Olio;Laura Velez;2026-11-21;;;
+Panela;;grains-groceries;1000;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 El Refugio;Sara Sanchez;2026-11-21;;;
+Pasta spaghetti;;grains-groceries;500;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Deliziare;Juan Naranjo;2026-11-21;;;
+Gaseosa Colombiana;Postobón;beverages;1750;ml;1;7707151700881;no;Página de D1, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Gaseosa cola;Coca-Cola;beverages;1750;ml;1;7702535025482;no;Página de D1, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;https://images.openfoodfacts.org/images/products/770/253/502/5482/front_en.5.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Agua sin gas;Cristal;beverages;5;l;1;7702090006544;no;Página de D1, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;https://images.openfoodfacts.org/images/products/770/209/000/6544/front_es.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Leche entera;;dairy-eggs;900;ml;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Laura Velez;2026-11-21;;;
+Queso campesino;;dairy-eggs;350;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Sara Sanchez;2026-11-21;;;
+Yogur de fresa;;dairy-eggs;1000;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Juan Naranjo;2026-11-21;;;
+Kumis;;dairy-eggs;1000;ml;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Laura Velez;2026-11-21;;;
+Mantequilla;;dairy-eggs;200;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Sara Sanchez;2026-11-21;;;
+Leche en polvo entera;;dairy-eggs;1000;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Latti;Juan Naranjo;2026-11-21;;;
+Pan tajado blanco;;bakery;450;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Horneaditos;Laura Velez;2026-11-21;;;
+Lavaloza en crema;;household-cleaning;500;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Brilla King;Sara Sanchez;2026-11-21;;;
+Blanqueador;;household-cleaning;2000;ml;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Brilla King;Juan Naranjo;2026-11-21;;;
+Detergente en polvo;;household-cleaning;1000;g;1;;no;Página de D1, ficha del producto (21-nov-2026), marca propia D1 Bonaropa;Laura Velez;2026-11-21;;;
+Shampoo anticaspa;Head & Shoulders;personal-care;400;ml;1;7500435222532;no;Página de D1, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Crema dental;Colgate;personal-care;100;ml;1;7509546000343;no;Página de D1, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Toallas higiénicas;Nosotras;personal-care;24;und;1;7702026181055;no;Página de D1, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Salchicha para perro caliente;Zenú;meat-fish;240;g;1;7701101261521;no;Página de D1, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Tomate de árbol;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Tomate Río Grande;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Cebolla cabezona roja;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Cebolla junca;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Papa criolla;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Zanahoria;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Limón Tahití;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Limón común;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Aguacate Hass;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Aguacate común;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Mango Tommy;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Mango de azúcar;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Naranja Valencia;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Yuca;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Arracacha;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Pepino cohombro;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Pimentón rojo;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Repollo blanco;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Lechuga Batavia;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Habichuela;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Guayaba;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Maracuyá;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Granadilla;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Lulo;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Papaya;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Mora;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Plátano maduro;;fruits-vegetables;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Carne de res molida;;meat-fish;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Carne de res para guisar;;meat-fish;500;g;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Carne de res para asar;;meat-fish;500;g;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Carne de res para sancocho;;meat-fish;500;g;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Mojarra descamada;;meat-fish;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Muslo de pollo;Friko;meat-fish;6;und;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Contramuslo de pollo;Friko;meat-fish;6;und;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Carne molida de pollo;Piko Riko;meat-fish;500;g;1;7700649001392;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Tilapia;Pietran;meat-fish;500;g;1;7701101361528;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Huevos rojos A;Santa Anita;dairy-eggs;30;und;1;7706772301071;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Huevos rojos A;Olímpica;dairy-eggs;30;und;1;7700649000531;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Queso campesino;La María;dairy-eggs;450;g;1;7706733000104;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Queso campesino;El Galán;dairy-eggs;1;kg;1;7707130200364;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Queso costeño;Suva;dairy-eggs;1;kg;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Pan tajado blanco;Olímpica;bakery;550;g;1;7701008216112;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;https://images.openfoodfacts.org/images/products/770/100/821/6112/front_es.4.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Pan blandito;Olímpica;bakery;550;g;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Pan costeño;Olímpica;bakery;150;g;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;;;
+Pan trenza aliñado;Olímpica;bakery;360;g;1;;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;;;
+Mogolla ocañera;Olímpica;bakery;600;g;1;7701008064126;no;Página de Olímpica, ficha del producto (21-nov-2026);Juan Naranjo;2026-11-21;;;
+Arepa antioqueña blanca;Don Maíz;bakery;1000;g;1;7702417000019;no;Página de Olímpica, ficha del producto (21-nov-2026);Laura Velez;2026-11-21;https://images.openfoodfacts.org/images/products/770/241/700/3447/front_en.8.400.jpg;open_food_facts;Open Food Facts, CC BY-SA
+Arepa paisa;Don Maíz;bakery;350;g;1;7702417000200;no;Página de Olímpica, ficha del producto (21-nov-2026);Sara Sanchez;2026-11-21;https://images.openfoodfacts.org/images/products/770/241/700/0200/front_en.3.400.jpg;open_food_facts;Open Food Facts, CC BY-SA

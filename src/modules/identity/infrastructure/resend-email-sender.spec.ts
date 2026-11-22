@@ -35,6 +35,19 @@ describe('enviar correo con Resend (ADR-029)', () => {
     });
   });
 
+  // El correo con estilo: Resend recibe las dos versiones y cada lector de correo muestra la que puede.
+  it('si el mensaje trae HTML lo envía junto al texto plano', async () => {
+    const bodies: unknown[] = [];
+    const fetchImpl: typeof fetch = (_url, init) => {
+      bodies.push(JSON.parse(init?.body as string));
+      return Promise.resolve(new Response('{"id":"1"}', { status: 200 }));
+    };
+
+    await sender(fetchImpl).send({ ...message, html: '<p>Hola</p>' });
+
+    expect(bodies).toEqual([expect.objectContaining({ text: message.text, html: '<p>Hola</p>' })]);
+  });
+
   it('si Resend rechaza el envío falla con el código HTTP, sin la clave ni el correo ni el cuerpo', async () => {
     const fetchImpl: typeof fetch = () =>
       Promise.resolve(

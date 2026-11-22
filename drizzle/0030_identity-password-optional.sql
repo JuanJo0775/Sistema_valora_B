@@ -1,0 +1,1 @@
+ALTER TABLE "identity"."accounts" ALTER COLUMN "password_hash" DROP NOT NULL;

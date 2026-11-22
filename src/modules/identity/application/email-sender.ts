@@ -1,8 +1,11 @@
 export interface EmailMessage {
   to: string;
   subject: string;
-  // Solo texto plano: los mensajes no llevan datos sensibles (ADR-029).
+  // Los mensajes no llevan datos sensibles (ADR-029). El texto plano va siempre: lo usan los lectores
+  // de correo que no muestran HTML.
   text: string;
+  // La versión con estilo, opcional.
+  html?: string;
 }
 
 // Puerto de salida del correo (ADR-029). Hoy hay dos adaptadores: ConsoleEmailSender (desarrollo y
