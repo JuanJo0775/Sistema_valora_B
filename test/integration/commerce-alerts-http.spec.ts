@@ -20,7 +20,6 @@ const productId = 'ce666666-6666-4666-8666-666666666666';
 const riceId = 'ce666666-6666-4666-8666-aaaaaaaaaaaa';
 const oilId = 'ce666666-6666-4666-8666-bbbbbbbbbbbb';
 const STORE = { lat: 4.5339, lng: -75.6811 };
-const DAY = 24 * 60 * 60 * 1000;
 
 // B9 (#209), de punta a punta: vencimiento (D4) y discrepancia corroborada (ADR-008).
 describe('avisos para el comercio por HTTP (#209)', () => {
