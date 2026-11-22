@@ -4,6 +4,7 @@ import {
   MergeTargetNotFoundError,
   StoreProposalNotFoundError,
 } from './decide-store-proposal';
+import type { DomainEvent } from '../../../shared/events';
 import type { StoreProposalDecisionRecord } from './store-proposals';
 
 const now = new Date('2026-11-15T12:00:00Z');
@@ -11,20 +12,23 @@ const note = 'Tienda verificada en el sitio';
 
 function setup(pendingIds: string[] = ['propuesta-1'], existingStores: string[] = ['tienda-1']) {
   const decided: StoreProposalDecisionRecord[] = [];
+  // Eventos guardados con la decisión, en la misma transacción (ADR-015).
+  const events: DomainEvent[] = [];
   const pending = new Set(pendingIds);
   const decide = new DecideStoreProposal({
     proposals: {
-      decide: (record) => {
+      decide: (record, published) => {
         if (!pending.has(record.proposalId)) return Promise.resolve(false);
         pending.delete(record.proposalId);
         decided.push(record);
+        events.push(...published);
         return Promise.resolve(true);
       },
     },
     stores: { exists: (id) => Promise.resolve(existingStores.includes(id)) },
     clock: { now: () => now },
   });
-  return { decided, decide };
+  return { decided, decide, events };
 }
 
 describe('decidir una tienda propuesta (RF-005 RN3 y RN7, grill de la #27)', () => {
@@ -83,5 +87,28 @@ describe('decidir una tienda propuesta (RF-005 RN3 y RN7, grill de la #27)', () 
     await expect(
       decide.execute({ proposalId: 'no-existe', decision: 'aprobar', note, moderatorKey: 'm' }),
     ).rejects.toThrow(StoreProposalNotFoundError);
+  });
+
+  // D2 del grill comercial: commerce verifica solo al comercio pre-aprobado de esa tienda.
+  it('avisa StoreProposalDecided con la decisión, la tienda de la fusión y el motivo', async () => {
+    const { decide, events } = setup();
+
+    await decide.execute({
+      proposalId: 'propuesta-1',
+      decision: 'fusionar',
+      mergeInto: 'tienda-1',
+      note,
+      moderatorKey: 'moderadora',
+    });
+
+    expect(events).toEqual([
+      {
+        id: expect.any(String) as unknown,
+        type: 'StoreProposalDecided',
+        version: 1,
+        occurredAt: expect.any(Date) as unknown,
+        payload: { proposalId: 'propuesta-1', decision: 'fusionar', mergeInto: 'tienda-1', note },
+      },
+    ]);
   });
 });

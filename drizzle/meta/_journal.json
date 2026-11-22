@@ -232,6 +232,20 @@
       "when": 1795307628774,
       "tag": "0032_commerce-merchant-claims",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795310729642,
+      "tag": "0033_commerce-pre-approved",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795311436010,
+      "tag": "0034_commerce-claim-rejections",
+      "breakpoints": true
     }
   ]
 }

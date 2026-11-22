@@ -1,4 +1,5 @@
 import { DomainError } from '../../../domain/domain-error';
+import { createEvent } from '../../../shared/events';
 import type { EstablishmentRepository } from './establishment-repository';
 import type { StoreProposalDecision, StoreProposalRepository } from './store-proposals';
 
@@ -47,6 +48,10 @@ export class MergeTargetNotFoundError extends DomainError {
   }
 }
 
+// D2 del grill comercial: commerce verifica al comercio pre-aprobado de la tienda propuesta. Solo se
+// publica el nombre del evento: establishments no conoce commerce.
+export const STORE_PROPOSAL_DECIDED = 'StoreProposalDecided';
+
 // RF-005 RN3 y RN7: el moderador aprueba (aparece en el mapa), fusiona o rechaza una tienda propuesta.
 export class DecideStoreProposal {
   constructor(private readonly ports: DecideStoreProposalPorts) {}
@@ -62,16 +67,26 @@ export class DecideStoreProposal {
         throw new MergeTargetNotFoundError();
       }
     }
-    const decided = await proposals.decide({
-      proposalId: request.proposalId,
-      decision: request.decision,
-      ...(request.decision === 'fusionar' && request.mergeInto
-        ? { mergeInto: request.mergeInto }
-        : {}),
-      note,
-      moderatorKey: request.moderatorKey,
-      decidedAt: clock.now(),
-    });
+    const mergeInto =
+      request.decision === 'fusionar' && request.mergeInto ? { mergeInto: request.mergeInto } : {};
+    const decided = await proposals.decide(
+      {
+        proposalId: request.proposalId,
+        decision: request.decision,
+        ...mergeInto,
+        note,
+        moderatorKey: request.moderatorKey,
+        decidedAt: clock.now(),
+      },
+      [
+        createEvent(STORE_PROPOSAL_DECIDED, 1, {
+          proposalId: request.proposalId,
+          decision: request.decision,
+          ...mergeInto,
+          note,
+        }),
+      ],
+    );
     if (!decided) throw new StoreProposalNotFoundError();
   }
 }
