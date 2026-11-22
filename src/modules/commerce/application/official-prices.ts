@@ -15,6 +15,10 @@ export interface OfficialPriceRepository {
   save(price: OfficialPrice, events: DomainEvent[]): Promise<void>;
   // Los de la tienda, en el orden en que se publicaron.
   listFor(establishmentId: string): Promise<OfficialPrice[]>;
+  // Confirma todos los de la tienda a la vez, con sus eventos. Devuelve cuántos.
+  reconfirmAll(establishmentId: string, at: Date, events: DomainEvent[]): Promise<number>;
 }
 
 export const OFFICIAL_PRICE_PUBLISHED = 'OfficialPricePublished';
+// D4: un solo evento por toque, aunque la tienda tenga 1.000 precios.
+export const OFFICIAL_PRICES_RECONFIRMED = 'OfficialPricesReconfirmed';
