@@ -38,6 +38,22 @@ export class PriceFileTooLargeError extends Error {
   }
 }
 
+// Archivo sin el encabezado esperado: la capa HTTP lo traduce a 400.
+export class InvalidPriceFileError extends Error {
+  constructor() {
+    super(
+      'La primera fila debe ser codigo_barras;precio. Guarda el archivo como «CSV UTF-8» separado por punto y coma.',
+    );
+    this.name = 'InvalidPriceFileError';
+  }
+}
+
+const HEADER = 'codigo_barras;precio';
+
+// Sin la marca de orden de bytes que agrega Excel, sin espacios y en minúsculas.
+const normalizedHeader = (line: string): string =>
+  line.replace(/^﻿/, '').replace(/\s/g, '').toLowerCase();
+
 const { minPriceCop, maxPriceCop } = PLAUSIBILITY_PARAMS;
 // ADR-030: el mismo piso y techo absolutos que un reporte y que un oficial publicado uno a uno.
 const isValidPrice = (price: string): boolean =>
@@ -49,6 +65,7 @@ export function readPriceFile(text: string): PriceFile {
   // La fila donde apareció cada código por primera vez.
   const firstRow = new Map<string, number>();
   const lines = text.split(/\r?\n/);
+  if (normalizedHeader(lines[0] ?? '') !== HEADER) throw new InvalidPriceFileError();
   if (lines.slice(1).filter((line) => line.trim() !== '').length > MAX_PRICE_FILE_ROWS) {
     throw new PriceFileTooLargeError();
   }
