@@ -53,7 +53,7 @@ const promotion: Promotion = {
   createdAt: new Date('2026-11-22T15:00:00Z'),
 };
 
-function setup() {
+function setup(claim: MerchantClaim | null = owner) {
   const revocations: { revocation: MerchantRevocation; events: DomainEvent[] }[] = [];
   const closed: MerchantCaseDecisionRecord[] = [];
   const decide = new DecideMerchantCase({
@@ -64,7 +64,7 @@ function setup() {
         return Promise.resolve();
       },
     },
-    claims: { findByEstablishment: () => Promise.resolve(owner) },
+    claims: { findByEstablishment: () => Promise.resolve(claim) },
     prices: { listFor: () => Promise.resolve([price('arroz'), price('aceite')]) },
     promotions: { listFor: () => Promise.resolve([promotion]) },
     revocations: {
@@ -127,5 +127,16 @@ describe('decidir un caso de comercio (D3 del grill comercial)', () => {
     await expect(decide.execute(request({ caseId: 'otro' }))).rejects.toThrow(
       MerchantCaseNotFoundError,
     );
+  });
+
+  it('revocar cuando el comercio ya no existe cierra el caso como descartado, sin dejarlo pendiente', async () => {
+    const { decide, revocations, closed } = setup(null);
+
+    await decide.execute(request());
+
+    expect(revocations).toEqual([]);
+    expect(closed).toEqual([
+      { caseId: 'caso-1', status: 'descartado', note, moderatorKey: 'moderadora', decidedAt: now },
+    ]);
   });
 });
