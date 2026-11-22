@@ -1,7 +1,11 @@
 import type { DomainEvent } from '../../../shared/events';
 import type { MerchantClaim } from './merchant-claims';
 import type { OfficialPrice } from './official-prices';
-import { MerchantNotVerifiedError, PublishOfficialPrice } from './publish-official-price';
+import {
+  MerchantNotVerifiedError,
+  PublishOfficialPrice,
+  UnknownPresentationError,
+} from './publish-official-price';
 
 const now = new Date('2026-11-22T10:00:00Z');
 const STORE = 'tienda-esperanza';
@@ -85,5 +89,18 @@ describe('publicar un precio oficial (RF-016, D4 del grill comercial)', () => {
     ).rejects.toThrow(MerchantNotVerifiedError);
     expect(prices).toEqual([]);
     expect(events).toEqual([]);
+  });
+
+  it('una presentación que no está en el catálogo se rechaza', async () => {
+    const { publish, prices } = setup();
+
+    await expect(
+      publish.execute({
+        accountId: 'cuenta-de-dona-rosa',
+        presentationId: 'no-existe',
+        priceCop: 2600,
+      }),
+    ).rejects.toThrow(UnknownPresentationError);
+    expect(prices).toEqual([]);
   });
 });
