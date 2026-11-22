@@ -69,4 +69,13 @@ describe('precio oficial frente a reportado (D1 del grill comercial, ADR-008)', 
       },
     );
   });
+
+  it('los reportes de antes de que el comercio cambiara su precio no lo castigan', () => {
+    const before = { observedAt: daysAgo(6) };
+
+    expect(resolve([report(4800, before), report(4800, before)])).toEqual({
+      kind: 'oficial',
+      priceCop: 4000,
+    });
+  });
 });
