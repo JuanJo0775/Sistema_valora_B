@@ -31,6 +31,9 @@ export const accounts = identitySchema.table(
     // ADR-029, fase 2 (#180): el `sub` de Google vinculado a la cuenta (nulo = sin vincular). Es fijo
     // aunque la persona cambie de correo en Google.
     googleSubject: text('google_subject'),
+    // ADR-036: cuándo se marcó el correo de bienvenida como enviado (nulo = aún no). Se marca antes de enviar y
+    // una sola vez; la migración lo deja con la fecha de la migración en las cuentas que ya existían.
+    welcomeEmailSentAt: timestamp('welcome_email_sent_at', { withTimezone: true }),
   },
   (table) => [
     uniqueIndex('accounts_email_idx').on(table.email),

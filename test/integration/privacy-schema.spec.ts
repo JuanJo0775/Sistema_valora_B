@@ -70,6 +70,8 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
       'identity.accounts.email',
       'identity.accounts.email_verified_at',
       'identity.accounts.password_hash',
+      // ADR-036: solo una fecha (la bienvenida ya enviada), no el correo.
+      'identity.accounts.welcome_email_sent_at',
     ]);
   });
 
@@ -134,6 +136,16 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
       'identity.used_at',
     ]);
     expect(named(/^token$|^verification_token$|^plain_token$/)).toEqual([]);
+  });
+
+  // ADR-036: la marca de la bienvenida es una fecha y solo existe en identity.accounts.
+  it('la marca del correo de bienvenida es solo una fecha en identity.accounts', () => {
+    const marks = columns.filter((column) => column.column_name.includes('welcome'));
+
+    expect(
+      marks.map((column) => `${column.table_schema}.${column.table_name}.${column.column_name}`),
+    ).toEqual(['identity.accounts.welcome_email_sent_at']);
+    expect(marks[0]?.udt_name).toBe('timestamptz');
   });
 
   // ADR-033: el restablecimiento de contraseña vive en identity, guarda solo el hash del token y fechas

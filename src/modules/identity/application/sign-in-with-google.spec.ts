@@ -1,3 +1,4 @@
+import { RecordingWelcome } from './welcome-doubles.testing';
 import { AccountPendingDeletionError } from './login';
 import { InMemoryGoogleLinks } from './google-doubles.testing';
 import { CreatedSessions } from './session-doubles.testing';
@@ -21,13 +22,15 @@ const ana = {
 function setup(accounts: ConstructorParameters<typeof InMemoryGoogleLinks>[0] = []) {
   const links = new InMemoryGoogleLinks(accounts);
   const sessions = new CreatedSessions();
+  const welcome = new RecordingWelcome();
   const signIn = new SignInWithGoogle({
     links,
     deletion: links,
     sessions,
     clock: { now: () => now },
+    welcome,
   });
-  return { links, sessions, signIn };
+  return { links, sessions, signIn, welcome };
 }
 
 // Lo que Google confirma en el id_token, ya validado por el adaptador (#181).
@@ -184,5 +187,19 @@ describe('entrar con Google (ADR-029, fase 2)', () => {
     expect(sessions.created).toHaveLength(0);
     expect(links.links).toHaveLength(0);
     expect(links.cancelled).toHaveLength(0);
+  });
+
+  describe('correo de bienvenida (ADR-036)', () => {
+    it('vincular una cuenta sin verificar (primera vez verificada) pide la bienvenida', async () => {
+      const { signIn, welcome } = setup([{ ...ana, emailVerified: false }]);
+      await signIn.execute(google());
+      expect(welcome.requested).toEqual([ana.id]);
+    });
+
+    it('vincular una cuenta ya verificada, o entrar de nuevo, no la pide', async () => {
+      const { signIn, welcome } = setup([ana]);
+      await signIn.execute(google());
+      expect(welcome.requested).toEqual([]);
+    });
   });
 });

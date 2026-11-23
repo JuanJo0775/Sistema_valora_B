@@ -2,12 +2,15 @@ import { DomainError } from '../../../domain/domain-error';
 import { type AttemptLimiter, type AttemptRule, TooManyAttemptsError } from './attempt-limiter';
 import type { Clock } from './clock';
 import type { EmailVerificationRepository } from './email-verification-repository';
+import { sendWelcomeInBackground, type WelcomeTrigger } from './send-welcome-email';
 import { hashVerificationToken } from './verification-token';
 
 export interface VerifyEmailPorts {
   verifications: EmailVerificationRepository;
   limiter: AttemptLimiter;
   clock: Clock;
+  // ADR-036: la bienvenida, en segundo plano, si es la primera vez que la cuenta queda verificada.
+  welcome: WelcomeTrigger;
 }
 
 export interface VerifyEmailInput {
@@ -45,5 +48,6 @@ export class VerifyEmail {
       at: this.ports.clock.now(),
     });
     if (!consumed) throw new InvalidVerificationTokenError();
+    sendWelcomeInBackground(this.ports.welcome, consumed.accountId);
   }
 }

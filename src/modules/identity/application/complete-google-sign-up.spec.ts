@@ -3,6 +3,7 @@ import { FakeLimiter } from './deletion-doubles.testing';
 import { InMemoryGoogleLinks } from './google-doubles.testing';
 import { CreatedSessions } from './session-doubles.testing';
 import { SignInWithGoogle } from './sign-in-with-google';
+import { flushBackground, RecordingWelcome } from './welcome-doubles.testing';
 
 const now = new Date('2026-11-21T14:00:00Z');
 const signUp = {
@@ -15,14 +16,16 @@ function setup(accounts: ConstructorParameters<typeof InMemoryGoogleLinks>[0] = 
   const links = new InMemoryGoogleLinks(accounts);
   const sessions = new CreatedSessions();
   const clock = { now: () => now };
+  const welcome = new RecordingWelcome();
   const complete = new CompleteGoogleSignUp({
     links,
     sessions,
     clock,
-    signIn: new SignInWithGoogle({ links, deletion: links, sessions, clock }),
+    signIn: new SignInWithGoogle({ links, deletion: links, sessions, clock, welcome }),
     limiter: new FakeLimiter(),
+    welcome,
   });
-  return { links, sessions, complete };
+  return { links, sessions, complete, welcome };
 }
 
 // RF-001 y grill de la #178, pregunta 2: la cuenta de quien entró con Google se crea al aceptar la
@@ -82,5 +85,45 @@ describe('completar el registro de quien entró con Google', () => {
       expect.objectContaining({ accountId: someone.id, forgetPassword: true }),
     ]);
     expect(sessions.created).toEqual([expect.objectContaining({ accountId: someone.id })]);
+  });
+
+  describe('correo de bienvenida (ADR-036)', () => {
+    const request = {
+      signUp,
+      displayName: 'Nueva Persona',
+      acceptedPolicyVersion: '2026-11',
+      ip: '203.0.113.7',
+    };
+
+    it('al crearse la cuenta pide la bienvenida una vez, con el id de la cuenta nueva', async () => {
+      const { links, complete, welcome } = setup();
+      await complete.execute(request);
+      expect(welcome.requested).toEqual([links.created[0]?.id]);
+    });
+
+    it('si la bienvenida falla, el registro sigue funcionando', async () => {
+      const { complete, welcome } = setup();
+      welcome.failWith = new Error('proveedor caido');
+      await expect(complete.execute(request)).resolves.toMatchObject({
+        token: expect.any(String) as unknown,
+      });
+      await flushBackground();
+    });
+
+    it('si el correo ya tenia cuenta verificada, no se pide ninguna bienvenida', async () => {
+      const { complete, welcome } = setup([
+        {
+          id: 'cuenta-1',
+          email: 'nueva@correo.com',
+          passwordHash: 'hash',
+          role: 'reportante',
+          suspendedUntil: null,
+          deletionScheduledFor: null,
+          emailVerified: true,
+        },
+      ]);
+      await complete.execute(request);
+      expect(welcome.requested).toEqual([]);
+    });
   });
 });
