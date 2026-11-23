@@ -4,6 +4,7 @@ import type { Clock } from './clock';
 import type { GoogleAccountLinks } from './google-account-links';
 import { AccountPendingDeletionError } from './login';
 import { normalizeEmail } from './register-account';
+import { sendWelcomeInBackground, type WelcomeTrigger } from './send-welcome-email';
 import type { SessionRepository } from './session-repository';
 import { type StartedSession, startSession } from './start-session';
 
@@ -21,6 +22,8 @@ export interface SignInWithGooglePorts {
   deletion: Pick<AccountDeletionRepository, 'cancel'>;
   sessions: SessionRepository;
   clock: Clock;
+  // ADR-036: vincular una cuenta sin verificar la verifica; esa primera vez sale la bienvenida.
+  welcome: WelcomeTrigger;
 }
 
 export type SignInWithGoogleResult =
@@ -69,6 +72,7 @@ export class SignInWithGoogle {
         // ser su dueña; pierde la contraseña y las sesiones.
         forgetPassword: !existing.emailVerified,
       });
+      if (!existing.emailVerified) sendWelcomeInBackground(this.ports.welcome, existing.id);
       return { outcome: 'signed-in', ...(await startSession(this.ports, existing.id)) };
     }
     return {

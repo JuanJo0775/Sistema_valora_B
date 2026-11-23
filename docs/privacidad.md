@@ -61,6 +61,8 @@ Desde la app, sin intervención del equipo: la opción de eliminar la cuenta, co
 
 **Contraseña olvidada y creada desde la sesión (ADR-033).** `POST /v1/auth/forgot-password` guarda en `identity.password_resets` solo el hash SHA-256 de un token aleatorio y sus fechas (vence en 1 hora, un solo uso, un enlace vigente por cuenta); el token viaja únicamente en el correo y no se escribe en registros. Responde igual exista o no la cuenta y no envía nada si está pendiente de eliminación. Al restablecer se cierran todas las sesiones y el correo queda verificado. Una cuenta creada con Google puede crear su primera contraseña con ese enlace o con `POST /v1/me/password` (sesión de 10 minutos o menos). Entrar de nuevo con Google durante los 10 días de gracia restaura una cuenta de Google pendiente de eliminación.
 
+**Correo de bienvenida (ADR-036).** Al verificar el correo por primera vez, la cuenta recibe un único correo informativo de bienvenida (qué es Valora y tres pasos para empezar). Base legal: ejecución del servicio que la persona solicitó al crear la cuenta; no es promoción, no lleva enlaces de baja ni de seguimiento. Usa el correo y el primer nombre de la cuenta y los entrega el mismo proveedor de correo ya declarado (sección 5 de `/privacidad`). `identity.accounts.welcome_email_sent_at` guarda solo la fecha de envío para no repetirlo; la purga de la cuenta la borra con la fila.
+
 **Pruebas:** `test/integration/account-deletion-http.spec.ts` (solicitud, gracia, restauración, purga con reloj controlado, transacción, concurrencia, moderador único y límite), los casos de uso en `src/modules/identity/application`, `privacy-schema.spec.ts` y las pruebas de contrato y del guardián de rutas.
 
 ## Qué datos y cookies usa realmente el sistema

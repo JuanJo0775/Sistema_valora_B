@@ -44,6 +44,8 @@ import { ResendVerification } from './application/resend-verification';
 import { ResolveSession } from './application/resolve-session';
 import { SESSION_REPOSITORY, type SessionRepository } from './application/session-repository';
 import { SendVerificationEmail } from './application/send-verification-email';
+import { SendWelcomeEmail } from './application/send-welcome-email';
+import { WELCOME_REPOSITORY, type WelcomeRepository } from './application/welcome-repository';
 import { SuspendReporter } from './application/suspend-reporter';
 import { VerifyEmail } from './application/verify-email';
 import { AuthController } from './http/auth.controller';
@@ -61,6 +63,7 @@ import { DrizzleEmailVerificationRepository } from './infrastructure/drizzle-ema
 import { DrizzleGoogleAccountLinks } from './infrastructure/drizzle-google-account-links';
 import { DrizzlePasswordRepository } from './infrastructure/drizzle-password-repository';
 import { DrizzleSessionRepository } from './infrastructure/drizzle-session-repository';
+import { DrizzleWelcomeRepository } from './infrastructure/drizzle-welcome-repository';
 import { InMemoryAttemptLimiter } from './infrastructure/in-memory-attempt-limiter';
 import { JoseGoogleIdentityProvider } from './infrastructure/jose-google-identity-provider';
 import { ResendEmailSender } from './infrastructure/resend-email-sender';
@@ -145,14 +148,47 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         });
       },
     },
+    // ADR-036: correo de bienvenida, una vez por cuenta, en segundo plano.
+    {
+      provide: WELCOME_REPOSITORY,
+      inject: [DATABASE],
+      useFactory: (db: Database): WelcomeRepository => new DrizzleWelcomeRepository(db),
+    },
+    {
+      provide: SendWelcomeEmail,
+      inject: [WELCOME_REPOSITORY, EMAIL_SENDER, CLOCK, ConfigService],
+      useFactory: (
+        welcome: WelcomeRepository,
+        sender: EmailSender,
+        clock: Clock,
+        config: ConfigService<Env, true>,
+      ): SendWelcomeEmail => {
+        const appUrl: string | undefined = config.get('APP_URL', { infer: true });
+        const from: string | undefined = config.get('EMAIL_FROM', { infer: true });
+        const logger = new Logger(SendWelcomeEmail.name);
+        return new SendWelcomeEmail({
+          welcome,
+          sender,
+          clock,
+          appUrl: appUrl ?? DEFAULT_APP_URL,
+          from,
+          log: {
+            warn: (message) => {
+              logger.warn(message);
+            },
+          },
+        });
+      },
+    },
     {
       provide: VerifyEmail,
-      inject: [EMAIL_VERIFICATION_REPOSITORY, ATTEMPT_LIMITER, CLOCK],
+      inject: [EMAIL_VERIFICATION_REPOSITORY, ATTEMPT_LIMITER, CLOCK, SendWelcomeEmail],
       useFactory: (
         verifications: EmailVerificationRepository,
         limiter: AttemptLimiter,
         clock: Clock,
-      ): VerifyEmail => new VerifyEmail({ verifications, limiter, clock }),
+        welcome: SendWelcomeEmail,
+      ): VerifyEmail => new VerifyEmail({ verifications, limiter, clock, welcome }),
     },
     {
       provide: ResendVerification,
@@ -231,13 +267,14 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
     },
     {
       provide: ResetPassword,
-      inject: [PASSWORD_REPOSITORY, PASSWORD_HASHER, ATTEMPT_LIMITER, CLOCK],
+      inject: [PASSWORD_REPOSITORY, PASSWORD_HASHER, ATTEMPT_LIMITER, CLOCK, SendWelcomeEmail],
       useFactory: (
         passwords: PasswordRepository,
         hasher: PasswordHasher,
         limiter: AttemptLimiter,
         clock: Clock,
-      ): ResetPassword => new ResetPassword({ passwords, hasher, limiter, clock }),
+        welcome: SendWelcomeEmail,
+      ): ResetPassword => new ResetPassword({ passwords, hasher, limiter, clock, welcome }),
     },
     {
       provide: ChangeOwnPassword,
@@ -280,25 +317,40 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
     },
     {
       provide: SignInWithGoogle,
-      inject: [GOOGLE_ACCOUNT_LINKS, ACCOUNT_DELETION_REPOSITORY, SESSION_REPOSITORY, CLOCK],
+      inject: [
+        GOOGLE_ACCOUNT_LINKS,
+        ACCOUNT_DELETION_REPOSITORY,
+        SESSION_REPOSITORY,
+        CLOCK,
+        SendWelcomeEmail,
+      ],
       useFactory: (
         links: GoogleAccountLinks,
         deletion: AccountDeletionRepository,
         sessions: SessionRepository,
         clock: Clock,
-      ): SignInWithGoogle => new SignInWithGoogle({ links, deletion, sessions, clock }),
+        welcome: SendWelcomeEmail,
+      ): SignInWithGoogle => new SignInWithGoogle({ links, deletion, sessions, clock, welcome }),
     },
     {
       provide: CompleteGoogleSignUp,
-      inject: [GOOGLE_ACCOUNT_LINKS, SESSION_REPOSITORY, CLOCK, SignInWithGoogle, ATTEMPT_LIMITER],
+      inject: [
+        GOOGLE_ACCOUNT_LINKS,
+        SESSION_REPOSITORY,
+        CLOCK,
+        SignInWithGoogle,
+        ATTEMPT_LIMITER,
+        SendWelcomeEmail,
+      ],
       useFactory: (
         links: GoogleAccountLinks,
         sessions: SessionRepository,
         clock: Clock,
         signIn: SignInWithGoogle,
         limiter: AttemptLimiter,
+        welcome: SendWelcomeEmail,
       ): CompleteGoogleSignUp =>
-        new CompleteGoogleSignUp({ links, sessions, clock, signIn, limiter }),
+        new CompleteGoogleSignUp({ links, sessions, clock, signIn, limiter, welcome }),
     },
     // ADR-032: eliminación de la cuenta con 10 días de gracia, restauración y purga.
     {

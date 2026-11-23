@@ -5,6 +5,7 @@ import type { Clock } from './clock';
 import type { GoogleAccountLinks } from './google-account-links';
 import type { PendingGoogleSignUp } from './google-handshake';
 import { REGISTRATIONS_PER_IP } from './register-account';
+import { sendWelcomeInBackground, type WelcomeTrigger } from './send-welcome-email';
 import type { SessionRepository } from './session-repository';
 import type { SignInWithGoogle } from './sign-in-with-google';
 import { type StartedSession, startSession } from './start-session';
@@ -15,6 +16,8 @@ export interface CompleteGoogleSignUpPorts {
   clock: Clock;
   signIn: SignInWithGoogle;
   limiter: AttemptLimiter;
+  // ADR-036: la cuenta nueva ya llega verificada; la bienvenida sale en segundo plano.
+  welcome: WelcomeTrigger;
 }
 
 export interface CompleteGoogleSignUpInput {
@@ -55,7 +58,10 @@ export class CompleteGoogleSignUp {
       // Google ya comprobó el correo: no hace falta el enlace de verificación (ADR-029).
       emailVerifiedAt: now,
     });
-    if (created) return startSession(this.ports, id);
+    if (created) {
+      sendWelcomeInBackground(this.ports.welcome, id);
+      return startSession(this.ports, id);
+    }
     // Otra petición creó la cuenta entre la búsqueda y la inserción: se vincula a ella.
     const linked = await this.signInIfAccountExists(input.signUp);
     if (!linked) throw new Error('la cuenta con ese correo desapareció a mitad del registro');

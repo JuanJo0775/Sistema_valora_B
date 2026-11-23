@@ -309,6 +309,13 @@
       "when": 1795375922281,
       "tag": "0043_identity-password-resets",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795447922368,
+      "tag": "0044_identity-welcome-email",
+      "breakpoints": true
     }
   ]
 }
