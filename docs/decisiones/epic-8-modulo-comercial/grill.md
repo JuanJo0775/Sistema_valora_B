@@ -14,6 +14,14 @@ Base: ADR-008 (el oficial es la referencia; discrepancia corroborada = diferenci
 
 Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 → entra $4.800 al orden y se muestra «Oficial $4.000 · Reportado $4.800».
 
+**Precisiones al construir B4 (#204, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Y si los reportes no coinciden entre sí? | Hay discrepancia solo si **2 o más** reportes están **del mismo lado** (todos más caros o todos más baratos, a más de 5 %) y son **más** que los reportes recientes que coinciden con el oficial | Un reporte más caro y otro más barato no corroboran lo mismo; si la mayoría ve el precio oficial, gana el oficial |
+| ¿Qué es la «última actualización» del oficial? | Cuando el comercio **cambia el precio**. Reconfirmar («Todos mis precios siguen igual») no reinicia la cuenta | Reconfirmar no puede borrar una discrepancia que la comunidad sigue viendo |
+| ¿Qué pantallas cambian en B4? | Solo la comparación de un producto. Los precios de una tienda, la canasta de hoy y el conteo de precios por tienda van en una issue aparte | Mantener el PR pequeño |
+
 ## D2. Cómo se prueba que alguien es dueño de un comercio (ADR-025)
 
 | Pregunta | Decisión | Razón |
@@ -34,12 +42,29 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Cuántas tiendas por cuenta? | **Una** en el Corte 3. El perfil de comercio se guarda como algo propio de la cuenta, para que varias tiendas sean después un cambio aditivo | La mayoría de comercios objetivo tiene un solo local; el módulo queda pequeño (EC-05) |
 | Si se revoca el perfil (suplantación confirmada) o se elimina la cuenta (ADR-032), ¿qué pasa con lo publicado? | **Se retira todo al instante:** precios oficiales y promociones dejan de mostrarse (`OfficialPriceWithdrawn`, `PromotionWithdrawn`); la comparación vuelve a los reportes y datos iniciales. La tienda sigue en el mapa. Se anota quién revocó, cuándo y por qué. La cuenta vuelve a `reportante` y el moderador puede suspenderla con las reglas existentes | Un perfil revocado ya no es confiable; un precio falso no puede seguir engañando |
 
+**Precisiones al construir B8 (#208, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Un comercio revocado puede registrar la misma tienda? | **No esa tienda; otras sí** (estando en ellas). Si fue un error, el moderador revisa el caso | Si pudiera volver a registrarla al instante, revocar no serviría |
+| ¿Qué ve el comercio revocado? | **«Revocado» con el motivo** en `GET /commerce/me`, como el rechazo de B2; queda en el historial | Que entienda qué pasó |
+| ¿Límites de una denuncia? | No a la tienda propia, solo a tiendas con dueño y una abierta por cuenta y tienda. Se guarda la clave seudónima de quien denuncia (EC-08) | Sin spam ni denuncias a uno mismo |
+| ¿Cómo se abre una disputa? | Sola: cuando alguien que **está en la tienda** (presencia, D2) intenta registrar una tienda que ya tiene dueño. Sigue respondiendo 409 | El moderador decide con las dos partes |
+| ¿Y si se borra la cuenta (ADR-032)? | `identity` publica `AccountPurged`; `commerce` borra la solicitud, el historial y los casos de esa cuenta, y retira sus precios y promociones como al revocar | La cuenta se borra por completo (hallazgo de B7) |
+
 ## D4. Periodo de reconfirmación del precio oficial (ADR-005, ADR-016)
 
 | Pregunta | Decisión | Razón |
 |---|---|---|
 | ¿Cuánto vale un precio oficial sin reconfirmar? | **La misma vigencia de los reportes** (ADR-005: 7 días frescos, 14 el resto; «por confirmar» y «desactualizado» como hoy). Valores provisionales y configurables en un solo lugar | Una sola regla para oficiales y reportados (neutralidad); un fresco de hace un mes no puede verse vigente |
 | ¿Cómo reconfirma un comercio con muchos productos? | Botón **«Todos mis precios siguen igual»** (un toque reconfirma todos); editar un precio lo reconfirma; **subir el archivo** reconfirma lo que trae; **recordatorio** un día antes (aviso en `/comercios` y correo con Resend) | Con 1.000 productos es un toque por semana. Se descartó que el comercio elija el periodo: podría dejar precios viejos como vigentes durante meses |
+
+**Precisiones al construir B9 (#209, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Cada cuánto llega correo? | **Máximo uno al día**, desde las 7:00 a. m. de Colombia, y **solo si hay algo nuevo**: un precio que vence mañana o una discrepancia que todavía no se le avisó. Lo demás sigue visible en `/comercios` | Un comercio con una discrepancia sin corregir no recibe el mismo correo cada día |
+| ¿Quién conoce el correo? | Solo `identity`: `commerce` pide «avisar a esta cuenta» y nunca ve la dirección | Datos personales en un solo lugar (EC-08, Ley 1581) |
 
 ## D5. Evidencias y correcciones de la tienda (ADR-022, `establishments`)
 
@@ -50,6 +75,14 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Qué pasa por el moderador? | **La ubicación**, siempre: va a la lista de propuestas de tiendas que ya existe | Mover el punto cambia la distancia, que entra al orden neutral y a «tiendas cercanas» |
 | ¿Cómo se aplica sin romper el monolito? | `commerce` pide los cambios a `establishments` por su interfaz pública (`index.ts`); no escribe en sus tablas | Regla de dependencias (ADR-001) |
 
+**Precisiones al construir B7 (#207, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Cómo se escribe el horario? | **Por día, sin texto libre:** cada día de la semana está cerrado o tiene una hora de apertura y una de cierre (HH:MM) | Se valida solo, no hay que moderar texto y la PWA puede decir «abierto ahora» |
+| ¿A dónde van las correcciones que revisa el moderador? | A la **cola de propuestas de tiendas que ya existe** (#27), con un tipo «corrección» que muestra el valor actual y el propuesto | Una sola cola para el moderador |
+| ¿Se muestran el horario y el teléfono? | **Sí**, en la ficha pública de la tienda, cuando el comercio los puso. Son datos del negocio, no de una persona (EC-08) | Si no, el cambio no se vería en ningún lado |
+
 ## D6. Promociones (ADR-009, ADR-026)
 
 | Pregunta | Decisión | Razón |
@@ -57,6 +90,14 @@ Caso de referencia: oficial $4.000; reportes confiables $4.700, $4.800 y $5.900 
 | ¿Promoción sin precio oficial vigente? | **No.** Los tres tipos (descuento porcentual, precio especial, pague X lleve Y) exigen un oficial **vigente** del producto. Si el oficial pasa a «por confirmar», la promoción **se pausa** sola; reconfirmar (D4) la reactiva | El «antes» siempre es un precio real y reciente: evita descuentos inflados (EC-06) |
 | ¿Qué condiciones puede tener? | **Fijas, sin texto libre:** máximo por cliente (número), hasta agotar existencias (sí/no), medio de pago (cualquiera, efectivo o tarjeta) | Sin publicidad, teléfonos ni datos personales; no hay que moderar; se muestran y prueban igual |
 | ¿Cambian el orden? | **Nunca** (ADR-009): van en `promotions`, aparte de `results` | Neutralidad |
+
+**Precisiones al construir B6 (#206, 22-nov-2026):**
+
+| Pregunta | Decisión | Razón |
+|---|---|---|
+| ¿Promoción que empieza en el futuro? | Se puede publicar con fecha de inicio futura: queda **«programada»** y la comparación no la muestra hasta que empiece | El comercio prepara la promoción del fin de semana con tiempo |
+| ¿Duración máxima? | **30 días** (valor provisional, en un solo lugar). Para más tiempo se publica otra | Una promoción de meses es un precio normal disfrazado de descuento (EC-06) |
+| ¿Cómo se pausa y se reactiva? | El estado se **calcula al leer** con la vigencia del oficial: no se guarda. Reconfirmar el oficial la reactiva sola | Un solo lugar para la regla; nada que sincronizar |
 
 ## D7. Carga de precios por archivo (ADR-027)
 

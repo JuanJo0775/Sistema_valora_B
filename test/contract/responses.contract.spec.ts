@@ -42,7 +42,7 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
     );
     reporter = await signIn(server, db, 'contrato@correo.com');
     const today = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -152,6 +152,19 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     await check('GET /featured-products', get('/featured-products'));
     // B#128: con la ubicación, la más barata trae su distancia.
     await check('GET /featured-products', get('/featured-products').query(userLocation));
+    // Paginación por desplazamiento: una página intermedia y los 400 de offset y limit.
+    await check(
+      'GET /featured-products',
+      get('/featured-products').query({ municipality: 'armenia', limit: 1, offset: 1 }),
+    );
+    await check(
+      'GET /featured-products',
+      get('/featured-products').query({ municipality: 'armenia', offset: -1 }),
+    );
+    await check(
+      'GET /featured-products',
+      get('/featured-products').query({ municipality: 'armenia', limit: 51 }),
+    );
     await check('GET /establishments/nearby', get('/establishments/nearby').query(userLocation));
     await check('GET /establishments', get('/establishments').query({ municipality: 'armenia' }));
     await check('GET /establishments', get('/establishments'));
@@ -166,7 +179,8 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
 
     const statuses = checked.map(({ status }) => status);
     expect(statuses).toEqual([
-      200, 200, 200, 200, 400, 200, 404, 200, 400, 404, 200, 200, 400, 200, 200, 200, 400, 200, 404,
+      200, 200, 200, 200, 400, 200, 404, 200, 400, 404, 200, 200, 400, 200, 200, 400, 400, 200, 200,
+      400, 200, 404,
     ]);
     expect(
       checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
@@ -336,6 +350,84 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     ]);
     expect(checked[2]?.body).toMatchObject({ code: 'INVALID_PASSWORD' });
     expect(checked[4]?.body).toMatchObject({ code: 'ACCOUNT_PENDING_DELETION' });
+    expect(
+      checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
+    ).toEqual([]);
+  });
+
+  // ADR-033: olvidé mi contraseña, restablecerla y cambiarla responden como dice el contrato.
+  it('olvidar, restablecer y cambiar la contraseña responden como dice el contrato', async () => {
+    checked.length = 0;
+    const me = await signIn(server, db, 'clave-contrato@correo.com');
+    const google = await signIn(server, db, 'google-contrato@correo.com');
+    await db.execute(
+      sql`update identity.accounts set password_hash = null where email = 'google-contrato@correo.com'`,
+    );
+    const token = 'token-de-clave-0123456789abcdefghijklmnopqrstu';
+    const withSession = (as: SignedIn | null, body: object) => {
+      const call = request(server).post('/v1/me/password');
+      return (as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call).send(
+        body,
+      );
+    };
+    const forgot = (email: string) =>
+      request(server).post('/v1/auth/forgot-password').send({ email });
+    const reset = (body: object) => request(server).post('/v1/auth/reset-password').send(body);
+
+    await check('POST /auth/forgot-password', forgot('clave-contrato@correo.com'));
+    await check('POST /auth/forgot-password', forgot('nadie@correo.com'));
+    await check('POST /auth/forgot-password', forgot('no-es-un-correo'));
+    await check('POST /auth/reset-password', reset({}));
+    await check(
+      'POST /auth/reset-password',
+      reset({ token: 'no-existe', password: 'una-clave-nueva-larga' }),
+    );
+    // El enlace real llegó por correo: aquí se guarda uno propio para probar el 204.
+    await db.execute(sql`delete from identity.password_resets`);
+    await db.execute(
+      sql`insert into identity.password_resets (id, account_id, token_hash, created_at, expires_at)
+          values (${crypto.randomUUID()}, ${me.accountId}, ${createHash('sha256').update(token).digest('hex')}, now(), now() + interval '1 hour')`,
+    );
+    await check('POST /auth/reset-password', reset({ token, password: 'una-clave-nueva-larga' }));
+    const again = await signIn(server, db, 'otra-clave-contrato@correo.com');
+    await check('POST /me/password', withSession(null, { newPassword: 'una-clave-nueva-larga' }));
+    await check('POST /me/password', withSession(again, { newPassword: 'corta' }));
+    await check(
+      'POST /me/password',
+      withSession(again, {
+        currentPassword: 'otra-clave-larga',
+        newPassword: 'una-clave-nueva-larga',
+      }),
+    );
+    await check(
+      'POST /me/password',
+      withSession(again, {
+        currentPassword: 'una-clave-larga',
+        newPassword: 'una-clave-nueva-larga',
+      }),
+    );
+    await check(
+      'GET /auth/session',
+      request(server).get('/v1/auth/session').set('Cookie', google.cookie),
+    );
+    await db.execute(
+      sql`update identity.sessions set created_at = now() - interval '11 minutes' where account_id = ${google.accountId}`,
+    );
+    await check('POST /me/password', withSession(google, { newPassword: 'una-clave-nueva-larga' }));
+    await db.execute(
+      sql`update identity.sessions set created_at = now() where account_id = ${google.accountId}`,
+    );
+    await check('POST /me/password', withSession(google, { newPassword: 'una-clave-nueva-larga' }));
+    for (let i = 0; i < 3; i += 1)
+      await check('POST /auth/forgot-password', forgot(`rate${String(i)}@correo.com`));
+    await check('POST /auth/forgot-password', forgot('rate-final@correo.com'));
+
+    expect(checked.map(({ status }) => status)).toEqual([
+      202, 202, 400, 400, 422, 204, 401, 400, 403, 204, 200, 403, 204, 202, 202, 202, 429,
+    ]);
+    expect(checked[4]?.body).toMatchObject({ code: 'INVALID_TOKEN' });
+    expect(checked[10]?.body).toMatchObject({ hasPassword: false });
+    expect(checked[11]?.body).toMatchObject({ code: 'REAUTH_REQUIRED' });
     expect(
       checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
     ).toEqual([]);

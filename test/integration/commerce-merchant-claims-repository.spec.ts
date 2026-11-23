@@ -54,7 +54,9 @@ describe('solicitudes de comercio en el esquema commerce (RF-015, #201)', () => 
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate commerce.merchant_claims, shared.outbox`);
+    await db.execute(
+      sql`truncate commerce.merchant_claims, commerce.merchant_claim_rejections, shared.outbox`,
+    );
   });
 
   it('guarda la solicitud con su evento y la encuentra por la cuenta y por la tienda', async () => {
@@ -92,5 +94,52 @@ describe('solicitudes de comercio en el esquema commerce (RF-015, #201)', () => 
         verified(),
       ]),
     ).rejects.toThrow(AccountHasEstablishmentError);
+  });
+
+  describe('solicitud pre-aprobada de una tienda propuesta (D2, #202)', () => {
+    const preApproved: MerchantClaim = { ...claim, status: 'pre_aprobado', verifiedAt: null };
+    const existingStore = 'c0555555-5555-4555-8555-555555555555';
+
+    it('se encuentra como pendiente de su tienda propuesta', async () => {
+      await claims.save(preApproved, []);
+
+      await expect(claims.pendingFor(claim.establishmentId)).resolves.toEqual(preApproved);
+      await expect(claims.pendingFor(existingStore)).resolves.toBeNull();
+    });
+
+    it('al verificarla queda en la tienda indicada, con su evento en la misma transacción', async () => {
+      await claims.save(preApproved, []);
+      const verifiedAt = new Date('2026-11-22T09:00:00Z');
+
+      await claims.verify(claim.accountId, existingStore, verifiedAt, [verified()]);
+
+      await expect(claims.findByAccount(claim.accountId)).resolves.toEqual({
+        ...claim,
+        establishmentId: existingStore,
+        verifiedAt,
+      });
+      await expect(claims.pendingFor(claim.establishmentId)).resolves.toBeNull();
+      await expect(outboxTypes(db)).resolves.toEqual(['MerchantVerified']);
+    });
+
+    it('al rechazarla sale de las activas, queda el motivo y la cuenta puede registrar otra', async () => {
+      await claims.save(preApproved, []);
+      const rejection = {
+        accountId: claim.accountId,
+        establishmentId: claim.establishmentId,
+        reason: 'No encontramos la tienda en esa dirección',
+        rejectedAt: new Date('2026-11-22T09:00:00Z'),
+      };
+
+      await claims.reject(rejection);
+
+      await expect(claims.findByAccount(claim.accountId)).resolves.toBeNull();
+      await expect(claims.lastRejection(claim.accountId)).resolves.toEqual({
+        ...rejection,
+        outcome: 'rechazado',
+      });
+      await claims.save({ ...claim, establishmentId: existingStore }, [verified()]);
+      await expect(claims.establishmentOf(claim.accountId)).resolves.toBe(existingStore);
+    });
   });
 });

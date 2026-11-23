@@ -81,6 +81,8 @@ const storeRow = (line: number, values: Partial<Record<string, string>> = {}): S
     direccion: '',
     lat: '4.5339',
     lng: '-75.6811',
+    // #213: el municipio del Quindío de la tienda.
+    municipio: 'armenia',
     tipo_osm: 'general',
     revisar: 'no',
     fuente: '© colaboradores de OpenStreetMap, ODbL',
@@ -126,9 +128,27 @@ describe('semilla de datos iniciales', () => {
         type: 'barrio',
         lat: 4.5339,
         lng: -75.6811,
+        municipality: 'armenia',
       },
     ]);
     expect(result).toMatchObject({ ok: true, stores: { saved: 1, skipped: 1 } });
+  });
+
+  // #213: el mapa de todo el Quindío; cada tienda en su municipio.
+  it('guarda cada tienda en el municipio que dice el archivo', async () => {
+    const stores = new InMemoryStores();
+    const seed = new RunSeed(
+      new InMemorySource(
+        [],
+        [storeRow(2, { municipio: 'cordoba', lat: '4.3933', lng: '-75.6874' })],
+      ),
+      new InMemoryCatalog(),
+      stores,
+    );
+
+    await seed.execute();
+
+    expect(stores.saved).toEqual([expect.objectContaining({ municipality: 'cordoba' })]);
   });
 
   it('guarda el producto verificado con todas sus presentaciones y salta el que no tiene responsable', async () => {
@@ -276,6 +296,13 @@ describe('semilla de datos iniciales', () => {
       [],
       [storeRow(2, { lat: '95' })],
       'tiendas.csv, fila 2: las coordenadas no son válidas',
+    ],
+    // #213: uno de los 12 municipios del Quindío (grill de la #106).
+    [
+      'tienda con un municipio que no es del Quindío',
+      [],
+      [storeRow(2, { municipio: 'pereira' })],
+      'tiendas.csv, fila 2: el municipio «pereira» no es del Quindío (armenia, buenavista, calarca, circasia, cordoba, filandia, genova, la-tebaida, montenegro, pijao, quimbaya o salento)',
     ],
     [
       'tienda sin nombre',

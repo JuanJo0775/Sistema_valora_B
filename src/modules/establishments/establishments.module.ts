@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DATABASE, type Database } from '../../shared/database/database.module';
+import { OutboxPublisher } from '../../shared/events';
 import { IdentityModule } from '../identity';
 import {
   ESTABLISHMENT_REPOSITORY,
@@ -17,6 +18,12 @@ import {
 } from './application/import-establishments';
 import { DecideStoreProposal } from './application/decide-store-proposal';
 import { ListNearbyEstablishments } from './application/list-nearby-establishments';
+import { PendingStoreProposalName } from './application/pending-store-proposal-name';
+import { StoreContactOf } from './application/store-contact-of';
+import { DecideStoreCorrection } from './application/decide-store-correction';
+import { StoreCorrectionsQueue } from './application/store-corrections-queue';
+import { UpdateStoreDetails } from './application/update-store-details';
+import { DrizzleStoreCorrectionRepository } from './infrastructure/drizzle-store-correction-repository';
 import { ProposeStore } from './application/propose-store';
 import { SearchEstablishments } from './application/search-establishments';
 import { StoreProposalsQueue } from './application/store-proposals-queue';
@@ -30,28 +37,80 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
   // B#131: GET /establishments y /nearby viven en comparison, que suma el conteo de precios.
   controllers: [StoreProposalsController],
   providers: [
+    // D5 (#207): datos de la tienda y correcciones.
+    {
+      provide: UpdateStoreDetails,
+      inject: [DATABASE],
+      useFactory: (db: Database): UpdateStoreDetails =>
+        new UpdateStoreDetails({
+          stores: new DrizzleEstablishmentRepository(db),
+          corrections: new DrizzleStoreCorrectionRepository(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: StoreCorrectionsQueue,
+      inject: [DATABASE],
+      useFactory: (db: Database): StoreCorrectionsQueue =>
+        new StoreCorrectionsQueue({
+          corrections: new DrizzleStoreCorrectionRepository(db),
+          stores: new DrizzleEstablishmentRepository(db),
+        }),
+    },
+    {
+      provide: DecideStoreCorrection,
+      inject: [DATABASE],
+      useFactory: (db: Database): DecideStoreCorrection =>
+        new DecideStoreCorrection({
+          corrections: new DrizzleStoreCorrectionRepository(db),
+          clock: { now: () => new Date() },
+        }),
+    },
+    {
+      provide: StoreContactOf,
+      inject: [DATABASE],
+      useFactory: (db: Database): StoreContactOf =>
+        new StoreContactOf(new DrizzleEstablishmentRepository(db)),
+    },
+    {
+      provide: PendingStoreProposalName,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): PendingStoreProposalName =>
+        new PendingStoreProposalName(new DrizzleStoreProposalRepository(db, outbox)),
+    },
     // Grill de la #27: propuestas de tiendas.
     {
       provide: ProposeStore,
-      inject: [DATABASE],
-      useFactory: (db: Database): ProposeStore =>
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ProposeStore =>
         new ProposeStore({
-          proposals: new DrizzleStoreProposalRepository(db),
+          proposals: new DrizzleStoreProposalRepository(db, outbox),
           clock: { now: () => new Date() },
         }),
     },
     {
       provide: StoreProposalsQueue,
-      inject: [DATABASE, ESTABLISHMENT_REPOSITORY],
-      useFactory: (db: Database, stores: EstablishmentRepository): StoreProposalsQueue =>
-        new StoreProposalsQueue({ proposals: new DrizzleStoreProposalRepository(db), stores }),
+      inject: [DATABASE, OutboxPublisher, ESTABLISHMENT_REPOSITORY],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        stores: EstablishmentRepository,
+      ): StoreProposalsQueue =>
+        new StoreProposalsQueue({
+          proposals: new DrizzleStoreProposalRepository(db, outbox),
+          stores,
+        }),
     },
     {
       provide: DecideStoreProposal,
-      inject: [DATABASE, ESTABLISHMENT_REPOSITORY],
-      useFactory: (db: Database, stores: EstablishmentRepository): DecideStoreProposal =>
+      inject: [DATABASE, OutboxPublisher, ESTABLISHMENT_REPOSITORY],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        stores: EstablishmentRepository,
+      ): DecideStoreProposal =>
         new DecideStoreProposal({
-          proposals: new DrizzleStoreProposalRepository(db),
+          proposals: new DrizzleStoreProposalRepository(db, outbox),
           stores,
           clock: { now: () => new Date() },
         }),
@@ -117,6 +176,10 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     },
   ],
   exports: [
+    StoreContactOf,
+    UpdateStoreDetails,
+    ProposeStore,
+    PendingStoreProposalName,
     ListNearbyEstablishments,
     SearchEstablishments,
     EstablishmentNames,

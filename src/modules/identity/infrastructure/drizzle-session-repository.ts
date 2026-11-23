@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Transaction } from '../../../shared/database/database.module';
 import type { Role } from '../application/account-repository';
@@ -30,6 +30,7 @@ export class DrizzleSessionRepository implements SessionRepository {
         role: accounts.role,
         accountSuspendedUntil: accounts.suspendedUntil,
         accountEmailVerifiedAt: accounts.emailVerifiedAt,
+        accountHasPassword: sql<boolean>`${accounts.passwordHash} is not null`,
       })
       .from(sessions)
       .innerJoin(accounts, eq(sessions.accountId, accounts.id))

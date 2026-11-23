@@ -4,6 +4,8 @@ export type { Role } from './application/account-repository';
 export { ReporterIdentity, type ReporterPseudonym } from './application/reporter-identity';
 // Grill de la #73, pregunta 4: el comando identity:set-role.
 export { ChangeRole } from './application/change-role';
+// B9 (#209): avisar a una cuenta por correo sin conocer la dirección.
+export { NotifyAccount } from './application/notify-account';
 export {
   AllowSuspended,
   type AuthenticatedSession,

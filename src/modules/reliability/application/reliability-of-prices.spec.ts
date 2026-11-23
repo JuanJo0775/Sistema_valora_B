@@ -99,3 +99,46 @@ describe('confiabilidad de los precios que muestra la comparación', () => {
     expect(approved?.confirmations).toBe(1);
   });
 });
+
+// D1 del grill comercial (#204): los reportes que comparison compara con el precio oficial.
+describe('reportes recientes de una tienda para el precio oficial', () => {
+  it('uno por persona (el más reciente), con su nivel y sin la clave de quien reportó', async () => {
+    const reliability = setup(
+      [
+        observation('r-ana-viejo', 'ana', 4600, { observedAt: hoursAgo(30) }),
+        observation('r-ana', 'ana', 4800),
+        observation('r-beto', 'beto', 4800),
+      ],
+      { ana: 1, beto: 1 },
+    );
+
+    const reports = await reliability.reportsAt('arroz-500g', 'tienda-centro', 14);
+
+    expect(reports).toEqual([
+      { reportId: 'r-ana', priceCop: 4800, observedAt: hoursAgo(1), level: 'alta' },
+      { reportId: 'r-beto', priceCop: 4800, observedAt: hoursAgo(1), level: 'alta' },
+    ]);
+  });
+
+  it('sin los descartados, los que están en revisión ni las ofertas, que no son el precio normal', async () => {
+    const suspicious = {
+      verdict: {
+        status: 'sospechoso',
+        reason: 'rango',
+        median: 4000,
+        deviation: 0.5,
+        references: 3,
+      },
+    } as Partial<Observation>;
+    const reliability = setup([
+      observation('r-ana', 'ana', 4800, { moderation: 'descartado' }),
+      observation('r-beto', 'beto', 6000, suspicious),
+      observation('r-carla', 'carla', 3500, { priceType: 'oferta' }),
+      observation('r-dario', 'dario', 4800),
+    ]);
+
+    const reports = await reliability.reportsAt('arroz-500g', 'tienda-centro', 14);
+
+    expect(reports.map((r) => r.reportId)).toEqual(['r-dario']);
+  });
+});

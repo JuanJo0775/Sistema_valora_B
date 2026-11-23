@@ -52,7 +52,7 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts`,
     );
   }
 
@@ -154,8 +154,9 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
       expect(await openSessions()).toBe(0);
     });
 
-    // ADR-032: la PWA ofrece restaurarla; la fecha no viaja en la URL.
-    it('una cuenta con eliminación pendiente vuelve a /entrar con eliminacion-pendiente', async () => {
+    // ADR-032: la PWA ofrece restaurarla; la fecha no viaja en la URL. Una cuenta con contraseña que solo
+    // coincide por el correo (sin vínculo con Google) se restaura con POST /auth/restore-account.
+    it('una cuenta con contraseña con eliminación pendiente, encontrada por el correo, vuelve a /entrar con eliminacion-pendiente', async () => {
       await signIn(server, db, 'ana@correo.com');
       await db.execute(
         sql`update identity.accounts set deletion_scheduled_for = now() + interval '5 days' where email = 'ana@correo.com'`,
@@ -199,6 +200,32 @@ describe('entrar con Google por HTTP (ADR-029, fase 2)', () => {
         .get('/v1/auth/session')
         .set('Cookie', cookie ?? '')
         .expect(200);
+    });
+
+    // ADR-033: una cuenta de Google no tiene contraseña para POST /auth/restore-account; volver a entrar con
+    // Google durante la gracia cancela la eliminación y abre la sesión.
+    it('una cuenta de Google con eliminación pendiente queda restaurada y con sesión', async () => {
+      await signIn(server, db, 'ana@correo.com');
+      await db.execute(
+        sql`update identity.accounts set password_hash = null, google_subject = ${google.identity.subject},
+            deletion_scheduled_for = now() + interval '5 days' where email = 'ana@correo.com'`,
+      );
+      await db.execute(sql`update identity.sessions set revoked_at = now()`);
+
+      const response = await returnFromGoogle();
+
+      expect(response.headers['location']).toBe('/');
+      const cookie = sessionCookieOf(response);
+      expect(cookie).toMatch(/^valora_session=[\w-]{43}$/);
+      const session = await request(server)
+        .get('/v1/auth/session')
+        .set('Cookie', cookie ?? '')
+        .expect(200);
+      expect(session.body).toMatchObject({ hasPassword: false });
+      const row = await db.execute<{ deletion_scheduled_for: Date | null }>(
+        sql`select deletion_scheduled_for from identity.accounts where email = 'ana@correo.com'`,
+      );
+      expect(row.rows[0]?.deletion_scheduled_for).toBeNull();
     });
 
     // RF-001 y grill de la #178, pregunta 2: pulsar el botón de Google no es aceptar la política.

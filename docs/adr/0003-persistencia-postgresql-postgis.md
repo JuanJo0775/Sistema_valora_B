@@ -14,7 +14,7 @@ Fuente: Notion, base ADRs, página 40239c4a833b818ab129d6c98834db24; estado copi
 
 ## Discrepancias señaladas (no corregidas)
 
-- Las consecuencias citan ADR-019 «(10 de noviembre de 2026)»; el texto de ADR-019 dice «ACEPTADA el 16-nov-2026» y su propiedad Estado es Propuesto. No se corrigió.
+- Las consecuencias citan ADR-019 «(10 de noviembre de 2026)», cuando se propuso; ADR-019 se aceptó el 16-nov-2026.
 
 ## Contexto
 

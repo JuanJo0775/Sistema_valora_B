@@ -4,13 +4,16 @@ import { sql } from 'drizzle-orm';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
+import { ImportCatalog } from '../../src/modules/catalog';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { OutboxRelay } from '../../src/shared/events';
 import { contractErrors } from '../support/contract';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Datos de prueba: solo existen dentro de esta prueba.
 const storeId = 'c0777777-7777-4777-8777-777777777777';
+const riceId = 'c0777777-7777-4777-8777-aaaaaaaaaaaa';
 const STORE = { lat: 4.5339, lng: -75.6811 };
 const claimBody = {
   establishmentId: storeId,
@@ -34,13 +37,23 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, establishments.establishments`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.official_prices, catalog.presentations, catalog.products, catalog.product_aliases`,
     );
     await app.get(ImportEstablishments).save({
       id: storeId,
       name: 'Tienda La Esperanza',
       type: 'barrio',
       ...STORE,
+    });
+    await app.get(ImportCatalog).save({
+      id: 'c0777777-7777-4777-8777-bbbbbbbbbbbb',
+      name: 'Arroz del contrato comercial',
+      brand: 'Marca de prueba',
+      categoryCode: 'grains-groceries',
+      aliases: [],
+      presentations: [
+        { id: riceId, quantity: 500, unit: 'g', packCount: 1, barcode: '7702511777014' },
+      ],
     });
   });
 
@@ -87,6 +100,123 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
       ['POST /commerce/claims', 201, await claim(rosa)],
       ['POST /commerce/claims', 409, await claim(other)],
       ['GET /commerce/me', 200, await me(rosa)],
+    ] as const;
+
+    const eligibility = `/v1/establishments/${storeId}/merchant-reports`;
+    const own = await request(server).get(eligibility).set('Cookie', rosa.cookie).expect(200);
+    const foreign = await request(server).get(eligibility).set('Cookie', other.cookie).expect(200);
+    await request(server).get(eligibility).expect(401);
+    expect(own.body).toEqual({ canReport: false });
+    expect(foreign.body).toEqual({ canReport: true });
+    expect(foreign.headers['cache-control']).toBe('private, no-store');
+    expect(
+      contractErrors(
+        'GET /establishments/:establishmentId/merchant-reports',
+        200,
+        foreign.body as unknown,
+      ),
+    ).toEqual([]);
+
+    expect(responses.map(([, status, response]) => [status, response.status])).toEqual(
+      responses.map(([, status]) => [status, status]),
+    );
+    expect(
+      responses.flatMap(([route, status, response]) =>
+        contractErrors(route, status, response.body as unknown),
+      ),
+    ).toEqual([]);
+  });
+
+  it('la tienda que no está en el mapa: pre-aprobado y, al rechazarse, rechazado (#202)', async () => {
+    const luis = await signIn(server, db, 'contrato-nueva@correo.com');
+    const moderator = await signIn(server, db, 'contrato-moderadora@correo.com', 'moderador');
+    const newStore = {
+      ...claimBody,
+      establishmentId: undefined,
+      newEstablishment: { name: 'Tienda El Paraíso', type: 'barrio', municipality: 'cordoba' },
+    };
+
+    const created = await claim(luis, newStore);
+    const preApproved = await me(luis);
+    const { establishmentId } = created.body as { establishmentId: string };
+    await request(server)
+      .post(`/v1/moderation/store-proposals/${establishmentId}/decision`)
+      .set('Cookie', moderator.cookie)
+      .set('X-CSRF-Token', moderator.csrfToken)
+      .send({ decision: 'rechazar', note: 'No encontramos la tienda' })
+      .expect(204);
+    await app.get(OutboxRelay).runOnce();
+    const rejected = await me(luis);
+
+    const responses = [
+      ['POST /commerce/claims', 201, created],
+      ['GET /commerce/me', 200, preApproved],
+      ['GET /commerce/me', 200, rejected],
+    ] as const;
+    expect(responses.map(([, , response]) => response.status)).toEqual([201, 200, 200]);
+    expect((rejected.body as { status: string }).status).toBe('rechazado');
+    expect(
+      responses.flatMap(([route, status, response]) =>
+        contractErrors(route, status, response.body as unknown),
+      ),
+    ).toEqual([]);
+  });
+
+  it('los precios oficiales responden como dice el contrato (#203)', async () => {
+    const owner = await signIn(server, db, 'contrato-oficiales@correo.com');
+    await db.execute(sql`truncate commerce.merchant_claims, establishments.store_proposals`);
+    await claim(owner).expect(201);
+    await app.get(OutboxRelay).runOnce();
+    const send = (method: 'put' | 'post', path: string, body?: object) => {
+      const call = request(server)
+        [method](`/v1${path}`)
+        .set('Cookie', owner.cookie)
+        .set('X-CSRF-Token', owner.csrfToken);
+      return body === undefined ? call : call.send(body);
+    };
+    // D7 (#205): el archivo, con el encabezado salvo que se pida otra primera fila.
+    const bulk = (rows: string[], header = 'codigo_barras;precio') =>
+      request(server)
+        .post('/v1/commerce/prices/bulk')
+        .set('Content-Type', 'text/csv')
+        .set('Cookie', owner.cookie)
+        .set('X-CSRF-Token', owner.csrfToken)
+        .send([header, ...rows].join('\n'));
+
+    const responses = [
+      [
+        'PUT /commerce/prices',
+        200,
+        await send('put', '/commerce/prices', { presentationId: riceId, priceCop: 2600 }),
+      ],
+      [
+        'PUT /commerce/prices',
+        422,
+        await send('put', '/commerce/prices', { presentationId: riceId, priceCop: 50 }),
+      ],
+      [
+        'PUT /commerce/prices',
+        400,
+        await send('put', '/commerce/prices', { presentationId: riceId }),
+      ],
+      [
+        'GET /commerce/prices',
+        200,
+        await request(server).get('/v1/commerce/prices').set('Cookie', owner.cookie),
+      ],
+      ['POST /commerce/prices/reconfirm', 200, await send('post', '/commerce/prices/reconfirm')],
+      ['POST /commerce/prices/bulk', 200, await bulk(['7702511777014;2600', '1;2600'])],
+      ['POST /commerce/prices/bulk', 400, await bulk([], '7702511777014;2600')],
+      [
+        'POST /commerce/prices/bulk',
+        413,
+        await bulk(Array.from({ length: 1001 }, (_, i) => `${String(i)};2600`)),
+      ],
+      [
+        'POST /commerce/prices/reconfirm',
+        401,
+        await request(server).post('/v1/commerce/prices/reconfirm'),
+      ],
     ] as const;
 
     expect(responses.map(([, status, response]) => [status, response.status])).toEqual(

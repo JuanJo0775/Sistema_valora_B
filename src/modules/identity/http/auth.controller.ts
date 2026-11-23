@@ -23,10 +23,18 @@ import { AccountPendingDeletionError, InvalidCredentialsError, Login } from '../
 import { Logout } from '../application/logout';
 import { OwnDisplayName } from '../application/own-display-name';
 import { RegisterAccount } from '../application/register-account';
+import { RequestPasswordReset } from '../application/request-password-reset';
+import { ResetPassword } from '../application/reset-password';
 import { RestoreAccount } from '../application/restore-account';
 import { ResendVerification } from '../application/resend-verification';
 import { VerifyEmail } from '../application/verify-email';
-import { LoginDto, RegisterDto, VerifyEmailDto } from './auth.dto';
+import {
+  ForgotPasswordDto,
+  LoginDto,
+  RegisterDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+} from './auth.dto';
 import { clearedSessionCookie, sessionCookie } from './session-cookie';
 import {
   AllowSuspended,
@@ -45,6 +53,9 @@ export interface SessionResponse {
   // ADR-029: si el servidor exige la verificación (REQUIRE_VERIFIED_EMAIL). Con false no se pide al
   // usuario que verifique: la app no muestra el aviso.
   emailVerificationRequired: boolean;
+  // ADR-033: si la cuenta tiene contraseña; las creadas con Google nacen sin ella y la crean con
+  // POST /me/password.
+  hasPassword: boolean;
   csrfToken: string;
   suspendedUntil?: string;
 }
@@ -77,6 +88,8 @@ export class AuthController {
     private readonly ownDisplayName: OwnDisplayName,
     private readonly verifyEmail: VerifyEmail,
     private readonly resendVerification: ResendVerification,
+    private readonly requestPasswordReset: RequestPasswordReset,
+    private readonly resetPassword: ResetPassword,
     private readonly config: ConfigService<Env, true>,
   ) {}
 
@@ -166,6 +179,7 @@ export class AuthController {
       ...(displayName ? { displayName } : {}),
       emailVerified: session.emailVerified,
       emailVerificationRequired: this.config.get('REQUIRE_VERIFIED_EMAIL', { infer: true }),
+      hasPassword: session.hasPassword,
       csrfToken: csrfTokenFor(session.token, secret),
       // Grill de la #71, pregunta 5: el frontend muestra que la sesión está limitada.
       ...(session.suspendedUntil ? { suspendedUntil: session.suspendedUntil.toISOString() } : {}),
@@ -194,6 +208,42 @@ export class AuthController {
   async resend(@CurrentSession() session: AuthenticatedSession): Promise<void> {
     try {
       await this.resendVerification.execute({ accountId: session.accountId });
+    } catch (error) {
+      if (error instanceof TooManyAttemptsError) throw tooManyRequests(error);
+      throw error;
+    }
+  }
+
+  // ADR-033: «olvidé mi contraseña». Pública. Responde SIEMPRE 202 sin cuerpo, exista o no la cuenta (sin
+  // enumeración); solo el límite de frecuencia responde distinto (429), y cuenta existan o no las cuentas.
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async forgotPassword(
+    @Body() body: ForgotPasswordDto,
+    @Req() request: ClientRequest,
+  ): Promise<void> {
+    try {
+      await this.requestPasswordReset.execute({
+        email: body.email,
+        ip: request.ip ?? 'desconocida',
+      });
+    } catch (error) {
+      if (error instanceof TooManyAttemptsError) throw tooManyRequests(error);
+      throw error;
+    }
+  }
+
+  // ADR-033: crea la contraseña nueva con el token del correo. Pública (el token es la credencial). Un token
+  // inexistente, vencido o usado responde igual (422 INVALID_TOKEN). No abre sesión: revoca todas.
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async reset(@Body() body: ResetPasswordDto, @Req() request: ClientRequest): Promise<void> {
+    try {
+      await this.resetPassword.execute({
+        token: body.token,
+        password: body.password,
+        ip: request.ip ?? 'desconocida',
+      });
     } catch (error) {
       if (error instanceof TooManyAttemptsError) throw tooManyRequests(error);
       throw error;

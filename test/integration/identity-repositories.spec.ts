@@ -1,3 +1,4 @@
+import { OutboxPublisher } from '../../src/shared/events';
 import { sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -52,7 +53,7 @@ describe('repositorios de identity', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, identity.role_changes`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, identity.role_changes`,
     );
   });
 
@@ -86,7 +87,9 @@ describe('repositorios de identity', () => {
       id: ana.id,
       passwordHash: null,
     });
-    await expect(new DrizzleAccountDeletionRepository(db).credentialsOf(ana.id)).resolves.toEqual({
+    await expect(
+      new DrizzleAccountDeletionRepository(db, new OutboxPublisher()).credentialsOf(ana.id),
+    ).resolves.toEqual({
       email: 'ana@correo.com',
       passwordHash: null,
     });
@@ -114,6 +117,7 @@ describe('repositorios de identity', () => {
       role: 'reportante',
       accountSuspendedUntil: null,
       accountEmailVerifiedAt: null,
+      accountHasPassword: true,
     });
     await sessions.touch(session.id, later);
     await sessions.revoke(session.id, later);

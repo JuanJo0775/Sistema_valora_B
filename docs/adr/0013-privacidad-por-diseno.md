@@ -1,7 +1,7 @@
 # ADR-013: Privacidad por diseño: identidad del reportante separada y no pública
 
-- **Estado:** Propuesto
-- **Fecha:** PENDIENTE (equipo): la propiedad «Fecha de decisión» está vacía en Notion
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-15
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-03, EC-08
 - **Requisitos relacionados:** en Notion hay 4 relaciones con RF y 2 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
@@ -12,9 +12,9 @@ Fuente: Notion, base ADRs, página 40239c4a833b81d4b641fc6c1c2e5c7c; estado copi
 
 > La página de Notion no tiene cuerpo (solo propiedades). El texto de las secciones siguientes está copiado de las propiedades de texto de la misma fila (Contexto, Alternativas consideradas, Decisión adoptada, Consecuencias / verificación). Los saltos `<br />` de Notion se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- `docs/openapi.yaml` y `docs/adr/0020-imagenes-productos.md` citan ADR-013, y `docs/DECISIONS.md` no tiene entrada de este ADR; el repo lo aplica sin registro. Notion: Propuesto.
+Aceptado el 23-nov-2026 por decisión del dueño del proyecto. La fecha (15 de noviembre de 2026) es la de la evidencia: se aplicó con la clave seudónima del reportante (issue #62) y la inspección de privacidad (#36, 15-nov), con las pruebas guardianas `privacy-public-responses` y `privacy-schema`. El repositorio no guardaba una fecha de decisión propia; esta es la primera en que la decisión ya estaba aplicada.
 
 ## Contexto
 
@@ -30,7 +30,7 @@ C) Reportes totalmente anónimos y sin cuenta: máxima privacidad, pero sin form
 
 ## Decisión
 
-PROPUESTA: B) Datos mínimos (correo y alias); identidad en un almacén separado; la API pública nunca devuelve datos de quien reporta; la ubicación del dispositivo no se guarda asociada al reporte; los registros técnicos no contienen datos personales; se definen retención, autorización con versión de la política y procedimiento de consulta y reclamo.
+ACEPTADA el 2026-11-15: B) Datos mínimos (correo y alias); identidad en un almacén separado; la API pública nunca devuelve datos de quien reporta; la ubicación del dispositivo no se guarda asociada al reporte; los registros técnicos no contienen datos personales; se definen retención, autorización con versión de la política y procedimiento de consulta y reclamo.
 
 ## Consecuencias
 

@@ -1,23 +1,20 @@
 # ADR-012: Despliegue reproducible y mecanismo de operación
 
-- **Estado:** En discusión
-- **Fecha:** 2026-11-11
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-16
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-04
-- **Requisitos relacionados:** en Notion hay 0 relaciones con RF y 3 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
+- **Requisitos relacionados:** RNF-004, RNF-009, RNF-011
 - **Corte / Área / Preguntas de diseño (Notion):** Corte 2 / Despliegue y operación / sin dato en la fuente
 - **Registro oficial:** [Notion, base ADRs](https://app.notion.com/p/40239c4a833b81e7ac7cc212b784c492)
 
 Fuente: Notion, base ADRs, página 40239c4a833b81e7ac7cc212b784c492; estado copiado de Notion.
 
-Nota del repo: DECISIONS.md registra este ADR como aceptado el 16-nov-2026 con Render, Neon y Vercel; la propiedad de Notion sigue siendo la fuente del estado.
-
 > La página de Notion no tiene cuerpo (solo propiedades). El texto de las secciones siguientes está copiado de las propiedades de texto de la misma fila (Contexto, Alternativas consideradas, Decisión adoptada, Consecuencias / verificación). Los saltos `<br />` de Notion se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- **Discrepancia de estado.** La propiedad Estado de Notion es «En discusión», pero el texto de la decisión empieza por «DECIDIDO (15-nov-2026): SÍ se usa Docker» y deja «EN DISCUSIÓN» solo el proveedor y la orquestación. Además, la fecha de la propiedad es 2026-11-11, anterior a la decisión del 15-nov. No se corrigió; el estado copiado es el de la propiedad.
-- Otras fuentes: `docs/DECISIONS.md` mantiene «ADR-012 en discusión» y atribuye a este ADR el cambio a Docker del 15-nov; `docs/diagramas/12-despliegue.mmd` aún dice «Sin Docker en el MVP»; la Auditoría de Notion (11-nov) dice que Docker no forma parte del MVP aprobado.
+Resuelto el 23-nov-2026: aceptado el 16-nov-2026 (Render, Neon y Vercel; Docker). Notion y `docs/DECISIONS.md` coinciden. Del texto original, «DECIDIDO (15-nov-2026): SÍ se usa Docker» quedó confirmado el 16-nov; el diagrama `docs/diagramas/12-despliegue.mmd` ya no dice «Sin Docker». El `vercel.json` que reenvía `/v1/*` a Render vive en el repositorio del frontend (ver `docs/despliegue.md`).
 
 ## Contexto
 
@@ -41,7 +38,7 @@ DECIDIDO (15-nov-2026): SÍ se usa Docker. El backend se empaqueta en una imagen
 
 Se mantiene: los integrantes no necesitan Docker para desarrollar; pueden seguir con PostgreSQL local. Docker Compose para desarrollo local es opcional y entra solo si alguien lo necesita.
 
-EN DISCUSIÓN: proveedor y orquestación. Recomendación: alternativa C (plataforma con Docker y base PostgreSQL + PostGIS administrada), si el docente acepta la orquestación de la plataforma para RDA3; si exige Terraform, la misma infraestructura se describe con Terraform; si exige Kubernetes, alternativa E.
+Proveedor decidido: Render, Neon y Vercel. Orquestación pendiente de confirmar con el docente (RDA3). Recomendación: alternativa C (plataforma con Docker y base PostgreSQL + PostGIS administrada), si el docente acepta la orquestación de la plataforma para RDA3; si exige Terraform, la misma infraestructura se describe con Terraform; si exige Kubernetes, alternativa E.
 
 Pipeline previsto: al mezclar dev en main se construye la imagen, se aplican las migraciones, se despliega y se corre la prueba de humo (pnpm smoke -- --solo-lectura); si falla, la CI queda en rojo.
 

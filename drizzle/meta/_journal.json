@@ -232,6 +232,83 @@
       "when": 1795307628774,
       "tag": "0032_commerce-merchant-claims",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795310729642,
+      "tag": "0033_commerce-pre-approved",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795311436010,
+      "tag": "0034_commerce-claim-rejections",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795313365692,
+      "tag": "0035_commerce-official-prices",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795316559160,
+      "tag": "0036_comparison-official-prices",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795357758425,
+      "tag": "0037_commerce-promotions",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795357829773,
+      "tag": "0038_comparison-promotions",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795359341001,
+      "tag": "0039_establishments-store-details",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795362858830,
+      "tag": "0040_commerce-merchant-cases",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795363240001,
+      "tag": "0041_commerce-claim-outcome",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1795365889662,
+      "tag": "0042_commerce-merchant-notices",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795375922281,
+      "tag": "0043_identity-password-resets",
+      "breakpoints": true
     }
   ]
 }

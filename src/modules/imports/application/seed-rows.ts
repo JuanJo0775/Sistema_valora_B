@@ -1,3 +1,4 @@
+import { isMunicipality, MUNICIPALITY_CODES } from '../../../domain/municipality';
 import { isValidGtin } from '../../../domain/gtin';
 import { baseOf, type Unit, type UnitPricePer } from '../../../domain/unit-price';
 import { acceptsWholesaleReference } from '../../../domain/wholesale-reference';
@@ -37,6 +38,9 @@ function traceErrors(file: string, row: SeedRow, dateColumn: string): string[] {
   return errors;
 }
 
+// «armenia, buenavista, … o salento».
+const MUNICIPALITY_LIST = `${MUNICIPALITY_CODES.slice(0, -1).join(', ')} o ${MUNICIPALITY_CODES.at(-1) ?? ''}`;
+
 export function storeErrors(rows: SeedRow[]): string[] {
   return rows.flatMap((row) => {
     const errors: string[] = [];
@@ -59,6 +63,17 @@ export function storeErrors(rows: SeedRow[]): string[] {
       Math.abs(lat) <= 90 &&
       Math.abs(lng) <= 180;
     if (!validCoordinates) errors.push(at(STORES_FILE, row, 'las coordenadas no son válidas'));
+    // #213: el mapa de todo el Quindío; cada tienda en su municipio (grill de la #106).
+    const municipality = text(row, 'municipio');
+    if (!isMunicipality(municipality)) {
+      errors.push(
+        at(
+          STORES_FILE,
+          row,
+          `el municipio «${municipality}» no es del Quindío (${MUNICIPALITY_LIST})`,
+        ),
+      );
+    }
     return [...errors, ...traceErrors(STORES_FILE, row, 'fecha_consulta')];
   });
 }

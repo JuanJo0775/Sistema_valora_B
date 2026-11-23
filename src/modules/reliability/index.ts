@@ -4,5 +4,6 @@ export {
   type PriceRef,
   type PriceReliability,
   ReliabilityOfPrices,
+  type ReportAtStore,
 } from './application/reliability-of-prices';
 export { PRICE_ASSESSED } from './application/assess-reported-price';

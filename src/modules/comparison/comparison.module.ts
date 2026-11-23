@@ -3,6 +3,7 @@ import { DATABASE, type Database } from '../../shared/database/database.module';
 import { EventBus } from '../../shared/events';
 import {
   CatalogModule,
+  PresentationFreshness,
   PresentationLabels,
   PresentationsForPricing,
   ProductForComparison,
@@ -11,6 +12,7 @@ import {
 } from '../catalog';
 import {
   EstablishmentDetails,
+  StoreContactOf,
   EstablishmentsModule,
   EstablishmentsWithinRadius,
 } from '../establishments';
@@ -31,8 +33,17 @@ import { FeaturedProductsController } from './http/featured-products.controller'
 import { PriceHistoryController } from './http/price-history.controller';
 import { StorePricesController } from './http/store-prices.controller';
 import { DrizzleCurrentPrices } from './infrastructure/drizzle-current-prices';
+import { OfficialDiscrepancies } from './application/official-discrepancies';
+import { DrizzleOfficialPriceCopies } from './infrastructure/drizzle-official-price-copies';
+import { DrizzlePromotionCopies } from './infrastructure/drizzle-promotion-copies';
 import { DrizzlePriceHistory } from './infrastructure/drizzle-price-history';
 import { onPriceAssessed } from './infrastructure/price-assessed-handler';
+import {
+  onOfficialPricePublished,
+  onOfficialPricesReconfirmed,
+  onOfficialPriceWithdrawn,
+} from './infrastructure/official-price-handlers';
+import { onPromotionPublished, onPromotionWithdrawn } from './infrastructure/promotion-handlers';
 import {
   onPriceAssessedForHistory,
   onPriceWithdrawnForHistory,
@@ -43,6 +54,11 @@ import { onPriceWithdrawn } from './infrastructure/price-withdrawn-handler';
 // Grill de la #83, pregunta 6: el receptor del historial y los eventos que lo llenan, para reconstruirlo.
 export const PRICE_HISTORY_CONSUMER = 'comparison.price_history';
 export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFlagged'];
+
+// Receptor de los eventos del precio oficial (#204).
+const OFFICIAL_PRICES_CONSUMER = 'comparison.official_prices';
+// Receptor de los eventos de las promociones (#206).
+const PROMOTIONS_CONSUMER = 'comparison.promotions';
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
@@ -75,6 +91,8 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
           products,
           stores,
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
+          promotionCopies: new DrizzlePromotionCopies(db),
           reliability,
           references,
           clock: { now: () => new Date() },
@@ -82,17 +100,26 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
     },
     {
       provide: StorePrices,
-      inject: [DATABASE, EstablishmentDetails, PresentationsForPricing, ReliabilityOfPrices],
+      inject: [
+        DATABASE,
+        EstablishmentDetails,
+        StoreContactOf,
+        PresentationsForPricing,
+        ReliabilityOfPrices,
+      ],
       useFactory: (
         db: Database,
         stores: EstablishmentDetails,
+        contacts: StoreContactOf,
         presentations: PresentationsForPricing,
         reliability: ReliabilityOfPrices,
       ): StorePrices =>
         new StorePrices({
           stores,
+          contacts,
           presentations,
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
           reliability,
           clock: { now: () => new Date() },
         }),
@@ -116,15 +143,24 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
     // B#120: la canasta básica de hoy en un municipio.
     {
       provide: FeaturedProducts,
-      inject: [DATABASE, EstablishmentsWithinRadius, PresentationsForPricing, ProductSummaries],
+      inject: [
+        DATABASE,
+        EstablishmentsWithinRadius,
+        PresentationsForPricing,
+        ProductSummaries,
+        ReliabilityOfPrices,
+      ],
       useFactory: (
         db: Database,
         stores: EstablishmentsWithinRadius,
         presentations: PresentationsForPricing,
         products: ProductSummaries,
+        reliability: ReliabilityOfPrices,
       ): FeaturedProducts =>
         new FeaturedProducts({
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
+          reliability,
           stores,
           presentations,
           products,
@@ -134,10 +170,16 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
     // B#131: cuántos precios vigentes tiene cada tienda de una lista.
     {
       provide: PriceCounts,
-      inject: [DATABASE, PresentationsForPricing],
-      useFactory: (db: Database, presentations: PresentationsForPricing): PriceCounts =>
+      inject: [DATABASE, PresentationsForPricing, ReliabilityOfPrices],
+      useFactory: (
+        db: Database,
+        presentations: PresentationsForPricing,
+        reliability: ReliabilityOfPrices,
+      ): PriceCounts =>
         new PriceCounts({
           prices: new DrizzleCurrentPrices(db),
+          officials: new DrizzleOfficialPriceCopies(db),
+          reliability,
           presentations,
           clock: { now: () => new Date() },
         }),
@@ -155,6 +197,22 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
       inject: [DATABASE],
       useFactory: (db: Database): PeerPrices => new PeerPrices(new DrizzlePeerPrices(db)),
     },
+    // B9 (#209): las discrepancias corroboradas de una tienda, para avisar al comercio.
+    {
+      provide: OfficialDiscrepancies,
+      inject: [DATABASE, ReliabilityOfPrices, PresentationFreshness],
+      useFactory: (
+        db: Database,
+        reliability: ReliabilityOfPrices,
+        presentations: PresentationFreshness,
+      ): OfficialDiscrepancies =>
+        new OfficialDiscrepancies({
+          officials: new DrizzleOfficialPriceCopies(db),
+          reliability,
+          presentations,
+          clock: { now: () => new Date() },
+        }),
+    },
     // PR-22 (#93): el precio publicado, para el informe de exactitud.
     {
       provide: CurrentPriceOf,
@@ -163,7 +221,7 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
         new CurrentPriceOf(new DrizzleCurrentPrices(db)),
     },
   ],
-  exports: [CurrentPriceOf, ImportInitialPrices, PeerPrices],
+  exports: [CurrentPriceOf, ImportInitialPrices, PeerPrices, OfficialDiscrepancies],
 })
 export class ComparisonModule implements OnModuleInit {
   constructor(private readonly bus: EventBus) {}
@@ -180,5 +238,25 @@ export class ComparisonModule implements OnModuleInit {
     // Grill de la #83: el historial de precios, con los mismos eventos.
     this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceAssessed', onPriceAssessedForHistory);
     this.bus.subscribe(PRICE_HISTORY_CONSUMER, 'PriceWithdrawn', onPriceWithdrawnForHistory);
+    // D1 y D4 del grill comercial (#204): la copia del precio oficial. Solo se conoce el nombre de los
+    // eventos de commerce: el núcleo no importa commerce (EC-05).
+    this.bus.subscribe(
+      OFFICIAL_PRICES_CONSUMER,
+      'OfficialPricePublished',
+      onOfficialPricePublished,
+    );
+    this.bus.subscribe(
+      OFFICIAL_PRICES_CONSUMER,
+      'OfficialPricesReconfirmed',
+      onOfficialPricesReconfirmed,
+    );
+    this.bus.subscribe(
+      OFFICIAL_PRICES_CONSUMER,
+      'OfficialPriceWithdrawn',
+      onOfficialPriceWithdrawn,
+    );
+    // D6 (#206): la copia de las promociones, siempre aparte de los resultados (ADR-009).
+    this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionPublished', onPromotionPublished);
+    this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionWithdrawn', onPromotionWithdrawn);
   }
 }

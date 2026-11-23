@@ -14,7 +14,7 @@ Fuente: Notion, base ADRs, página 40239c4a833b81d79bb4e1099a4022cc; estado copi
 
 ## Discrepancias señaladas (no corregidas)
 
-- **Discrepancia ADR-010 vs ADR-017.** El cuerpo de la página de ADR-010 dice que «Frontend PWA: React + Vite con vite-plugin-pwa» (ADR-017) «continúa Propuesto hasta validación técnica». En Notion ADR-017 figura como Aceptado (decisión «ACEPTADA (8 de noviembre de 2026)») y `docs/PLAN_MAESTRO.md` lo da por aceptado. No se corrigió; PENDIENTE (equipo).
+- **Discrepancia ADR-010 vs ADR-017.** Resuelto: ADR-017 está Aceptado desde el 8-nov-2026 (decisión «ACEPTADA (8 de noviembre de 2026)» en Notion).
 
 ## Contexto
 

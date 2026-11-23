@@ -6,6 +6,7 @@ import { DrizzleEstablishmentImportRepository } from '../../src/modules/establis
 import { DrizzleEstablishmentRepository } from '../../src/modules/establishments/infrastructure/drizzle-establishment-repository';
 import { DrizzleStoreProposalRepository } from '../../src/modules/establishments/infrastructure/drizzle-store-proposal-repository';
 import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
+import { createEvent, OutboxPublisher } from '../../src/shared/events';
 
 // Propuestas y tiendas de prueba: solo existen dentro de esta prueba.
 const proposal: NewStoreProposal = {
@@ -19,6 +20,13 @@ const proposal: NewStoreProposal = {
   proposerKey: 'a'.repeat(64),
   createdAt: new Date('2026-11-15T10:00:00Z'),
 };
+// D2 del grill comercial: la decisión viaja a commerce por el outbox (ADR-015).
+const decided = () => [createEvent('StoreProposalDecided', 1, { proposalId: proposal.id })];
+const outboxTypes = async (db: NodePgDatabase) =>
+  (await db.execute<{ type: string }>(sql`select type from shared.outbox`)).rows.map(
+    (row) => row.type,
+  );
+
 const decision = {
   note: 'Tienda verificada en el sitio',
   moderatorKey: 'c'.repeat(64),
@@ -40,7 +48,7 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
       }),
     });
     db = drizzle(pool);
-    proposals = new DrizzleStoreProposalRepository(db);
+    proposals = new DrizzleStoreProposalRepository(db, new OutboxPublisher());
     stores = new DrizzleEstablishmentRepository(db);
   });
 
@@ -49,7 +57,9 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate establishments.establishments, establishments.store_proposals`);
+    await db.execute(
+      sql`truncate establishments.establishments, establishments.store_proposals, shared.outbox`,
+    );
   });
 
   it('una propuesta queda pendiente y no aparece entre las tiendas', async () => {
@@ -63,8 +73,9 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
     await proposals.save(proposal);
 
     await expect(
-      proposals.decide({ proposalId: proposal.id, decision: 'aprobar', ...decision }),
+      proposals.decide({ proposalId: proposal.id, decision: 'aprobar', ...decision }, decided()),
     ).resolves.toBe(true);
+    await expect(outboxTypes(db)).resolves.toEqual(['StoreProposalDecided']);
 
     await expect(proposals.pending()).resolves.toEqual([]);
     await expect(stores.findById(proposal.id)).resolves.toEqual({
@@ -79,21 +90,26 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
     });
     // Una propuesta ya decidida no se decide otra vez.
     await expect(
-      proposals.decide({ proposalId: proposal.id, decision: 'rechazar', ...decision }),
+      proposals.decide({ proposalId: proposal.id, decision: 'rechazar', ...decision }, decided()),
     ).resolves.toBe(false);
+    // Lo que no se decidió no se avisa.
+    await expect(outboxTypes(db)).resolves.toEqual(['StoreProposalDecided']);
   });
 
   it('rechazarla o fusionarla no crea ninguna tienda', async () => {
     await proposals.save(proposal);
     await proposals.save({ ...proposal, id: 'ef111111-1111-4111-8111-222222222222' });
 
-    await proposals.decide({ proposalId: proposal.id, decision: 'rechazar', ...decision });
-    await proposals.decide({
-      proposalId: 'ef111111-1111-4111-8111-222222222222',
-      decision: 'fusionar',
-      mergeInto: 'ef222222-2222-4222-8222-222222222222',
-      ...decision,
-    });
+    await proposals.decide({ proposalId: proposal.id, decision: 'rechazar', ...decision }, []);
+    await proposals.decide(
+      {
+        proposalId: 'ef111111-1111-4111-8111-222222222222',
+        decision: 'fusionar',
+        mergeInto: 'ef222222-2222-4222-8222-222222222222',
+        ...decision,
+      },
+      [],
+    );
 
     await expect(proposals.pending()).resolves.toEqual([]);
     const count = await db.execute<{ total: string }>(

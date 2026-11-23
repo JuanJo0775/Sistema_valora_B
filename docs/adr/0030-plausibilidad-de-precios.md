@@ -1,8 +1,8 @@
 # ADR-030: Plausibilidad de precios: referencia con arranque en frío y piso absoluto
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (decisión del equipo, registrada el 23-nov-2026)
 - **Fecha:** 2026-11-17
-- **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo.
+- **Responsables:** integrante que dirige el backend; revisado por el equipo.
 - **Escenarios relacionados:** EC-03 (reportes maliciosos y datos erróneos), EC-04 (sin consultas N+1), EC-08 (privacidad)
 - **Requisitos relacionados:** RF-006, RF-012, RF-013, RF-014; ADR-005, ADR-006
 

@@ -1,3 +1,4 @@
+import { OutboxPublisher } from '../../src/shared/events';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { eq, sql } from 'drizzle-orm';
@@ -35,7 +36,7 @@ describe('eliminación de la propia cuenta (ADR-032)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts, pricing.reports, comparison.price_current, catalog.presentations, catalog.products, catalog.product_aliases, establishments.establishments`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, pricing.reports, comparison.price_current, catalog.presentations, catalog.products, catalog.product_aliases, establishments.establishments`,
     );
   });
 
@@ -60,7 +61,7 @@ describe('eliminación de la propia cuenta (ADR-032)', () => {
   };
   const purgeAt = (now: Date) =>
     new PurgeDeletedAccounts({
-      deletion: new DrizzleAccountDeletionRepository(db),
+      deletion: new DrizzleAccountDeletionRepository(db, new OutboxPublisher()),
       clock: { now: () => now },
     }).execute();
 
@@ -364,6 +365,11 @@ describe('eliminación de la propia cuenta (ADR-032)', () => {
         sql`select count(*)::int as n from identity.email_verifications`,
       );
       expect(hanging.rows[0]?.n).toBe(1);
+      // ADR-033: y un enlace para restablecer la contraseña, que la purga también borra.
+      await db.execute(
+        sql`insert into identity.password_resets (id, account_id, token_hash, created_at, expires_at)
+            values (${crypto.randomUUID()}, ${ana.accountId}, 'hash-de-prueba', now(), now() + interval '1 hour')`,
+      );
       await seedReportOf(ana.accountId);
       const response = await requestDeletion(ana).expect(202);
       const scheduledFor = new Date((response.body as { scheduledFor: string }).scheduledFor);
@@ -378,7 +384,11 @@ describe('eliminación de la propia cuenta (ADR-032)', () => {
 
       // Todo lo que colgaba de la cuenta se fue, en la misma transacción.
       expect(await accountRow()).toBeUndefined();
-      for (const table of ['identity.sessions', 'identity.email_verifications']) {
+      for (const table of [
+        'identity.sessions',
+        'identity.email_verifications',
+        'identity.password_resets',
+      ]) {
         const left = await db.execute<{ n: number }>(
           sql`select count(*)::int as n from ${sql.raw(table)}`,
         );

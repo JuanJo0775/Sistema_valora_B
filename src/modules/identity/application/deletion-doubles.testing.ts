@@ -1,3 +1,4 @@
+import type { DomainEvent } from '../../../shared/events';
 import type {
   AccountCredentials,
   AccountDeletionRepository,
@@ -24,6 +25,8 @@ export class InMemoryDeletion implements AccountDeletionRepository {
   // Cuentas cuya purga falla (fallo parcial).
   readonly failing = new Set<string>();
   readonly revoked: string[] = [];
+  // Eventos guardados con la purga (#208).
+  readonly events: DomainEvent[] = [];
 
   add(account: FakeAccount): FakeAccount {
     this.accounts.set(account.id, account);
@@ -71,11 +74,12 @@ export class InMemoryDeletion implements AccountDeletionRepository {
     );
   }
 
-  purge(accountId: string, now: Date): Promise<boolean> {
+  purge(accountId: string, now: Date, events: DomainEvent[]): Promise<boolean> {
     if (this.failing.has(accountId)) return Promise.reject(new Error('fallo de la base'));
     const own = this.accounts.get(accountId);
     if (!own?.deletionScheduledFor || own.deletionScheduledFor > now) return Promise.resolve(false);
     this.accounts.delete(accountId);
+    this.events.push(...events);
     return Promise.resolve(true);
   }
 }

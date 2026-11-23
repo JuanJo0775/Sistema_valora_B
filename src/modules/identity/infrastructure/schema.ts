@@ -104,3 +104,26 @@ export const emailVerifications = identitySchema.table(
       .where(sql`used_at is null`),
   ],
 );
+
+// ADR-033: enlaces para restablecer la contraseña. Como la verificación de correo, guarda solo el hash
+// SHA-256 del token y fechas: ni el token, ni el correo, ni la IP. Se borra en cascada con la cuenta.
+export const passwordResets = identitySchema.table(
+  'password_resets',
+  {
+    id: uuid('id').primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('password_resets_token_hash_idx').on(table.tokenHash),
+    // Un solo enlace vigente (sin usar) por cuenta: pedir otro invalida el anterior.
+    uniqueIndex('password_resets_pending_idx')
+      .on(table.accountId)
+      .where(sql`used_at is null`),
+  ],
+);

@@ -35,7 +35,7 @@ describe('propuestas de tiendas por HTTP (RF-005, #27)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.sessions, identity.accounts`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts`,
     );
     reporter = await signIn(server, db, 'propone@correo.com');
     moderator = await signIn(server, db, 'moderadora@correo.com', 'moderador');
@@ -117,6 +117,8 @@ describe('propuestas de tiendas por HTTP (RF-005, #27)', () => {
       expect(response.body).toEqual({
         items: [
           {
+            // D5 (#207): la cola trae también correcciones; esta es una tienda propuesta.
+            kind: 'tienda',
             id,
             name: 'Tienda Esperanza',
             type: 'barrio',

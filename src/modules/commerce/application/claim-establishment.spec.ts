@@ -6,6 +6,7 @@ import {
   EstablishmentNotFoundError,
   InvalidNitError,
   NotAtEstablishmentError,
+  RevokedFromEstablishmentError,
 } from './claim-establishment';
 import type { DomainEvent } from '../../../shared/events';
 import type { MerchantClaim } from './merchant-claims';
@@ -14,10 +15,11 @@ const now = new Date('2026-11-21T15:00:00Z');
 const STORE = { id: 'tienda-esperanza', lat: 4.5339, lng: -75.6811 };
 
 // Dobles en memoria detrás de los puertos: la tienda del mapa, las solicitudes y el cambio de rol.
-function setup(options: { claims?: MerchantClaim[] } = {}) {
+function setup(options: { claims?: MerchantClaim[]; revoked?: string[] } = {}) {
   const claims = [...(options.claims ?? [])];
   // Eventos guardados junto con la solicitud, en la misma transacción (ADR-015).
   const events: DomainEvent[] = [];
+  const disputes: { establishmentId: string; accountId: string }[] = [];
   const claim = new ClaimEstablishment({
     establishments: {
       find: (id) => Promise.resolve(id === STORE.id ? { lat: STORE.lat, lng: STORE.lng } : null),
@@ -27,15 +29,25 @@ function setup(options: { claims?: MerchantClaim[] } = {}) {
         Promise.resolve(claims.find((c) => c.establishmentId === id)?.accountId ?? null),
       establishmentOf: (accountId) =>
         Promise.resolve(claims.find((c) => c.accountId === accountId)?.establishmentId ?? null),
+      // Precisión de D3 (#208): las tiendas de las que esta cuenta fue revocada.
+      wasRevokedFrom: (_accountId, establishmentId) =>
+        Promise.resolve((options.revoked ?? []).includes(establishmentId)),
       save: (saved, published) => {
         claims.push(saved);
         events.push(...published);
         return Promise.resolve();
       },
     },
+    // Precisión de D3 (#208): una disputa para el moderador.
+    disputes: {
+      open: (establishmentId, accountId) => {
+        disputes.push({ establishmentId, accountId });
+        return Promise.resolve();
+      },
+    },
     clock: { now: () => now },
   });
-  return { claim, claims, events };
+  return { claim, claims, events, disputes };
 }
 
 const verifiedClaim = (accountId: string, establishmentId: string): MerchantClaim => ({
@@ -114,13 +126,15 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
     expect(claims).toEqual([]);
   });
 
-  it('una tienda que ya tiene dueño se rechaza y el dueño no cambia', async () => {
+  it('una tienda que ya tiene dueño se rechaza, el dueño no cambia y queda una disputa', async () => {
     const owner = verifiedClaim('cuenta-del-dueno', STORE.id);
-    const { claim, claims, events } = setup({ claims: [owner] });
+    const { claim, claims, events, disputes } = setup({ claims: [owner] });
 
     await expect(claim.execute(request())).rejects.toThrow(EstablishmentHasOwnerError);
     expect(claims).toEqual([owner]);
     expect(events).toEqual([]);
+    // Precisión de D3 (#208): estaba en la tienda (presencia), así que el moderador decide.
+    expect(disputes).toEqual([{ establishmentId: STORE.id, accountId: 'cuenta-de-dona-rosa' }]);
   });
 
   it('una cuenta que ya tiene una tienda no puede registrar otra (una por cuenta)', async () => {
@@ -144,5 +158,13 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
     await claim.execute(request({ nit: undefined }));
 
     expect(claims[0]).toMatchObject({ nit: null, informal: true });
+  });
+
+  // Precisión de D3 (#208): si pudiera volver a registrarla al instante, revocar no serviría.
+  it('una cuenta revocada de esta tienda no la vuelve a registrar; otra tienda sí', async () => {
+    const { claim, claims } = setup({ revoked: [STORE.id] });
+
+    await expect(claim.execute(request())).rejects.toThrow(RevokedFromEstablishmentError);
+    expect(claims).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 # ADR-016: Participación de comercios pequeños sin punto de venta
 
-- **Estado:** Propuesto
-- **Fecha:** PENDIENTE (equipo): la propiedad «Fecha de decisión» está vacía en Notion
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-21
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-02, EC-05
 - **Requisitos relacionados:** en Notion hay 2 relaciones con RF y 2 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
@@ -12,9 +12,9 @@ Fuente: Notion, base ADRs, página 40239c4a833b811eb33be674bf11c7b8; estado copi
 
 > La página de Notion no tiene cuerpo (solo propiedades). El texto de las secciones siguientes está copiado de las propiedades de texto de la misma fila (Contexto, Alternativas consideradas, Decisión adoptada, Consecuencias / verificación). Los saltos `<br />` de Notion se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- `docs/openapi.yaml` usa «ADR-016» para la carga masiva de precios oficiales por plantilla CSV; en Notion el título es «Participación de comercios pequeños sin punto de venta» (la plantilla de archivo es una de sus piezas). `docs/DECISIONS.md` no tiene entrada. No se corrigió.
+Aceptado el 23-nov-2026 por decisión del dueño del proyecto. La fecha (21 de noviembre de 2026) es la de la evidencia: se aplica desde el módulo `commerce` (21-nov) y la carga por plantilla; la implementación sigue en curso con el equipo comercial. El repositorio no guardaba una fecha de decisión propia; esta es la primera en que la decisión ya estaba aplicada.
 
 ## Contexto
 
@@ -30,7 +30,7 @@ C) Que el equipo cargue los precios en nombre de los comercios: útil para arran
 
 ## Decisión
 
-PROPUESTA: B) El portal de comercios es una PWA con una pantalla de actualización rápida (producto, precio, confirmar), carga opcional por plantilla de archivo y recordatorios para reconfirmar precios. Un precio no reconfirmado pasa a "por confirmar" en lugar de borrarse (RF-016). La opción C) se usa solo como acompañamiento inicial, con autorización del comercio y registrando quién cargó el dato.
+ACEPTADA el 2026-11-21: B) El portal de comercios es una PWA con una pantalla de actualización rápida (producto, precio, confirmar), carga opcional por plantilla de archivo y recordatorios para reconfirmar precios. Un precio no reconfirmado pasa a "por confirmar" en lugar de borrarse (RF-016). La opción C) se usa solo como acompañamiento inicial, con autorización del comercio y registrando quién cargó el dato.
 
 ## Consecuencias
 
