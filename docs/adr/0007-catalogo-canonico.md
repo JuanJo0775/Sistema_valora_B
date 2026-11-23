@@ -14,7 +14,7 @@ Fuente: Notion, base ADRs, página 40239c4a833b814bae73cfede677f0cb; estado copi
 
 ## Discrepancias señaladas (no corregidas)
 
-- **ADR-007 figura como aceptado y como propuesto según el documento.** Notion: Aceptado (2026-11-11). `docs/DECISIONS.md`: la sección «Catálogo» dice «aceptado el 11-nov-2026» y la sección «Precio por unidad base» dice «sigue propuesto». Notion tampoco coincide con AS-E1/AS-E2 ni con la Auditoría (que lo cuentan entre los propuestos). No se corrigió; PENDIENTE (equipo).
+- **ADR-007: discrepancia de estado.** Resuelto el 23-nov-2026: el estado vigente es Aceptado (Notion, 11-nov-2026).
 - El texto de la decisión remite a ADR-020 «(10 de noviembre de 2026)»; la fila de ADR-020 en Notion no tiene fecha y su decisión dice «ACEPTADO (15-nov-2026)».
 
 ## Contexto

@@ -38,7 +38,7 @@ DECIDIDO (15-nov-2026): SÍ se usa Docker. El backend se empaqueta en una imagen
 
 Se mantiene: los integrantes no necesitan Docker para desarrollar; pueden seguir con PostgreSQL local. Docker Compose para desarrollo local es opcional y entra solo si alguien lo necesita.
 
-EN DISCUSIÓN: proveedor y orquestación. Recomendación: alternativa C (plataforma con Docker y base PostgreSQL + PostGIS administrada), si el docente acepta la orquestación de la plataforma para RDA3; si exige Terraform, la misma infraestructura se describe con Terraform; si exige Kubernetes, alternativa E.
+Proveedor decidido: Render, Neon y Vercel. Orquestación pendiente de confirmar con el docente (RDA3). Recomendación: alternativa C (plataforma con Docker y base PostgreSQL + PostGIS administrada), si el docente acepta la orquestación de la plataforma para RDA3; si exige Terraform, la misma infraestructura se describe con Terraform; si exige Kubernetes, alternativa E.
 
 Pipeline previsto: al mezclar dev en main se construye la imagen, se aplican las migraciones, se despliega y se corre la prueba de humo (pnpm smoke -- --solo-lectura); si falla, la CI queda en rojo.
 

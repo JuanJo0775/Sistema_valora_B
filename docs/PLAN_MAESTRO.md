@@ -238,7 +238,7 @@ La actividad H1-01 pide: equipo conformado, repositorio Git con historial por in
 
 ## Estado técnico verificado — 17 de noviembre de 2026
 
-- **Gobierno de arquitectura:** 22 ADR numerados en Notion; 16 aceptados y 6 propuestos. ADR-004 se aceptó el 12-nov-2026 (PR B#58) y se alineó en Notion. ADR-022 (fotos en Supabase Storage) aceptado el 17-nov-2026; el adaptador está implementado y falta la prueba de una foto real tras un redespliegue.
+- **Gobierno de arquitectura:** 29 ADR, todos aceptados (ADR-001 a 022 y 029 a 035). ADR-004 se aceptó el 12-nov-2026 (PR B#58) y se alineó en Notion. ADR-022 (fotos en Supabase Storage) aceptado el 17-nov-2026; el adaptador está implementado y falta la prueba de una foto real tras un redespliegue.
 - **Backend:** CI #105, 816 pruebas aprobadas y 96,3 % de cobertura de líneas; SonarQube Quality Gate aprobado. Smoke local: 22/22 pasos con semilla y 7/7 en solo lectura (PR B#113).
 - **Frontend:** CI #81, 330 pruebas aprobadas y 98,65 % de cobertura; Quality Gate aprobado con un hallazgo MAJOR de mantenibilidad en `RoleChange.tsx:14`.
 - **Despliegue:** topología Render/Neon/Vercel seleccionada; existe workflow `.github/workflows/deploy.yml` y runbook. La corrida #43999270545 falló porque `DATABASE_URL` llegó vacía. B#23 sigue abierto; se requieren tres despliegues consecutivos correctos y prueba de humo pública.
