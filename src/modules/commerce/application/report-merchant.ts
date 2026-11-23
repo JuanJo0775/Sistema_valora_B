@@ -49,6 +49,11 @@ export class MerchantReportOpenError extends Error {
 export class ReportMerchant {
   constructor(private readonly ports: ReportMerchantPorts) {}
 
+  async canReport(establishmentId: string, accountId: string): Promise<boolean> {
+    const owner = await this.ports.claims.ownerOf(establishmentId);
+    return owner !== null && owner !== accountId;
+  }
+
   async execute(request: ReportMerchantRequest): Promise<{ id: string; status: 'pendiente' }> {
     const { claims, cases } = this.ports;
     const owner = await claims.ownerOf(request.establishmentId);

@@ -102,6 +102,21 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
       ['GET /commerce/me', 200, await me(rosa)],
     ] as const;
 
+    const eligibility = `/v1/establishments/${storeId}/merchant-reports`;
+    const own = await request(server).get(eligibility).set('Cookie', rosa.cookie).expect(200);
+    const foreign = await request(server).get(eligibility).set('Cookie', other.cookie).expect(200);
+    await request(server).get(eligibility).expect(401);
+    expect(own.body).toEqual({ canReport: false });
+    expect(foreign.body).toEqual({ canReport: true });
+    expect(foreign.headers['cache-control']).toBe('private, no-store');
+    expect(
+      contractErrors(
+        'GET /establishments/:establishmentId/merchant-reports',
+        200,
+        foreign.body as unknown,
+      ),
+    ).toEqual([]);
+
     expect(responses.map(([, status, response]) => [status, response.status])).toEqual(
       responses.map(([, status]) => [status, status]),
     );
