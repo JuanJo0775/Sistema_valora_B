@@ -2106,6 +2106,32 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
   /establishments/{establishmentId}/merchant-reports:
+    get:
+      tags: [Comercios]
+      operationId: getMerchantReportEligibility
+      summary: Consultar si la cuenta puede denunciar el comercio de una tienda
+      description: Solo reportantes y comercios con sesión. No devuelve información del propietario.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: establishmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Indica si la tienda tiene un comercio ajeno registrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [canReport]
+                properties:
+                  canReport: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Comercios]
       operationId: reportMerchant

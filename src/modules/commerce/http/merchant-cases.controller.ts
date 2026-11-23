@@ -71,6 +71,17 @@ export class MerchantCasesController {
     private readonly identities: ReporterIdentity,
   ) {}
 
+  @Get('establishments/:establishmentId/merchant-reports')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(SessionGuard)
+  @Roles('reportante', 'comercio')
+  async eligibility(
+    @Param('establishmentId', uuidOf('establishmentId')) establishmentId: string,
+    @CurrentSession() session: AuthenticatedSession,
+  ): Promise<{ canReport: boolean }> {
+    return { canReport: await this.reportMerchant.canReport(establishmentId, session.accountId) };
+  }
+
   @Post('establishments/:establishmentId/merchant-reports')
   @HttpCode(HttpStatus.ACCEPTED)
   @UseGuards(SessionGuard)
