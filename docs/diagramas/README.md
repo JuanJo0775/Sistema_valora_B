@@ -254,7 +254,7 @@ Muestra dónde corre cada pieza y cómo llega el código a producción.
 - El usuario solo necesita un navegador; la PWA se instala desde ahí.
 - En el servidor corren Caddy, el proceso Node.js y PostgreSQL.
 - GitHub Actions prueba, analiza, verifica los límites de módulo y despliega solo si todo pasa.
-- ADR-012 (15 de noviembre de 2026): el backend se despliega como una imagen Docker. El proveedor y la orquestación siguen en discusión; este diagrama se actualiza cuando se elijan.
+- ADR-012 (aceptado el 16 de noviembre de 2026): el backend se despliega como una imagen Docker en Render; PostgreSQL + PostGIS en Neon y la PWA en Vercel.
 
 **Relación:** ADR-012 · RNF-009 · RNF-011
 
