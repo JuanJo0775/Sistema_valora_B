@@ -1,7 +1,7 @@
 # ADR-009: Neutralidad: promociones separadas del orden de la comparación
 
-- **Estado:** Propuesto
-- **Fecha:** PENDIENTE (equipo): la propiedad «Fecha de decisión» está vacía en Notion
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-12
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-06
 - **Requisitos relacionados:** en Notion hay 3 relaciones con RF y 2 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
@@ -12,9 +12,9 @@ Fuente: Notion, base ADRs, página 40239c4a833b816ea704c7defb9eee3b; estado copi
 
 > La página de Notion no tiene cuerpo (solo propiedades). El texto de las secciones siguientes está copiado de las propiedades de texto de la misma fila (Contexto, Alternativas consideradas, Decisión adoptada, Consecuencias / verificación). Los saltos `<br />` de Notion se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- `docs/DECISIONS.md` aplica ADR-009 (issue #21, orden neutral) sin listarlo en la tabla de Aprobadas; Notion: Propuesto. PENDIENTE (equipo) confirmar el estado.
+Aceptado el 23-nov-2026 por decisión del dueño del proyecto. La fecha (12 de noviembre de 2026) es la de la evidencia: se aplicó en la issue #21 (orden neutral, 12-nov), con `rankOffers` en `src/domain/neutral-ranking.ts`. El repositorio no guardaba una fecha de decisión propia; esta es la primera en que la decisión ya estaba aplicada.
 
 ## Contexto
 
@@ -30,7 +30,7 @@ C) No mostrar promociones: elimina el riesgo pero incumple el alcance del módul
 
 ## Decisión
 
-PROPUESTA: B) La función de ordenamiento es pura y solo recibe precio, precio por unidad base, distancia y actualidad. La respuesta de la API trae los resultados y, en un campo distinto, las promociones. La interfaz las presenta en un bloque etiquetado. Se prueba por propiedad que el orden no cambia con ni sin promociones.
+ACEPTADA el 2026-11-12: B) La función de ordenamiento es pura y solo recibe precio, precio por unidad base, distancia y actualidad. La respuesta de la API trae los resultados y, en un campo distinto, las promociones. La interfaz las presenta en un bloque etiquetado. Se prueba por propiedad que el orden no cambia con ni sin promociones.
 
 ## Consecuencias
 

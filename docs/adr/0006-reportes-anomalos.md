@@ -1,7 +1,7 @@
 # ADR-006: Detección de reportes anómalos: reglas estadísticas y revisión humana
 
-- **Estado:** Propuesto
-- **Fecha:** PENDIENTE (equipo): la propiedad «Fecha de decisión» está vacía en Notion
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-14
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-03
 - **Requisitos relacionados:** en Notion hay 4 relaciones con RF y 2 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
@@ -12,9 +12,9 @@ Fuente: Notion, base ADRs, página 40239c4a833b81bba61def64ff01c955; estado copi
 
 > La página de Notion no tiene cuerpo (solo propiedades). El texto de las secciones siguientes está copiado de las propiedades de texto de la misma fila (Contexto, Alternativas consideradas, Decisión adoptada, Consecuencias / verificación). Los saltos `<br />` de Notion se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- `docs/diagramas/README.md` es el único lugar del repo que menciona ADR-006; `docs/DECISIONS.md` no tiene entrada.
+Aceptado el 23-nov-2026 por decisión del dueño del proyecto. La fecha (14 de noviembre de 2026) es la de la evidencia: se aplicó en la issue #20 (precios anómalos, 14-nov) y se midió en la issue #67; ADR-030 se apoya en él. El repositorio no guardaba una fecha de decisión propia; esta es la primera en que la decisión ya estaba aplicada.
 
 ## Contexto
 
@@ -30,7 +30,7 @@ C) Modelo de aprendizaje automático: sin datos etiquetados al inicio y con ries
 
 ## Decisión
 
-PROPUESTA: B) Reglas estadísticas simples y parametrizables, límites de frecuencia por cuenta y dispositivo, y cola de moderación. La detección cambia el estado del reporte a "en revisión" y no elimina nada. Se construye un conjunto de prueba sintético con casos anómalos para medir detección y falsos positivos. Se revisa un modelo de aprendizaje solo si hay datos suficientes en el corte 3.
+ACEPTADA el 2026-11-14: B) Reglas estadísticas simples y parametrizables, límites de frecuencia por cuenta y dispositivo, y cola de moderación. La detección cambia el estado del reporte a "en revisión" y no elimina nada. Se construye un conjunto de prueba sintético con casos anómalos para medir detección y falsos positivos. Se revisa un modelo de aprendizaje solo si hay datos suficientes en el corte 3.
 
 ## Consecuencias
 

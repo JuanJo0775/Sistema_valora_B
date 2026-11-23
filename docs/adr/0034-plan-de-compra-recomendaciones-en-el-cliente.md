@@ -1,6 +1,6 @@
 # ADR-034: Plan de compra: recomendaciones calculadas en el cliente y lista guardada en el teléfono
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (23-nov-2026), por decisión del dueño del proyecto
 - **Fecha:** 2026-11-17 (texto actualizado el 2026-11-22)
 - **Responsables:** pendiente de asignar; pendiente de revisión del equipo. Redactado con apoyo de IA (Claude Code).
 - **Escenarios relacionados:** EC-06 (neutralidad), EC-08 (privacidad), EC-07 (fiabilidad sin conexión), EC-04 (rendimiento)
