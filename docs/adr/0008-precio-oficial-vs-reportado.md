@@ -1,7 +1,7 @@
 # ADR-008: Resolución entre precio oficial y precio reportado
 
-- **Estado:** Propuesto
-- **Fecha:** PENDIENTE (equipo): la propiedad «Fecha de decisión» está vacía en Notion
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-21
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-02, EC-03, EC-05
 - **Requisitos relacionados:** en Notion hay 4 relaciones con RF y 2 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
@@ -12,9 +12,9 @@ Fuente: Notion, base ADRs, página 40239c4a833b81a49acad075e17414ee; estado copi
 
 > La página de Notion no tiene cuerpo (solo propiedades). El texto de las secciones siguientes está copiado de las propiedades de texto de la misma fila (Contexto, Alternativas consideradas, Decisión adoptada, Consecuencias / verificación). Los saltos `<br />` de Notion se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- `docs/diagramas/README.md` es el único lugar del repo que menciona ADR-008; `docs/DECISIONS.md` no tiene entrada.
+Aceptado el 23-nov-2026 por decisión del dueño del proyecto. La fecha (21 de noviembre de 2026) es la de la evidencia: se aplicó con el módulo comercial (21-nov): sin reportes que lo contradigan entra el precio oficial. El repositorio no guardaba una fecha de decisión propia; esta es la primera en que la decisión ya estaba aplicada.
 
 ## Contexto
 
@@ -32,7 +32,7 @@ D) Regla determinista: el oficial es la referencia y solo una discrepancia corro
 
 ## Decisión
 
-PROPUESTA: D) Se muestra el precio oficial con su fuente. La diferencia se mide respecto al oficial; hasta el umbral inclusive (propuesto 5 %) se considera coincidencia. Si la diferencia supera el umbral y al menos 2 reportes independientes, recientes y de confiabilidad media o alta la sostienen, se muestran ambos valores con aviso de discrepancia, fuente y fecha. El comercio recibe una notificación para responder o corregir. Los umbrales son configurables.
+ACEPTADA el 2026-11-21: D) Se muestra el precio oficial con su fuente. La diferencia se mide respecto al oficial; hasta el umbral inclusive (propuesto 5 %) se considera coincidencia. Si la diferencia supera el umbral y al menos 2 reportes independientes, recientes y de confiabilidad media o alta la sostienen, se muestran ambos valores con aviso de discrepancia, fuente y fecha. El comercio recibe una notificación para responder o corregir. Los umbrales son configurables.
 
 ## Consecuencias
 
