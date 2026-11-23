@@ -1,8 +1,8 @@
 # ADR-033: Contraseña olvidada, contraseña para cuentas de Google y reautenticación reciente
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (decisión del equipo, registrada el 23-nov-2026)
 - **Fecha:** 2026-11-22
-- **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo.
+- **Responsables:** integrante que dirige el backend; revisado por el equipo.
 - **Escenarios relacionados:** EC-08 (privacidad)
 - **Requisitos relacionados:** RNF-007, PR-15, Ley 1581 de 2012 (art. 8), ADR-013 (privacidad por diseño), ADR-014 (sesiones), ADR-029 (identidad propia, verificación de correo e inicio con Google), ADR-032 (eliminación de cuenta)
 

@@ -1,7 +1,7 @@
 # ADR-035: Plan de compra: consultar por municipio y calcular la cercanía en el dispositivo
 
 - **Estado:** Aceptado (22-nov-2026), por decisión del dueño del proyecto
-- **Fecha:** 2026-11-21
+- **Fecha:** 2026-11-22
 - **Responsables:** pendiente de asignar. Redactado con apoyo de IA (Claude Code).
 - **Escenarios relacionados:** EC-04 (rendimiento), EC-08 (privacidad)
 - **Requisitos relacionados:** RF-009 (comparación); RNF-004, RNF-011; ADR-031 (ancho de banda), ADR-034 (plan de compra), ADR-019, ADR-010

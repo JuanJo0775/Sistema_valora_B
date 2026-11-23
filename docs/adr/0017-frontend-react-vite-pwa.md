@@ -1,7 +1,7 @@
 # ADR-017: Frontend PWA: React + Vite con vite-plugin-pwa
 
 - **Estado:** Aceptado
-- **Fecha:** PENDIENTE (equipo): la propiedad «Fecha de decisión» está vacía en Notion
+- **Fecha:** 2026-11-08
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-01, EC-07
 - **Requisitos relacionados:** en Notion hay 0 relaciones con RF y 0 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
@@ -12,9 +12,9 @@ Fuente: Notion, base ADRs, página 40d39c4a833b81aab6ebe8c4cf246552; estado copi
 
 > El texto de las secciones Contexto a Consecuencias está copiado de las propiedades de texto de la fila; el cuerpo de la página de Notion se copia al final, tal cual (con sus títulos bajados un nivel). Los saltos `<br />` de las propiedades se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- **Discrepancia de fecha y de estado entre ADR.** La propiedad Fecha de decisión está vacía; el texto dice «ACEPTADA (8 de noviembre de 2026)». ADR-010 afirma que este ADR «continúa Propuesto» (ver ADR-010).
+Resuelto el 23-nov-2026: aceptado el 8-nov-2026, como dice el texto de la decisión y la propiedad Fecha de decisión de Notion. ADR-010 lo llama «continúa Propuesto» por haberse redactado antes: vale este estado.
 
 ## Contexto
 

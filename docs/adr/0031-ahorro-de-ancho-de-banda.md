@@ -1,8 +1,8 @@
 # ADR-031: Ahorro de ancho de banda: compresión, caché pública corta y guardas de la prueba de carga
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (decisión del equipo, registrada el 23-nov-2026)
 - **Fecha:** 2026-11-18
-- **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo.
+- **Responsables:** integrante que dirige el backend; revisado por el equipo.
 - **Escenarios relacionados:** EC-04 (rendimiento), EC-08 (privacidad)
 - **Requisitos relacionados:** RNF-004, RNF-011; ADR-012 (despliegue en Render, Neon y Vercel)
 
