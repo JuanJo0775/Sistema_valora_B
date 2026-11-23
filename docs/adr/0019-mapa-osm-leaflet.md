@@ -1,10 +1,10 @@
-# ADR-019: Mapa de establecimientos: OpenStreetMap con Leaflet (1)
+# ADR-019: Mapa de establecimientos: OpenStreetMap con Leaflet
 
-- **Estado:** Propuesto
-- **Fecha:** PENDIENTE (equipo): la propiedad «Fecha de decisión» está vacía en Notion
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-16
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-04, EC-08
-- **Requisitos relacionados:** en Notion hay 3 relaciones con RF y 0 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
+- **Requisitos relacionados:** RF-005 (establecimientos) y otros dos RF de Notion aún sin numerar en este repositorio
 - **Corte / Área / Preguntas de diseño (Notion):** Corte 2 / Datos / P5 Datos iniciales, P6 Comercio pequeño
 - **Registro oficial:** [Notion, base ADRs](https://app.notion.com/p/41539c4a833b80d29af0c2c2bc244a9b)
 
@@ -12,11 +12,13 @@ Fuente: Notion, base ADRs, página 41539c4a833b80d29af0c2c2bc244a9b; estado copi
 
 > El texto de las secciones Contexto a Consecuencias está copiado de las propiedades de texto de la fila; el cuerpo de la página de Notion se copia al final, tal cual (con sus títulos bajados un nivel). Los saltos `<br />` de las propiedades se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- **Discrepancia de estado.** La propiedad Estado de Notion es «Propuesto», pero el texto de la decisión dice «ACEPTADA el 16-nov-2026 (frontend #18)» y el cuerpo de la página tiene una sección «Aceptación (16 de noviembre de 2026)». La propiedad Fecha de decisión está vacía. No se corrigió.
-- **Dos filas con temas distintos bajo el mismo ID.** Esta fila trata del mapa (OpenStreetMap con Leaflet). `docs/DECISIONS.md` y las issues #13, #50 y #51 usan «ADR-019» para los tipos de establecimiento (barrio, minimercado, supermercado, descuento), y el inventario del repo lo registra sin entrada en el registro. Además, una lectura posterior de la base (delta del 16/17-nov) cuenta dos filas de ADR-019 (ambas Propuesto) y dos de ADR-020 y ADR-021, mientras la lectura usada para este archivo contó una sola fila por ID (22 filas). PENDIENTE (equipo): decidir a qué tema corresponde el número 019 y qué fila es la oficial.
-- El texto de ADR-003 cita ADR-019 con fecha 10-nov-2026; aquí figura 16-nov-2026.
+Resuelto el 23-nov-2026:
+
+- **Estado.** Aceptado el 16-nov-2026 (frontend #18), como dice el texto de la decisión y la sección «Aceptación» del cuerpo.
+- **Un solo tema.** ADR-019 es el mapa (OpenStreetMap con Leaflet). Las menciones de `docs/DECISIONS.md` y de las issues #13, #50 y #51 se refieren a este mismo ADR: los tipos de establecimiento coloreados en el mapa (barrio, minimercado, supermercado y descuento), el radio de 0,5 a 3 km y la atribución de OpenStreetMap. No existe en el repositorio un segundo ADR-019; no se renumera (023 a 028 están reservados para AS-E4). Si Notion tiene una fila duplicada con este ID, se elimina en Notion y queda esta.
+- **Fecha en ADR-003.** ADR-003 cita este ADR con «10 de noviembre» (cuando se propuso); la decisión es del 16-nov-2026.
 
 ## Contexto
 

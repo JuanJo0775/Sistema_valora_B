@@ -1,10 +1,10 @@
 # ADR-004: Separar escritura y lectura con un modelo de precio vigente precalculado
 
-- **Estado:** Propuesto
-- **Fecha:** PENDIENTE (equipo): la propiedad «Fecha de decisión» está vacía en Notion
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-12
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-02, EC-04
-- **Requisitos relacionados:** en Notion hay 4 relaciones con RF y 3 con RNF; la extracción trae solo las URL de las páginas, no sus identificadores RF/RNF. PENDIENTE (equipo): listar los RF/RNF
+- **Requisitos relacionados:** RF-008, RF-009, RF-010, RF-016; RNF-002, RNF-004, RNF-011
 - **Corte / Área / Preguntas de diseño (Notion):** Corte 1 / Estructura / P8 Inmediato vs diferido, P2 Vigencia
 - **Registro oficial:** [Notion, base ADRs](https://app.notion.com/p/40239c4a833b8167ab40c409defab2da)
 
@@ -12,9 +12,9 @@ Fuente: Notion, base ADRs, página 40239c4a833b8167ab40c409defab2da; estado copi
 
 > La página de Notion no tiene cuerpo (solo propiedades). El texto de las secciones siguientes está copiado de las propiedades de texto de la misma fila (Contexto, Alternativas consideradas, Decisión adoptada, Consecuencias / verificación). Los saltos `<br />` de Notion se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Nota de registro
 
-- **Notion (propiedad Estado): Propuesto.** `docs/DECISIONS.md` lo lista como «aceptado el 12 de noviembre de 2026». Discrepancia abierta: PENDIENTE (equipo) confirmar cuál es el estado vigente. No se corrigió.
+Resuelto el 23-nov-2026: la propiedad Estado de Notion y `docs/DECISIONS.md` coinciden en «Aceptado el 12 de noviembre de 2026».
 
 ## Contexto
 
