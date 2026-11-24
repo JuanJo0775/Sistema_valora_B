@@ -1382,7 +1382,28 @@ paths:
                     format: date-time
                     description: >-
                       Solo si la cuenta está suspendida: la sesión está limitada a ver el estado de
-                      sus reportes y apelar (#71).
+                      sus reportes y apelar (#71). Se conserva por compatibilidad; suspension trae lo mismo
+                      con la causa.
+                  suspension:
+                    type: object
+                    additionalProperties: false
+                    required: [until, reason]
+                    description: >-
+                      H33 (ADR-038), aditivo. Solo si la cuenta está suspendida: hasta cuándo y por qué, para
+                      que la app lo explique. Nunca trae la nota del moderador ni quién denunció.
+                    properties:
+                      until:
+                        type: string
+                        format: date-time
+                        description: Igual que suspendedUntil.
+                      reason:
+                        type: string
+                        enum: [observada_por_moderacion, descartes_seguidos, no_registrada]
+                        description: >-
+                          observada_por_moderacion, un moderador eligió «Observar cuentas» sobre un reporte
+                          de la cuenta; descartes_seguidos, el tercer descarte seguido (RN6);
+                          no_registrada, suspensión anterior al registro de la causa. Conjunto estable: el
+                          frontend puede mapear cada valor a un texto propio.
         '401': { $ref: '#/components/responses/Unauthorized' }
   /auth/verify-email:
     post:
@@ -1688,8 +1709,11 @@ paths:
         en una bitácora que no se puede modificar. aprobar vuelve a mostrar el precio como normal;
         descartar deja de mostrarlo (pasa al precio confiable más reciente de la tienda) y baja la
         reputación de su autor; si es el tercer descarte seguido de ese autor, su cuenta se suspende
-        7 días (RN6). observar_cuentas suspende 7 días al autor del reporte, que sigue en la cola. El
-        moderador nunca ve quién es el autor; la suspensión revoca sus sesiones (#33).
+        7 días (RN6). observar_cuentas retira el reporte como un descarte (sale de la cola y de la tienda,
+        GET /me/reports lo muestra descartado, sin plazo de apelación, y no baja la reputación) y suspende
+        7 días al autor; la causa la explica GET /auth/session en suspension.reason (ADR-038). El
+        moderador nunca ve quién es el autor; la suspensión revoca sus sesiones (#33). Todo reporte que
+        sale de la cola queda en un estado final: aprobar, normal; descartar y observar_cuentas, descartado.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -2140,7 +2164,9 @@ paths:
       summary: Perfil del comercio de la sesión (RF-015)
       description: >-
         D3 del grill comercial (#201): la tienda de la cuenta y su estado. Nunca una ubicación (EC-08).
-        Si la última solicitud se cerró y no hay otra, responde rechazado con el motivo (#202).
+        Si la última solicitud se cerró y no hay otra, responde rechazado con el motivo (#202). Si un
+        moderador la revocó (#208), reason es siempre un mensaje estándar: la nota del moderador queda en
+        la bitácora interna y no se devuelve (H15).
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2170,7 +2196,10 @@ paths:
       tags: [Comercios]
       operationId: getMerchantReportEligibility
       summary: Consultar si la cuenta puede denunciar el comercio de una tienda
-      description: Solo reportantes y comercios con sesión. No devuelve información del propietario.
+      description: >-
+        Solo reportantes y comercios con sesión. No devuelve información del propietario. H31, aditivo: si
+        la cuenta ya tiene una denuncia abierta sobre esa tienda, canReport es false y alreadyReported es
+        true (el POST la rechazaría con 409 MERCHANT_REPORT_OPEN); el campo se omite en los demás casos.
       security:
         - sessionCookie: []
       parameters:
@@ -2189,6 +2218,10 @@ paths:
                 required: [canReport]
                 properties:
                   canReport: { type: boolean }
+                  alreadyReported:
+                    type: boolean
+                    enum: [true]
+                    description: Solo aparece, y vale true, cuando la cuenta ya denunció esa tienda y la denuncia sigue abierta.
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -3030,7 +3063,12 @@ components:
           description: >-
             rechazado, la tienda propuesta no se aprobó (#202); revocado, un moderador revocó el
             comercio (#208).
-        reason: { type: string, description: Motivo del moderador o de la fusión. }
+        reason:
+          type: string
+          description: >-
+            rechazado: el motivo del moderador o de la fusión. revocado: siempre el mensaje estándar
+            «Moderación revocó el registro de esta cuenta para esa tienda.»; la nota del moderador no
+            se devuelve (H15).
         rejectedAt: { type: string, format: date-time }
     ActiveMerchantProfile:
       type: object
