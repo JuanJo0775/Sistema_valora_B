@@ -7,12 +7,28 @@ import {
   ParseUUIDPipe,
   Query,
 } from '@nestjs/common';
+import { IsIn } from 'class-validator';
 import { CACHE_CATALOG, CACHE_SEARCH } from '../../../shared/http/cache-control';
 import { RequestValidationError } from '../../../shared/http/validation';
 import { GetProduct, ProductNotFoundError } from '../application/get-product';
 import { SearchProducts } from '../application/search-products';
 import { type ProductResponse, toProductResponse } from './product.response';
 import { SearchProductsQueryDto } from './search-products.query';
+
+class OnlineOffersQueryDto {
+  @IsIn(['armenia-centro'])
+  zone!: 'armenia-centro';
+}
+
+interface OnlineOfferResponse {
+  presentationId: string;
+  source: 'olimpica';
+  zone: 'armenia-centro';
+  priceCop: number;
+  observedAt: string;
+  expiresAt: string;
+  productUrl?: string;
+}
 
 @Controller('products')
 export class ProductsController {
@@ -35,6 +51,22 @@ export class ProductsController {
     else if (barcode !== undefined) found = await this.searchProducts.execute({ barcode, limit });
     else throw new RequestValidationError('Envía q o barcode');
     return { items: found.map(toProductResponse) };
+  }
+
+  @Get(':productId/online-offers')
+  @Header('Cache-Control', 'no-store')
+  async onlineOffers(
+    @Param(
+      'productId',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new RequestValidationError('productId: debe ser un UUID'),
+      }),
+    )
+    productId: string,
+    @Query() _query: OnlineOffersQueryDto,
+  ): Promise<{ items: OnlineOfferResponse[] }> {
+    await this.findOne(productId);
+    return { items: [] };
   }
 
   // Grill de la #49, pregunta 7: caché pública de 5 minutos (valor inicial calibrable, EC-04).
