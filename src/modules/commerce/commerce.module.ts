@@ -14,6 +14,7 @@ import {
   PresentationExists,
   PresentationFreshness,
   PresentationLabels,
+  PresentationNames,
   PresentationsByBarcode,
 } from '../catalog';
 import { ComparisonModule, OfficialDiscrepancies } from '../comparison';
@@ -106,16 +107,18 @@ const reportersOf = (identities: ReporterIdentity) => ({
     },
     {
       provide: MerchantOfficialPrices,
-      inject: [DATABASE, OutboxPublisher, PresentationFreshness],
+      inject: [DATABASE, OutboxPublisher, PresentationFreshness, PresentationNames],
       useFactory: (
         db: Database,
         outbox: OutboxPublisher,
         presentations: PresentationFreshness,
+        names: PresentationNames,
       ): MerchantOfficialPrices =>
         new MerchantOfficialPrices({
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           presentations,
+          names: { namesOf: (ids) => names.of(ids) },
           clock: { now: () => new Date() },
         }),
     },
@@ -231,11 +234,18 @@ const reportersOf = (identities: ReporterIdentity) => ({
     // D6 (#206): promociones.
     {
       provide: CreatePromotion,
-      inject: [DATABASE, OutboxPublisher, PresentationFreshness, GatherPlausibilityContext],
+      inject: [
+        DATABASE,
+        OutboxPublisher,
+        PresentationFreshness,
+        PresentationNames,
+        GatherPlausibilityContext,
+      ],
       useFactory: (
         db: Database,
         outbox: OutboxPublisher,
         presentations: PresentationFreshness,
+        names: PresentationNames,
         plausibility: GatherPlausibilityContext,
       ): CreatePromotion =>
         new CreatePromotion({
@@ -243,23 +253,26 @@ const reportersOf = (identities: ReporterIdentity) => ({
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           presentations,
           promotions: new DrizzlePromotionRepository(db, outbox),
+          names: { namesOf: (ids) => names.of(ids) },
           reference: referenceOf(plausibility),
           clock: { now: () => new Date() },
         }),
     },
     {
       provide: MerchantPromotions,
-      inject: [DATABASE, OutboxPublisher, PresentationFreshness],
+      inject: [DATABASE, OutboxPublisher, PresentationFreshness, PresentationNames],
       useFactory: (
         db: Database,
         outbox: OutboxPublisher,
         presentations: PresentationFreshness,
+        names: PresentationNames,
       ): MerchantPromotions =>
         new MerchantPromotions({
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           promotions: new DrizzlePromotionRepository(db, outbox),
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           presentations,
+          names: { namesOf: (ids) => names.of(ids) },
           clock: { now: () => new Date() },
         }),
     },

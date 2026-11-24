@@ -17,14 +17,14 @@ import { type AuthenticatedSession, CurrentSession, Roles, SessionGuard } from '
 import { RequestValidationError } from '../../../shared/http/validation';
 import { CreatePromotion } from '../application/create-promotion';
 import { MerchantPromotions } from '../application/merchant-promotions';
-import type { PromotionView } from '../application/promotions';
+import type { MerchantPromotionView } from '../application/promotions';
 import { MerchantNotVerifiedError } from '../application/publish-official-price';
 import { PromotionNotFoundError, WithdrawPromotion } from '../application/withdraw-promotion';
 import { CreatePromotionDto, offerOf } from './promotions.dto';
 
 // La oferta aplanada, como en el esquema Promotion del contrato.
-type PromotionResponse = Omit<PromotionView, 'offer'> & PromotionView['offer'];
-const toResponse = ({ offer, ...promotion }: PromotionView): PromotionResponse => ({
+type PromotionResponse = Omit<MerchantPromotionView, 'offer'> & MerchantPromotionView['offer'];
+const toResponse = ({ offer, ...promotion }: MerchantPromotionView): PromotionResponse => ({
   ...promotion,
   ...offer,
 });

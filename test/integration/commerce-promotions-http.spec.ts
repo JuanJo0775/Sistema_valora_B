@@ -123,6 +123,9 @@ describe('promociones por HTTP (RF-017, #206)', () => {
       status: 'activa',
       officialPriceCop: 2600,
       promotedPriceCop: 2080,
+      // H3: del catálogo canónico, para que el portal no muestre el identificador.
+      productName: 'Arroz de las promociones Marca de prueba',
+      presentationLabel: '500 g',
     });
     const mine = await request(server)
       .get('/v1/commerce/promotions')
@@ -148,6 +151,50 @@ describe('promociones por HTTP (RF-017, #206)', () => {
     expect((withdrawn.body as { results: unknown }).results).toEqual(
       (withPromotion.body as { results: unknown }).results,
     );
+  });
+
+  it('422 PROMOTION_OVERLAP si se solapa con otra vigente o programada de la misma presentación; retirada la primera, se acepta (H20)', async () => {
+    const first = await send(
+      merchant,
+      'post',
+      '/commerce/promotions',
+      promotion({ validFrom: inDays(1), validUntil: inDays(6) }),
+    ).expect(201);
+
+    const overlap = await send(
+      merchant,
+      'post',
+      '/commerce/promotions',
+      promotion({
+        type: 'precio_especial',
+        percent: undefined,
+        specialPriceCop: 2300,
+        validFrom: inDays(1),
+        validUntil: inDays(8),
+      }),
+    ).expect(422);
+
+    expect(overlap.body).toMatchObject({ code: 'PROMOTION_OVERLAP' });
+    expect((overlap.body as { message: string }).message).toContain('Retírala o cambia las fechas');
+    expect(contractErrors('POST /commerce/promotions', 422, overlap.body as unknown)).toEqual([]);
+    // El día siguiente al fin de la primera no choca; retirada la primera, sus fechas quedan libres.
+    await send(
+      merchant,
+      'post',
+      '/commerce/promotions',
+      promotion({ validFrom: inDays(7), validUntil: inDays(9) }),
+    ).expect(201);
+    await send(
+      merchant,
+      'delete',
+      `/commerce/promotions/${(first.body as { id: string }).id}`,
+    ).expect(204);
+    await send(
+      merchant,
+      'post',
+      '/commerce/promotions',
+      promotion({ validFrom: inDays(1), validUntil: inDays(6) }),
+    ).expect(201);
   });
 
   it('422 sin oficial o fuera de los límites; 400 con datos inválidos; 404 al retirar una que no existe', async () => {
