@@ -5,25 +5,40 @@ import {
   EstablishmentHasOwnerError,
   EstablishmentNotFoundError,
   InvalidNitError,
+  ChainStoreNotClaimableError,
   NotAtEstablishmentError,
   RevokedFromEstablishmentError,
 } from './claim-establishment';
 import type { DomainEvent } from '../../../shared/events';
+import type { MerchantCase } from './merchant-cases';
 import type { MerchantClaim } from './merchant-claims';
 
 const now = new Date('2026-11-21T15:00:00Z');
 const STORE = { id: 'tienda-esperanza', lat: 4.5339, lng: -75.6811 };
+type StoreType = 'barrio' | 'minimercado' | 'supermercado' | 'descuento';
 
 // Dobles en memoria detrás de los puertos: la tienda del mapa, las solicitudes y el cambio de rol.
-function setup(options: { claims?: MerchantClaim[]; revoked?: string[] } = {}) {
+function setup(
+  options: {
+    claims?: MerchantClaim[];
+    revoked?: string[];
+    store?: { name: string; type: StoreType };
+  } = {},
+) {
+  const store = options.store ?? { name: 'Tienda La Esperanza', type: 'barrio' };
   const claims = [...(options.claims ?? [])];
+  // H11: el caso que se abre junto con la solicitud pre-aprobada, en la misma transacción.
+  const reviewCases: MerchantCase[] = [];
   // Eventos guardados junto con la solicitud, en la misma transacción (ADR-015).
   const events: DomainEvent[] = [];
   const disputes: { establishmentId: string; accountId: string }[] = [];
   const claim = new ClaimEstablishment({
     establishments: {
-      find: (id) => Promise.resolve(id === STORE.id ? { lat: STORE.lat, lng: STORE.lng } : null),
+      find: (id) =>
+        Promise.resolve(id === STORE.id ? { lat: STORE.lat, lng: STORE.lng, ...store } : null),
     },
+    // Clave seudónima de quien reclama (EC-08): la que lleva el caso, nunca la cuenta.
+    reporters: { keyOf: (accountId) => Promise.resolve(`clave-de-${accountId}`) },
     claims: {
       ownerOf: (id) =>
         Promise.resolve(claims.find((c) => c.establishmentId === id)?.accountId ?? null),
@@ -32,9 +47,10 @@ function setup(options: { claims?: MerchantClaim[]; revoked?: string[] } = {}) {
       // Precisión de D3 (#208): las tiendas de las que esta cuenta fue revocada.
       wasRevokedFrom: (_accountId, establishmentId) =>
         Promise.resolve((options.revoked ?? []).includes(establishmentId)),
-      save: (saved, published) => {
+      save: (saved, published, reviewCase) => {
         claims.push(saved);
         events.push(...published);
+        if (reviewCase) reviewCases.push(reviewCase);
         return Promise.resolve();
       },
     },
@@ -47,7 +63,7 @@ function setup(options: { claims?: MerchantClaim[]; revoked?: string[] } = {}) {
     },
     clock: { now: () => now },
   });
-  return { claim, claims, events, disputes };
+  return { claim, claims, events, disputes, reviewCases };
 }
 
 const verifiedClaim = (accountId: string, establishmentId: string): MerchantClaim => ({
@@ -166,5 +182,109 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
 
     await expect(claim.execute(request())).rejects.toThrow(RevokedFromEstablishmentError);
     expect(claims).toEqual([]);
+  });
+
+  describe('tiendas de cadena (H11, ADR-037)', () => {
+    it.each([
+      ['D1 Avenida 19', 'descuento'],
+      ['Ara Calle 14', 'descuento'],
+      ['Éxito Armenia', 'supermercado'],
+      ['Olímpica Express', 'supermercado'],
+      ['Carulla', 'supermercado'],
+      ['Oxxo La Tebaida', 'minimercado'],
+    ] as const)(
+      '«%s» (%s) no se puede reclamar: nada se guarda, ni evento ni disputa',
+      async (name, type) => {
+        const owner = verifiedClaim('cuenta-del-dueno', STORE.id);
+        const { claim, claims, events, disputes, reviewCases } = setup({
+          store: { name, type },
+          claims: [owner],
+        });
+
+        await expect(claim.execute(request())).rejects.toThrow(ChainStoreNotClaimableError);
+        expect(claims).toEqual([owner]);
+        expect(events).toEqual([]);
+        expect(disputes).toEqual([]);
+        expect(reviewCases).toEqual([]);
+      },
+    );
+
+    it('el rechazo por cadena llega antes que el de la cercanía, para no dar una pista falsa', async () => {
+      const { claim } = setup({ store: { name: 'D1 Centro', type: 'descuento' } });
+      const far = request({ location: { lat: STORE.lat + 0.001, lng: STORE.lng } });
+
+      await expect(claim.execute(far)).rejects.toThrow(ChainStoreNotClaimableError);
+    });
+
+    it('el error lleva el código estable y un mensaje claro en español', () => {
+      const error = new ChainStoreNotClaimableError();
+
+      expect(error.code).toBe('CHAIN_STORE_NOT_CLAIMABLE');
+      expect(error.message).toMatch(/cadena/i);
+    });
+
+    it('«Panadería D10» no es D1: sigue la verificación instantánea', async () => {
+      const { claim } = setup({ store: { name: 'Panadería D10', type: 'barrio' } });
+
+      await expect(claim.execute(request())).resolves.toMatchObject({ status: 'verificado' });
+    });
+  });
+
+  describe('supermercado que no es cadena: pre-aprobado hasta que modere (H11)', () => {
+    const supermarket = { name: 'Supermercado Laureles', type: 'supermercado' } as const;
+
+    it('queda pre_aprobado, sin MerchantVerified, con un caso de reclamo para el moderador', async () => {
+      const { claim, claims, events, reviewCases } = setup({ store: supermarket });
+
+      const result = await claim.execute(request());
+
+      expect(result).toEqual({
+        status: 'pre_aprobado',
+        establishmentId: STORE.id,
+        unlocks: expect.arrayContaining(['precios_oficiales']) as unknown,
+      });
+      expect(claims).toEqual([
+        expect.objectContaining({ status: 'pre_aprobado', verifiedAt: null }),
+      ]);
+      // El rol no cambia hasta que el moderador apruebe.
+      expect(events).toEqual([]);
+      expect(reviewCases).toEqual([
+        {
+          id: expect.any(String) as unknown,
+          establishmentId: STORE.id,
+          kind: 'reclamo',
+          reporterKey: 'clave-de-cuenta-de-dona-rosa',
+          reason: expect.stringContaining('revis') as unknown,
+          createdAt: now,
+        },
+      ]);
+    });
+
+    it('sigue pidiendo la cercanía de 50 m', async () => {
+      const { claim, claims, reviewCases } = setup({ store: supermarket });
+      const far = request({ location: { lat: STORE.lat + 0.001, lng: STORE.lng } });
+
+      await expect(claim.execute(far)).rejects.toThrow(NotAtEstablishmentError);
+      expect(claims).toEqual([]);
+      expect(reviewCases).toEqual([]);
+    });
+
+    it('con dueño, sigue la disputa de siempre y no se abre un caso de reclamo', async () => {
+      const owner = verifiedClaim('cuenta-del-dueno', STORE.id);
+      const { claim, disputes, reviewCases } = setup({ store: supermarket, claims: [owner] });
+
+      await expect(claim.execute(request())).rejects.toThrow(EstablishmentHasOwnerError);
+      expect(disputes).toHaveLength(1);
+      expect(reviewCases).toEqual([]);
+    });
+  });
+
+  it('barrio y minimercado: verificación instantánea, sin caso de moderación', async () => {
+    const { claim, reviewCases } = setup({
+      store: { name: 'Minimercado El Veci', type: 'minimercado' },
+    });
+
+    await expect(claim.execute(request())).resolves.toMatchObject({ status: 'verificado' });
+    expect(reviewCases).toEqual([]);
   });
 });

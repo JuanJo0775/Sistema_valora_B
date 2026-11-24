@@ -1,8 +1,8 @@
-import { PRE_APPROVED_UNLOCKS } from './claim-proposed-establishment';
-import type {
-  MerchantClaim,
-  MerchantClaimRejection,
-  MerchantClaimRepository,
+import {
+  PRE_APPROVED_UNLOCKS,
+  type MerchantClaim,
+  type MerchantClaimRejection,
+  type MerchantClaimRepository,
 } from './merchant-claims';
 
 export interface MerchantProfilePorts {

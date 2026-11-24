@@ -2069,7 +2069,18 @@ paths:
         debe estar a 50 m o menos de la tienda: location es la ubicación del celular en ese momento,
         solo sirve para comprobarlo y no se guarda (EC-08). Si todo está bien, la cuenta queda
         verificada como dueña de la tienda y su rol pasa a comercio. Una tienda por cuenta y un dueño
-        por tienda. El NIT es opcional; sin NIT, el comercio es informal. Su dígito de verificación
+        por tienda.
+
+        Tiendas de cadena (ADR-038, H11): una tienda de tipo descuento o cuyo nombre es el de una
+        cadena conocida (D1, Ara, Éxito, Olímpica, Carulla, Jumbo, Metro, Alkosto, Makro, Justo & Bueno,
+        PriceSmart, Surtimax, Super Inter, Oxxo) no se puede reclamar: responde 422
+        CHAIN_STORE_NOT_CLAIMABLE, antes de comprobar la cercanía. Un supermercado que no es de cadena
+        no se verifica al instante: la solicitud queda pre_aprobado y abre un caso de tipo reclamo en
+        GET /moderation/merchant-cases; el rol pasa a comercio solo cuando un moderador lo aprueba.
+        Barrio y minimercado se verifican al instante por cercanía, como antes. Orden de las
+        comprobaciones: sesión, correo verificado, datos y NIT, tienda existente (404), cadena (422),
+        cercanía (422), cuenta revocada de esa tienda (422), una tienda por cuenta (409) y dueño
+        existente (409, con disputa). El NIT es opcional; sin NIT, el comercio es informal. Su dígito de verificación
         solo detecta errores al escribir: no se consulta a la DIAN.
 
         Si la tienda no está en el mapa (#202), se envía newEstablishment en lugar de establishmentId:
@@ -2134,9 +2145,10 @@ paths:
       responses:
         '201':
           description: >-
-            verificado: la cuenta quedó como dueña de la tienda del mapa y su rol pasa a comercio.
-            pre_aprobado: la tienda nueva espera la aprobación de su propuesta; unlocks dice lo que
-            se desbloquea al aprobarse.
+            verificado: la cuenta quedó como dueña de la tienda del mapa (barrio o minimercado) y su
+            rol pasa a comercio. pre_aprobado: la tienda nueva espera la aprobación de su propuesta,
+            o el supermercado del mapa que no es de cadena espera el caso reclamo del moderador
+            (ADR-038); unlocks dice lo que se desbloquea al aprobarse.
           content:
             application/json:
               schema:
@@ -2176,8 +2188,10 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '422':
           description: >-
-            code NOT_AT_ESTABLISHMENT: la ubicación está a más de 50 m de la tienda. code
-            REVOKED_FROM_ESTABLISHMENT: un moderador revocó a esta cuenta de esta tienda (#208).
+            code CHAIN_STORE_NOT_CLAIMABLE: es una tienda de cadena (D1, Ara, Éxito…) y no se puede
+            reclamar; se comprueba antes de la cercanía (ADR-038). code NOT_AT_ESTABLISHMENT: la
+            ubicación está a más de 50 m de la tienda. code REVOKED_FROM_ESTABLISHMENT: un
+            moderador revocó a esta cuenta de esta tienda (#208).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2302,10 +2316,12 @@ paths:
     get:
       tags: [Moderación]
       operationId: listMerchantCases
-      summary: Denuncias y disputas de comercios pendientes (RF-015, D2)
+      summary: Denuncias, disputas y reclamos de comercios pendientes (RF-015, D2)
       description: >-
         Solo el rol moderador (#208). La más antigua primero. Una disputa se abre sola cuando otra
         cuenta, estando en la tienda (presencia, D2), intenta registrar una tienda que ya tiene dueño.
+        Un reclamo se abre solo cuando una cuenta, estando en la tienda, reclama un supermercado que
+        no es de cadena (ADR-038): su owner es el comercio pre_aprobado que espera la decisión.
         Trae los datos del comercio para verificarlo; nunca quién abrió el caso ni la cuenta del
         dueño (EC-08). Sin caché.
       x-corte: 3
@@ -2330,12 +2346,16 @@ paths:
     post:
       tags: [Moderación]
       operationId: decideMerchantCase
-      summary: Revocar el comercio o descartar el caso (RF-015, D3)
+      summary: Decidir un caso de comercio (RF-015, D3)
       description: >-
-        Solo el rol moderador (#208). revocar retira al instante los precios oficiales y las
-        promociones de la tienda, devuelve la cuenta a reportante, cierra los casos abiertos de esa
-        tienda y deja anotado quién, cuándo y por qué; esa cuenta no puede volver a registrar esa
-        tienda. descartar cierra el caso sin tocar el comercio. Siempre con motivo.
+        Solo el rol moderador (#208). Siempre con motivo. En una denuncia o una disputa: revocar retira
+        al instante los precios oficiales y las promociones de la tienda, devuelve la cuenta a
+        reportante, cierra los casos abiertos de esa tienda y deja anotado quién, cuándo y por qué;
+        esa cuenta no puede volver a registrar esa tienda. descartar cierra el caso sin tocar el
+        comercio. En un reclamo (ADR-038): aprobar deja el comercio verificado y concede el rol
+        comercio por el evento MerchantVerified; rechazar cierra la solicitud con el motivo (la cuenta
+        sigue reportante y GET /commerce/me responde rechazado). Una decisión que no corresponde al
+        tipo de caso responde 422 DECISION_NOT_APPLICABLE y no cambia nada.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2354,7 +2374,10 @@ paths:
               additionalProperties: false
               required: [decision, note]
               properties:
-                decision: { type: string, enum: [revocar, descartar] }
+                decision:
+                  type: string
+                  enum: [revocar, descartar, aprobar, rechazar]
+                  description: revocar y descartar, de la denuncia y la disputa; aprobar y rechazar, del reclamo.
                 note: { type: string, minLength: 10, maxLength: 500 }
       responses:
         '204': { description: Decisión registrada. }
@@ -2363,6 +2386,11 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404':
           description: El caso no existe o ya se decidió.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: code DECISION_NOT_APPLICABLE, la decisión no corresponde al tipo de caso.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3013,12 +3041,14 @@ components:
           distanceM: { type: integer, minimum: 0 }
     MerchantCase:
       type: object
-      description: Una denuncia o una disputa sobre un comercio (D2, D3); sin quién la abrió (EC-08).
+      description: >-
+        Una denuncia, una disputa o un reclamo sobre un comercio (D2, D3, ADR-038); sin quién la abrió
+        (EC-08).
       additionalProperties: false
       required: [id, kind, establishment, owner, reason, createdAt]
       properties:
         id: { type: string, format: uuid }
-        kind: { type: string, enum: [denuncia, disputa] }
+        kind: { type: string, enum: [denuncia, disputa, reclamo] }
         establishment:
           type: object
           additionalProperties: false
@@ -3120,7 +3150,7 @@ components:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), MERCHANT_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
         CONFLICT (409), ESTABLISHMENT_HAS_OWNER (409), ACCOUNT_HAS_ESTABLISHMENT (409), MERCHANT_REPORT_OPEN (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, IMPLAUSIBLE_OFFICIAL_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION, INVALID_OPENING_HOURS, OWN_ESTABLISHMENT, REVOKED_FROM_ESTABLISHMENT y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, IMPLAUSIBLE_OFFICIAL_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION, INVALID_OPENING_HOURS, OWN_ESTABLISHMENT, REVOKED_FROM_ESTABLISHMENT, CHAIN_STORE_NOT_CLAIMABLE, DECISION_NOT_APPLICABLE y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:

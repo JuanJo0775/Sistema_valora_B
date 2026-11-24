@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."merchant_cases" DROP CONSTRAINT "merchant_cases_kind_valid";--> statement-breakpoint
+ALTER TABLE "commerce"."merchant_cases" DROP CONSTRAINT "merchant_cases_status_valid";--> statement-breakpoint
+ALTER TABLE "commerce"."merchant_cases" ADD CONSTRAINT "merchant_cases_kind_valid" CHECK ("commerce"."merchant_cases"."kind" in ('denuncia', 'disputa', 'reclamo'));--> statement-breakpoint
+ALTER TABLE "commerce"."merchant_cases" ADD CONSTRAINT "merchant_cases_status_valid" CHECK ("commerce"."merchant_cases"."status" in ('pendiente', 'revocado', 'descartado', 'aprobado', 'rechazado'));
