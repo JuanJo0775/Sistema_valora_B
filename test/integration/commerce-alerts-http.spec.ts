@@ -12,6 +12,7 @@ import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
 import { contractErrors } from '../support/contract';
+import { seedReferencePrices } from '../support/reference-prices';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Datos de prueba: solo existen dentro de esta prueba.
@@ -54,6 +55,13 @@ describe('avisos para el comercio por HTTP (#209)', () => {
         { id: riceId, quantity: 500, unit: 'g', packCount: 1 },
         { id: oilId, quantity: 1000, unit: 'g', packCount: 1 },
       ],
+    });
+    // ADR-037: el precio oficial se compara con otras tres tiendas del municipio.
+    await seedReferencePrices(app, {
+      idPrefix: 'ce000001',
+      presentationIds: [riceId, oilId],
+      priceCop: 2600,
+      near: STORE,
     });
     merchant = await signIn(server, db, 'comercio-avisos@correo.com');
     await request(server)
