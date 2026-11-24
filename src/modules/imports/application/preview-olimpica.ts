@@ -26,7 +26,18 @@ export class PreviewOlimpica {
   async execute(zone: DeliveryZone, eans: string[]) {
     const rows = [];
     for (const ean of eans) {
-      rows.push(await this.inspect(ean, zone));
+      try {
+        rows.push(await this.inspect(ean, zone));
+      } catch (error: unknown) {
+        const reason =
+          typeof error === 'object' &&
+          error !== null &&
+          'name' in error &&
+          error.name === 'TimeoutError'
+            ? 'provider_timeout'
+            : 'provider_error';
+        rows.push({ ean, status: 'failed' as const, reason });
+      }
     }
     return { mode: 'preview' as const, zoneId: zone.id, rows };
   }
@@ -55,6 +66,13 @@ export class PreviewOlimpica {
         sellerId: quote.sellerId,
         observedAt,
       };
+    }
+    if (
+      quote.priceCop === undefined ||
+      !Number.isSafeInteger(quote.priceCop) ||
+      quote.priceCop <= 0
+    ) {
+      return { ean, status: 'failed' as const, reason: 'invalid_response' };
     }
     return {
       ean,
