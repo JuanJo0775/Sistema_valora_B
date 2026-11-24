@@ -165,7 +165,7 @@ export class DecideModeration {
       if (until) await this.requestSuspension(reported, 'rechazos_seguidos', until);
     }
     if (request.decision === 'observar_cuentas') {
-      // H34 (ADR-038): el reporte observado se retira como un descarte, para que ningún lugar lo siga
+      // H34 (ADR-039): el reporte observado se retira como un descarte, para que ningún lugar lo siga
       // mostrando «en revisión». La reputación no baja: la sanción de esta decisión es la suspensión.
       await this.discard(reported, { penalize: false });
       // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.

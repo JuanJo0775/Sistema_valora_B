@@ -1,4 +1,4 @@
-# ADR-038: Estado final de cada decisión de moderación y causa visible de la suspensión
+# ADR-039: Estado final de cada decisión de moderación y causa visible de la suspensión
 
 - **Estado:** Propuesto (decisión del equipo registrada el 24-nov-2026; pendiente de aceptación formal)
 - **Fecha:** 2026-11-24

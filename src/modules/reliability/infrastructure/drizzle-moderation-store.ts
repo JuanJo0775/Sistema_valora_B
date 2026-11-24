@@ -18,7 +18,7 @@ import { appeals, bursts, flags, moderationLog, observations } from './schema';
 
 type Executor = NodePgDatabase | Transaction;
 
-// Grill de la #32, pregunta 4: aprobar y descartar cambian el estado. H34 (ADR-038): observar_cuentas
+// Grill de la #32, pregunta 4: aprobar y descartar cambian el estado. H34 (ADR-039): observar_cuentas
 // también retira el reporte, así que nunca queda en la cola ni «en revisión».
 const STATE_AFTER = {
   aprobar: 'aprobado',

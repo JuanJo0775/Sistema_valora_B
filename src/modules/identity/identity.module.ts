@@ -475,7 +475,7 @@ export class IdentityModule implements OnModuleInit {
         }).execute({
           reporterKey: payload.reporterKey,
           suspendedUntil: new Date(payload.suspendedUntil),
-          // H33 (ADR-038): el motivo interno del evento se traduce a la causa estable que ve la cuenta.
+          // H33 (ADR-039): el motivo interno del evento se traduce a la causa estable que ve la cuenta.
           reason:
             payload.reason === 'rechazos_seguidos'
               ? 'descartes_seguidos'

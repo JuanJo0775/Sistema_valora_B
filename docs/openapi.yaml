@@ -1437,7 +1437,7 @@ paths:
                     additionalProperties: false
                     required: [until, reason]
                     description: >-
-                      H33 (ADR-038), aditivo. Solo si la cuenta está suspendida: hasta cuándo y por qué, para
+                      H33 (ADR-039), aditivo. Solo si la cuenta está suspendida: hasta cuándo y por qué, para
                       que la app lo explique. Nunca trae la nota del moderador ni quién denunció.
                     properties:
                       until:
@@ -1759,7 +1759,7 @@ paths:
         reputación de su autor; si es el tercer descarte seguido de ese autor, su cuenta se suspende
         7 días (RN6). observar_cuentas retira el reporte como un descarte (sale de la cola y de la tienda,
         GET /me/reports lo muestra descartado, sin plazo de apelación, y no baja la reputación) y suspende
-        7 días al autor; la causa la explica GET /auth/session en suspension.reason (ADR-038). El
+        7 días al autor; la causa la explica GET /auth/session en suspension.reason (ADR-039). El
         moderador nunca ve quién es el autor; la suspensión revoca sus sesiones (#33). Todo reporte que
         sale de la cola queda en un estado final: aprobar, normal; descartar y observar_cuentas, descartado.
       security:
