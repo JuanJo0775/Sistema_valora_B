@@ -110,6 +110,9 @@ describe('precios oficiales por HTTP (RF-016, #203)', () => {
         {
           establishmentId: storeId,
           presentationId: riceId,
+          // H3: del catálogo canónico, sin esperar a la lista pública.
+          productName: 'Arroz de los oficiales Marca de prueba',
+          presentationLabel: '500 g',
           priceCop: 2600,
           confirmedAt: expect.any(String) as unknown,
           freshness: 'vigente',
