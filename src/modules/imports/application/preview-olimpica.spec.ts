@@ -51,3 +51,17 @@ it.each([
     });
   },
 );
+
+it.each([{ regionId: '' }, { sellerId: 'otro' }])(
+  'omite una oferta con contexto no corroborado %j',
+  async (context) => {
+    const pilot = new PreviewOlimpica({
+      findPresentations: () => Promise.resolve(['p1']),
+      quote: () => Promise.resolve({ ...quote, ...context }),
+      now: () => observedAt,
+    });
+    await expect(pilot.execute(zone, [ean])).resolves.toMatchObject({
+      rows: [{ ean, status: 'skipped', reason: 'unverified_zone' }],
+    });
+  },
+);
