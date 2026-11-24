@@ -125,6 +125,18 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     ]);
   });
 
+  it('devuelve una lista vacía conforme al contrato cuando el piloto está inactivo', async () => {
+    const response = await request(server)
+      .get(`/v1/products/${productId}/online-offers`)
+      .query({ zone: 'armenia-centro' });
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual({ items: [] });
+    expect(
+      contractErrors('GET /products/:productId/online-offers', 200, response.body as unknown),
+    ).toEqual([]);
+  });
+
   it('las rutas públicas responden como dice el contrato', async () => {
     const get = (path: string) => request(server).get(`/v1${path}`);
 
