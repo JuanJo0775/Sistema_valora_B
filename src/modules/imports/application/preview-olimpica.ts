@@ -32,7 +32,15 @@ export class PreviewOlimpica {
   }
 
   private async inspect(ean: string, zone: DeliveryZone) {
-    const [presentationId] = await this.ports.findPresentations(ean);
+    const ids = await this.ports.findPresentations(ean);
+    const [presentationId] = ids;
+    if (ids.length !== 1 || presentationId === undefined) {
+      return {
+        ean,
+        status: 'skipped' as const,
+        reason: ids.length === 0 ? 'unknown_ean' : 'ambiguous_ean',
+      };
+    }
     const quote = await this.ports.quote(ean, zone);
     const observedAt = this.ports.now();
     return {
