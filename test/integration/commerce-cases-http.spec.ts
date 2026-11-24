@@ -10,6 +10,7 @@ import { PurgeDeletedAccounts } from '../../src/modules/identity/application/pur
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
 import { contractErrors } from '../support/contract';
+import { seedReferencePrices } from '../support/reference-prices';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Datos de prueba: solo existen dentro de esta prueba.
@@ -58,6 +59,13 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
       categoryCode: 'grains-groceries',
       aliases: [],
       presentations: [{ id: riceId, quantity: 500, unit: 'g', packCount: 1 }],
+    });
+    // ADR-037: el precio oficial se compara con otras tres tiendas del municipio.
+    await seedReferencePrices(app, {
+      idPrefix: 'cc000001',
+      presentationIds: [riceId],
+      priceCop: 2600,
+      near: STORE,
     });
     merchant = await signIn(server, db, 'comercio-casos@correo.com');
     ana = await signIn(server, db, 'ana-casos@correo.com');

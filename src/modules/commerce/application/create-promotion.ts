@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
 import { freshnessOf, ttlDaysFor } from '../../../domain/freshness';
-import { assertValidDates, assertValidOffer, type PromotionOffer } from '../../../domain/promotion';
+import {
+  assertValidDates,
+  assertValidOffer,
+  promotedPriceCop,
+  type PromotionOffer,
+} from '../../../domain/promotion';
+import {
+  assertPromotionPriceInRange,
+  assessPromotionPrice,
+} from '../../../domain/price-plausibility';
 import { createEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 import type { OfficialPriceRepository } from './official-prices';
@@ -13,7 +22,7 @@ import {
   type PromotionView,
   promotionView,
 } from './promotions';
-import { verifiedEstablishmentOf } from './publish-official-price';
+import { type PriceReference, verifiedEstablishmentOf } from './publish-official-price';
 
 export interface CreatePromotionPorts {
   claims: Pick<MerchantClaimRepository, 'findByAccount'>;
@@ -21,6 +30,8 @@ export interface CreatePromotionPorts {
   // La categoría de la presentación, por la interfaz pública de catalog (ADR-005).
   presentations: { isFresh(presentationId: string): Promise<boolean | null> };
   promotions: Pick<PromotionRepository, 'save'>;
+  // ADR-037: la referencia de ADR-030, de pricing.
+  reference: PriceReference;
   clock: { now(): Date };
 }
 
@@ -49,7 +60,7 @@ export class CreatePromotion {
   constructor(private readonly ports: CreatePromotionPorts) {}
 
   async execute(request: CreatePromotionRequest): Promise<PromotionView> {
-    const { claims, prices, presentations, promotions, clock } = this.ports;
+    const { claims, prices, presentations, promotions, clock, reference } = this.ports;
     const establishmentId = await verifiedEstablishmentOf(claims, request.accountId);
     const now = clock.now();
     const official = await prices.findOne(establishmentId, request.presentationId);
@@ -60,6 +71,15 @@ export class CreatePromotion {
     if (!official || officialFreshness !== 'vigente') throw new OfficialPriceRequiredError();
     assertValidOffer(request.offer, official.priceCop);
     assertValidDates({ ...request, now });
+    // ADR-037: el precio que deja la promoción no puede quedar muy por debajo de lo normal.
+    const promoted = promotedPriceCop(request.offer, official.priceCop);
+    assertPromotionPriceInRange(
+      promoted,
+      assessPromotionPrice(
+        promoted,
+        await reference.of({ presentationId: request.presentationId, establishmentId }),
+      ),
+    );
     const promotion: Promotion = {
       id: randomUUID(),
       establishmentId,

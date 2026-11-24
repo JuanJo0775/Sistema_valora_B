@@ -16,7 +16,7 @@ export interface PriceFileRow {
 export interface PriceFileError {
   row: number;
   barcode: string;
-  code: 'INVALID_PRICE' | 'DUPLICATE_ROW' | 'UNKNOWN_BARCODE';
+  code: 'INVALID_PRICE' | 'DUPLICATE_ROW' | 'UNKNOWN_BARCODE' | 'IMPLAUSIBLE_OFFICIAL_PRICE';
   message: string;
 }
 

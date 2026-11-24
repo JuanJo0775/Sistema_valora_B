@@ -112,6 +112,31 @@ export interface ModerationStore {
   markBurst(reportIds: string[]): Promise<void>;
 }
 
+// ADR-037: un precio oficial de un comercio sin referencia con qué compararlo espera aquí a que un
+// moderador lo apruebe o lo descarte. Es una tabla aparte de las observaciones: no es un reporte de la
+// comunidad y no debe contar como corroboración de nada.
+export interface OfficialReview {
+  // El mismo id con el que commerce lo guarda: es el id del caso en la cola de moderación.
+  reviewId: string;
+  presentationId: string;
+  establishmentId: string;
+  // Clave seudónima del comercio (EC-08): para que nadie decida sobre lo propio.
+  reporterKey: string;
+  priceCop: number;
+  receivedAt: Date;
+}
+
+export interface OfficialReviewStore {
+  // Una sola vez por caso: un evento repetido no lo duplica.
+  save(review: OfficialReview): Promise<void>;
+  // Los que todavía no tienen decisión ni se cerraron.
+  pending(): Promise<OfficialReview[]>;
+  // La decisión de moderación.
+  decide(reviewId: string, decision: 'aprobado' | 'descartado'): Promise<void>;
+  // Se cerró sin decisión (otro precio lo reemplazó o se retiró la tienda).
+  close(reviewId: string): Promise<void>;
+}
+
 export interface ReputationStore {
   // Solo las claves que tienen reputación guardada; las demás son neutras.
   valuesOf(reporterKeys: string[]): Promise<Map<string, number>>;

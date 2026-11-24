@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
+import { createEvent, type DomainEvent, type OutboxPublisher } from '../../../shared/events';
+import { OFFICIAL_PRICE_REVIEW_CLOSED } from '../application/official-prices';
 import type { MerchantRevocation, MerchantRevocations } from '../application/merchant-cases';
 import type { MerchantPurges } from '../application/purge-merchant-account';
 import {
@@ -8,15 +9,28 @@ import {
   merchantClaimRejections,
   merchantClaims,
   merchantNotices,
+  officialPriceReviews,
   officialPrices,
   promotions,
 } from './schema';
 
 type Transaction = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
 
-// Lo publicado por la tienda deja de mostrarse (D3).
-async function withdrawPublished(tx: Transaction, establishmentId: string): Promise<void> {
+// Lo publicado por la tienda deja de mostrarse (D3). ADR-037: sus precios en revisión se cierran y
+// moderación los saca de la cola.
+async function withdrawPublished(
+  tx: Transaction,
+  outbox: OutboxPublisher,
+  establishmentId: string,
+): Promise<void> {
   await tx.delete(officialPrices).where(eq(officialPrices.establishmentId, establishmentId));
+  const closed = await tx
+    .delete(officialPriceReviews)
+    .where(eq(officialPriceReviews.establishmentId, establishmentId))
+    .returning({ reviewId: officialPriceReviews.reviewId });
+  for (const { reviewId } of closed) {
+    await outbox.publish(tx, createEvent(OFFICIAL_PRICE_REVIEW_CLOSED, 1, { reviewId }));
+  }
   await tx.delete(promotions).where(eq(promotions.establishmentId, establishmentId));
 }
 
@@ -38,7 +52,7 @@ export class DrizzleMerchantRevocations implements MerchantRevocations, Merchant
         rejectedAt: revokedAt,
         outcome: 'revocado',
       });
-      await withdrawPublished(tx, establishmentId);
+      await withdrawPublished(tx, this.outbox, establishmentId);
       // Los casos abiertos de esa tienda se cierran con la revocación, con su bitácora.
       await tx
         .update(merchantCases)
@@ -65,7 +79,7 @@ export class DrizzleMerchantRevocations implements MerchantRevocations, Merchant
         .delete(merchantClaimRejections)
         .where(eq(merchantClaimRejections.accountId, accountId));
       await tx.delete(merchantNotices).where(eq(merchantNotices.accountId, accountId));
-      if (establishmentId !== null) await withdrawPublished(tx, establishmentId);
+      if (establishmentId !== null) await withdrawPublished(tx, this.outbox, establishmentId);
       for (const event of events) await this.outbox.publish(tx, event);
     });
   }
