@@ -1,6 +1,11 @@
 import {
+  assertOfficialPriceInRange,
   assertPlausiblePrice,
+  assertPromotionPriceInRange,
   assessAgainstFallback,
+  assessOfficialPrice,
+  assessPromotionPrice,
+  ImplausibleOfficialPriceError,
   ImplausiblePriceError,
   PLAUSIBILITY_PARAMS,
   wholesaleTotalCop,
@@ -147,5 +152,125 @@ describe('referencia mayorista de una presentación', () => {
 
   it.each(['ml', 'l', 'und'] as const)('una presentación en %s no tiene referencia', (unit) => {
     expect(wholesaleTotalCop(2000, { quantity: 1, unit })).toBeNull();
+  });
+});
+
+// ADR-037: la misma referencia y los mismos parámetros del ADR-030, aplicados al precio oficial.
+describe('precio oficial frente a la referencia (ADR-037)', () => {
+  const peers = { peerPricesCop: [3950, 4200, 4600] };
+  const rejection = (
+    priceCop: number,
+    verdict: ReturnType<typeof assessOfficialPrice>,
+  ): unknown => {
+    try {
+      assertOfficialPriceInRange(priceCop, verdict);
+      return undefined;
+    } catch (error) {
+      return error;
+    }
+  };
+
+  it('dentro de rango con la mediana de al menos 3 tiendas: se publica', () => {
+    expect(assessOfficialPrice(4300, peers)).toEqual({ status: 'dentro_de_rango' });
+    expect(assertOfficialPriceInRange(4300, assessOfficialPrice(4300, peers))).toBe(
+      'dentro_de_rango',
+    );
+  });
+
+  // Mediana 4.200: el límite exacto es normal (40 % = 1.680; 250 % = 10.500).
+  it.each([1680, 10_500])('$%i, el límite exacto, es normal', (priceCop) => {
+    expect(assessOfficialPrice(priceCop, peers).status).toBe('dentro_de_rango');
+  });
+
+  it.each([1679, 10_501, 300, 52_000])(
+    '$%i queda fuera de rango y el 422 dice lo más barato y lo más caro',
+    (priceCop) => {
+      const verdict = assessOfficialPrice(priceCop, peers);
+
+      expect(verdict).toEqual({
+        status: 'fuera_de_rango',
+        reference: 'tiendas',
+        lowestCop: 3950,
+        highestCop: 4600,
+        wholesaleCop: null,
+      });
+      const error = rejection(priceCop, verdict);
+      expect(error).toBeInstanceOf(ImplausibleOfficialPriceError);
+      expect(error).toMatchObject({
+        code: 'IMPLAUSIBLE_OFFICIAL_PRICE',
+        message: expect.stringContaining(
+          'Lo más barato que vemos es $3.950 y lo más caro $4.600',
+        ) as unknown,
+      });
+    },
+  );
+
+  it('con menos de 3 tiendas y sin SIPSA no hay referencia: sin_referencia, no se rechaza', () => {
+    const verdict = assessOfficialPrice(300, { peerPricesCop: [3950, 4200] });
+
+    expect(verdict).toEqual({ status: 'sin_referencia' });
+    expect(assertOfficialPriceInRange(300, verdict)).toBe('sin_referencia');
+  });
+
+  it('con SIPSA y sin tiendas suficientes: menos del 50 % del mayorista se rechaza; el resto, no', () => {
+    const fallback = { peerPricesCop: [], wholesaleTotalCop: 3000 };
+
+    expect(assessOfficialPrice(1500, fallback).status).toBe('dentro_de_rango');
+    expect(assessOfficialPrice(52_000, fallback).status).toBe('dentro_de_rango');
+    const verdict = assessOfficialPrice(1499, fallback);
+    expect(verdict).toEqual({
+      status: 'fuera_de_rango',
+      reference: 'sipsa',
+      lowestCop: 3000,
+      highestCop: null,
+      wholesaleCop: 3000,
+    });
+    expect(rejection(1499, verdict)).toMatchObject({
+      code: 'IMPLAUSIBLE_OFFICIAL_PRICE',
+      message: expect.stringContaining('$3.000') as unknown,
+    });
+  });
+
+  it('usa los parámetros que se le pasen', () => {
+    const strict = { ...PLAUSIBILITY_PARAMS, lowRatio: 0.9 };
+
+    expect(assessOfficialPrice(3500, peers, strict).status).toBe('fuera_de_rango');
+  });
+});
+
+describe('precio de una promoción frente a la referencia (ADR-037)', () => {
+  const peers = { peerPricesCop: [3950, 4200, 4600] };
+
+  it('solo vigila el lado bajo: menos del 40 % de la mediana (1.680) se rechaza', () => {
+    expect(assessPromotionPrice(1680, peers).status).toBe('dentro_de_rango');
+    expect(assessPromotionPrice(1679, peers).status).toBe('fuera_de_rango');
+    expect(assessPromotionPrice(52_000, peers).status).toBe('dentro_de_rango');
+  });
+
+  it('sin referencia, no la frena', () => {
+    expect(assessPromotionPrice(150, { peerPricesCop: [] })).toEqual({ status: 'sin_referencia' });
+  });
+
+  it('con SIPSA mide contra el 50 % del mayorista', () => {
+    const fallback = { peerPricesCop: [], wholesaleTotalCop: 3000 };
+
+    expect(assessPromotionPrice(1500, fallback).status).toBe('dentro_de_rango');
+    expect(assessPromotionPrice(1499, fallback).status).toBe('fuera_de_rango');
+  });
+
+  it('el 422 explica la promoción y cómo corregirla', () => {
+    const verdict = assessPromotionPrice(1000, peers);
+
+    expect(() => {
+      assertPromotionPriceInRange(1000, verdict);
+    }).toThrow(ImplausibleOfficialPriceError);
+    expect(() => {
+      assertPromotionPriceInRange(1000, verdict);
+    }).toThrow(
+      /Con esta promoción el precio quedaría en \$1\.000.*\$3\.950 y lo más caro \$4\.600.*Sube el precio especial o baja el descuento/,
+    );
+    expect(() => {
+      assertPromotionPriceInRange(1000, assessPromotionPrice(1000, { peerPricesCop: [] }));
+    }).not.toThrow();
   });
 });

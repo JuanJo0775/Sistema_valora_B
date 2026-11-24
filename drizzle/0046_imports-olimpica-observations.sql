@@ -1,4 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS "imports";--> statement-breakpoint
+CREATE SCHEMA "imports";
+--> statement-breakpoint
 CREATE TABLE "imports"."online_observations" (
 	"source" text NOT NULL,
 	"zone_id" text NOT NULL,

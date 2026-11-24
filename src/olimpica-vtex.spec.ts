@@ -93,3 +93,46 @@ it.each([{ args: [] }, { args: ['--apply'] }])(
     expect(save).toHaveBeenCalledTimes(args.length);
   },
 );
+
+it('consulta el punto público de Armenia con el vendedor principal y confirma domicilio', async () => {
+  const requests: (RequestInit | undefined)[] = [];
+  const replies = [
+    [{ items: [{ ean: '7702552000097', itemId: '516338' }] }],
+    {
+      country: 'COL',
+      items: [{ id: '516338', seller: '1', availability: 'available', sellingPrice: 220000 }],
+      logisticsInfo: [{ itemIndex: 0, slas: [{ deliveryChannel: 'delivery' }] }],
+    },
+  ];
+  const result = await runOlimpicaPreview(
+    [],
+    { OLIMPICA_VTEX_LOCATION: 'armenia-centro', OLIMPICA_VTEX_EANS: env.OLIMPICA_VTEX_EANS },
+    () =>
+      Promise.resolve({
+        find: (ean: string) => Promise.resolve(ean === '7702552000097' ? ['p1'] : []),
+        close: () => Promise.resolve(),
+      }),
+    (_input, init) => {
+      requests.push(init);
+      return Promise.resolve(Response.json(replies.shift()));
+    },
+  );
+  expect(result).toMatchObject({
+    zoneId: 'armenia-centro',
+    rows: [
+      { status: 'available', priceCop: 2200, sellerId: '1' },
+      { status: 'skipped' },
+      { status: 'skipped' },
+      { status: 'skipped' },
+      { status: 'skipped' },
+    ],
+  });
+  expect(requests[1]).toMatchObject({
+    method: 'POST',
+    body: JSON.stringify({
+      items: [{ id: '516338', quantity: 1, seller: '1' }],
+      geoCoordinates: [-75.6811, 4.5339],
+      country: 'COL',
+    }),
+  });
+});

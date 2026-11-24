@@ -4,6 +4,7 @@ import {
   DecideModeration,
   DecisionNotAllowedError,
   InvalidNoteError,
+  OfficialDecisionNotAllowedError,
   OwnReportError,
   ReportNotInQueueError,
   SameModeratorError,
@@ -17,6 +18,8 @@ import type {
   NewFlag,
   Observation,
   ObservationStore,
+  OfficialReview,
+  OfficialReviewStore,
   PendingItem,
   ReputationStore,
 } from './stores';
@@ -180,6 +183,29 @@ class InMemoryModeration implements ModerationStore {
   }
 }
 
+class InMemoryOfficialReviews implements OfficialReviewStore {
+  readonly states = new Map<string, string>();
+
+  constructor(readonly saved: OfficialReview[] = []) {}
+
+  save(): Promise<void> {
+    return Promise.reject(new Error('DecideModeration no guarda revisiones'));
+  }
+
+  pending(): Promise<OfficialReview[]> {
+    return Promise.resolve(this.saved.filter((review) => !this.states.has(review.reviewId)));
+  }
+
+  decide(reviewId: string, decision: 'aprobado' | 'descartado'): Promise<void> {
+    this.states.set(reviewId, decision);
+    return Promise.resolve();
+  }
+
+  close(): Promise<void> {
+    return Promise.reject(new Error('DecideModeration no cierra revisiones'));
+  }
+}
+
 class InMemoryReputations implements ReputationStore {
   readonly values = new Map<string, number>();
 
@@ -201,13 +227,15 @@ class InMemoryReputations implements ReputationStore {
   }
 }
 
-function setup(saved: Observation[]) {
+function setup(saved: Observation[], reviews: OfficialReview[] = []) {
   const observations = new InMemoryObservations(saved);
   const moderation = new InMemoryModeration(observations);
   const reputations = new InMemoryReputations();
+  const officialReviews = new InMemoryOfficialReviews(reviews);
   const published: DomainEvent[] = [];
   const decide = new DecideModeration({
     moderation,
+    officialReviews,
     observations,
     reputations,
     events: {
@@ -218,7 +246,7 @@ function setup(saved: Observation[]) {
     },
     clock: { now: () => now },
   });
-  return { moderation, reputations, published, decide };
+  return { moderation, officialReviews, reputations, published, decide };
 }
 
 describe('decisión de moderación (RF-013)', () => {
@@ -590,6 +618,100 @@ describe('decisión de moderación (RF-013)', () => {
       expect(reputations.values.get('autor-dudoso')).toBeCloseTo(0.3);
       expect(published).toEqual([]);
       await expect(moderation.decisionsAbout('autor-dudoso')).resolves.toEqual(['descartar']);
+    });
+  });
+
+  // ADR-037: un precio oficial sin referencia con qué compararlo espera aquí a un moderador.
+  describe('un precio oficial en revisión (ADR-037)', () => {
+    const review: OfficialReview = {
+      reviewId: 'revision-oficial-1',
+      presentationId: 'arroz-500g',
+      establishmentId: 'don-jose',
+      reporterKey: 'clave-del-comercio',
+      priceCop: 300,
+      receivedAt: hoursAgo(1),
+    };
+    const decision = (change: Partial<Parameters<DecideModeration['execute']>[0]> = {}) => ({
+      reportId: review.reviewId,
+      decision: 'aprobar' as Decision,
+      note,
+      moderatorKey: 'moderadora-a',
+      ...change,
+    });
+
+    it('aprobarlo lo registra en la bitácora y avisa OfficialPriceReviewed (aprobado)', async () => {
+      const { moderation, officialReviews, published, reputations, decide } = setup([], [review]);
+
+      await decide.execute(decision());
+
+      expect(moderation.log).toEqual([
+        {
+          reportId: review.reviewId,
+          decision: 'aprobar',
+          note,
+          moderatorKey: 'moderadora-a',
+          decidedAt: now,
+          stage: 'revision',
+        },
+      ]);
+      expect(officialReviews.states.get(review.reviewId)).toBe('aprobado');
+      expect(published).toEqual([
+        expect.objectContaining({
+          type: 'OfficialPriceReviewed',
+          version: 1,
+          payload: {
+            reviewId: review.reviewId,
+            establishmentId: 'don-jose',
+            presentationId: 'arroz-500g',
+            decision: 'aprobado',
+          },
+        }),
+      ]);
+      // No es un reporte de la comunidad: no mueve la reputación de nadie.
+      expect(reputations.values.size).toBe(0);
+    });
+
+    it('descartarlo lo retira: avisa OfficialPriceReviewed (descartado), sin suspender a nadie', async () => {
+      const { officialReviews, published, decide } = setup([], [review]);
+
+      await decide.execute(decision({ decision: 'descartar' }));
+
+      expect(officialReviews.states.get(review.reviewId)).toBe('descartado');
+      expect(published.map((event) => event.type)).toEqual(['OfficialPriceReviewed']);
+      expect(published[0]?.payload).toMatchObject({ decision: 'descartado' });
+    });
+
+    it('«observar cuentas» no aplica a un precio oficial (422)', async () => {
+      const { officialReviews, published, decide } = setup([], [review]);
+
+      await expect(decide.execute(decision({ decision: 'observar_cuentas' }))).rejects.toThrow(
+        OfficialDecisionNotAllowedError,
+      );
+      expect(officialReviews.states.size).toBe(0);
+      expect(published).toEqual([]);
+    });
+
+    it('el moderador que es el mismo comercio no decide sobre su propio precio', async () => {
+      const { officialReviews, decide } = setup([], [review]);
+
+      await expect(
+        decide.execute(decision({ moderatorKey: 'clave-del-comercio' })),
+      ).rejects.toThrow(OwnReportError);
+      expect(officialReviews.states.size).toBe(0);
+    });
+
+    it('exige el motivo, como cualquier decisión', async () => {
+      const { decide, published } = setup([], [review]);
+
+      await expect(decide.execute(decision({ note: 'corto' }))).rejects.toThrow(InvalidNoteError);
+      expect(published).toEqual([]);
+    });
+
+    it('ya decidido, no está en la cola', async () => {
+      const { decide } = setup([], [review]);
+      await decide.execute(decision());
+
+      await expect(decide.execute(decision())).rejects.toThrow(ReportNotInQueueError);
     });
   });
 });

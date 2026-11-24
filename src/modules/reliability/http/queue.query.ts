@@ -2,13 +2,21 @@ import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 import { DEFAULT_QUEUE_LIMIT, type QueueReason } from '../application/moderation-queue';
 
-const QUEUE_REASONS: QueueReason[] = ['apelacion', 'desviacion', 'rafaga', 'marcado'];
+const QUEUE_REASONS: QueueReason[] = [
+  'apelacion',
+  'desviacion',
+  'sin_referencia',
+  'rafaga',
+  'marcado',
+];
 
 // Parámetros de GET /v1/moderation/queue (grill de la #32, pregunta 6).
 export class QueueQueryDto {
   // discrepancia_oficial y verificacion_comercio llegan con el corte 3.
   @IsOptional()
-  @IsIn(QUEUE_REASONS, { message: 'debe ser apelacion, desviacion, rafaga o marcado' })
+  @IsIn(QUEUE_REASONS, {
+    message: 'debe ser apelacion, desviacion, sin_referencia, rafaga o marcado',
+  })
   reason?: QueueReason;
 
   @IsOptional()

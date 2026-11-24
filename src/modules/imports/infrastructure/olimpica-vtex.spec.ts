@@ -52,3 +52,20 @@ it('exige que VTEX reconozca el vendedor para esa región', async () => {
   );
   await expect(client.confirms(zone)).resolves.toBe(false);
 });
+
+it('rechaza un precio del punto de prueba si la simulación solo ofrece recogida', async () => {
+  const responses = [
+    [{ items: [{ ean, itemId: '516338' }] }],
+    {
+      country: 'COL',
+      items: [{ id: '516338', seller: '1', availability: 'available', sellingPrice: 220000 }],
+      logisticsInfo: [{ itemIndex: 0, slas: [{ deliveryChannel: 'pickup-in-point' }] }],
+    },
+  ];
+  const client = new OlimpicaVtex([-75.6811, 4.5339], () =>
+    Promise.resolve(Response.json(responses.shift())),
+  );
+  await expect(
+    client.quote(ean, { id: 'centro', regionId: 'centro', sellerId: '1' }),
+  ).rejects.toThrow('invalid_response');
+});

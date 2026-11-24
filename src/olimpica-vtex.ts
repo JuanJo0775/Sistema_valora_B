@@ -19,6 +19,9 @@ import { DATABASE, DatabaseModule, type Database } from './shared/database/datab
 })
 class OlimpicaPilotModule {}
 
+// Punto público fijo del centro de Armenia, en orden longitud y latitud de VTEX.
+const ARMENIA_CENTER = [-75.6811, 4.5339] as const;
+
 export async function runOlimpicaPreview(
   args: string[],
   env: NodeJS.ProcessEnv,
@@ -42,14 +45,15 @@ export async function runOlimpicaPreview(
   ) {
     throw new Error('Usa vista previa o --apply con --run-id=<UUID> opcional.');
   }
+  const location = env['OLIMPICA_VTEX_LOCATION']?.trim();
+  const atCenter = location === 'armenia-centro';
   const postalCode = env['OLIMPICA_VTEX_POSTAL_CODE']?.trim() ?? '';
   const regionId = env['OLIMPICA_VTEX_REGION_ID']?.trim() ?? '';
   const sellerId = env['OLIMPICA_VTEX_SELLER_ID']?.trim() ?? '';
   const eans = env['OLIMPICA_VTEX_EANS']?.split(',').map((ean) => ean.trim()) ?? [];
   if (
-    !/^630[0-9]{3}$/.test(postalCode) ||
-    !regionId ||
-    !sellerId ||
+    (location !== undefined && location !== '' && !atCenter) ||
+    (!atCenter && (!/^630[0-9]{3}$/.test(postalCode) || !regionId || !sellerId)) ||
     eans.length < 5 ||
     eans.length > 10 ||
     new Set(eans).size !== eans.length ||
@@ -57,12 +61,14 @@ export async function runOlimpicaPreview(
   ) {
     throw new Error('Configura una zona de prueba de Armenia, su vendedor y de 5 a 10 EAN únicos.');
   }
-  const zone = { id: 'armenia-piloto', regionId, sellerId };
+  const zone = atCenter
+    ? { id: 'armenia-centro', regionId: 'armenia-centro', sellerId: '1' }
+    : { id: 'armenia-piloto', regionId, sellerId };
   const catalog = await findCatalog();
   try {
     const save = catalog.save;
     if (apply && !save) throw new Error('El comando solo admite vista previa sin repositorio.');
-    const vtex = new OlimpicaVtex(postalCode, request);
+    const vtex = new OlimpicaVtex(atCenter ? ARMENIA_CENTER : postalCode, request);
     const confirmed = await vtex.confirms(zone);
     const pilot = new PreviewOlimpica({
       findPresentations: (ean) => catalog.find(ean),

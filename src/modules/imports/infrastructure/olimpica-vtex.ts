@@ -14,15 +14,16 @@ function list(value: unknown): JsonObject[] {
 
 export class OlimpicaVtex {
   constructor(
-    private readonly postalCode: string,
+    private readonly location: string | readonly [number, number],
     private readonly request: typeof fetch = fetch,
   ) {}
 
   async confirms(zone: DeliveryZone): Promise<boolean> {
+    if (typeof this.location !== 'string') return zone.sellerId === '1';
     const responses = list(
       await this.json(
         '/api/checkout/pub/regions?' +
-          new URLSearchParams({ country: 'COL', postalCode: this.postalCode }).toString(),
+          new URLSearchParams({ country: 'COL', postalCode: this.location }).toString(),
       ),
     );
     return responses.some(
@@ -56,15 +57,15 @@ export class OlimpicaVtex {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: [{ id: skuId, quantity: 1, seller: zone.sellerId }],
-          postalCode: this.postalCode,
+          ...(typeof this.location === 'string'
+            ? { postalCode: this.location }
+            : { geoCoordinates: this.location }),
           country: 'COL',
         }),
       }),
     );
     const items = list(result.items);
     const item = items[0];
-    const regionId =
-      result.country === 'COL' && result.postalCode === this.postalCode ? zone.regionId : '';
     if (!item || items.length !== 1 || item.id !== skuId || typeof item.seller !== 'string') {
       throw new Error('invalid_response');
     }
@@ -73,6 +74,11 @@ export class OlimpicaVtex {
       (entry) =>
         entry.itemIndex === 0 && list(entry.slas).some((sla) => sla.deliveryChannel === 'delivery'),
     );
+    const matchesLocation =
+      typeof this.location === 'string'
+        ? result.postalCode === this.location
+        : item.availability === 'available' && delivery;
+    const regionId = result.country === 'COL' && matchesLocation ? zone.regionId : '';
     if (item.availability !== 'available' && item.availability !== 'withoutStock') {
       throw new Error('invalid_response');
     }

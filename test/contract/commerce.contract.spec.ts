@@ -9,11 +9,14 @@ import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
 import { contractErrors } from '../support/contract';
+import { seedReferencePrices } from '../support/reference-prices';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Datos de prueba: solo existen dentro de esta prueba.
 const storeId = 'c0777777-7777-4777-8777-777777777777';
 const riceId = 'c0777777-7777-4777-8777-aaaaaaaaaaaa';
+// Sin precios de referencia: un precio oficial suyo queda en revisión (ADR-037).
+const oilId = 'c0777777-7777-4777-8777-cccccccccccc';
 const STORE = { lat: 4.5339, lng: -75.6811 };
 const claimBody = {
   establishmentId: storeId,
@@ -37,7 +40,7 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.official_prices, catalog.presentations, catalog.products, catalog.product_aliases`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.official_prices, commerce.official_price_reviews, reliability.official_reviews, comparison.price_current, catalog.presentations, catalog.products, catalog.product_aliases`,
     );
     await app.get(ImportEstablishments).save({
       id: storeId,
@@ -53,7 +56,15 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
       aliases: [],
       presentations: [
         { id: riceId, quantity: 500, unit: 'g', packCount: 1, barcode: '7702511777014' },
+        { id: oilId, quantity: 1000, unit: 'g', packCount: 1, barcode: '7707211777016' },
       ],
+    });
+    // ADR-037: el arroz tiene tres tiendas de referencia; el aceite, ninguna.
+    await seedReferencePrices(app, {
+      idPrefix: 'c0777778',
+      presentationIds: [riceId],
+      priceCop: 2600,
+      near: STORE,
     });
   });
 
@@ -194,6 +205,17 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
         422,
         await send('put', '/commerce/prices', { presentationId: riceId, priceCop: 50 }),
       ],
+      // ADR-037 (H19): claramente fuera de rango se rechaza; sin referencia queda en revisión.
+      [
+        'PUT /commerce/prices',
+        422,
+        await send('put', '/commerce/prices', { presentationId: riceId, priceCop: 52_000 }),
+      ],
+      [
+        'PUT /commerce/prices',
+        200,
+        await send('put', '/commerce/prices', { presentationId: oilId, priceCop: 8900 }),
+      ],
       [
         'PUT /commerce/prices',
         400,
@@ -205,7 +227,11 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
         await request(server).get('/v1/commerce/prices').set('Cookie', owner.cookie),
       ],
       ['POST /commerce/prices/reconfirm', 200, await send('post', '/commerce/prices/reconfirm')],
-      ['POST /commerce/prices/bulk', 200, await bulk(['7702511777014;2600', '1;2600'])],
+      [
+        'POST /commerce/prices/bulk',
+        200,
+        await bulk(['7702511777014;300', '1;2600', '7707211777016;8900']),
+      ],
       ['POST /commerce/prices/bulk', 400, await bulk([], '7702511777014;2600')],
       [
         'POST /commerce/prices/bulk',
