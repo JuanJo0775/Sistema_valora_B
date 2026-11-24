@@ -59,6 +59,16 @@ Un sospechoso por (3) o (4) usa el camino de siempre: queda `en_revision`, no re
 
 Los parámetros (`PLAUSIBILITY_PARAMS`) son provisionales y se recalibran con la cola real; este conjunto etiquetado todavía no incluye casos de arranque en frío (pendiente de ampliar). Ver [ADR-030](../adr/0030-plausibilidad-de-precios.md).
 
+## Precio oficial del comercio (ADR-037, 24 de noviembre de 2026)
+
+La prueba de usuario del módulo comercial (hallazgo H19) mostró que el precio oficial se saltaba esta detección: $300 por 1 kg de arroz quedó oficial, vigente y titular «Más barato», y $52.000 también se aceptó. Ahora el precio oficial (`PUT /v1/commerce/prices`, la carga CSV y el precio resultante de una promoción) pasa por la misma referencia y los mismos parámetros que un reporte (puntos 3 y 4 de arriba: la mediana de al menos 3 tiendas del municipio y, si no, el mayorista SIPSA), con tres resultados:
+
+1. **Dentro de rango:** se publica como oficial vigente.
+2. **Claramente fuera de rango** (menos del 40 % o más del 250 % de la mediana; menos del 50 % del mayorista): 422 `IMPLAUSIBLE_OFFICIAL_PRICE` con el rango de referencia en el mensaje; no se guarda nada. En una promoción solo se vigila el lado bajo.
+3. **Sin referencia:** se acepta «en revisión»: no es oficial ni titular, no sale en la comparación y entra a la cola de moderación con el motivo `sin_referencia` (no hay mediana ni desviación). Aprobar lo publica como oficial vigente; descartar lo retira.
+
+Diferencia con un reporte: un reporte sospechoso entra «en revisión» y un oficial fuera de rango se rechaza, porque el oficial lo escribe una cuenta verificada que puede corregirlo al instante y porque la marca «oficial» pesa más (ADR-008). El medidor `pnpm reliability:evaluate` sigue midiendo reportes de la comunidad; los casos de precio oficial anómalo todavía no están en el conjunto etiquetado (pendiente de ampliar), y las reglas puras se prueban en `src/domain/price-plausibility.spec.ts`. Ver [ADR-037](../adr/0037-plausibilidad-del-precio-oficial.md).
+
 ## Límites de la medición
 
 - El conjunto es sintético: mide que las reglas hacen lo que se decidió, no cómo se comporta Valora con usuarios reales.

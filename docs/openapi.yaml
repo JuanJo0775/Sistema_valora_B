@@ -1651,13 +1651,16 @@ paths:
         Solo el rol moderador. Reportes sin decisión que la detección marcó sospechosos (desviacion)
         o que alguna cuenta marcó como dudosos (marcado). Orden por gravedad (RN2): primero
         desviacion, de mayor a menor desviación; luego marcado, de más a menos marcas; en empate, el
-        más antiguo. Hoy solo aparecen desviacion y marcado; las demás llegan con el corte 3.
+        más antiguo. ADR-037: sin_referencia es un precio oficial de un comercio que no se pudo comparar
+        con nada (menos de 3 tiendas y sin SIPSA) y espera su aprobación; va después de desviacion y
+        antes de rafaga, del más antiguo al más nuevo, sin mediana ni desviación y con reportersCount 0.
+        Su id es el que usa POST /moderation/{itemId}/decision. Las demás razones llegan con el corte 3.
       security:
         - sessionCookie: []
       parameters:
         - name: reason
           in: query
-          schema: { type: string, enum: [apelacion, desviacion, rafaga, marcado, discrepancia_oficial, verificacion_comercio] }
+          schema: { type: string, enum: [apelacion, desviacion, sin_referencia, rafaga, marcado, discrepancia_oficial, verificacion_comercio] }
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
@@ -1679,7 +1682,9 @@ paths:
       operationId: decideModerationItem
       summary: Registrar la decisión del moderador; queda auditada (RF-013)
       description: >-
-        Solo el rol moderador. itemId es el id del reporte. Toda decisión exige motivo (RN3) y queda
+        Solo el rol moderador. itemId es el id del reporte (o, en sin_referencia, el del precio oficial
+        en revisión: aprobar lo publica como oficial vigente y descartar lo retira, sin tocar la
+        reputación de nadie; observar_cuentas no aplica, ADR-037). Toda decisión exige motivo (RN3) y queda
         en una bitácora que no se puede modificar. aprobar vuelve a mostrar el precio como normal;
         descartar deja de mostrarlo (pasa al precio confiable más reciente de la tienda) y baja la
         reputación de su autor; si es el tercer descarte seguido de ese autor, su cuenta se suspende
@@ -1721,7 +1726,9 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '422':
-          description: code DECISION_NOT_ALLOWED, observar_cuentas sobre una apelación (#71).
+          description: >-
+            code DECISION_NOT_ALLOWED, observar_cuentas sobre una apelación (#71) o sobre un precio
+            oficial en revisión (ADR-037).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2422,6 +2429,20 @@ paths:
         vez la misma presentación reemplaza el precio y lo deja reconfirmado. El precio cumple el mismo
         piso y techo absolutos que un reporte (ADR-030). Vale lo mismo que un reporte (ADR-005),
         contando desde la última confirmación.
+
+
+        ADR-037 (H19): el precio se compara con la misma referencia que un reporte de la comunidad
+        (mediana de al menos 3 tiendas del mismo municipio o, si no alcanzan, el mayorista SIPSA),
+        con los mismos parámetros de ADR-030. Tres resultados. (1) Dentro de rango: 200 con
+        status vigente, como siempre. (2) Claramente fuera de rango (menos del 40 % o más del 250 %
+        de la mediana, o menos del 50 % del mayorista): 422 IMPLAUSIBLE_OFFICIAL_PRICE, con el rango
+        de referencia en el mensaje; no se guarda ni se publica nada. (3) Sin referencia (menos de 3
+        tiendas y sin SIPSA): 200 con status en_revision; el precio no es oficial vigente ni titular
+        «Más barato», no sale en la comparación, no reemplaza al oficial anterior de esa presentación
+        y entra a la cola de moderación (GET /moderation/queue, reason sin_referencia). Si moderación
+        lo aprueba pasa a vigente (confirmado en ese momento); si lo descarta, se retira. Enviar otro
+        precio de la misma presentación reemplaza al que esperaba. El cuerpo de la respuesta es el
+        mismo en los dos casos: se distingue por status.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2439,7 +2460,9 @@ paths:
                 priceCop: { type: integer, minimum: 1 }
       responses:
         '200':
-          description: Precio oficial publicado y confirmado ahora.
+          description: >-
+            Precio oficial publicado y confirmado ahora (status vigente) o recibido y a la espera de
+            moderación (status en_revision, ADR-037).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OfficialPrice' }
@@ -2455,7 +2478,9 @@ paths:
         '422':
           description: >-
             code UNKNOWN_PRESENTATION: la presentación no está en el catálogo. code IMPLAUSIBLE_PRICE:
-            menos de $100 o más de $5.000.000.
+            menos de $100 o más de $5.000.000. code IMPLAUSIBLE_OFFICIAL_PRICE (ADR-037): el precio
+            está claramente fuera del rango de referencia de esa presentación; el mensaje dice el
+            rango («Lo más barato que vemos es $X y lo más caro $Y»).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2465,7 +2490,8 @@ paths:
       summary: Los precios oficiales del comercio con su vigencia (RF-016)
       description: >-
         D4 del grill comercial (#203). La vigencia cuenta desde la última confirmación, con el TTL de
-        la categoría (ADR-005).
+        la categoría (ADR-005). ADR-037: inReview trae los precios enviados que esperan a moderación;
+        todavía no son oficiales y no están en items.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2481,11 +2507,14 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [items]
+                required: [items, inReview]
                 properties:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/OfficialPriceWithFreshness' }
+                  inReview:
+                    type: array
+                    items: { $ref: '#/components/schemas/OfficialPriceInReview' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403':
           description: code FORBIDDEN o MERCHANT_NOT_VERIFIED, como en PUT.
@@ -2532,6 +2561,12 @@ paths:
         1.000 filas y 1 MB. Las filas buenas se publican juntas y quedan reconfirmadas (D4); las malas
         se informan con su número de fila de Excel. Subir el mismo archivo otra vez actualiza sin
         duplicar. Nunca crea un producto: un código que no está en Valora falla con UNKNOWN_BARCODE.
+
+
+        ADR-037: cada fila pasa por la misma evaluación que PUT /commerce/prices. Las claramente
+        fuera de rango no se guardan y salen en errors con code IMPLAUSIBLE_OFFICIAL_PRICE y el mismo
+        mensaje; las que no tienen referencia se aceptan «en revisión» y se informan aparte en
+        inReview (no cuentan en published; esperan a moderación).
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2547,15 +2582,26 @@ paths:
                 7702511000014;2600
       responses:
         '200':
-          description: Cuántas filas se publicaron y cuáles fallaron.
+          description: Cuántas filas se publicaron, cuáles quedaron en revisión y cuáles fallaron.
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: false
-                required: [published, errors]
+                required: [published, inReview, errors]
                 properties:
                   published: { type: integer, minimum: 0 }
+                  inReview:
+                    type: array
+                    description: Filas aceptadas que esperan a moderación (ADR-037); todavía no son oficiales.
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [row, barcode, priceCop]
+                      properties:
+                        row: { type: integer, minimum: 2, description: Número de la fila en Excel. }
+                        barcode: { type: string }
+                        priceCop: { type: integer }
                   errors:
                     type: array
                     items:
@@ -2565,7 +2611,7 @@ paths:
                       properties:
                         row: { type: integer, minimum: 2, description: Número de la fila en Excel. }
                         barcode: { type: string }
-                        code: { type: string, enum: [INVALID_PRICE, DUPLICATE_ROW, UNKNOWN_BARCODE] }
+                        code: { type: string, enum: [INVALID_PRICE, DUPLICATE_ROW, UNKNOWN_BARCODE, IMPLAUSIBLE_OFFICIAL_PRICE] }
                         message: { type: string }
         '400':
           description: VALIDATION_ERROR, el archivo no tiene el encabezado codigo_barras;precio o no es texto CSV.
@@ -2593,7 +2639,11 @@ paths:
         una presentación de su tienda (si no, 422 OFFICIAL_PRICE_REQUIRED). Condiciones fijas, sin
         texto libre. Dura como mucho 30 días; puede empezar en el futuro (queda programada). Si el
         oficial deja de estar vigente se pausa sola y reconfirmarlo la reactiva. Va siempre aparte
-        de los resultados de la comparación y nunca cambia el orden (ADR-009).
+        de los resultados de la comparación y nunca cambia el orden (ADR-009). ADR-037: el precio que
+        deja la promoción («Precio especial», «Descuento porcentual» o «Pague X lleve Y») no puede
+        quedar por debajo del 40 % de la mediana de otras tiendas del municipio (50 % del mayorista
+        SIPSA si no hay mediana); si queda por debajo, 422 IMPLAUSIBLE_OFFICIAL_PRICE. Sin referencia
+        no se frena.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2620,7 +2670,9 @@ paths:
           description: >-
             code OFFICIAL_PRICE_REQUIRED: no hay precio oficial vigente de esa presentación. code
             INVALID_PROMOTION: la oferta no baja el oficial, está fuera de sus límites o las fechas
-            no sirven (final antes del inicio o ya pasado, o más de 30 días).
+            no sirven (final antes del inicio o ya pasado, o más de 30 días). code
+            IMPLAUSIBLE_OFFICIAL_PRICE (ADR-037): el precio resultante queda muy por debajo de lo
+            normal para esa presentación; el mensaje dice el rango y cómo corregirla.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2802,12 +2854,28 @@ components:
     OfficialPrice:
       type: object
       additionalProperties: false
-      required: [establishmentId, presentationId, priceCop, confirmedAt]
+      required: [establishmentId, presentationId, priceCop, confirmedAt, status]
       properties:
         establishmentId: { type: string, format: uuid }
         presentationId: { type: string, format: uuid }
         priceCop: { type: integer }
         confirmedAt: { type: string, format: date-time, description: Última confirmación. }
+        status:
+          type: string
+          enum: [vigente, en_revision]
+          description: >-
+            vigente: ya es el oficial de la tienda. en_revision (ADR-037): no había con qué compararlo
+            y espera a moderación; no es oficial ni sale en la comparación.
+    OfficialPriceInReview:
+      type: object
+      description: Un precio enviado por el comercio que espera la decisión de moderación (ADR-037).
+      additionalProperties: false
+      required: [presentationId, priceCop, submittedAt, status]
+      properties:
+        presentationId: { type: string, format: uuid }
+        priceCop: { type: integer }
+        submittedAt: { type: string, format: date-time }
+        status: { type: string, enum: [en_revision] }
     OfficialPriceWithFreshness:
       type: object
       additionalProperties: false
@@ -2989,7 +3057,7 @@ components:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), MERCHANT_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
         CONFLICT (409), ESTABLISHMENT_HAS_OWNER (409), ACCOUNT_HAS_ESTABLISHMENT (409), MERCHANT_REPORT_OPEN (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION, INVALID_OPENING_HOURS, OWN_ESTABLISHMENT, REVOKED_FROM_ESTABLISHMENT y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, IMPLAUSIBLE_OFFICIAL_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION, INVALID_OPENING_HOURS, OWN_ESTABLISHMENT, REVOKED_FROM_ESTABLISHMENT y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:
@@ -3374,8 +3442,8 @@ components:
       description: Nunca incluye quién reportó ni quién marcó (EC-08).
       required: [id, reason, productName, establishmentName, reportedPriceCop, reportersCount, createdAt]
       properties:
-        id: { type: string, format: uuid, description: Id del reporte. }
-        reason: { type: string, enum: [apelacion, desviacion, rafaga, marcado, discrepancia_oficial, verificacion_comercio] }
+        id: { type: string, format: uuid, description: Id del reporte o, en sin_referencia, del precio oficial en revisión. }
+        reason: { type: string, enum: [apelacion, desviacion, sin_referencia, rafaga, marcado, discrepancia_oficial, verificacion_comercio] }
         productName: { type: string, description: 'Producto y presentación, por ejemplo «Arroz Diana · 500 g».' }
         establishmentName: { type: string }
         reportedPriceCop: { type: integer }
