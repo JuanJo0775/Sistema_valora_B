@@ -1,13 +1,14 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
+import { OlimpicaObservations } from '../../src/modules/imports';
 import { OutboxRelay } from '../../src/shared/events';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { contractErrors } from '../support/contract';
@@ -26,6 +27,7 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
   let server: Parameters<typeof request>[0];
   let db: Database;
   let reporter: SignedIn;
+  let onlineOffersEnabled = false;
   // Cada caso: la ruta como la nombra el contrato y la respuesta real.
   const checked: { route: string; status: number; body: unknown }[] = [];
   const check = async (route: string, call: request.Test): Promise<request.Response> => {
@@ -35,14 +37,17 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
   };
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider('ONLINE_OFFERS_ENABLED')
+      .useValue(() => onlineOffersEnabled)
+      .compile();
     app = moduleRef.createNestApplication({ logger: false });
     configureApp(app);
     await app.init();
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
+      sql`truncate imports.online_observations, identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
     );
     reporter = await signIn(server, db, 'contrato@correo.com');
     const today = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -135,6 +140,71 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     expect(
       contractErrors('GET /products/:productId/online-offers', 200, response.body as unknown),
     ).toEqual([]);
+  });
+
+  it('expone la oferta sintética vigente y la retira si vence o queda sin stock', async () => {
+    onlineOffersEnabled = true;
+    const observations = new OlimpicaObservations(db);
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const base = {
+      source: 'olimpica_vtex' as const,
+      zoneId: 'armenia-centro',
+      presentationId,
+      ean: '7702511000014',
+      skuId: 'sku-sintetico',
+      sellerId: '1',
+    };
+    const getOffers = () =>
+      request(server).get(`/v1/products/${productId}/online-offers`).query({ zone: base.zoneId });
+    try {
+      await observations.save({
+        ...base,
+        runId: randomUUID(),
+        status: 'available',
+        observedAt: new Date(now - 3 * day),
+        expiresAt: new Date(now - day),
+        priceCop: 3400,
+      });
+      expect((await getOffers().expect(200)).body).toEqual({ items: [] });
+
+      const observedAt = new Date(now - 1000);
+      const expiresAt = new Date(observedAt.getTime() + 2 * day);
+      await observations.save({
+        ...base,
+        runId: randomUUID(),
+        status: 'available',
+        observedAt,
+        expiresAt,
+        priceCop: 3456,
+      });
+      const response = await getOffers().expect(200);
+      expect(response.body).toEqual({
+        items: [
+          {
+            presentationId,
+            source: 'olimpica',
+            zone: base.zoneId,
+            priceCop: 3456,
+            observedAt: observedAt.toISOString(),
+            expiresAt: expiresAt.toISOString(),
+          },
+        ],
+      });
+      expect(
+        contractErrors('GET /products/:productId/online-offers', 200, response.body as unknown),
+      ).toEqual([]);
+
+      await observations.save({
+        ...base,
+        runId: randomUUID(),
+        status: 'unavailable',
+        observedAt: new Date(now),
+      });
+      expect((await getOffers().expect(200)).body).toEqual({ items: [] });
+    } finally {
+      onlineOffersEnabled = false;
+    }
   });
 
   it('las rutas públicas responden como dice el contrato', async () => {
