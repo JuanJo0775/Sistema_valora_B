@@ -1,7 +1,11 @@
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
-import { CatalogModule, ImportCatalog } from '../catalog';
+import { CatalogModule, ImportCatalog, ProductForComparison } from '../catalog';
 import { EstablishmentsModule, ImportEstablishments } from '../establishments';
+import { DATABASE, type Database } from '../../shared/database/database.module';
+import { ListOnlineOffers, ONLINE_OFFERS_ENABLED } from './application/list-online-offers';
+import { OnlineOffersController } from './http/online-offers.controller';
+import { OlimpicaObservations } from './infrastructure/olimpica-observations';
 import { AccuracySample } from './application/accuracy-sample';
 import { SeedInitialPrices } from './application/initial-prices';
 import { RunSeed } from './application/run-seed';
@@ -12,7 +16,16 @@ import { CsvSeedSource } from './infrastructure/csv-seed-source';
 // catalog y establishments.
 @Module({
   imports: [CatalogModule, EstablishmentsModule],
+  controllers: [OnlineOffersController],
   providers: [
+    // El piloto se valida con datos sintéticos. La publicación todavía está deshabilitada.
+    { provide: ONLINE_OFFERS_ENABLED, useValue: () => false },
+    {
+      provide: ListOnlineOffers,
+      inject: [ProductForComparison, DATABASE, ONLINE_OFFERS_ENABLED],
+      useFactory: (catalog: ProductForComparison, db: Database, enabled: () => boolean) =>
+        new ListOnlineOffers(catalog, new OlimpicaObservations(db), enabled),
+    },
     {
       provide: SEED_SOURCE,
       useFactory: (): SeedSource => new CsvSeedSource(join(process.cwd(), 'seed')),

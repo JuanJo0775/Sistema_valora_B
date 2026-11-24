@@ -8,7 +8,7 @@ import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
-import { OlimpicaObservations } from '../../src/modules/imports';
+import { OlimpicaObservations, ONLINE_OFFERS_ENABLED } from '../../src/modules/imports';
 import { OutboxRelay } from '../../src/shared/events';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { contractErrors } from '../support/contract';
@@ -38,7 +38,7 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider('ONLINE_OFFERS_ENABLED')
+      .overrideProvider(ONLINE_OFFERS_ENABLED)
       .useValue(() => onlineOffersEnabled)
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
