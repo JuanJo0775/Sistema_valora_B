@@ -14,3 +14,6 @@ export {
 
 export { PreviewOlimpica } from './application/preview-olimpica';
 export { OlimpicaVtex } from './infrastructure/olimpica-vtex';
+
+export { applyOlimpica, type OnlineObservation } from './application/apply-olimpica';
+export { OlimpicaObservations } from './infrastructure/olimpica-observations';
