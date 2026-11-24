@@ -4,6 +4,7 @@ import type { Clock } from './clock';
 import type { PasswordHasher } from './password-hasher';
 import { isAcceptablePassword, WeakPasswordError } from './password-policy';
 import type { PasswordRepository } from './password-repository';
+import { sendWelcomeInBackground, type WelcomeTrigger } from './send-welcome-email';
 import { hashVerificationToken } from './verification-token';
 
 export interface ResetPasswordPorts {
@@ -11,6 +12,8 @@ export interface ResetPasswordPorts {
   hasher: PasswordHasher;
   limiter: AttemptLimiter;
   clock: Clock;
+  // ADR-036: restablecer verifica el correo; si es la primera vez, sale la bienvenida (segundo plano).
+  welcome: WelcomeTrigger;
 }
 
 export interface ResetPasswordInput {
@@ -51,5 +54,6 @@ export class ResetPassword {
       at: clock.now(),
     });
     if (!redeemed) throw new InvalidResetTokenError();
+    sendWelcomeInBackground(this.ports.welcome, redeemed.accountId);
   }
 }

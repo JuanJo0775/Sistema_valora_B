@@ -5,6 +5,7 @@ import { InMemoryPasswords } from './password-doubles.testing';
 import { WeakPasswordError } from './password-policy';
 import { InvalidResetTokenError, ResetPassword } from './reset-password';
 import { hashVerificationToken } from './verification-token';
+import { RecordingWelcome } from './welcome-doubles.testing';
 
 let current = new Date('2026-11-22T10:00:00Z');
 const clock = { now: () => current };
@@ -13,11 +14,13 @@ const minutes = (count: number) => count * 60 * 1000;
 function setup() {
   const passwords = new InMemoryPasswords();
   const hasher = new FakeHasher();
+  const welcome = new RecordingWelcome();
   const useCase = new ResetPassword({
     passwords,
     hasher,
     limiter: new InMemoryAttemptLimiter(clock),
     clock,
+    welcome,
   });
   passwords.add('cuenta-1', { passwordHash: 'hash:la-vieja-clave', sessions: ['s1', 's2'] });
   passwords.add('cuenta-2', { passwordHash: 'hash:otra-clave-larga', sessions: ['s3'] });
@@ -31,7 +34,7 @@ function setup() {
       usedAt: null,
     });
   };
-  return { passwords, hasher, useCase, issue };
+  return { passwords, hasher, useCase, issue, welcome };
 }
 
 const input = (token: string, password = 'una-clave-nueva-larga') => ({
@@ -183,5 +186,29 @@ describe('restablecer la contraseña con el enlace (ADR-033)', () => {
 
     await expect(attempt).rejects.toThrow(TooManyAttemptsError);
     await expect(attempt).rejects.toMatchObject({ retryAfterSeconds: 900 });
+  });
+
+  describe('correo de bienvenida (ADR-036)', () => {
+    it('al restablecer pide la bienvenida de la cuenta (el repositorio decide si es la primera vez)', async () => {
+      const { useCase, issue, welcome } = setup();
+      issue('token-bueno');
+      await useCase.execute(input('token-bueno'));
+      expect(welcome.requested).toEqual(['cuenta-1']);
+    });
+
+    it('un token invalido no la pide', async () => {
+      const { useCase, welcome } = setup();
+      await expect(useCase.execute(input('desconocido'))).rejects.toBeInstanceOf(
+        InvalidResetTokenError,
+      );
+      expect(welcome.requested).toEqual([]);
+    });
+
+    it('si la bienvenida falla, restablecer sigue funcionando', async () => {
+      const { useCase, issue, welcome } = setup();
+      welcome.failWith = new Error('proveedor caido');
+      issue('token-bueno');
+      await expect(useCase.execute(input('token-bueno'))).resolves.toBeUndefined();
+    });
   });
 });

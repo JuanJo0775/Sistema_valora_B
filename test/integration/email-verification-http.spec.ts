@@ -241,7 +241,8 @@ describe('verificación de correo por HTTP (ADR-029)', () => {
         .set('X-CSRF-Token', csrfToken)
         .expect(202);
 
-      expect(sender.sent).toHaveLength(1);
+      // La bienvenida (ADR-036) sale por su cuenta al verificar: aquí solo cuentan los enlaces.
+      expect(sender.sent.filter((mail) => mail.text.includes('/verificar-correo'))).toHaveLength(1);
     });
 
     it('permite 3 por hora por cuenta; el cuarto responde 429 con Retry-After', async () => {
