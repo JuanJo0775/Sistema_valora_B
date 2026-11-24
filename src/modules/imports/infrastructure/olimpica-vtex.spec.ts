@@ -21,18 +21,9 @@ it('confirma el vendedor con VTEX y usa el precio de la simulación de entrega',
       logisticsInfo: [{ itemIndex: 0, slas: [{ deliveryChannel: 'delivery' }] }],
     },
   ];
-  const paths: string[] = [];
-  const client = new OlimpicaVtex('630001', (input, init) => {
-    paths.push(String(input));
-    if (init?.method === 'POST') {
-      expect(init.body).toBe(
-        JSON.stringify({
-          items: [{ id: '516338', quantity: 1, seller: 'v1' }],
-          postalCode: '630001',
-          country: 'COL',
-        }),
-      );
-    }
+  const requests: (RequestInit | undefined)[] = [];
+  const client = new OlimpicaVtex('630001', (_input, init) => {
+    requests.push(init);
     return Promise.resolve(Response.json(response.shift()));
   });
 
@@ -44,7 +35,15 @@ it('confirma el vendedor con VTEX y usa el precio de la simulación de entrega',
     available: true,
     priceCop: 1950,
   });
-  expect(paths).toHaveLength(3);
+  expect(requests).toHaveLength(3);
+  expect(requests[2]).toMatchObject({
+    method: 'POST',
+    body: JSON.stringify({
+      items: [{ id: '516338', quantity: 1, seller: 'v1' }],
+      postalCode: '630001',
+      country: 'COL',
+    }),
+  });
 });
 
 it('exige que VTEX reconozca el vendedor para esa región', async () => {
