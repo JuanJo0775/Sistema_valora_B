@@ -84,3 +84,25 @@ it('informa una oferta indisponible en la zona aunque VTEX devuelva un precio', 
     },
   ]);
 });
+
+it('informa fallos del proveedor y conserva los resultados de los demás productos', async () => {
+  const pilot = new PreviewOlimpica({
+    findPresentations: () => Promise.resolve(['p1']),
+    quote: (code) => {
+      if (code === '7702511000014')
+        return Promise.reject(new DOMException('Tiempo agotado', 'TimeoutError'));
+      if (code === '7702511000021') return Promise.resolve({ ...quote, priceCop: 0 });
+      return Promise.resolve(quote);
+    },
+    now: () => observedAt,
+  });
+  await expect(pilot.execute(zone, ['7702511000014', '7702511000021', ean])).resolves.toMatchObject(
+    {
+      rows: [
+        { status: 'failed', reason: 'provider_timeout' },
+        { status: 'failed', reason: 'invalid_response' },
+        { ean, status: 'available', priceCop: 1950 },
+      ],
+    },
+  );
+});
