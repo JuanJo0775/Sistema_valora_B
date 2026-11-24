@@ -42,3 +42,19 @@ it('omite los EAN cuando VTEX no confirma la zona y cierra el catálogo', async 
   expect(request).toHaveBeenCalledTimes(1);
   expect(close).toHaveBeenCalledTimes(1);
 });
+
+it('aplica solo con la opción explícita y devuelve el identificador reutilizable', async () => {
+  const runId = '7679670d-85ad-40d2-ac21-e3fb10611eba';
+  const save = jest.fn();
+  const close = jest.fn().mockResolvedValue(undefined);
+  const request = jest.fn().mockResolvedValue(Response.json([]));
+  const result = await runOlimpicaPreview(
+    ['--apply', '--run-id=' + runId],
+    env,
+    () => Promise.resolve({ find: () => Promise.resolve(['p1']), close, save }),
+    request,
+  );
+  expect(result).toMatchObject({ mode: 'apply', runId });
+  expect(save).not.toHaveBeenCalled();
+  expect(close).toHaveBeenCalledTimes(1);
+});
