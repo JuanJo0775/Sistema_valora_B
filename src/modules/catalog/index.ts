@@ -19,3 +19,4 @@ export type {
   ProductForComparisonView,
   ProductSummaryView,
 } from './application/product-repository';
+export { readPresentationsByBarcode } from './read-presentations-by-barcode';
