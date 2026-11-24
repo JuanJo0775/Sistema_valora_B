@@ -106,3 +106,28 @@ export const appeals = reliabilitySchema.table('appeals', {
   note: text('note').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });
+
+// ADR-037: un precio oficial de un comercio sin referencia con qué compararlo, a la espera de un
+// moderador. Aparte de las observaciones: no es un reporte de la comunidad y no cuenta como
+// corroboración. Solo la clave seudónima del comercio (EC-08).
+export const officialReviews = reliabilitySchema.table(
+  'official_reviews',
+  {
+    // El mismo id con el que commerce lo guarda: es el id del caso en la cola.
+    reviewId: uuid('review_id').primaryKey(),
+    presentationId: uuid('presentation_id').notNull(),
+    establishmentId: uuid('establishment_id').notNull(),
+    reporterKey: text('reporter_key').notNull(),
+    priceCop: integer('price_cop').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
+    // null mientras espera; aprobado o descartado por un moderador; cerrado si otro precio lo
+    // reemplazó o se retiró la tienda.
+    state: text('state'),
+  },
+  (table) => [
+    check(
+      'official_reviews_state_valid',
+      sql`${table.state} is null or ${table.state} in ('aprobado', 'descartado', 'cerrado')`,
+    ),
+  ],
+);

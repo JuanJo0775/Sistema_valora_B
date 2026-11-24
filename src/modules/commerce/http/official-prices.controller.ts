@@ -14,12 +14,12 @@ import {
 import { type AuthenticatedSession, CurrentSession, Roles, SessionGuard } from '../../identity';
 import {
   MerchantOfficialPrices,
-  type OfficialPriceView,
+  type MerchantPriceList,
 } from '../application/merchant-official-prices';
-import type { OfficialPrice } from '../application/official-prices';
 import {
   MerchantNotVerifiedError,
   PublishOfficialPrice,
+  type PublishedOfficialPrice,
 } from '../application/publish-official-price';
 import { ReconfirmOfficialPrices } from '../application/reconfirm-official-prices';
 import { UploadOfficialPrices, type UploadResult } from '../application/upload-official-prices';
@@ -39,8 +39,8 @@ async function asMerchant<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
-// RF-016 con la D4 del grill comercial (#203). UNKNOWN_PRESENTATION e IMPLAUSIBLE_PRICE son
-// DomainError: el filtro de errores responde 422.
+// RF-016 con la D4 del grill comercial (#203). UNKNOWN_PRESENTATION, IMPLAUSIBLE_PRICE e
+// IMPLAUSIBLE_OFFICIAL_PRICE (ADR-037) son DomainError: el filtro de errores responde 422.
 @Controller('commerce/prices')
 export class OfficialPricesController {
   constructor(
@@ -82,7 +82,7 @@ export class OfficialPricesController {
   publish(
     @Body() body: PublishOfficialPriceDto,
     @CurrentSession() session: AuthenticatedSession,
-  ): Promise<OfficialPrice> {
+  ): Promise<PublishedOfficialPrice> {
     return asMerchant(() =>
       this.publishOfficialPrice.execute({
         accountId: session.accountId,
@@ -97,11 +97,8 @@ export class OfficialPricesController {
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(SessionGuard)
   @Roles('comercio')
-  async list(
-    @CurrentSession() session: AuthenticatedSession,
-  ): Promise<{ items: OfficialPriceView[] }> {
-    const items = await asMerchant(() => this.merchantOfficialPrices.execute(session.accountId));
-    return { items };
+  list(@CurrentSession() session: AuthenticatedSession): Promise<MerchantPriceList> {
+    return asMerchant(() => this.merchantOfficialPrices.execute(session.accountId));
   }
 
   // D4: «Todos mis precios siguen igual».

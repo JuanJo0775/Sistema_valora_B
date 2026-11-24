@@ -79,6 +79,25 @@ export const officialPrices = commerceSchema.table(
   ],
 );
 
+// ADR-037: un precio oficial sin referencia con la que compararlo espera aquí la decisión de
+// moderación. No es oficial ni vigente: comparison no lo conoce hasta que se apruebe. Uno por tienda
+// y presentación: enviar otro precio reemplaza al anterior.
+export const officialPriceReviews = commerceSchema.table(
+  'official_price_reviews',
+  {
+    establishmentId: uuid('establishment_id').notNull(),
+    presentationId: uuid('presentation_id').notNull(),
+    // Une esta fila con el caso de la cola de moderación (reliability); una decisión vieja no aplica.
+    reviewId: uuid('review_id').notNull(),
+    priceCop: integer('price_cop').notNull(),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.establishmentId, table.presentationId] }),
+    check('official_price_reviews_price_cop_range', sql`${table.priceCop} between 100 and 5000000`),
+  ],
+);
+
 // RF-017 con la D6 del grill comercial: las promociones de cada tienda. La oferta y las condiciones
 // tienen formas fijas (sin texto libre) que valida la capa de aplicación; se guardan como JSON.
 export const promotions = commerceSchema.table(

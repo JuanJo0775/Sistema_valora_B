@@ -1,5 +1,5 @@
 {
-  "id": "67ced7b8-0152-41d3-a96a-7f7113c26b3a",
+  "id": "98704e5a-fa78-4d97-832a-d082a37cf58b",
   "prevId": "ef16da1c-ed80-4d81-97d6-6d3750e47e6c",
   "version": "7",
   "dialect": "postgresql",
@@ -545,11 +545,11 @@
       "checkConstraints": {
         "merchant_cases_kind_valid": {
           "name": "merchant_cases_kind_valid",
-          "value": "\"commerce\".\"merchant_cases\".\"kind\" in ('denuncia', 'disputa', 'reclamo')"
+          "value": "\"commerce\".\"merchant_cases\".\"kind\" in ('denuncia', 'disputa')"
         },
         "merchant_cases_status_valid": {
           "name": "merchant_cases_status_valid",
-          "value": "\"commerce\".\"merchant_cases\".\"status\" in ('pendiente', 'revocado', 'descartado', 'aprobado', 'rechazado')"
+          "value": "\"commerce\".\"merchant_cases\".\"status\" in ('pendiente', 'revocado', 'descartado')"
         }
       },
       "isRLSEnabled": false
@@ -778,6 +778,62 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "commerce.official_price_reviews": {
+      "name": "official_price_reviews",
+      "schema": "commerce",
+      "columns": {
+        "establishment_id": {
+          "name": "establishment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "presentation_id": {
+          "name": "presentation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "review_id": {
+          "name": "review_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_cop": {
+          "name": "price_cop",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "official_price_reviews_establishment_id_presentation_id_pk": {
+          "name": "official_price_reviews_establishment_id_presentation_id_pk",
+          "columns": [
+            "establishment_id",
+            "presentation_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "official_price_reviews_price_cop_range": {
+          "name": "official_price_reviews_price_cop_range",
+          "value": "\"commerce\".\"official_price_reviews\".\"price_cop\" between 100 and 5000000"
+        }
+      },
       "isRLSEnabled": false
     },
     "commerce.official_prices": {
@@ -2392,6 +2448,66 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "reliability.official_reviews": {
+      "name": "official_reviews",
+      "schema": "reliability",
+      "columns": {
+        "review_id": {
+          "name": "review_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "presentation_id": {
+          "name": "presentation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "establishment_id": {
+          "name": "establishment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reporter_key": {
+          "name": "reporter_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_cop": {
+          "name": "price_cop",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "official_reviews_state_valid": {
+          "name": "official_reviews_state_valid",
+          "value": "\"reliability\".\"official_reviews\".\"state\" is null or \"reliability\".\"official_reviews\".\"state\" in ('aprobado', 'descartado', 'cerrado')"
+        }
+      },
       "isRLSEnabled": false
     },
     "reliability.reputation_events": {

@@ -1,13 +1,16 @@
-import type { ModerationStore, PendingItem } from './stores';
+import type { ModerationStore, OfficialReviewStore, PendingItem } from './stores';
 
 export interface ModerationQueuePorts {
   moderation: Pick<ModerationStore, 'pending'>;
+  // ADR-037: los precios oficiales sin referencia que esperan decisión.
+  officialReviews: Pick<OfficialReviewStore, 'pending'>;
   // Consultas públicas de catalog y establishments (por su index.ts).
   labels: { of(presentationIds: string[]): Promise<Map<string, string>> };
   names: { of(establishmentIds: string[]): Promise<Map<string, string>> };
 }
 
-export type QueueReason = 'apelacion' | 'desviacion' | 'rafaga' | 'marcado';
+// ADR-037: «sin_referencia» es un precio oficial de un comercio que no se pudo comparar con nada.
+export type QueueReason = 'apelacion' | 'desviacion' | 'sin_referencia' | 'rafaga' | 'marcado';
 
 // Grill de la #32, pregunta 6: lo que el moderador necesita para decidir, nunca quién reportó ni
 // quién marcó (EC-08).
@@ -43,7 +46,14 @@ const reasonOf = ({ observation, appeal, burst }: PendingItem): QueueReason => {
 export const DEFAULT_QUEUE_LIMIT = 20;
 // Grill de la #71, pregunta 3: las apelaciones van antes que todo.
 // Grill de la #29: la ráfaga va después de las desviaciones y antes de las marcas.
-const QUEUE_ORDER: QueueReason[] = ['apelacion', 'desviacion', 'rafaga', 'marcado'];
+// ADR-037: los precios oficiales sin referencia van después de las desviaciones.
+const QUEUE_ORDER: QueueReason[] = [
+  'apelacion',
+  'desviacion',
+  'sin_referencia',
+  'rafaga',
+  'marcado',
+];
 const UNNAMED = 'Sin nombre';
 
 const deviationOf = ({ observation }: PendingItem): number =>
@@ -66,15 +76,34 @@ export class ModerationQueue {
   constructor(private readonly ports: ModerationQueuePorts) {}
 
   async list(request: QueueRequest): Promise<QueueItem[]> {
+    const limit = request.limit ?? DEFAULT_QUEUE_LIMIT;
+    const matches = (reason: QueueReason) =>
+      request.reason === undefined || request.reason === reason;
     const pending = (await this.ports.moderation.pending())
-      .filter((item) => request.reason === undefined || reasonOf(item) === request.reason)
+      .filter((item) => matches(reasonOf(item)))
       .sort(bySeverity)
-      .slice(0, request.limit ?? DEFAULT_QUEUE_LIMIT);
+      .slice(0, limit);
+    // ADR-037: el que llegó antes, primero.
+    const official = matches('sin_referencia')
+      ? (await this.ports.officialReviews.pending())
+          .sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime())
+          .slice(0, limit)
+      : [];
     const [labels, names] = await Promise.all([
-      this.ports.labels.of([...new Set(pending.map((item) => item.observation.presentationId))]),
-      this.ports.names.of([...new Set(pending.map((item) => item.observation.establishmentId))]),
+      this.ports.labels.of([
+        ...new Set([
+          ...pending.map((item) => item.observation.presentationId),
+          ...official.map((review) => review.presentationId),
+        ]),
+      ]),
+      this.ports.names.of([
+        ...new Set([
+          ...pending.map((item) => item.observation.establishmentId),
+          ...official.map((review) => review.establishmentId),
+        ]),
+      ]),
     ]);
-    return pending.map((item) => {
+    const items: QueueItem[] = pending.map((item) => {
       const { observation } = item;
       const { verdict } = observation;
       return {
@@ -94,5 +123,18 @@ export class ModerationQueue {
         ...(item.appeal ? { appealNote: item.appeal.note } : {}),
       };
     });
+    // Sin mediana ni desviación: justamente no hay con qué compararlo.
+    const officials: QueueItem[] = official.map((review) => ({
+      id: review.reviewId,
+      reason: 'sin_referencia',
+      productName: labels.get(review.presentationId) ?? UNNAMED,
+      establishmentName: names.get(review.establishmentId) ?? UNNAMED,
+      reportedPriceCop: review.priceCop,
+      reportersCount: 0,
+      createdAt: review.receivedAt,
+    }));
+    // La ordenación es estable: dentro de cada motivo se conserva el orden de arriba.
+    const rank = (item: QueueItem) => QUEUE_ORDER.indexOf(item.reason);
+    return [...items, ...officials].sort((a, b) => rank(a) - rank(b)).slice(0, limit);
   }
 }

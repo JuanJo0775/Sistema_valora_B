@@ -1,3 +1,4 @@
+import { ImplausibleOfficialPriceError } from '../../../domain/price-plausibility';
 import { InvalidPromotionError } from '../../../domain/promotion';
 import type { DomainEvent } from '../../../shared/events';
 import {
@@ -34,7 +35,7 @@ const official: OfficialPrice = {
   confirmedAt: new Date('2026-11-21T15:00:00Z'),
 };
 
-function setup(officials: OfficialPrice[] = [official]) {
+function setup(officials: OfficialPrice[] = [official], peerPricesCop = [2500, 2600, 2700]) {
   const saved: Promotion[] = [];
   const events: DomainEvent[] = [];
   const create = new CreatePromotion({
@@ -58,6 +59,7 @@ function setup(officials: OfficialPrice[] = [official]) {
         return Promise.resolve();
       },
     },
+    reference: { of: () => Promise.resolve({ peerPricesCop }) },
     clock: { now: () => now },
   });
   return { create, saved, events };
@@ -132,5 +134,52 @@ describe('publicar una promoción (RF-017, D6 del grill comercial)', () => {
 
     await expect(create.execute(request(change))).rejects.toThrow(InvalidPromotionError);
     expect(saved).toEqual([]);
+  });
+
+  // ADR-037: el precio que deja la promoción no puede quedar por debajo de lowRatio (40 %) de la
+  // mediana de otras tiendas (aquí 2.600, así que el piso es $1.040).
+  describe('plausibilidad del precio resultante (ADR-037)', () => {
+    it.each([
+      ['un precio especial de $1.039', { type: 'precio_especial', specialPriceCop: 1039 }],
+      ['un descuento del 90 %', { type: 'descuento_porcentual', percent: 90 }],
+      ['un 1 por 3', { type: 'pague_x_lleve_y', payX: 1, takeY: 3 }],
+    ] as [string, CreatePromotionRequest['offer']][])(
+      '%s se rechaza con 422',
+      async (_case, offer) => {
+        const { create, saved, events } = setup();
+
+        const error: unknown = await create.execute(request({ offer })).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ImplausibleOfficialPriceError);
+        expect(error).toMatchObject({
+          code: 'IMPLAUSIBLE_OFFICIAL_PRICE',
+          message: expect.stringContaining('lo más barato que vemos es $2.500') as unknown,
+        });
+        expect(saved).toEqual([]);
+        expect(events).toEqual([]);
+      },
+    );
+
+    it.each([
+      [
+        'un precio especial de $1.040, el límite exacto',
+        { type: 'precio_especial', specialPriceCop: 1040 },
+      ],
+      ['un descuento del 60 %', { type: 'descuento_porcentual', percent: 60 }],
+    ] as [string, CreatePromotionRequest['offer']][])('%s se publica', async (_case, offer) => {
+      const { create, saved } = setup();
+
+      await create.execute(request({ offer }));
+
+      expect(saved).toHaveLength(1);
+    });
+
+    it('sin referencia (menos de 3 tiendas y sin SIPSA) no frena la promoción', async () => {
+      const { create, saved } = setup([official], []);
+
+      await create.execute(request({ offer: { type: 'descuento_porcentual', percent: 90 } }));
+
+      expect(saved).toHaveLength(1);
+    });
   });
 });
