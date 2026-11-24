@@ -2101,6 +2101,8 @@ paths:
         CHAIN_STORE_NOT_CLAIMABLE, antes de comprobar la cercanía. Un supermercado que no es de cadena
         no se verifica al instante: la solicitud queda pre_aprobado y abre un caso de tipo reclamo en
         GET /moderation/merchant-cases; el rol pasa a comercio solo cuando un moderador lo aprueba.
+        La regla también vale para newEstablishment: una tienda nueva con nombre de cadena o de tipo
+        descuento responde el mismo 422 CHAIN_STORE_NOT_CLAIMABLE y no deja propuesta ni solicitud.
         Barrio y minimercado se verifican al instante por cercanía, como antes. Orden de las
         comprobaciones: sesión, correo verificado, datos y NIT, tienda existente (404), cadena (422),
         cercanía (422), cuenta revocada de esa tienda (422), una tienda por cuenta (409) y dueño
@@ -2212,8 +2214,9 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '422':
           description: >-
-            code CHAIN_STORE_NOT_CLAIMABLE: es una tienda de cadena (D1, Ara, Éxito…) y no se puede
-            reclamar; se comprueba antes de la cercanía (ADR-038). code NOT_AT_ESTABLISHMENT: la
+            code CHAIN_STORE_NOT_CLAIMABLE: es una tienda de cadena (D1, Ara, Éxito…), existente o
+            nueva (newEstablishment), y no se puede reclamar; se comprueba antes de la cercanía
+            (ADR-038). code NOT_AT_ESTABLISHMENT: la
             ubicación está a más de 50 m de la tienda. code REVOKED_FROM_ESTABLISHMENT: un
             moderador revocó a esta cuenta de esta tienda (#208).
           content:
@@ -2418,7 +2421,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404':
-          description: El caso no existe o ya se decidió.
+          description: El caso no existe o ya se decidió (también si otra decisión se adelantó, o si el reclamo ya no estaba pre-aprobado).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

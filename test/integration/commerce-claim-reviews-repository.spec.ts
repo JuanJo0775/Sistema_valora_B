@@ -168,16 +168,16 @@ describe('reclamos de supermercados en el esquema commerce (H11)', () => {
       ]);
 
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
-      const status = (await caseStatus())?.status;
-      const claim = await claims.findByAccount(accountId);
-      if (status === 'aprobado') {
-        expect(claim).toMatchObject({ status: 'verificado' });
-        await expect(outboxTypes()).resolves.toEqual(['MerchantVerified']);
-      } else {
-        expect(status).toBe('rechazado');
-        expect(claim).toBeNull();
-        await expect(outboxTypes()).resolves.toEqual([]);
-      }
+      const state = [
+        (await caseStatus())?.status,
+        (await claims.findByAccount(accountId))?.status ?? null,
+        await outboxTypes(),
+      ];
+      // O ganó aprobar (verificado y un evento) o ganó rechazar (sin solicitud ni evento).
+      expect([
+        ['aprobado', 'verificado', ['MerchantVerified']],
+        ['rechazado', null, []],
+      ]).toContainEqual(state);
     });
 
     it('si la solicitud ya no está pre-aprobada, aprobar falla, no publica y deja el caso pendiente', async () => {
