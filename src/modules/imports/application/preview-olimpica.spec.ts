@@ -65,3 +65,22 @@ it.each([{ regionId: '' }, { sellerId: 'otro' }])(
     });
   },
 );
+
+it('informa una oferta indisponible en la zona aunque VTEX devuelva un precio', async () => {
+  const pilot = new PreviewOlimpica({
+    findPresentations: () => Promise.resolve(['p1']),
+    quote: () => Promise.resolve({ ...quote, available: false }),
+    now: () => observedAt,
+  });
+  const result = await pilot.execute(zone, [ean]);
+  expect(result.rows).toEqual([
+    {
+      ean,
+      presentationId: 'p1',
+      status: 'unavailable',
+      skuId: '516338',
+      sellerId: zone.sellerId,
+      observedAt,
+    },
+  ]);
+});
