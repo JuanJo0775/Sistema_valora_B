@@ -230,4 +230,3 @@ describe('promociones por HTTP (RF-017, #206)', () => {
     expect(responses.map((r) => r.status)).toEqual([401, 403, 403]);
   });
 });
-

@@ -15,6 +15,7 @@ import { PresentationExists } from './application/presentation-exists';
 import { PresentationsByBarcode } from './application/presentations-by-barcode';
 import { PresentationFreshness } from './application/presentation-freshness';
 import { PresentationLabels } from './application/presentation-labels';
+import { PresentationNames } from './application/presentation-names';
 import { PresentationsForPricing } from './application/presentations-for-pricing';
 import { ProductForComparison } from './application/product-for-comparison';
 import { ProductSummaries } from './application/product-summaries';
@@ -199,6 +200,12 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
       useFactory: (products: ProductRepository): PresentationLabels =>
         new PresentationLabels(products),
     },
+    {
+      provide: PresentationNames,
+      inject: [PRODUCT_REPOSITORY],
+      useFactory: (products: ProductRepository): PresentationNames =>
+        new PresentationNames(products),
+    },
     // B#120: nombre y categoría de los productos de la canasta básica.
     {
       provide: ProductSummaries,
@@ -215,6 +222,7 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
     ProductForComparison,
     PresentationFreshness,
     PresentationLabels,
+    PresentationNames,
     PresentationsForPricing,
     ProductSummaries,
   ],

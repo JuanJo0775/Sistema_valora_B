@@ -49,6 +49,8 @@ Rol `comercio` verificado. `{ presentationId, priceCop }` publica o actualiza el
 
 Sus precios oficiales con `freshness` (`vigente`, `por_confirmar`, `desactualizado`, ADR-005) y la fecha de la última confirmación.
 
+**Precisión H3 (informe de QA del 24-nov-2026).** Cada elemento de `items` y de `inReview` trae también `productName` (nombre con marca, como lo arma el catálogo: «Arroz blanco Diana») y `presentationLabel` (cantidad y unidad, con el formato de `formatPresentation` del frontend: «1 kg», «6 × 400 ml»). Se calculan en el servidor con el catálogo canónico, en una consulta por lote, y no dependen de la lista pública de la tienda, que se actualiza con retraso (modelo de lectura asíncrono). Si la presentación ya no está en el catálogo, `productName` es «Producto sin nombre» y `presentationLabel` es una cadena vacía; nunca se devuelve un identificador como nombre. Cambio aditivo: no se quita ni se renombra ningún campo. `GET /v1/commerce/alerts` ya traía `productName` y no cambia.
+
 ### `POST /v1/commerce/prices/reconfirm` (nueva, D4)
 
 Botón «Todos mis precios siguen igual». Sin cuerpo. `200 { reconfirmed: n }`. También reactiva las promociones pausadas (D6).
@@ -80,9 +82,13 @@ El esquema `Promotion` gana `conditions`:
 
 `paymentMethod`: `cualquiera` | `efectivo` | `tarjeta`. Sin texto libre. `422 OFFICIAL_PRICE_REQUIRED` si la presentación no tiene un oficial **vigente**.
 
+**Precisión H20 (informe de QA del 24-nov-2026): sin promociones solapadas.** Una presentación no puede tener dos promociones a la vez en la misma tienda. Si el rango `validFrom`-`validUntil` comparte al menos un día (los dos extremos cuentan) con otra promoción de esa presentación que no esté retirada ni vencida (activa, pausada o programada), `POST` responde `422` con el código estable `PROMOTION_OVERLAP` y un mensaje como «Ya tienes una promoción vigente o programada para este producto del 23 de noviembre de 2026 al 28 de noviembre de 2026. Retírala o cambia las fechas de la nueva para que no coincidan.». Las fechas de la promoción en conflicto van en el mensaje: el modelo de errores (`code` y `message`) no admite campos extra. Retirar la primera libera sus fechas. Una promoción que empieza al día siguiente del fin de la otra no choca. La regla corre después de las demás validaciones (oferta, fechas, plausibilidad). Límite conocido: dos solicitudes simultáneas pueden pasar la comprobación a la vez; se acepta por el bajo volumen de un comercio y se cerraría con una restricción en base de datos si hiciera falta.
+
 ### `GET /v1/commerce/promotions` y `DELETE /v1/commerce/promotions/{promotionId}` (nuevas)
 
 Listar las suyas, con estado `activa`, `pausada` o `vencida`, y retirarlas.
+
+**Precisión H3.** La lista y la respuesta de `POST` traen `productName` y `presentationLabel`, con las mismas reglas que en `GET /v1/commerce/prices`.
 
 ## Datos de la tienda (D5)
 

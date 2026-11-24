@@ -11,15 +11,18 @@ import {
   assertPromotionPriceInRange,
   assessPromotionPrice,
 } from '../../../domain/price-plausibility';
+import { findOverlap, PromotionOverlapError } from '../../../domain/promotion-overlap';
+import { colombiaDate } from '../../../domain/colombia-date';
 import { createEvent } from '../../../shared/events';
 import type { MerchantClaimRepository } from './merchant-claims';
 import type { OfficialPriceRepository } from './official-prices';
+import { describePresentations, type PresentationNamesPort } from './presentation-description';
 import {
+  type MerchantPromotionView,
   PROMOTION_PUBLISHED,
   type Promotion,
   type PromotionConditions,
   type PromotionRepository,
-  type PromotionView,
   promotionView,
 } from './promotions';
 import { type PriceReference, verifiedEstablishmentOf } from './publish-official-price';
@@ -29,7 +32,9 @@ export interface CreatePromotionPorts {
   prices: Pick<OfficialPriceRepository, 'findOne'>;
   // La categoría de la presentación, por la interfaz pública de catalog (ADR-005).
   presentations: { isFresh(presentationId: string): Promise<boolean | null> };
-  promotions: Pick<PromotionRepository, 'save'>;
+  promotions: Pick<PromotionRepository, 'listFor' | 'save'>;
+  // H3: el nombre y la etiqueta, por la interfaz pública de catalog.
+  names: PresentationNamesPort;
   // ADR-037: la referencia de ADR-030, de pricing.
   reference: PriceReference;
   clock: { now(): Date };
@@ -59,8 +64,8 @@ export class OfficialPriceRequiredError extends DomainError {
 export class CreatePromotion {
   constructor(private readonly ports: CreatePromotionPorts) {}
 
-  async execute(request: CreatePromotionRequest): Promise<PromotionView> {
-    const { claims, prices, presentations, promotions, clock, reference } = this.ports;
+  async execute(request: CreatePromotionRequest): Promise<MerchantPromotionView> {
+    const { claims, prices, presentations, promotions, names, clock, reference } = this.ports;
     const establishmentId = await verifiedEstablishmentOf(claims, request.accountId);
     const now = clock.now();
     const official = await prices.findOne(establishmentId, request.presentationId);
@@ -80,6 +85,15 @@ export class CreatePromotion {
         await reference.of({ presentationId: request.presentationId, establishmentId }),
       ),
     );
+    // H20: ni un día en común con otra promoción de la misma presentación en esta tienda.
+    const conflict = findOverlap(
+      request,
+      (await promotions.listFor(establishmentId)).filter(
+        (other) => other.presentationId === request.presentationId,
+      ),
+      colombiaDate(now),
+    );
+    if (conflict) throw new PromotionOverlapError(conflict);
     const promotion: Promotion = {
       id: randomUUID(),
       establishmentId,
@@ -96,6 +110,10 @@ export class CreatePromotion {
         createdAt: promotion.createdAt.toISOString(),
       }),
     ]);
-    return promotionView(promotion, official, isFresh, now);
+    const describe = await describePresentations(names, [promotion.presentationId]);
+    return {
+      ...promotionView(promotion, official, isFresh, now),
+      ...describe(promotion.presentationId),
+    };
   }
 }

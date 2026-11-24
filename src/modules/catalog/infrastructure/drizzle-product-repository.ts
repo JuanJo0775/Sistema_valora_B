@@ -1,9 +1,11 @@
 import { and, asc, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { presentationLabelOf } from '../../../domain/presentation-label';
 import type { Unit } from '../../../domain/unit-price';
 import type {
   CategoryView,
   PresentationForPricing,
+  PresentationName,
   ProductImage,
   PresentationView,
   ProductForComparisonView,
@@ -139,6 +141,37 @@ export class DrizzleProductRepository implements ProductRepository {
   async labelsOf(presentationIds: string[]): Promise<Map<string, string>> {
     const pricing = await this.pricingOf(presentationIds);
     return new Map([...pricing].map(([id, presentation]) => [id, presentation.label]));
+  }
+
+  // H3: el nombre con marca y la etiqueta de la presentación, por separado, en una sola consulta.
+  async namesOf(presentationIds: string[]): Promise<Map<string, PresentationName>> {
+    if (presentationIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({
+        id: presentations.id,
+        name: products.name,
+        brand: products.brand,
+        quantity: presentations.quantity,
+        unit: presentations.unit,
+        packCount: presentations.packCount,
+      })
+      .from(presentations)
+      .innerJoin(products, eq(presentations.productId, products.id))
+      .where(inArray(presentations.id, presentationIds));
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          productName: row.brand === null ? row.name : ` ${row.brand}`,
+          presentationLabel: presentationLabelOf({
+            quantity: Number(row.quantity),
+            // La restricción CHECK de la tabla garantiza que es una de las 5 unidades.
+            unit: row.unit as Unit,
+            packCount: row.packCount,
+          }),
+        },
+      ]),
+    );
   }
 
   async pricingOf(presentationIds: string[]): Promise<Map<string, PresentationForPricing>> {

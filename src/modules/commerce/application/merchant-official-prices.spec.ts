@@ -58,7 +58,7 @@ describe('los precios oficiales del comercio (GET /commerce/prices, D4 y ADR-005
       // Del catálogo canónico, no de la lista pública que se actualiza con retraso (H3).
       names: {
         namesOf: (ids) =>
-          Promise.resolve(new Map(ids.filter((id) => id in NAMES).map((id) => [id, NAMES[id]!]))),
+          Promise.resolve(new Map(Object.entries(NAMES).filter(([id]) => ids.includes(id)))),
       },
       clock: { now: () => now },
     });

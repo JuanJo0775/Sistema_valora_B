@@ -57,6 +57,14 @@ export interface PresentationForPricing {
   isFresh: boolean;
 }
 
+// H3: cómo se nombra una presentación en las pantallas, sin identificadores.
+export interface PresentationName {
+  // El nombre con marca, como lo arma el catálogo: «Arroz blanco Diana».
+  productName: string;
+  // La cantidad y la unidad: «1 kg», «6 × 400 ml».
+  presentationLabel: string;
+}
+
 export interface ProductRepository {
   findById(id: string): Promise<ProductView | null>;
   search(query: ProductSearch): Promise<ProductView[]>;
@@ -68,6 +76,7 @@ export interface ProductRepository {
   isFreshPresentation(presentationId: string): Promise<boolean | null>;
   labelsOf(presentationIds: string[]): Promise<Map<string, string>>;
   pricingOf(presentationIds: string[]): Promise<Map<string, PresentationForPricing>>;
+  namesOf(presentationIds: string[]): Promise<Map<string, PresentationName>>;
   // B#120: nombre, marca, categoría e imagen de varios productos, en una sola consulta.
   summariesOf(productIds: string[]): Promise<Map<string, ProductSummaryView>>;
   // #111: la lista cerrada de categorías, por nombre.
