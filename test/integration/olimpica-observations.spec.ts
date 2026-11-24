@@ -9,7 +9,10 @@ afterAll(() => pool.end());
 
 const first = new Date('2026-11-24T10:00:00Z');
 
-function available(presentationId: string, observedAt = first): OnlineObservation {
+function available(
+  presentationId: string,
+  observedAt = first,
+): Extract<OnlineObservation, { status: 'available' }> {
   return {
     source: 'olimpica_vtex',
     presentationId,
