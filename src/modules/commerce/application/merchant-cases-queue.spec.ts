@@ -59,4 +59,41 @@ describe('casos de comercios pendientes (GET /moderation/merchant-cases, D2 y D3
     expect(JSON.stringify(items)).not.toContain('clave-de-ana');
     expect(JSON.stringify(items)).not.toContain('cuenta-del-dueno');
   });
+
+  it('un reclamo pre-aprobado muestra el comercio que espera revisión (H11), sin su cuenta ni su clave', async () => {
+    const pending: MerchantClaim = { ...owner, status: 'pre_aprobado', verifiedAt: null };
+    const claimCase: MerchantCase = {
+      ...report,
+      id: 'caso-reclamo',
+      kind: 'reclamo',
+      reporterKey: 'clave-de-rosa',
+      reason: 'Reclamo de un supermercado: pendiente de revisión.',
+    };
+    const queue = new MerchantCasesQueue({
+      cases: { pending: () => Promise.resolve([claimCase]) },
+      claims: { findByEstablishment: () => Promise.resolve(pending) },
+      establishments: { find: () => Promise.resolve({ name: 'Supermercado Laureles' }) },
+    });
+
+    const items = await queue.list();
+
+    expect(items).toEqual([
+      {
+        id: 'caso-reclamo',
+        kind: 'reclamo',
+        establishment: { id: STORE, name: 'Supermercado Laureles' },
+        owner: {
+          responsibleName: 'Rosa Gómez',
+          nit: '800.197.268-4',
+          phone: '3001234567',
+          status: 'pre_aprobado',
+          verifiedAt: null,
+        },
+        reason: 'Reclamo de un supermercado: pendiente de revisión.',
+        createdAt: report.createdAt,
+      },
+    ]);
+    expect(JSON.stringify(items)).not.toContain('clave-de-rosa');
+    expect(JSON.stringify(items)).not.toContain('cuenta-del-dueno');
+  });
 });

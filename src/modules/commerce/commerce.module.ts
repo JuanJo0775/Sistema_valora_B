@@ -45,6 +45,7 @@ import { EstablishmentController } from './http/establishment.controller';
 import { DrizzleMerchantNotices } from './infrastructure/drizzle-merchant-notices';
 import { MerchantDigestScheduler } from './infrastructure/merchant-digest-scheduler';
 import { MerchantCasesController } from './http/merchant-cases.controller';
+import { DrizzleMerchantClaimReviews } from './infrastructure/drizzle-merchant-claim-reviews';
 import { DrizzleMerchantRevocations } from './infrastructure/drizzle-merchant-revocations';
 import { MerchantController } from './http/merchant.controller';
 import { OfficialPricesController } from './http/official-prices.controller';
@@ -223,6 +224,7 @@ const reportersOf = (identities: ReporterIdentity) => ({
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           promotions: new DrizzlePromotionRepository(db, outbox),
           revocations: new DrizzleMerchantRevocations(db, outbox),
+          claimReviews: new DrizzleMerchantClaimReviews(db, outbox),
           clock: { now: () => new Date() },
         }),
     },
@@ -317,6 +319,8 @@ const reportersOf = (identities: ReporterIdentity) => ({
       ): ClaimEstablishment =>
         new ClaimEstablishment({
           establishments,
+          // H11: la clave seudónima de quien reclama es la que lleva el caso de reclamo (EC-08).
+          reporters: { keyOf: async (accountId) => (await identities.of(accountId)).reporterKey },
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           // Precisión de D3 (#208): una disputa por cuenta y tienda mientras esté abierta, con la
           // clave seudónima de quien la abre (EC-08).

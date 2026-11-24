@@ -38,8 +38,10 @@ export class MerchantReportDto {
 }
 
 export class MerchantCaseDecisionDto {
-  @IsIn(['revocar', 'descartar'], { message: 'debe ser revocar o descartar' })
-  decision!: 'revocar' | 'descartar';
+  @IsIn(['revocar', 'descartar', 'aprobar', 'rechazar'], {
+    message: 'debe ser revocar, descartar, aprobar o rechazar',
+  })
+  decision!: 'revocar' | 'descartar' | 'aprobar' | 'rechazar';
 
   @IsString({ message: NOTE_MESSAGE })
   @Length(10, 500, { message: NOTE_MESSAGE })

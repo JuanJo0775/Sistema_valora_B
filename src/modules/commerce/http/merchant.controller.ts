@@ -46,7 +46,7 @@ export class MerchantController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(SessionGuard, VerifiedEmailGuard)
   @Roles('reportante')
-  // NOT_AT_ESTABLISHMENT es un DomainError: el filtro de errores responde 422.
+  // NOT_AT_ESTABLISHMENT y CHAIN_STORE_NOT_CLAIMABLE son DomainError: el filtro de errores responde 422.
   async claim(
     @Body() body: ClaimEstablishmentDto,
     @CurrentSession() session: AuthenticatedSession,

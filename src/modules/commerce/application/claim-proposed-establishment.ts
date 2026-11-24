@@ -2,7 +2,7 @@ import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentType } from '../../establishments';
 import { isValidNit } from '../../../domain/merchant-claim';
 import { AccountHasEstablishmentError, InvalidNitError } from './claim-establishment';
-import type { MerchantClaimRepository } from './merchant-claims';
+import { PRE_APPROVED_UNLOCKS, type MerchantClaimRepository } from './merchant-claims';
 
 type Point = { lat: number; lng: number };
 
@@ -32,15 +32,6 @@ export interface ProposedClaimRequest {
   // El celular está en la tienda: su ubicación marca el punto de la tienda propuesta.
   location: Point;
 }
-
-// D2: lo que el comercio podrá hacer cuando se apruebe su tienda.
-export const PRE_APPROVED_UNLOCKS = [
-  'precios_oficiales',
-  'carga_por_archivo',
-  'promociones',
-  'avisos_de_precio',
-  'datos_de_la_tienda',
-] as const;
 
 export interface ProposedClaimResult {
   status: 'pre_aprobado';
