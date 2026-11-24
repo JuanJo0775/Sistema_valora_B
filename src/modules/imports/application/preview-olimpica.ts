@@ -42,6 +42,9 @@ export class PreviewOlimpica {
       };
     }
     const quote = await this.ports.quote(ean, zone);
+    if (quote.regionId !== zone.regionId || quote.sellerId !== zone.sellerId) {
+      return { ean, status: 'skipped' as const, reason: 'unverified_zone' };
+    }
     const observedAt = this.ports.now();
     return {
       ean,
