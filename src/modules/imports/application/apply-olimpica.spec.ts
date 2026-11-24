@@ -25,7 +25,7 @@ it('aplica cada observación válida y conserva los demás resultados si una esc
       if (observation.presentationId === 'p1')
         return Promise.reject(new Error('Falló la escritura'));
       saved.push(observation);
-      return Promise.resolve();
+      return Promise.resolve(observation);
     },
   );
   expect(saved).toEqual([

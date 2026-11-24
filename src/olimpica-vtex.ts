@@ -1,9 +1,16 @@
 import 'reflect-metadata';
+import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { readPresentationsByBarcode } from './modules/catalog';
-import { OlimpicaVtex, PreviewOlimpica } from './modules/imports';
+import {
+  applyOlimpica,
+  OlimpicaObservations,
+  OlimpicaVtex,
+  PreviewOlimpica,
+  type OnlineObservation,
+} from './modules/imports';
 import { validateEnv } from './shared/config/env.validation';
 import { DATABASE, DatabaseModule, type Database } from './shared/database/database.module';
 
@@ -15,10 +22,26 @@ class OlimpicaPilotModule {}
 export async function runOlimpicaPreview(
   args: string[],
   env: NodeJS.ProcessEnv,
-  findCatalog: () => Promise<{ find(ean: string): Promise<string[]>; close(): Promise<void> }>,
+  findCatalog: () => Promise<{
+    find(ean: string): Promise<string[]>;
+    close(): Promise<void>;
+    save?: (observation: OnlineObservation) => Promise<OnlineObservation>;
+  }>,
   request: typeof fetch = fetch,
 ) {
-  if (args.length > 0) throw new Error('El piloto solo admite vista previa.');
+  const [option, runOption] = args;
+  const apply = option === '--apply';
+  const suppliedRunId = runOption?.slice('--run-id='.length);
+  if (
+    (!apply && args.length > 0) ||
+    args.length > 2 ||
+    (runOption !== undefined &&
+      (!runOption.startsWith('--run-id=') ||
+        !suppliedRunId ||
+        !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(suppliedRunId)))
+  ) {
+    throw new Error('Usa vista previa o --apply con --run-id=<UUID> opcional.');
+  }
   const postalCode = env['OLIMPICA_VTEX_POSTAL_CODE']?.trim() ?? '';
   const regionId = env['OLIMPICA_VTEX_REGION_ID']?.trim() ?? '';
   const sellerId = env['OLIMPICA_VTEX_SELLER_ID']?.trim() ?? '';
@@ -37,6 +60,8 @@ export async function runOlimpicaPreview(
   const zone = { id: 'armenia-piloto', regionId, sellerId };
   const catalog = await findCatalog();
   try {
+    const save = catalog.save;
+    if (apply && !save) throw new Error('El comando solo admite vista previa sin repositorio.');
     const vtex = new OlimpicaVtex(postalCode, request);
     const confirmed = await vtex.confirms(zone);
     const pilot = new PreviewOlimpica({
@@ -47,7 +72,10 @@ export async function runOlimpicaPreview(
           : Promise.resolve({ regionId: '', sellerId: '', skuId: '', available: false }),
       now: () => new Date(),
     });
-    return await pilot.execute(zone, eans);
+    const preview = await pilot.execute(zone, eans);
+    return apply && save
+      ? await applyOlimpica(preview, suppliedRunId ?? randomUUID(), save)
+      : preview;
   } finally {
     await catalog.close();
   }
@@ -60,12 +88,15 @@ async function main(): Promise<void> {
       logger: false,
       abortOnError: false,
     });
-    const catalog = readPresentationsByBarcode(context.get<Database>(DATABASE));
+    const db = context.get<Database>(DATABASE);
+    const catalog = readPresentationsByBarcode(db);
+    const observations = new OlimpicaObservations(db);
     return {
       find: async (ean) => {
         const id = (await catalog.byBarcodes([ean])).get(ean);
         return id === undefined ? [] : [id];
       },
+      save: (observation) => observations.save(observation),
       close: () => context.close(),
     };
   });

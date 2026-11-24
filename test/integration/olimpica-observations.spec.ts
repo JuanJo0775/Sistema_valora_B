@@ -42,9 +42,14 @@ it('retira al confirmar indisponibilidad y vence exactamente en 48 horas al reac
   const id = randomUUID();
   const original = available(id);
   await observations.save(original);
-  const { priceCop: _price, expiresAt: _expiry, ...identity } = original;
+  const { source, zoneId, presentationId, ean, skuId, sellerId } = original;
   await observations.save({
-    ...identity,
+    source,
+    zoneId,
+    presentationId,
+    ean,
+    skuId,
+    sellerId,
     runId: randomUUID(),
     status: 'unavailable',
     observedAt: new Date('2026-11-24T11:00:00Z'),
