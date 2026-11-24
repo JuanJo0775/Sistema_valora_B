@@ -1,5 +1,9 @@
 import type { DomainEvent } from '../../../shared/events';
-import { AccountHasEstablishmentError, InvalidNitError } from './claim-establishment';
+import {
+  AccountHasEstablishmentError,
+  ChainStoreNotClaimableError,
+  InvalidNitError,
+} from './claim-establishment';
 import {
   ClaimProposedEstablishment,
   type ProposedClaimRequest,
@@ -105,5 +109,38 @@ describe('registrar un comercio con una tienda que no está en el mapa (RF-015, 
 
     await expect(claim.execute(request({ nit: '800.197.268-5' }))).rejects.toThrow(InvalidNitError);
     expect(proposed).toEqual([]);
+  });
+
+  // H11 (ADR-038, enmienda): proponer una tienda nueva no es una puerta para ser dueño de una cadena.
+  describe('tiendas de cadena', () => {
+    it.each([
+      ['D1', 'barrio'],
+      ['Éxito Express', 'minimercado'],
+      ['  olimpica  ', 'supermercado'],
+      ['Mi tienda de descuento', 'descuento'],
+    ] as const)(
+      '«%s» (%s) no se puede proponer como tienda propia: no se propone ni se guarda nada',
+      async (name, type) => {
+        const { claim, claims, proposed } = setup();
+
+        await expect(
+          claim.execute(request({ newEstablishment: { name, type, municipality: 'cordoba' } })),
+        ).rejects.toThrow(ChainStoreNotClaimableError);
+        expect(proposed).toEqual([]);
+        expect(claims).toEqual([]);
+      },
+    );
+
+    it('«Panadería D10» no es D1: sigue pre-aprobado', async () => {
+      const { claim } = setup();
+
+      await expect(
+        claim.execute(
+          request({
+            newEstablishment: { name: 'Panadería D10', type: 'barrio', municipality: 'cordoba' },
+          }),
+        ),
+      ).resolves.toMatchObject({ status: 'pre_aprobado' });
+    });
   });
 });
