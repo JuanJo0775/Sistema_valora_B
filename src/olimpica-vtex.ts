@@ -12,13 +12,17 @@ import { DATABASE, DatabaseModule, type Database } from './shared/database/datab
 })
 class OlimpicaPilotModule {}
 
-async function main(): Promise<void> {
-  if (process.argv.slice(2).length > 0) throw new Error('El piloto solo admite vista previa.');
-  process.loadEnvFile();
-  const postalCode = process.env['OLIMPICA_VTEX_POSTAL_CODE']?.trim() ?? '';
-  const regionId = process.env['OLIMPICA_VTEX_REGION_ID']?.trim() ?? '';
-  const sellerId = process.env['OLIMPICA_VTEX_SELLER_ID']?.trim() ?? '';
-  const eans = process.env['OLIMPICA_VTEX_EANS']?.split(',').map((ean) => ean.trim()) ?? [];
+export async function runOlimpicaPreview(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  findCatalog: () => Promise<{ find(ean: string): Promise<string[]>; close(): Promise<void> }>,
+  request: typeof fetch = fetch,
+) {
+  if (args.length > 0) throw new Error('El piloto solo admite vista previa.');
+  const postalCode = env['OLIMPICA_VTEX_POSTAL_CODE']?.trim() ?? '';
+  const regionId = env['OLIMPICA_VTEX_REGION_ID']?.trim() ?? '';
+  const sellerId = env['OLIMPICA_VTEX_SELLER_ID']?.trim() ?? '';
+  const eans = env['OLIMPICA_VTEX_EANS']?.split(',').map((ean) => ean.trim()) ?? [];
   if (
     !/^630[0-9]{3}$/.test(postalCode) ||
     !regionId ||
@@ -31,32 +35,46 @@ async function main(): Promise<void> {
     throw new Error('Configura una zona de prueba de Armenia, su vendedor y de 5 a 10 EAN únicos.');
   }
   const zone = { id: 'armenia-piloto', regionId, sellerId };
-  const context = await NestFactory.createApplicationContext(OlimpicaPilotModule, {
-    logger: false,
-    abortOnError: false,
-  });
+  const catalog = await findCatalog();
   try {
-    const catalog = readPresentationsByBarcode(context.get<Database>(DATABASE));
-    const vtex = new OlimpicaVtex(postalCode);
+    const vtex = new OlimpicaVtex(postalCode, request);
     const confirmed = await vtex.confirms(zone);
     const pilot = new PreviewOlimpica({
-      findPresentations: async (ean) => {
-        const id = (await catalog.byBarcodes([ean])).get(ean);
-        return id === undefined ? [] : [id];
-      },
+      findPresentations: (ean) => catalog.find(ean),
       quote: (ean, target) =>
         confirmed
           ? vtex.quote(ean, target)
           : Promise.resolve({ regionId: '', sellerId: '', skuId: '', available: false }),
       now: () => new Date(),
     });
-    process.stdout.write(JSON.stringify(await pilot.execute(zone, eans), null, 2) + '\n');
+    return await pilot.execute(zone, eans);
   } finally {
-    await context.close();
+    await catalog.close();
   }
 }
 
-void main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : 'Falló la vista previa.');
-  process.exitCode = 1;
-});
+async function main(): Promise<void> {
+  process.loadEnvFile();
+  const result = await runOlimpicaPreview(process.argv.slice(2), process.env, async () => {
+    const context = await NestFactory.createApplicationContext(OlimpicaPilotModule, {
+      logger: false,
+      abortOnError: false,
+    });
+    const catalog = readPresentationsByBarcode(context.get<Database>(DATABASE));
+    return {
+      find: async (ean) => {
+        const id = (await catalog.byBarcodes([ean])).get(ean);
+        return id === undefined ? [] : [id];
+      },
+      close: () => context.close(),
+    };
+  });
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+}
+
+if (require.main === module) {
+  void main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : 'Falló la vista previa.');
+    process.exitCode = 1;
+  });
+}
