@@ -18,7 +18,7 @@ Resuelto el 23-nov-2026: aceptado el 16-nov-2026 (Render, Neon y Vercel; Docker)
 
 ## Contexto
 
-El despliegue reproducible es un mínimo exigible por RNF-009, que en su RN1 pide «infraestructura y contenedores como código». El RDA3 de Arquitectura de Software II aborda enfoques cloud y herramientas de orquestación según las necesidades del proyecto. El 11-nov-2026 se había aprobado no usar Docker en el MVP, lo que contradecía RNF-009 RN1. El 15-nov-2026 el equipo revisó las propuestas de despliegue (página «Propuestas de despliegue — insumo para ADR-012») y cambió esa regla. Sigue pendiente el proveedor y confirmar con el docente qué orquestación espera RDA3.
+El despliegue reproducible es un mínimo exigible por RNF-009, que en su RN1 pide «infraestructura y contenedores como código». El RDA3 de Arquitectura de Software II aborda enfoques cloud y herramientas de orquestación según las necesidades del proyecto. El 11-nov-2026 se había aprobado no usar Docker en el MVP, lo que contradecía RNF-009 RN1. El 15-nov-2026 el equipo revisó las propuestas de despliegue (página «Propuestas de despliegue — insumo para ADR-012») y cambió esa regla. El proveedor quedó decidido (Render, Neon y Vercel) y la orquestación de la plataforma quedó confirmada por el equipo (PR #125); no queda nada pendiente con el docente (resuelto el 23-nov-2026).
 
 ## Alternativas consideradas
 
@@ -38,7 +38,7 @@ DECIDIDO (15-nov-2026): SÍ se usa Docker. El backend se empaqueta en una imagen
 
 Se mantiene: los integrantes no necesitan Docker para desarrollar; pueden seguir con PostgreSQL local. Docker Compose para desarrollo local es opcional y entra solo si alguien lo necesita.
 
-Proveedor decidido: Render, Neon y Vercel. Orquestación pendiente de confirmar con el docente (RDA3). Recomendación: alternativa C (plataforma con Docker y base PostgreSQL + PostGIS administrada), si el docente acepta la orquestación de la plataforma para RDA3; si exige Terraform, la misma infraestructura se describe con Terraform; si exige Kubernetes, alternativa E.
+Proveedor decidido: Render, Neon y Vercel. Orquestación confirmada: alternativa C (plataforma con Docker y base PostgreSQL + PostGIS administrada), que cubre lo que pide RDA3 (resuelto el 23-nov-2026).
 
 Pipeline previsto: al mezclar dev en main se construye la imagen, se aplican las migraciones, se despliega y se corre la prueba de humo (pnpm smoke -- --solo-lectura); si falla, la CI queda en rojo.
 

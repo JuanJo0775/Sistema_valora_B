@@ -12,7 +12,7 @@ Fuente: Notion, base ADRs, página 40239c4a833b81d79bb4e1099a4022cc; estado copi
 
 > El texto de las secciones Contexto a Consecuencias está copiado de las propiedades de texto de la fila; el cuerpo de la página de Notion se copia al final, tal cual (con sus títulos bajados un nivel). Los saltos `<br />` de las propiedades se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Discrepancias señaladas (resueltas)
 
 - **Discrepancia ADR-010 vs ADR-017.** Resuelto: ADR-017 está Aceptado desde el 8-nov-2026 (decisión «ACEPTADA (8 de noviembre de 2026)» en Notion).
 
@@ -65,6 +65,6 @@ Sin sección propia en la fuente; lo que la fuente dice sobre verificación est�
 
 ### Relación con la implementación frontend
 
-Este ADR define el requisito funcional de PWA con cola persistente offline-first y permanece <b>Aceptado</b>. No selecciona por sí mismo el framework ni la biblioteca del service worker. La propuesta de implementación se documenta en <mention url="https://app.notion.com/p/40d39c4a833b81aab6ebe8c4cf246552">Frontend PWA: React + Vite con vite-plugin-pwa</mention>, que continúa <b>Propuesto</b> hasta validación técnica.
+Este ADR define el requisito funcional de PWA con cola persistente offline-first y permanece <b>Aceptado</b>. No selecciona por sí mismo el framework ni la biblioteca del service worker. La propuesta de implementación se documenta en <mention url="https://app.notion.com/p/40d39c4a833b81aab6ebe8c4cf246552">Frontend PWA: React + Vite con vite-plugin-pwa</mention>, que está <b>Aceptado</b> desde el 8-nov-2026.
 
 La arquitectura visual está en las Figuras 3 (contenedores), 7 (secuencia de registro y sincronización) y 13 (despliegue) de <mention url="https://app.notion.com/p/40d39c4a833b80ffa47cfb7c2d06254e">Arquitectura y stack tecnológico</mention>. La decisión funcional aceptada sigue siendo la misma: la cola local conserva reportes sin conexión; la consulta de precios requiere conexión.

@@ -12,7 +12,7 @@ Fuente: Notion, base ADRs, página 40239c4a833b814bae73cfede677f0cb; estado copi
 
 > La página de Notion no tiene cuerpo (solo propiedades). El texto de las secciones siguientes está copiado de las propiedades de texto de la misma fila (Contexto, Alternativas consideradas, Decisión adoptada, Consecuencias / verificación). Los saltos `<br />` de Notion se muestran como párrafos.
 
-## Discrepancias señaladas (no corregidas)
+## Discrepancias señaladas (resueltas)
 
 - **ADR-007: discrepancia de estado.** Resuelto el 23-nov-2026: el estado vigente es Aceptado (Notion, 11-nov-2026).
 - El texto de la decisión remite a ADR-020 «(10 de noviembre de 2026)»; la fila de ADR-020 en Notion no tiene fecha y su decisión dice «ACEPTADO (15-nov-2026)».
