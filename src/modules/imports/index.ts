@@ -11,3 +11,6 @@ export {
   type InitialPricesResult,
   SeedInitialPrices,
 } from './application/initial-prices';
+
+export { PreviewOlimpica } from './application/preview-olimpica';
+export { OlimpicaVtex } from './infrastructure/olimpica-vtex';
