@@ -46,6 +46,16 @@ export class PreviewOlimpica {
       return { ean, status: 'skipped' as const, reason: 'unverified_zone' };
     }
     const observedAt = this.ports.now();
+    if (!quote.available) {
+      return {
+        ean,
+        presentationId,
+        status: 'unavailable' as const,
+        skuId: quote.skuId,
+        sellerId: quote.sellerId,
+        observedAt,
+      };
+    }
     return {
       ean,
       presentationId,
