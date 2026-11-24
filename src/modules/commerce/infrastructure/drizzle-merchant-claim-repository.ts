@@ -5,13 +5,14 @@ import {
   AccountHasEstablishmentError,
   EstablishmentHasOwnerError,
 } from '../application/claim-establishment';
+import type { MerchantCase } from '../application/merchant-cases';
 import type {
   MerchantClaim,
   MerchantClaimRejection,
   MerchantClaimRepository,
   ProposedClaimResolutions,
 } from '../application/merchant-claims';
-import { merchantClaimRejections, merchantClaims } from './schema';
+import { merchantCases, merchantClaimRejections, merchantClaims } from './schema';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -40,15 +41,43 @@ export class DrizzleMerchantClaimRepository
   ) {}
 
   // ADR-015: la solicitud y sus eventos se confirman juntos o no se guarda ninguno.
-  async save(claim: MerchantClaim, events: DomainEvent[]): Promise<void> {
+  async save(
+    claim: MerchantClaim,
+    events: DomainEvent[],
+    reviewCase?: MerchantCase,
+  ): Promise<void> {
     try {
       await this.db.transaction(async (tx) => {
         await tx.insert(merchantClaims).values(claim);
+        if (reviewCase) await this.openReviewCase(tx, reviewCase);
         for (const event of events) await this.outbox.publish(tx, event);
       });
     } catch (error) {
       throw ownershipConflict(error) ?? error;
     }
+  }
+
+  // H11: un solo reclamo pendiente por tienda. Si quedó uno de una cuenta que ya no está (por ejemplo,
+  // una cuenta borrada), se cierra para que decidirlo no verifique a otra cuenta.
+  private async openReviewCase(
+    tx: Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0],
+    reviewCase: MerchantCase,
+  ): Promise<void> {
+    await tx
+      .update(merchantCases)
+      .set({
+        status: 'descartado',
+        note: 'Reemplazado por un reclamo nuevo de la tienda.',
+        decidedAt: reviewCase.createdAt,
+      })
+      .where(
+        and(
+          eq(merchantCases.establishmentId, reviewCase.establishmentId),
+          eq(merchantCases.kind, 'reclamo'),
+          eq(merchantCases.status, 'pendiente'),
+        ),
+      );
+    await tx.insert(merchantCases).values(reviewCase);
   }
 
   async findByAccount(accountId: string): Promise<MerchantClaim | null> {

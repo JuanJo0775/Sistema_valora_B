@@ -104,7 +104,9 @@ describe('reclamos de supermercados en el esquema commerce (H11)', () => {
   });
 
   it('aprobar deja la solicitud verificada, cierra el caso como aprobado y guarda MerchantVerified', async () => {
-    await reviews.approve(review, [createEvent('MerchantVerified', 1, { accountId, establishmentId })]);
+    await reviews.approve(review, [
+      createEvent('MerchantVerified', 1, { accountId, establishmentId }),
+    ]);
 
     await expect(claims.findByAccount(accountId)).resolves.toEqual({
       ...pending,

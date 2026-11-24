@@ -328,15 +328,24 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
       expect(contractErrors('GET /commerce/me', 200, profile.body as unknown)).toEqual([]);
       const items = await queue();
       expect(items).toEqual([
-        expect.objectContaining({ kind: 'reclamo', owner: expect.objectContaining({ status: 'pre_aprobado' }) }),
+        expect.objectContaining({
+          kind: 'reclamo',
+          owner: expect.objectContaining({ status: 'pre_aprobado' }) as unknown,
+        }),
       ]);
       expect(JSON.stringify(items)).not.toContain(rosa.accountId);
     });
 
     it('lejos de un supermercado sigue el 422 NOT_AT_ESTABLISHMENT', async () => {
-      const far = await claim(rosa, claimOn(marketId, { location: { lat: 4.5349, lng: -75.6811 } }));
+      const far = await claim(
+        rosa,
+        claimOn(marketId, { location: { lat: 4.5349, lng: -75.6811 } }),
+      );
 
-      expect([far.status, (far.body as { code: string }).code]).toEqual([422, 'NOT_AT_ESTABLISHMENT']);
+      expect([far.status, (far.body as { code: string }).code]).toEqual([
+        422,
+        'NOT_AT_ESTABLISHMENT',
+      ]);
       expect(await queue()).toEqual([]);
     });
 
