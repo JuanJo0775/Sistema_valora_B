@@ -355,6 +355,44 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     ).toEqual([]);
   });
 
+  // Rectificación del nombre visible: la ruta responde como dice el contrato.
+  it('cambiar el nombre visible responde como dice el contrato', async () => {
+    checked.length = 0;
+    const me = await signIn(server, db, 'nombre-contrato@correo.com');
+    const withSession = (as: SignedIn | null, body: object) => {
+      const call = request(server).patch('/v1/me/profile');
+      return (as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call).send(
+        body,
+      );
+    };
+
+    await check('PATCH /me/profile', withSession(null, { displayName: 'Sara Luz' }));
+    await check('PATCH /me/profile', withSession(me, { displayName: '3001234567' }));
+    await check('PATCH /me/profile', withSession(me, { displayName: ' Sara   Luz ' }));
+    await check(
+      'PATCH /me/profile',
+      request(server)
+        .patch('/v1/me/profile')
+        .set('Cookie', me.cookie)
+        .send({ displayName: 'Sara Luz' }),
+    );
+    for (let i = 0; i < 9; i += 1) {
+      await check('PATCH /me/profile', withSession(me, { displayName: 'Sara Luz' }));
+    }
+
+    // 10 cambios aceptados (el 3.º y los 9 del ciclo) y el siguiente, el 11.º, se frena.
+    expect(checked.map(({ status }) => status)).toEqual([
+      401, 400, 200, 403, 200, 200, 200, 200, 200, 200, 200, 200, 200,
+    ]);
+    await check('PATCH /me/profile', withSession(me, { displayName: 'Sara Luz' }));
+    expect(checked.at(-1)?.status).toBe(429);
+    expect(checked[2]?.body).toEqual({ displayName: 'Sara Luz' });
+    expect(checked[3]?.body).toMatchObject({ code: 'CSRF_TOKEN_INVALID' });
+    expect(
+      checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
+    ).toEqual([]);
+  });
+
   // ADR-033: olvidé mi contraseña, restablecerla y cambiarla responden como dice el contrato.
   it('olvidar, restablecer y cambiar la contraseña responden como dice el contrato', async () => {
     checked.length = 0;

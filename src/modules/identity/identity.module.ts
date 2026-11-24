@@ -14,6 +14,7 @@ import { GrantMerchantRole } from './application/grant-merchant-role';
 import { RevokeMerchantRole } from './application/revoke-merchant-role';
 import { NotifyAccount } from './application/notify-account';
 import { DeleteOwnAccount } from './application/delete-own-account';
+import { ChangeOwnDisplayName } from './application/change-own-display-name';
 import { ChangeOwnPassword } from './application/change-own-password';
 import { PASSWORD_REPOSITORY, type PasswordRepository } from './application/password-repository';
 import { RequestPasswordReset } from './application/request-password-reset';
@@ -292,6 +293,12 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
       inject: [DATABASE],
       useFactory: (db: Database): OwnDisplayName =>
         new OwnDisplayName({ displayNames: new DrizzleAccountRepository(db) }),
+    },
+    {
+      provide: ChangeOwnDisplayName,
+      inject: [DATABASE, ATTEMPT_LIMITER],
+      useFactory: (db: Database, limiter: AttemptLimiter): ChangeOwnDisplayName =>
+        new ChangeOwnDisplayName({ names: new DrizzleAccountRepository(db), limiter }),
     },
     {
       provide: SESSION_REPOSITORY,

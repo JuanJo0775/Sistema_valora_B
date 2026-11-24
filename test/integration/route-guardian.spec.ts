@@ -45,6 +45,8 @@ const ANY_ROLE_ROUTES = new Set([
   'POST /me/account-deletion',
   // ADR-033: cambiar o crear la propia contraseña; cualquier rol, también una cuenta suspendida.
   'POST /me/password',
+  // Rectificación (Ley 1581): cambiar el propio nombre; cualquier rol, también una cuenta suspendida.
+  'PATCH /me/profile',
 ]);
 
 describe('guardián de rutas (RNF-010)', () => {
