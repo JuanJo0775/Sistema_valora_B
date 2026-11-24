@@ -6,6 +6,7 @@ import { CommerceModule } from './modules/commerce';
 import { ComparisonModule } from './modules/comparison';
 import { EstablishmentsModule } from './modules/establishments';
 import { IdentityModule } from './modules/identity';
+import { ImportsModule } from './modules/imports';
 import { PricingModule } from './modules/pricing';
 import { ReliabilityModule } from './modules/reliability';
 import { validateEnv } from './shared/config/env.validation';
@@ -25,6 +26,7 @@ import { EventsModule } from './shared/events';
     ComparisonModule,
     // Corte 3 (EPIC-B08): nadie del núcleo lo importa (EC-05).
     CommerceModule,
+    ImportsModule,
   ],
   controllers: [HealthController],
 })
