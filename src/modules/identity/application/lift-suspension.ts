@@ -1,7 +1,7 @@
 export interface LiftSuspensionPorts {
   accounts: {
     byReporterKey(reporterKey: string): Promise<{ id: string; suspendedUntil: Date | null } | null>;
-    suspend(accountId: string, until: Date | null): Promise<void>;
+    suspend(accountId: string, until: Date | null, reason: null): Promise<void>;
   };
 }
 
@@ -19,6 +19,6 @@ export class LiftSuspension {
   async execute(request: LiftRequest): Promise<void> {
     const account = await this.ports.accounts.byReporterKey(request.reporterKey);
     if (account?.suspendedUntil?.getTime() !== request.suspendedUntil.getTime()) return;
-    await this.ports.accounts.suspend(account.id, null);
+    await this.ports.accounts.suspend(account.id, null, null);
   }
 }

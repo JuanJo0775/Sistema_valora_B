@@ -137,10 +137,10 @@ export const merchantCases = commerceSchema.table(
   },
   (table) => [
     index('merchant_cases_establishment_idx').on(table.establishmentId),
-    check('merchant_cases_kind_valid', sql`${table.kind} in ('denuncia', 'disputa')`),
+    check('merchant_cases_kind_valid', sql`${table.kind} in ('denuncia', 'disputa', 'reclamo')`),
     check(
       'merchant_cases_status_valid',
-      sql`${table.status} in ('pendiente', 'revocado', 'descartado')`,
+      sql`${table.status} in ('pendiente', 'revocado', 'descartado', 'aprobado', 'rechazado')`,
     ),
   ],
 );

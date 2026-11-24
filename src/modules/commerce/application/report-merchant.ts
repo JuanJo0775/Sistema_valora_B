@@ -49,9 +49,17 @@ export class MerchantReportOpenError extends Error {
 export class ReportMerchant {
   constructor(private readonly ports: ReportMerchantPorts) {}
 
-  async canReport(establishmentId: string, accountId: string): Promise<boolean> {
+  // H31: quien ya tiene una denuncia abierta sobre esa tienda no puede denunciar otra vez, y la consulta lo
+  // dice en vez de ofrecer una acción que el servidor rechazaría.
+  async eligibility(
+    establishmentId: string,
+    accountId: string,
+    reporterKey: string,
+  ): Promise<{ canReport: boolean; alreadyReported: boolean }> {
     const owner = await this.ports.claims.ownerOf(establishmentId);
-    return owner !== null && owner !== accountId;
+    if (owner === null || owner === accountId) return { canReport: false, alreadyReported: false };
+    const alreadyReported = await this.ports.cases.hasOpen(establishmentId, reporterKey);
+    return { canReport: !alreadyReported, alreadyReported };
   }
 
   async execute(request: ReportMerchantRequest): Promise<{ id: string; status: 'pendiente' }> {

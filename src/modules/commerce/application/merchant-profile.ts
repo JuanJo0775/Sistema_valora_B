@@ -1,8 +1,8 @@
-import { PRE_APPROVED_UNLOCKS } from './claim-proposed-establishment';
-import type {
-  MerchantClaim,
-  MerchantClaimRejection,
-  MerchantClaimRepository,
+import {
+  PRE_APPROVED_UNLOCKS,
+  type MerchantClaim,
+  type MerchantClaimRejection,
+  type MerchantClaimRepository,
 } from './merchant-claims';
 
 export interface MerchantProfilePorts {
@@ -13,6 +13,10 @@ export interface MerchantProfilePorts {
   // La tienda del mapa o la propuesta, por la interfaz pública de establishments.
   establishments: { find(establishmentId: string): Promise<{ name: string } | null> };
 }
+
+// H15: la nota del moderador al revocar es interna (puede nombrar a quien denunció) y queda en la bitácora;
+// la cuenta revocada ve siempre este mensaje.
+export const REVOCATION_MESSAGE = 'Moderación revocó el registro de esta cuenta para esa tienda.';
 
 export type MerchantProfileView = ActiveMerchantProfile | RejectedMerchantProfile;
 
@@ -42,13 +46,14 @@ export class MerchantProfile {
     const claim = await this.ports.claims.findByAccount(accountId);
     if (!claim) {
       const rejection = await this.ports.claims.lastRejection(accountId);
-      return rejection
-        ? {
-            status: rejection.outcome ?? 'rechazado',
-            reason: rejection.reason,
-            rejectedAt: rejection.rejectedAt,
-          }
-        : null;
+      if (!rejection) return null;
+      const revoked = rejection.outcome === 'revocado';
+      return {
+        status: revoked ? 'revocado' : 'rechazado',
+        // El rechazo de una tienda propuesta sí conserva el motivo del moderador (B2).
+        reason: revoked ? REVOCATION_MESSAGE : rejection.reason,
+        rejectedAt: rejection.rejectedAt,
+      };
     }
     const establishment = await this.ports.establishments.find(claim.establishmentId);
     return {

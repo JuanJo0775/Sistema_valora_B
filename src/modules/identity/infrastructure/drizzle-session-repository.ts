@@ -1,7 +1,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Transaction } from '../../../shared/database/database.module';
-import type { Role } from '../application/account-repository';
+import type { Role, SuspensionReason } from '../application/account-repository';
 import type {
   NewSession,
   SessionRepository,
@@ -29,6 +29,7 @@ export class DrizzleSessionRepository implements SessionRepository {
         revokedAt: sessions.revokedAt,
         role: accounts.role,
         accountSuspendedUntil: accounts.suspendedUntil,
+        accountSuspensionReason: accounts.suspensionReason,
         accountEmailVerifiedAt: accounts.emailVerifiedAt,
         accountHasPassword: sql<boolean>`${accounts.passwordHash} is not null`,
       })
@@ -36,7 +37,13 @@ export class DrizzleSessionRepository implements SessionRepository {
       .innerJoin(accounts, eq(sessions.accountId, accounts.id))
       .where(eq(sessions.tokenHash, tokenHash));
     // La restricción CHECK de accounts garantiza que es uno de los 3 roles.
-    return found ? { ...found, role: found.role as Role } : null;
+    return found
+      ? {
+          ...found,
+          role: found.role as Role,
+          accountSuspensionReason: found.accountSuspensionReason as SuspensionReason | null,
+        }
+      : null;
   }
 
   async touch(sessionId: string, at: Date): Promise<void> {

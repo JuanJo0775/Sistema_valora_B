@@ -26,14 +26,19 @@ Respuestas:
 
 | Código | Cuándo |
 |---|---|
-| `201` `{ status: "verificado" }` | Tienda del mapa y todas las validaciones bien |
+| `201` `{ status: "verificado" }` | Tienda de barrio o minimercado del mapa y todas las validaciones bien |
+| `201` `{ status: "pre_aprobado", establishmentId, unlocks: [...] }` | Supermercado del mapa que no es de cadena (ADR-038, H11): queda en revisión, sin rol de comercio hasta que un moderador apruebe el caso `reclamo` |
 | `201` `{ status: "pre_aprobado", unlocks: [...] }` | Tienda nueva: espera la aprobación de la propuesta. `unlocks` lista lo que se desbloquea |
 | `400 VALIDATION_ERROR` | Campos con formato inválido (incluye NIT con dígito de verificación mal) |
 | `403 EMAIL_NOT_VERIFIED` | Correo sin verificar |
 | `403 FORBIDDEN` | La cuenta no es `reportante` (ya es comercio o moderador) |
 | `409 ESTABLISHMENT_HAS_OWNER` | La tienda ya tiene dueño: queda una **disputa** para el moderador |
 | `409 ACCOUNT_HAS_ESTABLISHMENT` | La cuenta ya tiene una tienda (una por cuenta) |
+| `422 CHAIN_STORE_NOT_CLAIMABLE` | Tienda de cadena (tipo `descuento` o nombre de D1, Ara, Éxito, Olímpica, Carulla…): no se puede reclamar. Se comprueba antes de la cercanía (ADR-038, H11) |
 | `422 NOT_AT_ESTABLISHMENT` | La ubicación está a más de 50 m de la tienda |
+| `422 REVOKED_FROM_ESTABLISHMENT` | Un moderador revocó a esta cuenta de esa tienda |
+
+Orden de comprobación: sesión, correo verificado, datos y NIT, tienda existente (404), cadena (422), cercanía (422), cuenta revocada, una tienda por cuenta (409) y dueño existente (409, con disputa).
 
 ### `GET /v1/commerce/me` (nueva)
 
@@ -101,8 +106,8 @@ Listar las suyas, con estado `activa`, `pausada` o `vencida`, y retirarlas.
 | Ruta | Quién | Qué |
 |---|---|---|
 | `POST /v1/establishments/{establishmentId}/merchant-reports` | Cualquier cuenta con sesión | «Este comercio no es de quien dice», con motivo de 10 a 500 caracteres. `202` |
-| `GET /v1/moderation/merchant-cases` | Moderador | Disputas (dos cuentas por la misma tienda) y denuncias pendientes |
-| `POST /v1/moderation/merchant-cases/{caseId}/decision` | Moderador | `revocar` o `descartar`, con motivo. Revocar retira al instante precios y promociones y devuelve la cuenta a `reportante` |
+| `GET /v1/moderation/merchant-cases` | Moderador | Disputas (dos cuentas por la misma tienda), denuncias y reclamos pendientes. `kind`: `denuncia`, `disputa` o `reclamo` (ADR-038); en el reclamo, `owner.status` es `pre_aprobado` |
+| `POST /v1/moderation/merchant-cases/{caseId}/decision` | Moderador | Con motivo. Denuncia y disputa: `revocar` (retira al instante precios y promociones y devuelve la cuenta a `reportante`) o `descartar`. Reclamo: `aprobar` (verifica y concede el rol `comercio`) o `rechazar` (cierra la solicitud con el motivo; `GET /commerce/me` responde `rechazado`). Una decisión que no corresponde al tipo: `422 DECISION_NOT_APPLICABLE` |
 
 ## Avisos para el comercio (ADR-008, D4)
 

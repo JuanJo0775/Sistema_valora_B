@@ -156,7 +156,7 @@ export class DecideModeration {
     // Grill de la #71, pregunta 4: rechazar la apelación deja el descarte como estaba, sin castigar
     // dos veces.
     if (request.decision === 'descartar' && stage === 'revision') {
-      await this.discard(reported);
+      await this.discard(reported, { penalize: true });
       // RN6 de RF-013: la decisión recién guardada ya está en la lista.
       const until = suspensionAfter(
         await moderation.decisionsAbout(reported.reporterKey),
@@ -165,6 +165,9 @@ export class DecideModeration {
       if (until) await this.requestSuspension(reported, 'rechazos_seguidos', until);
     }
     if (request.decision === 'observar_cuentas') {
+      // H34 (ADR-039): el reporte observado se retira como un descarte, para que ningún lugar lo siga
+      // mostrando «en revisión». La reputación no baja: la sanción de esta decisión es la suspensión.
+      await this.discard(reported, { penalize: false });
       // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.
       await this.requestSuspension(reported, 'observar_cuentas', suspensionEnd(decidedAt));
     }
@@ -240,9 +243,9 @@ export class DecideModeration {
     await reputations.save(reported.reporterKey, updateReputation(value, event));
   }
 
-  private async discard(reported: Observation): Promise<void> {
+  private async discard(reported: Observation, { penalize }: { penalize: boolean }): Promise<void> {
     const { observations, events } = this.ports;
-    await this.adjustReputation(reported, 'rejected');
+    if (penalize) await this.adjustReputation(reported, 'rejected');
 
     const inStore = await observations.forPresentation(reported.presentationId, [
       reported.establishmentId,

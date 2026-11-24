@@ -38,8 +38,10 @@ export class MerchantReportDto {
 }
 
 export class MerchantCaseDecisionDto {
-  @IsIn(['revocar', 'descartar'], { message: 'debe ser revocar o descartar' })
-  decision!: 'revocar' | 'descartar';
+  @IsIn(['revocar', 'descartar', 'aprobar', 'rechazar'], {
+    message: 'debe ser revocar, descartar, aprobar o rechazar',
+  })
+  decision!: 'revocar' | 'descartar' | 'aprobar' | 'rechazar';
 
   @IsString({ message: NOTE_MESSAGE })
   @Length(10, 500, { message: NOTE_MESSAGE })
@@ -78,8 +80,15 @@ export class MerchantCasesController {
   async eligibility(
     @Param('establishmentId', uuidOf('establishmentId')) establishmentId: string,
     @CurrentSession() session: AuthenticatedSession,
-  ): Promise<{ canReport: boolean }> {
-    return { canReport: await this.reportMerchant.canReport(establishmentId, session.accountId) };
+  ): Promise<{ canReport: boolean; alreadyReported?: true }> {
+    const { reporterKey } = await this.identities.of(session.accountId);
+    const { canReport, alreadyReported } = await this.reportMerchant.eligibility(
+      establishmentId,
+      session.accountId,
+      reporterKey,
+    );
+    // Aditivo: el campo solo aparece cuando es cierto.
+    return { canReport, ...(alreadyReported ? { alreadyReported: true as const } : {}) };
   }
 
   @Post('establishments/:establishmentId/merchant-reports')
