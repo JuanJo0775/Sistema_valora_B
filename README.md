@@ -172,7 +172,9 @@ El primer moderador lo crea quien administra el servidor (grill de la #73, pregu
 pnpm identity:set-role tu-correo@ejemplo.com moderador "Primer moderador del equipo"
 ```
 
-El cambio queda en la bitácora `identity.role_changes` como hecho por el sistema. Después, un moderador puede subir o bajar a otros con `POST /v1/moderation/roles`. Con esa cuenta, `GET /v1/moderation/queue` muestra los reportes pendientes.
+El cambio queda en la bitácora `identity.role_changes` como hecho por el sistema.
+
+**Moderador de prueba para entornos de prueba (`pnpm db:seed-moderador`).** Crea la cuenta y le da el rol, sin dejar ningún dato en el código: el correo y la contraseña (de 10 a 128 caracteres) se leen de `SEED_MODERATOR_EMAIL` y `SEED_MODERATOR_PASSWORD`, en tu `.env` o en la línea de comandos. Se puede repetir: si la cuenta ya existe, no cambia su contraseña y solo se asegura de que sea moderador. No lo uses en producción real. Después, un moderador puede subir o bajar a otros con `POST /v1/moderation/roles`. Con esa cuenta, `GET /v1/moderation/queue` muestra los reportes pendientes.
 
 ### Fotos de productos
 

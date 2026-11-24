@@ -71,6 +71,13 @@ describe('privacidad de las respuestas públicas (EC-08, #36)', () => {
       'reportante',
       'Marcadora Secretísima',
     );
+    // PATCH /v1/me/profile: el nombre cambiado también es privado, igual que el original.
+    await request(server)
+      .patch('/v1/me/profile')
+      .set('Cookie', reporter.cookie)
+      .set('X-CSRF-Token', reporter.csrfToken)
+      .send({ displayName: 'Reportante Renombrada' })
+      .expect(200);
     // #133: la moderación tampoco ve el nombre de quien reportó o marcó.
     const moderator = await signIn(server, db, 'moderadora-privada@correo.com', 'moderador');
     const report = await request(server)
@@ -107,6 +114,7 @@ describe('privacidad de las respuestas públicas (EC-08, #36)', () => {
       // #133: el nombre visible solo sale en la propia sesión.
       'Reportante Secretísima',
       'Marcadora Secretísima',
+      'Reportante Renombrada',
     ];
 
     const publicRoutes = [

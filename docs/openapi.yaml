@@ -993,6 +993,59 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /me/profile:
+    patch:
+      tags: [Autenticación]
+      operationId: changeOwnProfile
+      summary: Cambiar el propio nombre visible (rectificación, Ley 1581)
+      description: >-
+        Cualquier rol, también una cuenta suspendida. Sin contraseña ni reautenticación: es un dato de bajo
+        riesgo. Exige sesión y el token CSRF. displayName cumple las mismas reglas que al registrarse (2 a 40
+        letras; sin números, correos ni símbolos) y se guarda sin espacios sobrantes; si no, 400
+        VALIDATION_ERROR con el mismo mensaje. Un nombre igual al actual responde 200 igual, y una cuenta
+        anterior al nombre puede ponerse uno por primera vez. La respuesta es solo para su dueña: ninguna
+        respuesta pública incluye el nombre (EC-08). Tope de 10 cambios por cuenta por hora.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              additionalProperties: false
+              properties:
+                displayName: { type: string, minLength: 2, maxLength: 40, example: Ana María }
+      responses:
+        '200':
+          description: Nombre guardado, ya normalizado
+          headers:
+            Cache-Control:
+              schema: { type: string, example: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [displayName]
+                additionalProperties: false
+                properties:
+                  displayName: { type: string, minLength: 2, maxLength: 40 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code CSRF_TOKEN_INVALID. No se cambia nada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Más de 10 cambios de nombre en una hora para esta cuenta.
+          headers:
+            Retry-After: { $ref: '#/components/headers/RetryAfter' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /me/reports:
     get:
       tags: [Reportes]

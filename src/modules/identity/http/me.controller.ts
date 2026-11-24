@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -20,9 +21,10 @@ import {
   InvalidPasswordError,
   LastModeratorError,
 } from '../application/delete-own-account';
+import { ChangeOwnDisplayName } from '../application/change-own-display-name';
 import { ChangeOwnPassword } from '../application/change-own-password';
 import { ReauthRequiredError } from '../application/recent-session';
-import { ChangePasswordDto, DeleteAccountDto } from './auth.dto';
+import { ChangePasswordDto, ChangeProfileDto, DeleteAccountDto } from './auth.dto';
 import type { ClientRequest, CookieResponse } from './auth.controller';
 import { clearedSessionCookie } from './session-cookie';
 import {
@@ -37,11 +39,17 @@ export interface AccountDeletionResponse {
   scheduledFor: string;
 }
 
+// Solo el nombre de la propia persona (EC-08): nunca sale en una respuesta pública.
+export interface ProfileResponse {
+  displayName: string;
+}
+
 @Controller('me')
 export class MeController {
   constructor(
     private readonly deleteOwnAccount: DeleteOwnAccount,
     private readonly changeOwnPassword: ChangeOwnPassword,
+    private readonly changeOwnDisplayName: ChangeOwnDisplayName,
   ) {}
 
   // ADR-032, derecho de supresión (Ley 1581, art. 8). Cualquier rol, también una cuenta suspendida: nadie
@@ -126,6 +134,36 @@ export class MeController {
       }
       if (error instanceof ReauthRequiredError) {
         throw new ForbiddenException({ code: 'REAUTH_REQUIRED', message: error.message });
+      }
+      if (error instanceof AccountGoneError) throw new UnauthorizedException();
+      throw error;
+    }
+  }
+
+  // Rectificación (Ley 1581): la persona cambia su nombre visible. Cualquier rol y también una cuenta
+  // suspendida: es un dato propio y de bajo riesgo, y una sanción no quita el derecho a corregirlo. Exige
+  // sesión y token CSRF (el guard cubre PATCH); sin contraseña. Un nombre igual al actual responde 200.
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(SessionGuard)
+  @AllowSuspended()
+  async changeProfile(
+    @CurrentSession() session: AuthenticatedSession,
+    @Body() body: ChangeProfileDto,
+  ): Promise<ProfileResponse> {
+    try {
+      const displayName = await this.changeOwnDisplayName.execute({
+        accountId: session.accountId,
+        displayName: body.displayName,
+      });
+      return { displayName };
+    } catch (error) {
+      if (error instanceof TooManyAttemptsError) {
+        throw new HttpException(
+          { retryAfterSeconds: error.retryAfterSeconds },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
       }
       if (error instanceof AccountGoneError) throw new UnauthorizedException();
       throw error;

@@ -89,6 +89,13 @@ export class CompleteGoogleSignUpDto {
   acceptedPolicyVersion!: string;
 }
 
+// Cambiar el propio nombre: las mismas reglas y el mismo mensaje que al registrarse.
+export class ChangeProfileDto {
+  @Transform(toNormalizedName)
+  @IsDisplayName()
+  displayName!: string;
+}
+
 // ADR-032: la contraseña confirma que quien pide eliminar la cuenta es su dueño. Una cuenta creada con
 // Google no tiene contraseña y confirma con su correo (#179). Exactamente uno de los dos.
 export class DeleteAccountDto {
