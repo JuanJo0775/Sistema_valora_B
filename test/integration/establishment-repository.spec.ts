@@ -122,4 +122,64 @@ describe('repositorio de establecimientos con PostGIS', () => {
       expect(found.map((store) => store.name)).toEqual([calarca.name]);
     });
   });
+
+  // H36: una tienda retirada no sale en ninguna lectura pública, pero la fila se conserva.
+  describe('tiendas retiradas (H36)', () => {
+    beforeEach(async () => {
+      await db.insert(establishments).values([
+        { ...near, type: 'barrio', location: at(100) },
+        { ...middle, type: 'minimercado', location: at(500) },
+      ]);
+    });
+
+    it('retirar marca la tienda con la fecha y no borra la fila; hacerlo otra vez devuelve false', async () => {
+      const retiredAt = new Date('2026-11-24T12:00:00Z');
+
+      await expect(repository.retire(near.id, retiredAt)).resolves.toBe(true);
+      await expect(repository.retire(near.id, retiredAt)).resolves.toBe(false);
+
+      const rows = await db.select().from(establishments);
+      expect(rows).toHaveLength(2);
+      expect(rows.find((row) => row.id === near.id)).toMatchObject({
+        status: 'retirada',
+        retiredAt,
+      });
+    });
+
+    it('no sale en cercanas, búsqueda, radio, municipio, detalle, existencia ni duplicados', async () => {
+      await repository.retire(near.id, new Date());
+
+      const nearby = await repository.findNearby({ ...center, radiusMeters: 1000, limit: 20 });
+      const searched = await repository.search({ q: 'prueba', limit: 20 });
+      const inRadius = await repository.findWithinRadius({
+        ids: [near.id, middle.id],
+        ...center,
+        radiusMeters: 1000,
+      });
+      const inMunicipality = await repository.findInMunicipality({
+        ids: [near.id, middle.id],
+        municipality: 'armenia',
+      });
+      const around = await repository.findAround({ establishmentId: middle.id, radiusMeters: 5000 });
+      const duplicates = await repository.findWithinMeters(at(100), 200);
+
+      expect(nearby.map((store) => store.id)).toEqual([middle.id]);
+      expect(searched.map((store) => store.id)).toEqual([middle.id]);
+      expect(inRadius.map((store) => store.id)).toEqual([middle.id]);
+      expect(inMunicipality.map((store) => store.id)).toEqual([middle.id]);
+      expect(around).toEqual([middle.id]);
+      expect(duplicates).toEqual([]);
+      await expect(repository.findById(near.id)).resolves.toBeNull();
+      await expect(repository.exists(near.id)).resolves.toBe(false);
+      await expect(repository.exists(middle.id)).resolves.toBe(true);
+    });
+
+    it('el nombre de una retirada se sigue resolviendo, para el historial de quien reportó', async () => {
+      await repository.retire(near.id, new Date());
+
+      const names = await repository.namesOf([near.id]);
+
+      expect(names.get(near.id)).toBe(near.name);
+    });
+  });
 });
