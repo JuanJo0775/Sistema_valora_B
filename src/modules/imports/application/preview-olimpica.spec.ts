@@ -34,3 +34,20 @@ it('muestra el precio disponible de un EAN único en la zona confirmada', async 
     ],
   });
 });
+
+it.each([
+  [[], 'unknown_ean'],
+  [['p1', 'p2'], 'ambiguous_ean'],
+] satisfies [string[], string][])(
+  'omite EAN con coincidencias %j y motivo %s',
+  async (ids, reason) => {
+    const pilot = new PreviewOlimpica({
+      findPresentations: () => Promise.resolve(ids),
+      quote: () => Promise.reject(new Error('No debe consultar el proveedor')),
+      now: () => observedAt,
+    });
+    await expect(pilot.execute(zone, [ean])).resolves.toMatchObject({
+      rows: [{ ean, status: 'skipped', reason }],
+    });
+  },
+);
