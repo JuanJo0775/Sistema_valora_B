@@ -23,6 +23,9 @@ export const accounts = identitySchema.table(
     // solo conoce por ella. Pregunta 4: hasta cuándo está suspendida.
     reporterKey: text('reporter_key'),
     suspendedUntil: timestamp('suspended_until', { withTimezone: true }),
+    // H33 (ADR-038): la causa de la suspensión, en un conjunto estable; nula si no hay suspensión o es
+    // anterior al registro de la causa.
+    suspensionReason: text('suspension_reason'),
     // ADR-029: cuándo verificó el correo (nulo = sin verificar). Registrar precios lo exige.
     emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
     // ADR-032: cuándo se borra la cuenta de forma definitiva (nulo = no hay eliminación pendiente). La

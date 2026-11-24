@@ -1,5 +1,5 @@
 {
-  "id": "f1b289d1-f04c-4e2b-8890-cae467c1c588",
+  "id": "266ca578-5ebd-4b18-94c9-5b6de676d670",
   "prevId": "98704e5a-fa78-4d97-832a-d082a37cf58b",
   "version": "7",
   "dialect": "postgresql",
@@ -545,11 +545,11 @@
       "checkConstraints": {
         "merchant_cases_kind_valid": {
           "name": "merchant_cases_kind_valid",
-          "value": "\"commerce\".\"merchant_cases\".\"kind\" in ('denuncia', 'disputa', 'reclamo')"
+          "value": "\"commerce\".\"merchant_cases\".\"kind\" in ('denuncia', 'disputa')"
         },
         "merchant_cases_status_valid": {
           "name": "merchant_cases_status_valid",
-          "value": "\"commerce\".\"merchant_cases\".\"status\" in ('pendiente', 'revocado', 'descartado', 'aprobado', 'rechazado')"
+          "value": "\"commerce\".\"merchant_cases\".\"status\" in ('pendiente', 'revocado', 'descartado')"
         }
       },
       "isRLSEnabled": false
@@ -2057,6 +2057,140 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "imports.online_observations": {
+      "name": "online_observations",
+      "schema": "imports",
+      "columns": {
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "zone_id": {
+          "name": "zone_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "presentation_id": {
+          "name": "presentation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ean": {
+          "name": "ean",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sku_id": {
+          "name": "sku_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seller_id": {
+          "name": "seller_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observed_at": {
+          "name": "observed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_cop": {
+          "name": "price_cop",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "online_observations_latest_idx": {
+          "name": "online_observations_latest_idx",
+          "columns": [
+            {
+              "expression": "source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "zone_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "presentation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "observed_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "run_id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "online_observations_source_zone_id_presentation_id_run_id_pk": {
+          "name": "online_observations_source_zone_id_presentation_id_run_id_pk",
+          "columns": [
+            "source",
+            "zone_id",
+            "presentation_id",
+            "run_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "online_observations_valid_status": {
+          "name": "online_observations_valid_status",
+          "value": "(\n    (\"imports\".\"online_observations\".\"status\" = 'available' and \"imports\".\"online_observations\".\"price_cop\" is not null and \"imports\".\"online_observations\".\"price_cop\" > 0 and \"imports\".\"online_observations\".\"expires_at\" is not null and \"imports\".\"online_observations\".\"expires_at\" > \"imports\".\"online_observations\".\"observed_at\")\n    or (\"imports\".\"online_observations\".\"status\" = 'unavailable' and \"imports\".\"online_observations\".\"price_cop\" is null and \"imports\".\"online_observations\".\"expires_at\" is null)\n  )"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "pricing.reports": {
       "name": "reports",
       "schema": "pricing",
@@ -2712,6 +2846,7 @@
     "comparison": "comparison",
     "establishments": "establishments",
     "identity": "identity",
+    "imports": "imports",
     "pricing": "pricing",
     "reliability": "reliability",
     "shared": "shared"

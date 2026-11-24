@@ -8,7 +8,7 @@ El piloto cubre trazabilidad y separación de fuentes (EC-05 y EC-06), expiraci�
 
 ## Entrada operativa propuesta
 
-- Comando: `pnpm olympica:vtex` para vista previa y `pnpm olympica:vtex --apply` para persistir observaciones.
+- Comando: `pnpm olympica:vtex` para vista previa y `pnpm olympica:vtex --apply` para persistir observaciones. En modo aplicación se devuelve un UUID de ejecución. Para reintentar la misma ejecución, usar `--apply --run-id=<UUID>`.
 - Configuración del entorno: código interno de zona, municipio Armenia, contexto de entrega VTEX validado y una lista de 5 a 10 EAN únicos. Usar un código postal de prueba si el proveedor lo requiere.
 - Si la configuración no es válida, terminar antes de consultar VTEX o escribir en la base. Resolver cada EAN a una presentación única y verificar la coincidencia en la respuesta de VTEX.
 - Exigir que el contexto y el vendedor devueltos correspondan a la zona. Una respuesta general, ambigua o sin confirmación de zona queda omitida.
