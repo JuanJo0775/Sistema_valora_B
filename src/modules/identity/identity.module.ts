@@ -463,7 +463,11 @@ export class IdentityModule implements OnModuleInit {
       'identity.accounts',
       'ReporterSuspensionRequested',
       async (event: DomainEvent, tx: Transaction) => {
-        const payload = event.payload as { reporterKey: string; suspendedUntil: string };
+        const payload = event.payload as {
+          reporterKey: string;
+          suspendedUntil: string;
+          reason: string;
+        };
         await new SuspendReporter({
           accounts: new DrizzleAccountRepository(tx),
           sessions: new DrizzleSessionRepository(tx),
@@ -471,6 +475,11 @@ export class IdentityModule implements OnModuleInit {
         }).execute({
           reporterKey: payload.reporterKey,
           suspendedUntil: new Date(payload.suspendedUntil),
+          // H33 (ADR-038): el motivo interno del evento se traduce a la causa estable que ve la cuenta.
+          reason:
+            payload.reason === 'rechazos_seguidos'
+              ? 'descartes_seguidos'
+              : 'observada_por_moderacion',
         });
       },
     );

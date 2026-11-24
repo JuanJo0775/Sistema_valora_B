@@ -16,7 +16,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { SESSION_MAX_DAYS } from '../../../domain/session-lifetime';
 import type { Env } from '../../../shared/config/env.validation';
-import type { Role } from '../application/account-repository';
+import type { Role, SuspensionReason } from '../application/account-repository';
 import { TooManyAttemptsError } from '../application/attempt-limiter';
 import { csrfTokenFor } from '../application/csrf';
 import { AccountPendingDeletionError, InvalidCredentialsError, Login } from '../application/login';
@@ -58,6 +58,8 @@ export interface SessionResponse {
   hasPassword: boolean;
   csrfToken: string;
   suspendedUntil?: string;
+  // H33: la misma suspensión con su causa estable, sin notas del moderador ni de quién denunció.
+  suspension?: { until: string; reason: SuspensionReason };
 }
 
 // Lo que estas rutas leen de la petición, sin depender de los tipos de Express.
@@ -182,7 +184,15 @@ export class AuthController {
       hasPassword: session.hasPassword,
       csrfToken: csrfTokenFor(session.token, secret),
       // Grill de la #71, pregunta 5: el frontend muestra que la sesión está limitada.
-      ...(session.suspendedUntil ? { suspendedUntil: session.suspendedUntil.toISOString() } : {}),
+      ...(session.suspendedUntil
+        ? {
+            suspendedUntil: session.suspendedUntil.toISOString(),
+            suspension: {
+              until: session.suspendedUntil.toISOString(),
+              reason: session.suspensionReason ?? 'no_registrada',
+            },
+          }
+        : {}),
     };
   }
 
