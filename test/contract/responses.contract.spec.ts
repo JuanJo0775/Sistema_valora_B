@@ -207,6 +207,18 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     }
   });
 
+  it.each([
+    [productId, 'otra-zona', 400],
+    ['id-invalido', 'armenia-centro', 400],
+    [missingId, 'armenia-centro', 404],
+  ])('valida producto %s y zona %s en ofertas en línea', async (id, zone, status) => {
+    const response = await request(server).get(`/v1/products/${id}/online-offers`).query({ zone });
+    expect(response.status).toBe(status);
+    expect(
+      contractErrors('GET /products/:productId/online-offers', status, response.body as unknown),
+    ).toEqual([]);
+  });
+
   it('las rutas públicas responden como dice el contrato', async () => {
     const get = (path: string) => request(server).get(`/v1${path}`);
 
