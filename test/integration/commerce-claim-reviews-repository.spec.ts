@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { MerchantCaseNotFoundError } from '../../src/modules/commerce/application/decide-merchant-case';
 import type { MerchantCase } from '../../src/modules/commerce/application/merchant-cases';
 import type { MerchantClaim } from '../../src/modules/commerce/application/merchant-claims';
 import { DrizzleMerchantCaseRepository } from '../../src/modules/commerce/infrastructure/drizzle-merchant-case-repository';
@@ -139,5 +140,80 @@ describe('reclamos de supermercados en el esquema commerce (H11)', () => {
       moderator_key: review.moderatorKey,
     });
     await expect(outboxTypes()).resolves.toEqual([]);
+  });
+
+  // Decisiones simultáneas o tardías: solo gana una y nunca se publica un evento de más.
+  describe('concurrencia y estado esperado', () => {
+    const verified = () => [createEvent('MerchantVerified', 1, { accountId, establishmentId })];
+
+    it('dos aprobaciones simultáneas: exactamente una gana y solo se publica un MerchantVerified', async () => {
+      const results = await Promise.allSettled([
+        reviews.approve(review, verified()),
+        reviews.approve({ ...review, moderatorKey: 'otra-moderadora' }, verified()),
+      ]);
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      const lost = results.find((r) => r.status === 'rejected');
+      expect((lost as PromiseRejectedResult).reason).toBeInstanceOf(MerchantCaseNotFoundError);
+      await expect(outboxTypes()).resolves.toEqual(['MerchantVerified']);
+      await expect(claims.findByAccount(accountId)).resolves.toMatchObject({
+        status: 'verificado',
+      });
+    });
+
+    it('aprobar y rechazar a la vez: una sola gana y el estado queda coherente', async () => {
+      const results = await Promise.allSettled([
+        reviews.approve(review, verified()),
+        reviews.reject({ ...review, moderatorKey: 'otra-moderadora' }),
+      ]);
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      const state = [
+        (await caseStatus())?.status,
+        (await claims.findByAccount(accountId))?.status ?? null,
+        await outboxTypes(),
+      ];
+      // O ganó aprobar (verificado y un evento) o ganó rechazar (sin solicitud ni evento).
+      expect([
+        ['aprobado', 'verificado', ['MerchantVerified']],
+        ['rechazado', null, []],
+      ]).toContainEqual(state);
+    });
+
+    it('si la solicitud ya no está pre-aprobada, aprobar falla, no publica y deja el caso pendiente', async () => {
+      await db.execute(
+        sql`update commerce.merchant_claims set status = 'verificado', verified_at = now()`,
+      );
+
+      await expect(reviews.approve(review, verified())).rejects.toBeInstanceOf(
+        MerchantCaseNotFoundError,
+      );
+      await expect(outboxTypes()).resolves.toEqual([]);
+      await expect(caseStatus()).resolves.toMatchObject({ status: 'pendiente' });
+    });
+
+    it('si la solicitud ya no existe, aprobar y rechazar fallan sin escribir nada', async () => {
+      await db.execute(sql`delete from commerce.merchant_claims`);
+
+      await expect(reviews.approve(review, verified())).rejects.toBeInstanceOf(
+        MerchantCaseNotFoundError,
+      );
+      await expect(reviews.reject(review)).rejects.toBeInstanceOf(MerchantCaseNotFoundError);
+      await expect(outboxTypes()).resolves.toEqual([]);
+      await expect(claims.lastRejection(accountId)).resolves.toBeNull();
+      await expect(caseStatus()).resolves.toMatchObject({ status: 'pendiente' });
+    });
+
+    it('si el caso ya se decidió, rechazar falla y la solicitud no se toca', async () => {
+      await db.execute(
+        sql`update commerce.merchant_cases set status = 'descartado' where id = ${reviewCase.id}`,
+      );
+
+      await expect(reviews.reject(review)).rejects.toBeInstanceOf(MerchantCaseNotFoundError);
+      await expect(claims.findByAccount(accountId)).resolves.toMatchObject({
+        status: 'pre_aprobado',
+      });
+      await expect(claims.lastRejection(accountId)).resolves.toBeNull();
+    });
   });
 });

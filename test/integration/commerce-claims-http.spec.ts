@@ -215,6 +215,39 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
       await claim(luis).expect(201);
     });
 
+    it('422 CHAIN_STORE_NOT_CLAIMABLE si la tienda nueva es de cadena (H11); no deja propuesta ni solicitud', async () => {
+      for (const [name, type] of [
+        ['D1', 'barrio'],
+        ['Éxito Express', 'minimercado'],
+        ['Tienda cualquiera', 'descuento'],
+      ]) {
+        const response = await claim(rosa, {
+          ...newStoreBody,
+          newEstablishment: { ...newStoreBody.newEstablishment, name, type },
+        });
+
+        expect([response.status, (response.body as { code: string }).code]).toEqual([
+          422,
+          'CHAIN_STORE_NOT_CLAIMABLE',
+        ]);
+      }
+      await me(rosa).expect(404);
+      const proposals = await db.execute(sql`select 1 from establishments.store_proposals`);
+      expect(proposals.rows).toEqual([]);
+    });
+
+    it('«Panadería D10» no es cadena: la tienda nueva queda pre_aprobado', async () => {
+      const response = await claim(rosa, {
+        ...newStoreBody,
+        newEstablishment: { ...newStoreBody.newEstablishment, name: 'Panadería D10' },
+      });
+
+      expect([response.status, (response.body as { status: string }).status]).toEqual([
+        201,
+        'pre_aprobado',
+      ]);
+    });
+
     it('400 sin tienda o con las dos formas a la vez', async () => {
       const luis = rosa;
       const { newEstablishment, ...withoutStore } = newStoreBody;
