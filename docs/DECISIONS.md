@@ -566,6 +566,6 @@ El Inicio solo alcanzaba 6 productos y «Ver más» llegaba a 20, aunque hay uno
 Hallazgos H34, H33, H31 y H15 de la prueba de usuario del módulo de comerciante. El detalle y las alternativas están en el ADR-038.
 
 - **H34, estado final.** `aprobar` deja el reporte `aprobado` (en «Mis aportes» es `normal`; la tienda lo muestra vigente). `descartar` y `observar_cuentas` lo dejan `descartado`: sale de la cola, de la tienda, de la comparación y del historial (`PriceWithdrawn`). Antes `observar_cuentas` dejaba el reporte sin estado final y seguía en revisión.
-- **H33, causa visible.** `GET /v1/auth/session` suma `suspension: { until, reason }`; `suspendedUntil` se conserva. La regla de la suspensión no cambia. Migración 0046 (`identity.accounts.suspension_reason`).
+- **H33, causa visible.** `GET /v1/auth/session` suma `suspension: { until, reason }`; `suspendedUntil` se conserva. La regla de la suspensión no cambia. Migración 0047 (`identity.accounts.suspension_reason`).
 - **H31.** `GET /v1/establishments/{id}/merchant-reports` responde `{ canReport: false, alreadyReported: true }` si la cuenta ya tiene una denuncia abierta sobre esa tienda.
 - **H15.** `GET /v1/commerce/me` de una cuenta revocada trae un mensaje estándar en `reason`; la nota queda en la bitácora.
