@@ -108,9 +108,25 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
     await relay();
     expect((await compare().expect(200)).body).toMatchObject({ results: [{ source: 'oficial' }] });
 
+    const eligibility = () =>
+      request(server)
+        .get(`/v1/establishments/${storeId}/merchant-reports`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+    expect((await eligibility()).body).toEqual({ canReport: true });
     const reported = await post(ana, `/establishments/${storeId}/merchant-reports`, {
       reason: 'El dueño real de la tienda es don Luis.',
     }).expect(202);
+    // H31: con una denuncia abierta, la consulta ya no ofrece denunciar y lo dice.
+    const afterReport = await eligibility();
+    expect(afterReport.body).toEqual({ canReport: false, alreadyReported: true });
+    expect(
+      contractErrors(
+        'GET /establishments/:establishmentId/merchant-reports',
+        200,
+        afterReport.body as unknown,
+      ),
+    ).toEqual([]);
     // Luis está en la tienda e intenta registrarla: 409 y queda una disputa.
     await post(luis, '/commerce/claims', claimBody).expect(409);
 
@@ -140,10 +156,12 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
     expect(await roleOf(merchant)).toBe('reportante');
     expect((await compare().expect(200)).body).toMatchObject({ results: [] });
     const me = await request(server).get('/v1/commerce/me').set('Cookie', merchant.cookie);
+    // H15: la nota del moderador queda en la bitácora; la cuenta ve un mensaje estándar.
     expect(me.body).toMatchObject({
       status: 'revocado',
-      reason: 'Confirmado con el dueño real: suplantación',
+      reason: 'Moderación revocó el registro de esta cuenta para esa tienda.',
     });
+    expect(JSON.stringify(me.body)).not.toContain('suplantación');
     expect(contractErrors('GET /commerce/me', 200, me.body as unknown)).toEqual([]);
     const pending = await request(server)
       .get('/v1/moderation/merchant-cases')

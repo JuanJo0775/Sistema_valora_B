@@ -8,6 +8,7 @@ import type {
   NewAccount,
   Role,
   RoleChange,
+  SuspensionReason,
 } from '../application/account-repository';
 import type { DisplayNameWriter } from '../application/change-own-display-name';
 import type { DisplayNames } from '../application/own-display-name';
@@ -78,8 +79,15 @@ export class DrizzleAccountRepository
     return found ?? null;
   }
 
-  async suspend(accountId: string, until: Date | null): Promise<void> {
-    await this.db.update(accounts).set({ suspendedUntil: until }).where(eq(accounts.id, accountId));
+  async suspend(
+    accountId: string,
+    until: Date | null,
+    reason: SuspensionReason | null,
+  ): Promise<void> {
+    await this.db
+      .update(accounts)
+      .set({ suspendedUntil: until, suspensionReason: reason })
+      .where(eq(accounts.id, accountId));
   }
 
   // B9 (#209): solo identity conoce el correo; null si no está verificado o la cuenta no existe.

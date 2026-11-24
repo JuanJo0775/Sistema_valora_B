@@ -120,9 +120,8 @@ class InMemoryModeration implements ModerationStore {
   decide(entry: LogEntry): Promise<void> {
     this.log.push(entry);
     const seen = this.observations.saved.find((saved) => saved.reportId === entry.reportId);
-    const keepsState =
-      entry.decision === 'observar_cuentas' ||
-      (entry.stage === 'apelacion' && entry.decision === 'descartar');
+    // H34: observar_cuentas también deja el reporte descartado; solo rechazar una apelación lo deja igual.
+    const keepsState = entry.stage === 'apelacion' && entry.decision === 'descartar';
     if (seen && !keepsState) {
       seen.moderation = entry.decision === 'aprobar' ? 'aprobado' : 'descartado';
     }
@@ -404,7 +403,8 @@ describe('decisión de moderación (RF-013)', () => {
   });
 
   // Grill de la #33, pregunta 2: observar las cuentas suspende 7 días al autor del reporte.
-  it('observar las cuentas pide suspender al autor 7 días; el reporte sigue en la cola', async () => {
+  // H34: la decisión deja el reporte en un estado final; no puede quedar «en revisión» ni en la cola.
+  it('observar las cuentas retira el reporte (sale de la cola) y pide suspender al autor 7 días', async () => {
     const reported = observation({ verdict: suspicious, reporterKey: 'autor-dudoso' });
     const { moderation, reputations, published, decide } = setup([reported]);
 
@@ -416,9 +416,18 @@ describe('decisión de moderación (RF-013)', () => {
     });
 
     expect(moderation.log.map((entry) => entry.decision)).toEqual(['observar_cuentas']);
-    expect(reported.moderation).toBeUndefined();
+    expect(reported.moderation).toBe('descartado');
+    expect(await moderation.pending()).toEqual([]);
+    // Ya lo sanciona la suspensión: no se descuenta además la reputación.
     expect(reputations.values.size).toBe(0);
     expect(published).toEqual([
+      expect.objectContaining({
+        type: 'PriceWithdrawn',
+        payload: expect.objectContaining({
+          reportId: reported.reportId,
+          replacement: null,
+        }) as unknown,
+      }),
       expect.objectContaining({
         type: 'ReporterSuspensionRequested',
         version: 1,

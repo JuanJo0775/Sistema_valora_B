@@ -118,7 +118,8 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     const foreign = await request(server).get(eligibility).set('Cookie', other.cookie).expect(200);
     await request(server).get(eligibility).expect(401);
     expect(own.body).toEqual({ canReport: false });
-    expect(foreign.body).toEqual({ canReport: true });
+    // `other` ya intentó registrar la tienda y quedó una disputa abierta suya (el POST también la rechazaría).
+    expect(foreign.body).toEqual({ canReport: false, alreadyReported: true });
     expect(foreign.headers['cache-control']).toBe('private, no-store');
     expect(
       contractErrors(

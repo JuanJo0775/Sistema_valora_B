@@ -1,6 +1,11 @@
 // Grill de la #16, pregunta 5: un rol por cuenta.
 export type Role = 'reportante' | 'comercio' | 'moderador';
 
+// H33 (ADR-039): por qué está suspendida una cuenta, en un conjunto estable que es seguro mostrarle a ella:
+// nunca la nota del moderador ni quién denunció. «no_registrada» cubre las suspensiones anteriores al
+// registro de la causa.
+export type SuspensionReason = 'observada_por_moderacion' | 'descartes_seguidos' | 'no_registrada';
+
 export interface Account {
   id: string;
   email: string;

@@ -23,7 +23,7 @@ export const accounts = identitySchema.table(
     // solo conoce por ella. Pregunta 4: hasta cuándo está suspendida.
     reporterKey: text('reporter_key'),
     suspendedUntil: timestamp('suspended_until', { withTimezone: true }),
-    // H33 (ADR-038): la causa de la suspensión, en un conjunto estable; nula si no hay suspensión o es
+    // H33 (ADR-039): la causa de la suspensión, en un conjunto estable; nula si no hay suspensión o es
     // anterior al registro de la causa.
     suspensionReason: text('suspension_reason'),
     // ADR-029: cuándo verificó el correo (nulo = sin verificar). Registrar precios lo exige.

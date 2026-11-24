@@ -16,6 +16,7 @@ const session = (change: Partial<StoredSession> = {}): StoredSession => ({
   expiresAt: new Date('2026-12-11T14:00:00Z'),
   revokedAt: null,
   accountSuspendedUntil: null,
+  accountSuspensionReason: null,
   accountEmailVerifiedAt: null,
   accountHasPassword: true,
   ...change,
@@ -85,7 +86,9 @@ describe('resolver la sesión de una petición', () => {
   // decide qué rutas puede usar.
   it('la sesión de una cuenta suspendida dice hasta cuándo; terminada la suspensión, ya no', async () => {
     const until = new Date('2026-11-19T14:00:00Z');
-    const suspended = setup(session({ accountSuspendedUntil: until }));
+    const suspended = setup(
+      session({ accountSuspendedUntil: until, accountSuspensionReason: 'descartes_seguidos' }),
+    );
     const finished = setup(session({ accountSuspendedUntil: minutesAgo(1) }));
 
     await expect(suspended.resolve.execute(token)).resolves.toEqual({
@@ -96,6 +99,7 @@ describe('resolver la sesión de una petición', () => {
       createdAt: minutesAgo(60 * 24),
       hasPassword: true,
       suspendedUntil: until,
+      suspensionReason: 'descartes_seguidos',
     });
     await expect(finished.resolve.execute(token)).resolves.toEqual({
       sessionId: 'sesion-1',
@@ -104,6 +108,17 @@ describe('resolver la sesión de una petición', () => {
       emailVerified: false,
       createdAt: minutesAgo(60 * 24),
       hasPassword: true,
+    });
+  });
+
+  // H33: una suspensión anterior al registro de la causa dice que no se registró; nunca inventa una.
+  it('una suspensión sin causa guardada se reporta como no_registrada', async () => {
+    const until = new Date('2026-11-19T14:00:00Z');
+    const old = setup(session({ accountSuspendedUntil: until }));
+
+    await expect(old.resolve.execute(token)).resolves.toMatchObject({
+      suspendedUntil: until,
+      suspensionReason: 'no_registrada',
     });
   });
 
