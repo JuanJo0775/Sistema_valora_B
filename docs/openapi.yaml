@@ -140,6 +140,54 @@ paths:
         '304': { description: El producto no cambió desde el ETag enviado }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /products/{productId}/online-offers:
+    get:
+      tags: [Catálogo]
+      operationId: listProductOnlineOffers
+      summary: Consultar ofertas en línea disponibles para un producto
+      description: >-
+        Lectura pública por presentación. El piloto solo admite la zona de prueba armenia-centro.
+        El precio corresponde al producto en COP. El comercio calcula el envío por separado.
+        Solo se devuelven observaciones disponibles y vigentes autorizadas para publicación.
+        Mientras el piloto esté deshabilitado o no tenga ofertas vigentes, items es vacío.
+        No incluye direcciones ni datos de usuarios (EC-08).
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+        - name: zone
+          in: query
+          required: true
+          schema: { type: string, enum: [armenia-centro] }
+      responses:
+        '200':
+          description: Ofertas vigentes o lista vacía
+          headers:
+            Cache-Control:
+              description: Sin caché compartida durante el piloto para respetar el retiro y vencimiento.
+              schema: { type: string, example: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/OnlineOffer' }
+              examples:
+                prueba:
+                  summary: Oferta sintética para desarrollo
+                  value:
+                    items:
+                      - presentationId: 2a3bf8f4-f766-4dc5-af6c-5262d06e487b
+                        source: olimpica
+                        zone: armenia-centro
+                        priceCop: 3456
+                        observedAt: '2026-11-24T14:00:00Z'
+                        expiresAt: '2026-11-26T14:00:00Z'
+                vacia:
+                  value: { items: [] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /products/{productId}/comparison:
     get:
       tags: [Comparación]
@@ -3090,6 +3138,21 @@ components:
         informal: { type: boolean, description: Sin NIT. }
         verifiedAt: { type: [string, 'null'], format: date-time, description: null si está pre-aprobado. }
         unlocks: { $ref: '#/components/schemas/MerchantUnlocks' }
+    OnlineOffer:
+      type: object
+      additionalProperties: false
+      required: [presentationId, source, zone, priceCop, observedAt, expiresAt]
+      properties:
+        presentationId: { type: string, format: uuid }
+        source: { type: string, enum: [olimpica] }
+        zone: { type: string, enum: [armenia-centro] }
+        priceCop: { type: integer, minimum: 1 }
+        observedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        productUrl:
+          type: string
+          format: uri
+          description: Enlace de Olímpica cuando el origen haya sido verificado.
     Error:
       type: object
       description: >-
