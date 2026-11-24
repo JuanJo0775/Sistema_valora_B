@@ -10,6 +10,7 @@ const PUBLIC_ROUTES = new Set([
   'GET /categories',
   'GET /products',
   'GET /products/:productId',
+  'GET /products/:productId/online-offers',
   'GET /products/:productId/comparison',
   // Grill de la #83, pregunta 7: el historial es público (RF-008 RN3).
   'GET /products/:productId/history',
