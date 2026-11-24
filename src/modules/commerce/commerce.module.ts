@@ -18,6 +18,10 @@ import {
 } from '../catalog';
 import { ComparisonModule, OfficialDiscrepancies } from '../comparison';
 import { IdentityModule, NotifyAccount, ReporterIdentity } from '../identity';
+import { GatherPlausibilityContext, PricingModule } from '../pricing';
+import { ApplyOfficialPriceReview } from './application/apply-official-price-review';
+import type { OfficialPriceReviewedV1 } from './application/apply-official-price-review';
+import type { PriceReference } from './application/publish-official-price';
 import { ClaimEstablishment } from './application/claim-establishment';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
 import { CreatePromotion } from './application/create-promotion';
@@ -50,10 +54,21 @@ import { DrizzleOfficialPriceRepository } from './infrastructure/drizzle-officia
 import { DrizzleMerchantCaseRepository } from './infrastructure/drizzle-merchant-case-repository';
 import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchant-claim-repository';
 
+// ADR-037: la referencia de ADR-030 (otras tiendas del municipio y SIPSA) para el precio normal.
+const referenceOf = (plausibility: GatherPlausibilityContext): PriceReference => ({
+  of: ({ presentationId, establishmentId }) =>
+    plausibility.of({ presentationId, establishmentId, priceType: 'normal' }),
+});
+
+// La clave seudónima de la cuenta (EC-08).
+const reportersOf = (identities: ReporterIdentity) => ({
+  keyOf: async (accountId: string): Promise<string> => (await identities.of(accountId)).reporterKey,
+});
+
 // EPIC-B08: comercios verificados (D1 a D8 del grill comercial). B1 (#201) y B2 (#202): registro y
 // perfil. B3 (#203): precios oficiales.
 @Module({
-  imports: [IdentityModule, EstablishmentsModule, CatalogModule, ComparisonModule],
+  imports: [IdentityModule, EstablishmentsModule, CatalogModule, ComparisonModule, PricingModule],
   controllers: [
     MerchantController,
     OfficialPricesController,
@@ -65,16 +80,26 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
   providers: [
     {
       provide: PublishOfficialPrice,
-      inject: [DATABASE, OutboxPublisher, PresentationExists],
+      inject: [
+        DATABASE,
+        OutboxPublisher,
+        PresentationExists,
+        GatherPlausibilityContext,
+        ReporterIdentity,
+      ],
       useFactory: (
         db: Database,
         outbox: OutboxPublisher,
         presentations: PresentationExists,
+        plausibility: GatherPlausibilityContext,
+        identities: ReporterIdentity,
       ): PublishOfficialPrice =>
         new PublishOfficialPrice({
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           presentations,
           prices: new DrizzleOfficialPriceRepository(db, outbox),
+          reference: referenceOf(plausibility),
+          reporters: reportersOf(identities),
           clock: { now: () => new Date() },
         }),
     },
@@ -204,17 +229,19 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
     // D6 (#206): promociones.
     {
       provide: CreatePromotion,
-      inject: [DATABASE, OutboxPublisher, PresentationFreshness],
+      inject: [DATABASE, OutboxPublisher, PresentationFreshness, GatherPlausibilityContext],
       useFactory: (
         db: Database,
         outbox: OutboxPublisher,
         presentations: PresentationFreshness,
+        plausibility: GatherPlausibilityContext,
       ): CreatePromotion =>
         new CreatePromotion({
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           presentations,
           promotions: new DrizzlePromotionRepository(db, outbox),
+          reference: referenceOf(plausibility),
           clock: { now: () => new Date() },
         }),
     },
@@ -246,16 +273,26 @@ import { DrizzleMerchantClaimRepository } from './infrastructure/drizzle-merchan
     // D7 (#205): carga por archivo.
     {
       provide: UploadOfficialPrices,
-      inject: [DATABASE, OutboxPublisher, PresentationsByBarcode],
+      inject: [
+        DATABASE,
+        OutboxPublisher,
+        PresentationsByBarcode,
+        GatherPlausibilityContext,
+        ReporterIdentity,
+      ],
       useFactory: (
         db: Database,
         outbox: OutboxPublisher,
         presentations: PresentationsByBarcode,
+        plausibility: GatherPlausibilityContext,
+        identities: ReporterIdentity,
       ): UploadOfficialPrices =>
         new UploadOfficialPrices({
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           presentations,
           prices: new DrizzleOfficialPriceRepository(db, outbox),
+          reference: referenceOf(plausibility),
+          reporters: reportersOf(identities),
           clock: { now: () => new Date() },
         }),
     },
@@ -365,6 +402,17 @@ export class CommerceModule implements OnModuleInit {
           claims: new DrizzleMerchantClaimRepository(tx, this.outbox),
           clock: { now: () => new Date() },
         }).execute(event.payload as unknown as ProposalDecision);
+      },
+    );
+    // ADR-037: moderación decidió un precio oficial que estaba en revisión.
+    this.bus.subscribe(
+      'commerce.official_price_reviews',
+      'OfficialPriceReviewed',
+      async (event: DomainEvent, tx: Transaction) => {
+        await new ApplyOfficialPriceReview({
+          prices: new DrizzleOfficialPriceRepository(tx, this.outbox),
+          clock: { now: () => new Date() },
+        }).execute(event.payload as unknown as OfficialPriceReviewedV1);
       },
     );
     // ADR-032 con el hallazgo de B7 (#208): al borrar una cuenta, nada de ella queda en commerce.
