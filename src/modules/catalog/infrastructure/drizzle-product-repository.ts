@@ -162,7 +162,7 @@ export class DrizzleProductRepository implements ProductRepository {
       rows.map((row) => [
         row.id,
         {
-          productName: row.brand === null ? row.name : ` ${row.brand}`,
+          productName: row.brand === null ? row.name : `${row.name} ${row.brand}`,
           presentationLabel: presentationLabelOf({
             quantity: Number(row.quantity),
             // La restricción CHECK de la tabla garantiza que es una de las 5 unidades.

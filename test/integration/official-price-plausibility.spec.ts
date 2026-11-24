@@ -199,6 +199,8 @@ describe('plausibilidad de los precios oficiales por HTTP (H19, ADR-037)', () =>
       inReview: [
         {
           presentationId: oilId,
+          productName: 'Aceite sin referencia Marca de prueba',
+          presentationLabel: '1.000 g',
           priceCop: 300,
           submittedAt: expect.any(String) as unknown,
           status: 'en_revision',
