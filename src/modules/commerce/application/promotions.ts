@@ -6,6 +6,7 @@ import {
   promotionStatus,
 } from '../../../domain/promotion';
 import type { DomainEvent } from '../../../shared/events';
+import type { PresentationDescription } from './presentation-description';
 
 // D6 del grill comercial: condiciones fijas, sin texto libre.
 export interface PromotionConditions {
@@ -33,6 +34,9 @@ export interface PromotionView extends Promotion {
   officialPriceCop: number | null;
   promotedPriceCop: number | null;
 }
+
+// H3: lo que recibe el portal, con el nombre y la etiqueta de la presentación.
+export type MerchantPromotionView = PromotionView & PresentationDescription;
 
 // Puerto hacia el esquema commerce.
 export interface PromotionRepository {

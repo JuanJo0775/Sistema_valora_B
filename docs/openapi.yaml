@@ -2601,6 +2601,11 @@ paths:
       operationId: listOfficialPrices
       summary: Los precios oficiales del comercio con su vigencia (RF-016)
       description: >-
+        H3: items e inReview traen productName y presentationLabel, calculados en el servidor desde el
+        catálogo canónico (no de la lista pública, que se actualiza con retraso); así «Mis precios» no
+        muestra identificadores justo después de publicar.
+
+
         D4 del grill comercial (#203). La vigencia cuenta desde la última confirmación, con el TTL de
         la categoría (ADR-005). ADR-037: inReview trae los precios enviados que esperan a moderación;
         todavía no son oficiales y no están en items.
@@ -2747,6 +2752,11 @@ paths:
       operationId: createPromotion
       summary: Publicar una promoción con reglas y vigencia (RF-017, EC-06)
       description: >-
+        H20: no se aceptan dos promociones de la misma presentación en la misma tienda con al menos un día
+        en común (422 PROMOTION_OVERLAP); retirar la primera libera sus fechas. H3: la respuesta trae
+        productName y presentationLabel.
+
+
         D6 del grill comercial (#206). Solo un comercio verificado, sobre el precio oficial VIGENTE de
         una presentación de su tienda (si no, 422 OFFICIAL_PRICE_REQUIRED). Condiciones fijas, sin
         texto libre. Dura como mucho 30 días; puede empezar en el futuro (queda programada). Si el
@@ -2784,7 +2794,11 @@ paths:
             INVALID_PROMOTION: la oferta no baja el oficial, está fuera de sus límites o las fechas
             no sirven (final antes del inicio o ya pasado, o más de 30 días). code
             IMPLAUSIBLE_OFFICIAL_PRICE (ADR-037): el precio resultante queda muy por debajo de lo
-            normal para esa presentación; el mensaje dice el rango y cómo corregirla.
+            normal para esa presentación; el mensaje dice el rango y cómo corregirla. code
+            PROMOTION_OVERLAP (H20): ya hay otra promoción de esa presentación en la tienda, vigente,
+            pausada o programada, que comparte al menos un día con las fechas pedidas; el mensaje dice
+            las fechas de la otra y que debe retirarla o cambiar las fechas. Las retiradas y las
+            vencidas no cuentan.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -2792,6 +2806,9 @@ paths:
       tags: [Comercios]
       operationId: listMerchantPromotions
       summary: Las promociones del comercio con su estado de hoy (RF-017)
+      description: >-
+        H3: cada promoción trae productName y presentationLabel, calculados en el servidor desde el
+        catálogo canónico, para que el portal no tenga que completarlos con la lista pública.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2982,19 +2999,43 @@ components:
       type: object
       description: Un precio enviado por el comercio que espera la decisión de moderación (ADR-037).
       additionalProperties: false
-      required: [presentationId, priceCop, submittedAt, status]
+      required: [presentationId, productName, presentationLabel, priceCop, submittedAt, status]
       properties:
         presentationId: { type: string, format: uuid }
+        productName:
+          type: string
+          description: >-
+            H3. El nombre del producto con su marca, del catálogo canónico (no de la lista pública, que se
+            actualiza con retraso). «Producto sin nombre» si la presentación ya no está en el catálogo.
+          example: Arroz blanco Diana
+        presentationLabel:
+          type: string
+          description: >-
+            H3. La cantidad y la unidad de la presentación, con el mismo formato que el frontend:
+            «1 kg», «500 g», «6 × 400 ml». Cadena vacía si la presentación ya no está en el catálogo.
+          example: 1 kg
         priceCop: { type: integer }
         submittedAt: { type: string, format: date-time }
         status: { type: string, enum: [en_revision] }
     OfficialPriceWithFreshness:
       type: object
       additionalProperties: false
-      required: [establishmentId, presentationId, priceCop, confirmedAt, freshness]
+      required: [establishmentId, presentationId, productName, presentationLabel, priceCop, confirmedAt, freshness]
       properties:
         establishmentId: { type: string, format: uuid }
         presentationId: { type: string, format: uuid }
+        productName:
+          type: string
+          description: >-
+            H3. El nombre del producto con su marca, del catálogo canónico (no de la lista pública, que se
+            actualiza con retraso). «Producto sin nombre» si la presentación ya no está en el catálogo.
+          example: Arroz blanco Diana
+        presentationLabel:
+          type: string
+          description: >-
+            H3. La cantidad y la unidad de la presentación, con el mismo formato que el frontend:
+            «1 kg», «500 g», «6 × 400 ml». Cadena vacía si la presentación ya no está en el catálogo.
+          example: 1 kg
         priceCop: { type: integer }
         confirmedAt: { type: string, format: date-time }
         freshness: { type: string, enum: [vigente, por_confirmar, desactualizado] }
@@ -3191,7 +3232,7 @@ components:
         VALIDATION_ERROR (400), UNAUTHORIZED (401), FORBIDDEN (403), EMAIL_NOT_VERIFIED (403), MERCHANT_NOT_VERIFIED (403), INVALID_PASSWORD (403), LAST_MODERATOR_CANNOT_DELETE (403), ACCOUNT_PENDING_DELETION (403), NOT_FOUND (404),
         CONFLICT (409), ESTABLISHMENT_HAS_OWNER (409), ACCOUNT_HAS_ESTABLISHMENT (409), MERCHANT_REPORT_OPEN (409), PAYLOAD_TOO_LARGE (413), TOO_MANY_REQUESTS (429), REQUEST_ERROR (otro 4xx), INTERNAL_ERROR (500) y,
         con 422, el de cada regla de negocio: INVALID_PRICE, INVALID_QUANTITY, INCOMPATIBLE_UNITS,
-        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, IMPLAUSIBLE_OFFICIAL_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION, INVALID_OPENING_HOURS, OWN_ESTABLISHMENT, REVOKED_FROM_ESTABLISHMENT, CHAIN_STORE_NOT_CLAIMABLE, DECISION_NOT_APPLICABLE y los que agreguen las reglas futuras.
+        INVALID_OBSERVATION_DATE, IMPLAUSIBLE_PRICE, IMPLAUSIBLE_OFFICIAL_PRICE, INVALID_TTL, INVALID_VERIFICATION_TOKEN, NOT_AT_ESTABLISHMENT, UNKNOWN_PRESENTATION, OFFICIAL_PRICE_REQUIRED, INVALID_PROMOTION, PROMOTION_OVERLAP, INVALID_OPENING_HOURS, OWN_ESTABLISHMENT, REVOKED_FROM_ESTABLISHMENT, CHAIN_STORE_NOT_CLAIMABLE, DECISION_NOT_APPLICABLE y los que agreguen las reglas futuras.
       required: [code, message]
       additionalProperties: false
       properties:
@@ -3409,11 +3450,23 @@ components:
       type: object
       description: Una promoción del comercio con su estado calculado hoy (D6).
       additionalProperties: false
-      required: [id, establishmentId, presentationId, type, conditions, validFrom, validUntil, createdAt, status, officialPriceCop, promotedPriceCop]
+      required: [id, establishmentId, presentationId, productName, presentationLabel, type, conditions, validFrom, validUntil, createdAt, status, officialPriceCop, promotedPriceCop]
       properties:
         id: { type: string, format: uuid }
         establishmentId: { type: string, format: uuid }
         presentationId: { type: string, format: uuid }
+        productName:
+          type: string
+          description: >-
+            H3. El nombre del producto con su marca, del catálogo canónico (no de la lista pública, que se
+            actualiza con retraso). «Producto sin nombre» si la presentación ya no está en el catálogo.
+          example: Arroz blanco Diana
+        presentationLabel:
+          type: string
+          description: >-
+            H3. La cantidad y la unidad de la presentación, con el mismo formato que el frontend:
+            «1 kg», «500 g», «6 × 400 ml». Cadena vacía si la presentación ya no está en el catálogo.
+          example: 1 kg
         type: { type: string, enum: [descuento_porcentual, precio_especial, pague_x_lleve_y] }
         percent: { type: integer }
         specialPriceCop: { type: integer }

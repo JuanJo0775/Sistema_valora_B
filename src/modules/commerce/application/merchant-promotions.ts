@@ -1,6 +1,7 @@
 import type { MerchantClaimRepository } from './merchant-claims';
 import type { OfficialPriceRepository } from './official-prices';
-import { type PromotionRepository, type PromotionView, promotionView } from './promotions';
+import { describePresentations, type PresentationNamesPort } from './presentation-description';
+import { type MerchantPromotionView, type PromotionRepository, promotionView } from './promotions';
 import { verifiedEstablishmentOf } from './publish-official-price';
 
 export interface MerchantPromotionsPorts {
@@ -8,6 +9,8 @@ export interface MerchantPromotionsPorts {
   promotions: Pick<PromotionRepository, 'listFor'>;
   prices: Pick<OfficialPriceRepository, 'findOne'>;
   presentations: { isFresh(presentationId: string): Promise<boolean | null> };
+  // H3: el nombre y la etiqueta, por la interfaz pública de catalog.
+  names: PresentationNamesPort;
   clock: { now(): Date };
 }
 
@@ -15,20 +18,25 @@ export interface MerchantPromotionsPorts {
 export class MerchantPromotions {
   constructor(private readonly ports: MerchantPromotionsPorts) {}
 
-  async execute(accountId: string): Promise<PromotionView[]> {
-    const { claims, promotions, prices, presentations, clock } = this.ports;
+  async execute(accountId: string): Promise<MerchantPromotionView[]> {
+    const { claims, promotions, prices, presentations, names, clock } = this.ports;
     const establishmentId = await verifiedEstablishmentOf(claims, accountId);
     const now = clock.now();
     const stored = await promotions.listFor(establishmentId);
+    const describe = await describePresentations(
+      names,
+      stored.map((promotion) => promotion.presentationId),
+    );
     return Promise.all(
-      stored.map(async (promotion) =>
-        promotionView(
+      stored.map(async (promotion) => ({
+        ...promotionView(
           promotion,
           await prices.findOne(establishmentId, promotion.presentationId),
           (await presentations.isFresh(promotion.presentationId)) ?? false,
           now,
         ),
-      ),
+        ...describe(promotion.presentationId),
+      })),
     );
   }
 }
