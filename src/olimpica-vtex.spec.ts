@@ -70,7 +70,10 @@ it('consulta el punto público de Armenia con el vendedor principal y confirma d
     zoneId: 'armenia-centro',
     rows: [
       { status: 'available', priceCop: 2200, sellerId: '1' },
-      ...Array.from({ length: 4 }, () => expect.objectContaining({ status: 'skipped' })),
+      { status: 'skipped' },
+      { status: 'skipped' },
+      { status: 'skipped' },
+      { status: 'skipped' },
     ],
   });
   expect(requests[1]).toMatchObject({
