@@ -21,6 +21,30 @@ const stores = {
 } as const;
 
 type Decision = keyof typeof stores;
+// Lo que se lee después de decidir: «Mis aportes», la tienda, el historial, la cola y la sesión del autor.
+const EXPECTED = {
+  aprobar: {
+    inQueue: false,
+    myStatus: 'normal',
+    storeShows: [[true, false]],
+    history: ['cuenta'],
+    suspension: false,
+  },
+  descartar: {
+    inQueue: false,
+    myStatus: 'descartado',
+    storeShows: [],
+    history: ['retirado'],
+    suspension: false,
+  },
+  observar: {
+    inQueue: false,
+    myStatus: 'descartado',
+    storeShows: [],
+    history: ['retirado'],
+    suspension: true,
+  },
+} as const;
 const DECISION_OF = {
   aprobar: 'aprobar',
   descartar: 'descartar',
@@ -98,6 +122,8 @@ describe('consecuencias de una decisión de moderación de punta a punta (H34 y 
       await post(beto, `/v1/reports/${reportId}/flag`, { reason: 'precio_falso' }).expect(202);
       await relay.runOnce();
 
+      const queueNow = () =>
+        request(server).get('/v1/moderation/queue').set('Cookie', moderator.cookie).expect(200);
       const myReports = () =>
         request(server)
           .get('/v1/me/reports')
@@ -123,49 +149,44 @@ describe('consecuencias de una decisión de moderación de punta a punta (H34 y 
       await relay.runOnce();
       await relay.runOnce();
 
-      const queue = await request(server)
-        .get('/v1/moderation/queue')
-        .set('Cookie', moderator.cookie)
+      const queue = await queueNow();
+      const history = await db.execute<{ status: string }>(
+        sql`select status from comparison.price_history where report_id = ${reportId}`,
+      );
+      const login = await request(server)
+        .post('/v1/auth/login')
+        .send({ email: `ana-${choice}@correo.com`, password: 'una-clave-larga' })
+        .expect(204);
+      const [setCookie] = login.headers['set-cookie'] as unknown as string[];
+      const session = await request(server)
+        .get('/v1/auth/session')
+        .set('Cookie', (setCookie ?? '').split(';')[0] ?? '')
         .expect(200);
-      expect(
-        (queue.body as { items: { id: string }[] }).items.map((item) => item.id),
-      ).not.toContain(reportId);
-      if (choice === 'aprobar') {
-        expect(await myReports()).toBe('normal');
-        expect((await storePrices()).map((price) => price.reliability)).not.toContain(
-          'en_revision',
-        );
-        expect((await storePrices()).map((price) => price.reportId)).toEqual([reportId]);
-      } else {
-        // descartar y observar_cuentas: el precio sale de la tienda y de la comparación.
-        expect(await myReports()).toBe('descartado');
-        expect(await storePrices()).toEqual([]);
-        const history = await db.execute<{ status: string }>(
-          sql`select status from comparison.price_history where report_id = ${reportId}`,
-        );
-        expect(history.rows).toEqual([{ status: 'retirado' }]);
-      }
+      const sessionBody = session.body as { suspendedUntil?: string; suspension?: unknown };
+      const prices = await storePrices();
 
-      if (choice === 'observar') {
+      expect({
+        inQueue: (queue.body as { items: { id: string }[] }).items.some(
+          (item) => item.id === reportId,
+        ),
+        myStatus: await myReports(),
+        storeShows: prices.map((price) => [
+          price.reportId === reportId,
+          price.reliability === 'en_revision',
+        ]),
+        history: history.rows.map((row) => row.status),
         // H33: la sanción es visible y explicada, sin notas del moderador ni de quién denunció.
-        const login = await request(server)
-          .post('/v1/auth/login')
-          .send({ email: `ana-${choice}@correo.com`, password: 'una-clave-larga' })
-          .expect(204);
-        const [setCookie] = login.headers['set-cookie'] as unknown as string[];
-        const cookie = (setCookie ?? '').split(';')[0] ?? '';
-        const session = await request(server)
-          .get('/v1/auth/session')
-          .set('Cookie', cookie)
-          .expect(200);
-        const body = session.body as { suspendedUntil: string; suspension: unknown };
-        expect(body.suspension).toEqual({
-          until: body.suspendedUntil,
-          reason: 'observada_por_moderacion',
-        });
-        expect(JSON.stringify(session.body)).not.toContain('Decisión de la prueba');
-        expect(contractErrors('GET /auth/session', 200, session.body as unknown)).toEqual([]);
-      }
+        suspension: sessionBody.suspension,
+        suspendedUntil: sessionBody.suspendedUntil,
+      }).toEqual({
+        ...EXPECTED[choice],
+        suspendedUntil: EXPECTED[choice].suspension ? sessionBody.suspendedUntil : undefined,
+        suspension: EXPECTED[choice].suspension
+          ? { until: sessionBody.suspendedUntil, reason: 'observada_por_moderacion' }
+          : undefined,
+      });
+      expect(JSON.stringify(session.body)).not.toContain('Decisión de la prueba');
+      expect(contractErrors('GET /auth/session', 200, session.body as unknown)).toEqual([]);
     },
   );
 });

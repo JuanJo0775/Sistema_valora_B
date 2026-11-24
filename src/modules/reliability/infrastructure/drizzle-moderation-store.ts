@@ -18,8 +18,13 @@ import { appeals, bursts, flags, moderationLog, observations } from './schema';
 
 type Executor = NodePgDatabase | Transaction;
 
-// Grill de la #32, pregunta 4: aprobar y descartar cambian el estado; observar_cuentas solo se anota.
-const STATE_AFTER = { aprobar: 'aprobado', descartar: 'descartado' } as const;
+// Grill de la #32, pregunta 4: aprobar y descartar cambian el estado. H34 (ADR-038): observar_cuentas
+// también retira el reporte, así que nunca queda en la cola ni «en revisión».
+const STATE_AFTER = {
+  aprobar: 'aprobado',
+  descartar: 'descartado',
+  observar_cuentas: 'descartado',
+} as const;
 
 // Las restricciones CHECK de moderation_log garantizan los valores.
 const toLogEntry = (row: typeof moderationLog.$inferSelect): LogEntry => ({
@@ -88,7 +93,6 @@ export class DrizzleModerationStore implements ModerationStore {
 
   async decide(entry: LogEntry): Promise<void> {
     await this.db.insert(moderationLog).values(entry);
-    if (entry.decision === 'observar_cuentas') return;
     // Grill de la #71, pregunta 4: rechazar una apelación deja el reporte como estaba (descartado).
     if (entry.stage === 'apelacion' && entry.decision === 'descartar') return;
     await this.db
