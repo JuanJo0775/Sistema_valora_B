@@ -2,13 +2,14 @@ import 'reflect-metadata';
 import { Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { ChangeRole, IdentityModule } from './modules/identity';
 import {
   ACCOUNT_REPOSITORY,
   type AccountRepository,
-} from './modules/identity/application/account-repository';
-import { PASSWORD_LENGTH } from './modules/identity/application/password-policy';
-import { RegisterAccount } from './modules/identity/application/register-account';
+  ChangeRole,
+  IdentityModule,
+  PASSWORD_LENGTH,
+  RegisterAccount,
+} from './modules/identity';
 import { validateEnv } from './shared/config/env.validation';
 import { DatabaseModule } from './shared/database/database.module';
 import { EventsModule } from './shared/events';
