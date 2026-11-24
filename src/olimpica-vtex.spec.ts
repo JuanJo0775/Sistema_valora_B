@@ -1,3 +1,4 @@
+import type { OnlineObservation } from './modules/imports';
 import { runOlimpicaPreview } from './olimpica-vtex';
 
 const env = {
@@ -18,11 +19,9 @@ it.each([
   expect(open).not.toHaveBeenCalled();
 });
 
-it('reserva la aplicación de observaciones para la fase de persistencia', async () => {
+it('rechaza opciones desconocidas antes de abrir el catálogo', async () => {
   const open = jest.fn();
-  await expect(runOlimpicaPreview(['--apply'], env, open)).rejects.toThrow(
-    'solo admite vista previa',
-  );
+  await expect(runOlimpicaPreview(['--unknown'], env, open)).rejects.toThrow('Usa vista previa');
   expect(open).not.toHaveBeenCalled();
 });
 
@@ -41,4 +40,99 @@ it('omite los EAN cuando VTEX no confirma la zona y cierra el catálogo', async 
   ).toBe(true);
   expect(request).toHaveBeenCalledTimes(1);
   expect(close).toHaveBeenCalledTimes(1);
+});
+
+it('aplica solo con la opción explícita y devuelve el identificador reutilizable', async () => {
+  const runId = '7679670d-85ad-40d2-ac21-e3fb10611eba';
+  const save = jest.fn();
+  const close = jest.fn().mockResolvedValue(undefined);
+  const request = jest.fn().mockResolvedValue(Response.json([]));
+  const result = await runOlimpicaPreview(
+    ['--apply', '--run-id=' + runId],
+    env,
+    () => Promise.resolve({ find: () => Promise.resolve(['p1']), close, save }),
+    request,
+  );
+  expect(result).toMatchObject({ mode: 'apply', runId });
+  expect(save).not.toHaveBeenCalled();
+  expect(close).toHaveBeenCalledTimes(1);
+});
+
+it.each([{ args: [] }, { args: ['--apply'] }])(
+  'solo escribe una oferta válida en modo aplicación %j',
+  async ({ args }) => {
+    const save = jest
+      .fn()
+      .mockImplementation((observation: OnlineObservation) => Promise.resolve(observation));
+    const request = jest
+      .fn()
+      .mockResolvedValueOnce(Response.json([{ id: 'r1', sellers: [{ id: 's1' }] }]))
+      .mockResolvedValueOnce(
+        Response.json([{ items: [{ itemId: '516338', ean: '7702552000097' }] }]),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          country: 'COL',
+          postalCode: '630001',
+          items: [{ id: '516338', seller: 's1', availability: 'available', sellingPrice: 195000 }],
+          logisticsInfo: [{ itemIndex: 0, slas: [{ deliveryChannel: 'delivery' }] }],
+        }),
+      );
+    const result = await runOlimpicaPreview(
+      args,
+      env,
+      () =>
+        Promise.resolve({
+          find: (ean: string) => Promise.resolve(ean === '7702552000097' ? ['p1'] : []),
+          close: () => Promise.resolve(),
+          save,
+        }),
+      request,
+    );
+    expect(result.rows[0]).toMatchObject({ status: 'available', priceCop: 1950 });
+    expect(save).toHaveBeenCalledTimes(args.length);
+  },
+);
+
+it('consulta el punto público de Armenia con el vendedor principal y confirma domicilio', async () => {
+  const requests: (RequestInit | undefined)[] = [];
+  const replies = [
+    [{ items: [{ ean: '7702552000097', itemId: '516338' }] }],
+    {
+      country: 'COL',
+      items: [{ id: '516338', seller: '1', availability: 'available', sellingPrice: 220000 }],
+      logisticsInfo: [{ itemIndex: 0, slas: [{ deliveryChannel: 'delivery' }] }],
+    },
+  ];
+  const result = await runOlimpicaPreview(
+    [],
+    { OLIMPICA_VTEX_LOCATION: 'armenia-centro', OLIMPICA_VTEX_EANS: env.OLIMPICA_VTEX_EANS },
+    () =>
+      Promise.resolve({
+        find: (ean: string) => Promise.resolve(ean === '7702552000097' ? ['p1'] : []),
+        close: () => Promise.resolve(),
+      }),
+    (_input, init) => {
+      requests.push(init);
+      return Promise.resolve(Response.json(replies.shift()));
+    },
+  );
+  expect(result).toMatchObject({
+    zoneId: 'armenia-centro',
+    rows: [
+      { status: 'available', priceCop: 2200, sellerId: '1' },
+      { status: 'skipped' },
+      { status: 'skipped' },
+      { status: 'skipped' },
+      { status: 'skipped' },
+    ],
+  });
+  expect(requests[1]).toMatchObject({
+    method: 'POST',
+    body: JSON.stringify({
+      items: [{ id: '516338', quantity: 1, seller: '1' }],
+      geoCoordinates: [-75.6811, 4.5339],
+      country: 'COL',
+    }),
+  });
 });
