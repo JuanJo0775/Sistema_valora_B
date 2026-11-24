@@ -124,10 +124,11 @@ describe('consecuencias de una decisión de moderación de punta a punta (H34 y 
 
       const queueNow = () =>
         request(server).get('/v1/moderation/queue').set('Cookie', moderator.cookie).expect(200);
-      const myReports = () =>
+      // Tras observar, la suspensión revoca la sesión de ana: se lee con la sesión limitada de un nuevo inicio.
+      const myReports = (cookie = ana.cookie) =>
         request(server)
           .get('/v1/me/reports')
-          .set('Cookie', ana.cookie)
+          .set('Cookie', cookie)
           .then((response) => {
             const items = (response.body as { items: { reportId: string; status: string }[] })
               .items;
@@ -158,9 +159,10 @@ describe('consecuencias de una decisión de moderación de punta a punta (H34 y 
         .send({ email: `ana-${choice}@correo.com`, password: 'una-clave-larga' })
         .expect(204);
       const [setCookie] = login.headers['set-cookie'] as unknown as string[];
+      const limitedCookie = (setCookie ?? '').split(';')[0] ?? '';
       const session = await request(server)
         .get('/v1/auth/session')
-        .set('Cookie', (setCookie ?? '').split(';')[0] ?? '')
+        .set('Cookie', limitedCookie)
         .expect(200);
       const sessionBody = session.body as { suspendedUntil?: string; suspension?: unknown };
       const prices = await storePrices();
@@ -169,7 +171,7 @@ describe('consecuencias de una decisión de moderación de punta a punta (H34 y 
         inQueue: (queue.body as { items: { id: string }[] }).items.some(
           (item) => item.id === reportId,
         ),
-        myStatus: await myReports(),
+        myStatus: await myReports(limitedCookie),
         storeShows: prices.map((price) => [
           price.reportId === reportId,
           price.reliability === 'en_revision',
