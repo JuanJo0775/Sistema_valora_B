@@ -27,6 +27,7 @@ Redactado con apoyo de IA (Claude Code). **No es asesoría jurídica:** el equip
 | Seguridad (art. 4, literal g) | Contraseñas con argon2id, cookies HttpOnly + CSRF, HTTPS, esquema separado, pruebas guardianas `privacy-schema.spec.ts` y `privacy-public-responses.spec.ts` |
 | Transmisión y transferencia internacional (art. 26 y Decreto 1377/2013, art. 25) | Sección 5: proveedores en EE. UU. como encargados; Estados Unidos figura entre los países con nivel adecuado según la SIC |
 | Aviso de cookies | Aviso inferior de la PWA (`CookieNotice`) y sección 4. Solo se usan cookies y almacenamiento necesarios; no requieren aceptación, pero se informan |
+| Rectificación del nombre (art. 8, actualizar y rectificar) | La persona puede cambiar su nombre desde la app (`PATCH /v1/me/profile`, sin contraseña, hasta 10 veces por hora); solo lo ve su dueña y no sale en respuestas públicas ni en registros |
 
 ## Pendientes del equipo (`PENDIENTE (equipo)`)
 
