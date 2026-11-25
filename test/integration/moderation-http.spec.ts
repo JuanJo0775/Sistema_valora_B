@@ -55,7 +55,7 @@ describe('moderación por HTTP (RF-013)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate reliability.observations, reliability.flags, reliability.moderation_log, reliability.reputations, shared.outbox, shared.processed_events`,
+      sql`truncate reliability.observations, reliability.flags, reliability.moderation_log, reliability.reputations, reliability.official_reviews, shared.outbox, shared.processed_events`,
     );
     await new DrizzleObservationStore(db).save(observation);
   });

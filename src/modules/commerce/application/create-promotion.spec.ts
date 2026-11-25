@@ -1,4 +1,6 @@
+import { ImplausibleOfficialPriceError } from '../../../domain/price-plausibility';
 import { InvalidPromotionError } from '../../../domain/promotion';
+import { PromotionOverlapError } from '../../../domain/promotion-overlap';
 import type { DomainEvent } from '../../../shared/events';
 import {
   CreatePromotion,
@@ -34,7 +36,11 @@ const official: OfficialPrice = {
   confirmedAt: new Date('2026-11-21T15:00:00Z'),
 };
 
-function setup(officials: OfficialPrice[] = [official]) {
+function setup(
+  officials: OfficialPrice[] = [official],
+  peerPricesCop = [2500, 2600, 2700],
+  existing: Promotion[] = [],
+) {
   const saved: Promotion[] = [];
   const events: DomainEvent[] = [];
   const create = new CreatePromotion({
@@ -52,12 +58,26 @@ function setup(officials: OfficialPrice[] = [official]) {
     },
     presentations: { isFresh: () => Promise.resolve(false) },
     promotions: {
+      listFor: (establishmentId) =>
+        Promise.resolve(existing.filter((p) => p.establishmentId === establishmentId)),
       save: (promotion, published) => {
         saved.push(promotion);
         events.push(...published);
         return Promise.resolve();
       },
     },
+    names: {
+      namesOf: (ids) =>
+        Promise.resolve(
+          new Map(
+            ids.map((id) => [
+              id,
+              { productName: 'Arroz blanco Diana', presentationLabel: '500 g' },
+            ]),
+          ),
+        ),
+    },
+    reference: { of: () => Promise.resolve({ peerPricesCop }) },
     clock: { now: () => now },
   });
   return { create, saved, events };
@@ -92,6 +112,8 @@ describe('publicar una promoción (RF-017, D6 del grill comercial)', () => {
     expect(saved).toEqual([promotion]);
     expect(result).toEqual({
       ...promotion,
+      productName: 'Arroz blanco Diana',
+      presentationLabel: '500 g',
       status: 'activa',
       officialPriceCop: 2600,
       promotedPriceCop: 2080,
@@ -132,5 +154,125 @@ describe('publicar una promoción (RF-017, D6 del grill comercial)', () => {
 
     await expect(create.execute(request(change))).rejects.toThrow(InvalidPromotionError);
     expect(saved).toEqual([]);
+  });
+
+  // H20: dos promociones de la misma presentación no pueden compartir ni un día.
+  describe('promociones solapadas (H20)', () => {
+    const other = (change: Partial<Promotion> = {}): Promotion => ({
+      id: 'otra-promocion',
+      establishmentId: STORE,
+      presentationId: RICE,
+      offer: { type: 'precio_especial', specialPriceCop: 2200 },
+      conditions: { whileStocksLast: false, paymentMethod: 'cualquiera' },
+      validFrom: '2026-11-23',
+      validUntil: '2026-11-28',
+      createdAt: new Date('2026-11-20T15:00:00Z'),
+      ...change,
+    });
+
+    it.each([
+      ['las mismas fechas', { validFrom: '2026-11-23', validUntil: '2026-11-28' }],
+      ['contenida en la otra', { validFrom: '2026-11-24', validUntil: '2026-11-25' }],
+      ['que contiene a la otra', { validFrom: '2026-11-22', validUntil: '2026-11-30' }],
+      [
+        'que empieza el último día de la otra',
+        { validFrom: '2026-11-28', validUntil: '2026-12-05' },
+      ],
+      [
+        'que termina el primer día de la otra',
+        { validFrom: '2026-11-22', validUntil: '2026-11-23' },
+      ],
+    ] as [string, Partial<CreatePromotionRequest>][])(
+      '%s se rechaza con PROMOTION_OVERLAP y dice las fechas de la otra',
+      async (_case, dates) => {
+        const { create, saved, events } = setup(undefined, undefined, [other()]);
+
+        const failure = await create.execute(request(dates)).catch((error: unknown) => error);
+
+        expect(failure).toBeInstanceOf(PromotionOverlapError);
+        expect((failure as PromotionOverlapError).code).toBe('PROMOTION_OVERLAP');
+        expect((failure as PromotionOverlapError).message).toBe(
+          'Ya tienes una promoción vigente o programada para este producto del 23 de noviembre de 2026 al 28 de noviembre de 2026. Retírala o cambia las fechas de la nueva para que no coincidan.',
+        );
+        expect(saved).toEqual([]);
+        expect(events).toEqual([]);
+      },
+    );
+
+    it('el día siguiente al fin de la otra ya no choca', async () => {
+      const { create, saved } = setup(undefined, undefined, [other()]);
+
+      await create.execute(request({ validFrom: '2026-11-29', validUntil: '2026-12-05' }));
+
+      expect(saved).toHaveLength(1);
+    });
+
+    it('otra presentación u otra tienda no cuentan', async () => {
+      const { create, saved } = setup(undefined, undefined, [
+        other({ presentationId: 'aceite-1l' }),
+        other({ establishmentId: 'otra-tienda' }),
+      ]);
+
+      await create.execute(request({ validFrom: '2026-11-23', validUntil: '2026-11-28' }));
+
+      expect(saved).toHaveLength(1);
+    });
+
+    it('una vencida no cuenta', async () => {
+      const { create, saved } = setup(undefined, undefined, [
+        other({ validFrom: '2026-11-10', validUntil: '2026-11-21' }),
+      ]);
+
+      await create.execute(request({ validFrom: '2026-11-22', validUntil: '2026-11-30' }));
+
+      expect(saved).toHaveLength(1);
+    });
+  });
+
+  // ADR-037: el precio que deja la promoción no puede quedar por debajo de lowRatio (40 %) de la
+  // mediana de otras tiendas (aquí 2.600, así que el piso es $1.040).
+  describe('plausibilidad del precio resultante (ADR-037)', () => {
+    it.each([
+      ['un precio especial de $1.039', { type: 'precio_especial', specialPriceCop: 1039 }],
+      ['un descuento del 90 %', { type: 'descuento_porcentual', percent: 90 }],
+      ['un 1 por 3', { type: 'pague_x_lleve_y', payX: 1, takeY: 3 }],
+    ] as [string, CreatePromotionRequest['offer']][])(
+      '%s se rechaza con 422',
+      async (_case, offer) => {
+        const { create, saved, events } = setup();
+
+        const error: unknown = await create.execute(request({ offer })).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ImplausibleOfficialPriceError);
+        expect(error).toMatchObject({
+          code: 'IMPLAUSIBLE_OFFICIAL_PRICE',
+          message: expect.stringContaining('lo más barato que vemos es $2.500') as unknown,
+        });
+        expect(saved).toEqual([]);
+        expect(events).toEqual([]);
+      },
+    );
+
+    it.each([
+      [
+        'un precio especial de $1.040, el límite exacto',
+        { type: 'precio_especial', specialPriceCop: 1040 },
+      ],
+      ['un descuento del 60 %', { type: 'descuento_porcentual', percent: 60 }],
+    ] as [string, CreatePromotionRequest['offer']][])('%s se publica', async (_case, offer) => {
+      const { create, saved } = setup();
+
+      await create.execute(request({ offer }));
+
+      expect(saved).toHaveLength(1);
+    });
+
+    it('sin referencia (menos de 3 tiendas y sin SIPSA) no frena la promoción', async () => {
+      const { create, saved } = setup([official], []);
+
+      await create.execute(request({ offer: { type: 'descuento_porcentual', percent: 90 } }));
+
+      expect(saved).toHaveLength(1);
+    });
   });
 });

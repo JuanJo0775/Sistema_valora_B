@@ -122,3 +122,102 @@ export function assessAgainstFallback(
   }
   return null;
 }
+
+// ADR-037: un precio oficial claramente fuera del rango de referencia se rechaza (422) con su propio
+// código estable; la capa HTTP lo traduce sin conocer su texto.
+export class ImplausibleOfficialPriceError extends DomainError {
+  readonly code = 'IMPLAUSIBLE_OFFICIAL_PRICE';
+}
+
+// ADR-037: lo que se concluye al comparar un precio del comercio con la referencia del ADR-030.
+// «sin_referencia» no es un rechazo: el precio se acepta, pero queda en revisión.
+export type OfficialPriceVerdict =
+  { status: 'dentro_de_rango' } | { status: 'sin_referencia' } | OutOfRangeVerdict;
+
+export interface OutOfRangeVerdict {
+  status: 'fuera_de_rango';
+  reference: 'tiendas' | 'sipsa';
+  // Con la referencia de tiendas, el precio más bajo y el más alto que se ven.
+  lowestCop: number;
+  highestCop: number | null;
+  // Con la referencia SIPSA, el precio mayorista de la presentación completa.
+  wholesaleCop: number | null;
+}
+
+function outOfRange(fallback: FallbackReference, found: FallbackResult): OutOfRangeVerdict {
+  if (found.reference === 'tiendas') {
+    return {
+      status: 'fuera_de_rango',
+      reference: 'tiendas',
+      lowestCop: Math.min(...fallback.peerPricesCop),
+      highestCop: Math.max(...fallback.peerPricesCop),
+      wholesaleCop: null,
+    };
+  }
+  return {
+    status: 'fuera_de_rango',
+    reference: 'sipsa',
+    lowestCop: found.median,
+    highestCop: null,
+    wholesaleCop: found.median,
+  };
+}
+
+// ADR-037: el precio oficial se compara con la misma referencia y los mismos parámetros que un
+// reporte de la comunidad (ADR-030): la mediana de al menos minPeerStores tiendas del municipio o,
+// si no alcanzan, el mayorista SIPSA. Sin ninguna de las dos, sin_referencia.
+export function assessOfficialPrice(
+  priceCop: number,
+  fallback: FallbackReference,
+  params: PlausibilityParams = PLAUSIBILITY_PARAMS,
+): OfficialPriceVerdict {
+  const found = assessAgainstFallback(priceCop, fallback, params);
+  if (found === null) return { status: 'sin_referencia' };
+  if (found.status === 'normal') return { status: 'dentro_de_rango' };
+  return outOfRange(fallback, found);
+}
+
+// ADR-037: el precio que deja una promoción solo se vigila por el lado bajo, porque una promoción
+// siempre baja un precio oficial que ya pasó su propia evaluación.
+export function assessPromotionPrice(
+  promotedCop: number,
+  fallback: FallbackReference,
+  params: PlausibilityParams = PLAUSIBILITY_PARAMS,
+): OfficialPriceVerdict {
+  const found = assessAgainstFallback(promotedCop, fallback, params);
+  if (found === null) return { status: 'sin_referencia' };
+  if (found.status === 'normal' || promotedCop >= found.median) {
+    return { status: 'dentro_de_rango' };
+  }
+  return outOfRange(fallback, found);
+}
+
+// Lanza el 422 de un precio oficial fuera de rango, con el rango de referencia en el mensaje;
+// devuelve lo que se debe hacer con los demás.
+export function assertOfficialPriceInRange(
+  priceCop: number,
+  verdict: OfficialPriceVerdict,
+): 'dentro_de_rango' | 'sin_referencia' {
+  if (verdict.status !== 'fuera_de_rango') return verdict.status;
+  const own = `$${money.format(priceCop)}`;
+  throw new ImplausibleOfficialPriceError(
+    verdict.reference === 'sipsa'
+      ? `Tu precio de ${own} es mucho menor que el precio mayorista de referencia para esta presentación ($${money.format(verdict.wholesaleCop ?? 0)}). Revisa si faltan ceros.`
+      : `Tu precio de ${own} está fuera de lo normal para esta presentación. Lo más barato que vemos es $${money.format(verdict.lowestCop)} y lo más caro $${money.format(verdict.highestCop ?? verdict.lowestCop)}. Revisa si faltan o sobran ceros.`,
+  );
+}
+
+// Lo mismo para el precio que dejaría una promoción: el 422 dice cómo corregirla.
+export function assertPromotionPriceInRange(
+  promotedCop: number,
+  verdict: OfficialPriceVerdict,
+): void {
+  if (verdict.status !== 'fuera_de_rango') return;
+  const reference =
+    verdict.reference === 'sipsa'
+      ? `el precio mayorista de referencia es $${money.format(verdict.wholesaleCop ?? 0)}`
+      : `lo más barato que vemos es $${money.format(verdict.lowestCop)} y lo más caro $${money.format(verdict.highestCop ?? verdict.lowestCop)}`;
+  throw new ImplausibleOfficialPriceError(
+    `Con esta promoción el precio quedaría en $${money.format(promotedCop)}, muy por debajo de lo normal para esta presentación: ${reference}. Sube el precio especial o baja el descuento.`,
+  );
+}

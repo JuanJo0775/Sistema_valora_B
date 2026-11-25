@@ -42,8 +42,13 @@ export const establishments = establishmentsSchema.table(
     // D5 del grill comercial (#207): los pone el comercio verificado. Datos del negocio (EC-08).
     openingHours: jsonb('opening_hours').$type<OpeningHours>(),
     phone: text('phone'),
+    // H36 (ADR-040): borrado lógico. Una tienda retirada no sale en ninguna lectura pública; la fila
+    // y lo que cuelga de ella (reportes, historial) se conservan.
+    status: text('status').notNull().default('activa'),
+    retiredAt: timestamp('retired_at', { withTimezone: true }),
   },
   (table) => [
+    check('establishments_status_valid', sql`${table.status} in ('activa', 'retirada')`),
     check(
       'establishments_municipality_valid',
       sql.raw(`municipality in (${MUNICIPALITY_CODES.map((code) => `'${code}'`).join(', ')})`),

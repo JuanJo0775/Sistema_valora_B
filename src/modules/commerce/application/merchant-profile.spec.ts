@@ -44,7 +44,19 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
       responsibleName: 'Rosa Gómez',
       informal: true,
       verifiedAt: claim.verifiedAt,
+      canDeleteEstablishment: false,
     });
+  });
+
+  it('H36: solo la cuenta verificada que creó la tienda puede eliminarla', async () => {
+    const created = { ...claim, createdEstablishment: true };
+
+    await expect(setup([created]).find('cuenta-de-dona-rosa')).resolves.toMatchObject({
+      canDeleteEstablishment: true,
+    });
+    await expect(
+      setup([{ ...created, status: 'pre_aprobado', verifiedAt: null }]).find('cuenta-de-dona-rosa'),
+    ).resolves.toMatchObject({ canDeleteEstablishment: false });
   });
 
   it('una cuenta sin tienda registrada no tiene perfil de comercio', async () => {
@@ -68,6 +80,7 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
       responsibleName: 'Rosa Gómez',
       informal: true,
       verifiedAt: null,
+      canDeleteEstablishment: false,
       unlocks: [
         'precios_oficiales',
         'carga_por_archivo',
@@ -97,7 +110,8 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
   });
 
   // Precisión de D3 (#208): el comercio revocado entiende qué pasó.
-  it('revocada por un moderador: muestra «revocado» con el motivo', async () => {
+  // H15: la nota del moderador es interna (puede nombrar a quien denunció); la cuenta ve un texto estándar.
+  it('revocada por un moderador: muestra «revocado» con un mensaje estándar, no la nota interna', async () => {
     const rejectedAt = new Date('2026-11-23T12:00:00Z');
     const revoked = {
       accountId: 'cuenta-de-dona-rosa',
@@ -111,8 +125,9 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
 
     expect(profile).toEqual({
       status: 'revocado',
-      reason: 'Confirmado con el dueño real: suplantación',
+      reason: 'Moderación revocó el registro de esta cuenta para esa tienda.',
       rejectedAt,
     });
+    expect(JSON.stringify(profile)).not.toContain('suplantación');
   });
 });

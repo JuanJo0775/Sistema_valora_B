@@ -83,5 +83,7 @@ import { DrizzleReportRepository } from './infrastructure/drizzle-report-reposit
         }),
     },
   ],
+  // ADR-037: commerce evalúa los precios oficiales con la misma referencia (por su index.ts).
+  exports: [GatherPlausibilityContext],
 })
 export class PricingModule {}

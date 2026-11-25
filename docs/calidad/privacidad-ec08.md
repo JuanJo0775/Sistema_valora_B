@@ -26,6 +26,9 @@
 | Clave seudónima del reportante (HMAC del id de la cuenta) | `identity.accounts.reporter_key`; en `reliability` como `reporter_key`, `flagger_key` y `moderator_key` | Reputación, moderación y suspensión sin identificar a la persona (#31, #32, #33). |
 | Id de la cuenta que reportó | `pricing.reports.reporter_id` | Idempotencia, duplicados y ráfagas (#14, #29). Ver hallazgo 1. |
 | Cambios de rol | `identity.role_changes` (ids, sin correo) | Bitácora inmutable (#73). |
+| Causa de la suspensión | `identity.accounts.suspension_reason` (ADR-039) | Explicarle a la propia cuenta por qué está suspendida. Es un código de un conjunto estable (`observada_por_moderacion`, `descartes_seguidos`, `no_registrada`), nunca la nota del moderador ni quién denunció. Solo la dice `GET /v1/auth/session` de esa cuenta en `suspension.reason` (`identity-suspension.spec.ts`). |
+| Responsable de un comercio: nombre, teléfono y NIT (opcional) | `commerce.merchant_claims` | Registrar el comercio y que moderación lo verifique (ADR-038). Se borran al eliminar la cuenta o al revocar. |
+| Responsable de quien disputa una tienda: nombre, teléfono, NIT (opcional) y el id de su cuenta | `commerce.dispute_challengers` | Que moderación compare a las dos partes (H18). Solo mientras la disputa está pendiente: se borra al descartarla, al revocar y al eliminar la cuenta. El id solo sirve para ese último borrado y no sale en ninguna respuesta. |
 | Fecha de eliminación pendiente | `identity.accounts.deletion_scheduled_for` | Gracia de 10 días antes de borrar la cuenta (ADR-032). Solo sale como `scheduledFor` para quien la pidió o quien acierta su contraseña. |
 
 **Ubicación:** la única columna geográfica es `establishments.establishments.location`, la ubicación pública de la tienda. La ubicación del usuario solo viaja como parámetro de la consulta (`/nearby`, la comparación y la canasta básica de hoy, B#128) y no se guarda.
@@ -49,7 +52,22 @@
 | `POST /v1/me/password` | Ninguno (204 sin cuerpo; 403 `INVALID_PASSWORD` o `REAUTH_REQUIRED` genéricos) (ADR-033). |
 | `POST /v1/auth/resend-verification` | Ninguno. Reenvía a la cuenta de la sesión, nunca a un correo recibido, y responde igual si ya estaba verificada (ADR-029). |
 
+**Notas internas de moderación (ADR-039).** La nota que escribe un moderador al decidir (`moderation_log.note` en los reportes de precio; `merchant_cases.note` y el motivo guardado al revocar en los casos de comercio) puede nombrar a quien denunció. Es interna: queda en la bitácora y ninguna respuesta a la cuenta afectada la devuelve. `GET /v1/commerce/me` de una cuenta revocada trae un mensaje estándar (`commerce-cases-http.spec.ts`); el motivo del moderador solo se conserva al rechazar una tienda propuesta (B2). `GET /v1/establishments/{id}/merchant-reports` dice `alreadyReported` solo a quien denunció, sobre su propia denuncia.
+
 Las rutas con sesión tampoco devuelven el correo: `GET /v1/auth/session` da el rol, si el correo está verificado (`emailVerified`) y el token CSRF; la cola de moderación y el estado de un aporte no dicen quién reportó, quién marcó ni quién decidió (#32, #71, #76). Los eventos internos llevan solo la clave seudónima (#31, #33, #29).
+
+## Qué ve el moderador del responsable de un comercio (H5, H18)
+
+Solo con sesión de `moderador` y con `Cache-Control: no-store`.
+
+| Ruta | Ve | Por qué |
+|---|---|---|
+| `GET /v1/moderation/merchant-cases` | `owner`: responsable, teléfono, NIT, estado y fecha de verificación. | Verificar al comercio de la tienda; en un reclamo es el solicitante. |
+| `GET /v1/moderation/merchant-cases`, disputa | `challenger`: responsable, teléfono, NIT y fecha de la disputa. | Comparar a las dos partes con los mismos datos antes de revocar o descartar. |
+| `GET /v1/moderation/merchant-cases`, denuncia | `reportCount`, `distinctReporters` y `firstReportedAt`. | Distinguir una denuncia aislada de un patrón. Son cifras y una fecha. |
+| `GET /v1/moderation/store-proposals` | `claim`: responsable, teléfono, NIT y `grantsMerchantRole`. | Saber que aprobar la tienda verifica a una cuenta, y a quién. |
+
+Son los datos que la propia persona escribió para que moderación revisara su registro. **Nunca se ve**, de ninguna de las partes: el id de la cuenta, el correo, el nombre visible de la cuenta, la clave seudónima ni la ubicación del celular. De quien denuncia no se ve ningún dato, solo cuántas cuentas distintas denunciaron. Las propuestas sin reclamo siguen sin decir quién las propuso.
 
 ## Qué guardan los registros
 
@@ -64,12 +82,18 @@ Las rutas con sesión tampoco devuelven el correo: `GET /v1/auth/session` da el 
 
 El derecho de supresión es automático: `POST /v1/me/account-deletion` programa el borrado a 10 días y una purga interna lo ejecuta. Qué se borra y qué se conserva está en `docs/privacidad.md` («Supresión de la cuenta»). Resumen para EC-08: se borran el correo, el nombre, el hash, las sesiones, los enlaces de verificación y de restablecimiento de contraseña y la clave seudónima (la única unión entre persona y clave); se conservan los reportes, la reputación, las propuestas, las marcas y las bitácoras, que solo llevan ids internos y claves seudónimas. Las respuestas (202, 403 `ACCOUNT_PENDING_DELETION`) no traen correo, nombre, hash ni id.
 
+## Dejar y eliminar la tienda (ADR-040)
+
+Dejar la tienda borra la solicitud del comercio (nombre del responsable, NIT y teléfono), sus avisos enviados, sus precios oficiales y sus promociones; no se guarda un historial de la salida en `commerce`. En `identity.role_changes` queda el cambio a reportante (ids, sin correo). Los casos de moderación cerrados conservan solo claves seudónimas, y se borran los datos del responsable de quien disputaba esa tienda (`commerce.dispute_challengers`). El dato nuevo `commerce.merchant_claims.created_establishment` es un booleano que se borra con la solicitud. Eliminar la tienda no borra datos: la marca `retirada` y sus reportes quedan ocultos. Ninguna respuesta nueva trae datos de personas (solo el id de la tienda). La purga de la cuenta (ADR-032) funciona igual después de dejar o eliminar la tienda (`commerce-leave-http.spec.ts`).
+
 ## Hallazgos
 
 1. **`pricing.reports.reporter_id` guarda el id de la cuenta fuera de `identity`.** Tras la supresión de la cuenta (ADR-032) queda como un UUID huérfano, sin persona detrás. Es un UUID sin correo ni nombre, que `pricing` usa para la idempotencia, el duplicado y la ráfaga. Nunca sale en respuestas ni eventos (lo verifican `privacy-public-responses.spec.ts`, `reports-http.spec.ts` y las pruebas de punta a punta). Se deja así (grill de la #36, pregunta 1). Cambiarlo por la clave seudónima pediría una migración que recalcule claves con el secreto.
 2. **`identity:set-role` muestra el correo en la consola del administrador.** Es intencional: confirma a quién se le cambió el rol.
 
 ## Pruebas guardianas
+
+- H5 y H18: `merchant-cases-queue.spec.ts`, `claims-of-proposals.spec.ts` y `store-proposals-queue.spec.ts` fallan si las tarjetas traen una cuenta o una clave; `commerce-cases-http.spec.ts` y `commerce-claims-http.spec.ts` comprueban contra la base que ni el correo, ni el id, ni la clave seudónima salen; `commerce-revocations-repository.spec.ts` comprueba que los datos de quien disputa se borran, y `privacy-schema.spec.ts` que responsable y NIT solo están en `commerce`.
 
 - `privacy-schema.spec.ts` falla si una migración agrega correo o contraseña fuera de `identity`, una columna de coordenadas fuera de la tienda, una columna de IP o una referencia a la cuenta fuera de `identity` y `pricing.reports`.
 - `privacy-public-responses.spec.ts` recorre las rutas públicas con una cuenta que reportó y otra que marcó, y falla si alguna respuesta trae su correo, su id, su clave seudónima o la ubicación consultada. Una ruta pública nueva debe agregarse a esa lista.

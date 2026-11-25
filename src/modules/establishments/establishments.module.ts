@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { DATABASE, type Database } from '../../shared/database/database.module';
-import { OutboxPublisher } from '../../shared/events';
+import { Module, type OnModuleInit } from '@nestjs/common';
+import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
+import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
 import { IdentityModule } from '../identity';
 import {
   ESTABLISHMENT_REPOSITORY,
@@ -24,7 +24,10 @@ import { DecideStoreCorrection } from './application/decide-store-correction';
 import { StoreCorrectionsQueue } from './application/store-corrections-queue';
 import { UpdateStoreDetails } from './application/update-store-details';
 import { DrizzleStoreCorrectionRepository } from './infrastructure/drizzle-store-correction-repository';
+import { ProposalClaims } from './application/proposal-claims';
 import { ProposeStore } from './application/propose-store';
+import { RetireEstablishment } from './application/retire-establishment';
+import { RetiredEstablishments } from './application/retired-establishments';
 import { SearchEstablishments } from './application/search-establishments';
 import { StoreProposalsQueue } from './application/store-proposals-queue';
 import { StoreProposalsController } from './http/store-proposals.controller';
@@ -88,17 +91,21 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
           clock: { now: () => new Date() },
         }),
     },
+    // H5: commerce registra aquí de qué reclamos nacen las propuestas.
+    ProposalClaims,
     {
       provide: StoreProposalsQueue,
-      inject: [DATABASE, OutboxPublisher, ESTABLISHMENT_REPOSITORY],
+      inject: [DATABASE, OutboxPublisher, ESTABLISHMENT_REPOSITORY, ProposalClaims],
       useFactory: (
         db: Database,
         outbox: OutboxPublisher,
         stores: EstablishmentRepository,
+        claims: ProposalClaims,
       ): StoreProposalsQueue =>
         new StoreProposalsQueue({
           proposals: new DrizzleStoreProposalRepository(db, outbox),
           stores,
+          claims,
         }),
     },
     {
@@ -145,6 +152,12 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
         new ImportEstablishments(repository),
     },
     {
+      provide: RetiredEstablishments,
+      inject: [ESTABLISHMENT_REPOSITORY],
+      useFactory: (repository: EstablishmentRepository): RetiredEstablishments =>
+        new RetiredEstablishments(repository),
+    },
+    {
       provide: EstablishmentExists,
       inject: [ESTABLISHMENT_REPOSITORY],
       useFactory: (repository: EstablishmentRepository): EstablishmentExists =>
@@ -176,6 +189,7 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     },
   ],
   exports: [
+    ProposalClaims,
     StoreContactOf,
     UpdateStoreDetails,
     ProposeStore,
@@ -186,8 +200,27 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     EstablishmentDetails,
     ImportEstablishments,
     EstablishmentExists,
+    RetiredEstablishments,
     EstablishmentsWithinRadius,
     EstablishmentsAround,
   ],
 })
-export class EstablishmentsModule {}
+export class EstablishmentsModule implements OnModuleInit {
+  constructor(private readonly bus: EventBus) {}
+
+  // H36 (ADR-040): commerce avisa que el creador eliminó su tienda. Solo se conoce el nombre del
+  // evento: establishments no importa commerce. El cambio va en la transacción del suscriptor.
+  onModuleInit(): void {
+    this.bus.subscribe(
+      'establishments.establishments',
+      'MerchantEstablishmentDeleted',
+      async (event: DomainEvent, tx: Transaction) => {
+        const { establishmentId } = event.payload as { establishmentId: string };
+        await new RetireEstablishment({
+          stores: new DrizzleEstablishmentRepository(tx),
+          clock: { now: () => new Date() },
+        }).execute(establishmentId);
+      },
+    );
+  }
+}

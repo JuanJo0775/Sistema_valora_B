@@ -1,13 +1,14 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
+import { OlimpicaObservations, ONLINE_OFFERS_ENABLED } from '../../src/modules/imports';
 import { OutboxRelay } from '../../src/shared/events';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { contractErrors } from '../support/contract';
@@ -26,6 +27,7 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
   let server: Parameters<typeof request>[0];
   let db: Database;
   let reporter: SignedIn;
+  let onlineOffersEnabled = false;
   // Cada caso: la ruta como la nombra el contrato y la respuesta real.
   const checked: { route: string; status: number; body: unknown }[] = [];
   const check = async (route: string, call: request.Test): Promise<request.Response> => {
@@ -35,14 +37,17 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
   };
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(ONLINE_OFFERS_ENABLED)
+      .useValue(() => onlineOffersEnabled)
+      .compile();
     app = moduleRef.createNestApplication({ logger: false });
     configureApp(app);
     await app.init();
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
+      sql`truncate imports.online_observations, identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts, pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references, establishments.establishments`,
     );
     reporter = await signIn(server, db, 'contrato@correo.com');
     const today = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -123,6 +128,95 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     expect(contractErrors('GET /products/:productId', 418, product)).toEqual([
       'GET /products/:productId no documenta la respuesta 418',
     ]);
+  });
+
+  it('devuelve una lista vacía conforme al contrato cuando el piloto está inactivo', async () => {
+    const response = await request(server)
+      .get(`/v1/products/${productId}/online-offers`)
+      .query({ zone: 'armenia-centro' });
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual({ items: [] });
+    expect(
+      contractErrors('GET /products/:productId/online-offers', 200, response.body as unknown),
+    ).toEqual([]);
+  });
+
+  it('expone la oferta sintética vigente y la retira si vence o queda sin stock', async () => {
+    onlineOffersEnabled = true;
+    const observations = new OlimpicaObservations(db);
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const base = {
+      source: 'olimpica_vtex' as const,
+      zoneId: 'armenia-centro',
+      presentationId,
+      ean: '7702511000014',
+      skuId: 'sku-sintetico',
+      sellerId: '1',
+    };
+    const getOffers = () =>
+      request(server).get(`/v1/products/${productId}/online-offers`).query({ zone: base.zoneId });
+    try {
+      await observations.save({
+        ...base,
+        runId: randomUUID(),
+        status: 'available',
+        observedAt: new Date(now - 3 * day),
+        expiresAt: new Date(now - day),
+        priceCop: 3400,
+      });
+      expect((await getOffers().expect(200)).body).toEqual({ items: [] });
+
+      const observedAt = new Date(now - 1000);
+      const expiresAt = new Date(observedAt.getTime() + 2 * day);
+      await observations.save({
+        ...base,
+        runId: randomUUID(),
+        status: 'available',
+        observedAt,
+        expiresAt,
+        priceCop: 3456,
+      });
+      const response = await getOffers().expect(200);
+      expect(response.body).toEqual({
+        items: [
+          {
+            presentationId,
+            source: 'olimpica',
+            zone: base.zoneId,
+            priceCop: 3456,
+            observedAt: observedAt.toISOString(),
+            expiresAt: expiresAt.toISOString(),
+          },
+        ],
+      });
+      expect(
+        contractErrors('GET /products/:productId/online-offers', 200, response.body as unknown),
+      ).toEqual([]);
+
+      await observations.save({
+        ...base,
+        runId: randomUUID(),
+        status: 'unavailable',
+        observedAt: new Date(now),
+      });
+      expect((await getOffers().expect(200)).body).toEqual({ items: [] });
+    } finally {
+      onlineOffersEnabled = false;
+    }
+  });
+
+  it.each([
+    [productId, 'otra-zona', 400],
+    ['id-invalido', 'armenia-centro', 400],
+    [missingId, 'armenia-centro', 404],
+  ])('valida producto %s y zona %s en ofertas en línea', async (id, zone, status) => {
+    const response = await request(server).get(`/v1/products/${id}/online-offers`).query({ zone });
+    expect(response.status).toBe(status);
+    expect(
+      contractErrors('GET /products/:productId/online-offers', status, response.body as unknown),
+    ).toEqual([]);
   });
 
   it('las rutas públicas responden como dice el contrato', async () => {
@@ -350,6 +444,44 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     ]);
     expect(checked[2]?.body).toMatchObject({ code: 'INVALID_PASSWORD' });
     expect(checked[4]?.body).toMatchObject({ code: 'ACCOUNT_PENDING_DELETION' });
+    expect(
+      checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
+    ).toEqual([]);
+  });
+
+  // Rectificación del nombre visible: la ruta responde como dice el contrato.
+  it('cambiar el nombre visible responde como dice el contrato', async () => {
+    checked.length = 0;
+    const me = await signIn(server, db, 'nombre-contrato@correo.com');
+    const withSession = (as: SignedIn | null, body: object) => {
+      const call = request(server).patch('/v1/me/profile');
+      return (as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call).send(
+        body,
+      );
+    };
+
+    await check('PATCH /me/profile', withSession(null, { displayName: 'Sara Luz' }));
+    await check('PATCH /me/profile', withSession(me, { displayName: '3001234567' }));
+    await check('PATCH /me/profile', withSession(me, { displayName: ' Sara   Luz ' }));
+    await check(
+      'PATCH /me/profile',
+      request(server)
+        .patch('/v1/me/profile')
+        .set('Cookie', me.cookie)
+        .send({ displayName: 'Sara Luz' }),
+    );
+    for (let i = 0; i < 9; i += 1) {
+      await check('PATCH /me/profile', withSession(me, { displayName: 'Sara Luz' }));
+    }
+
+    // 10 cambios aceptados (el 3.º y los 9 del ciclo) y el siguiente, el 11.º, se frena.
+    expect(checked.map(({ status }) => status)).toEqual([
+      401, 400, 200, 403, 200, 200, 200, 200, 200, 200, 200, 200, 200,
+    ]);
+    await check('PATCH /me/profile', withSession(me, { displayName: 'Sara Luz' }));
+    expect(checked.at(-1)?.status).toBe(429);
+    expect(checked[2]?.body).toEqual({ displayName: 'Sara Luz' });
+    expect(checked[3]?.body).toMatchObject({ code: 'CSRF_TOKEN_INVALID' });
     expect(
       checked.flatMap(({ route, status, body }) => contractErrors(route, status, body)),
     ).toEqual([]);

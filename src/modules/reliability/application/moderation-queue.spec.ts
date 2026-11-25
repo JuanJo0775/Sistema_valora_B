@@ -1,6 +1,6 @@
 import type { AnomalyResult } from '../../../domain/anomaly';
 import { ModerationQueue } from './moderation-queue';
-import type { Observation, PendingItem } from './stores';
+import type { Observation, OfficialReview, PendingItem } from './stores';
 
 const minutesAgo = (minutes: number) => new Date(Date.UTC(2026, 10, 14, 14) - minutes * 60_000);
 
@@ -31,9 +31,10 @@ const pending = (verdict: AnomalyResult, flags = 0, receivedMinutesAgo = 10): Pe
   return { observation, flags };
 };
 
-function setup(items: PendingItem[]) {
+function setup(items: PendingItem[], reviews: OfficialReview[] = []) {
   return new ModerationQueue({
     moderation: { pending: () => Promise.resolve(items) },
+    officialReviews: { pending: () => Promise.resolve(reviews) },
     labels: { of: (ids) => Promise.resolve(new Map(ids.map((id) => [id, 'Arroz Diana · 500 g']))) },
     names: { of: (ids) => Promise.resolve(new Map(ids.map((id) => [id, 'Don José']))) },
   });
@@ -55,6 +56,7 @@ describe('cola de moderación (RF-013)', () => {
         reportedPriceCop: 2000,
         medianPriceCop: 4000,
         deviationPercent: 50,
+        deviationDirection: 'menor',
         reportersCount: 2,
         createdAt: detected.observation.receivedAt,
       },
@@ -69,6 +71,38 @@ describe('cola de moderación (RF-013)', () => {
       },
     ]);
     expect(JSON.stringify(queue)).not.toContain('clave-del-autor');
+  });
+
+  // H25: deviationPercent va en valor absoluto; la dirección viaja aparte para no depender del cliente.
+  it('dice si el precio reportado está por debajo o por encima de la mediana (H25)', async () => {
+    const below = pending(suspicious(0.5));
+    const above = {
+      ...pending(suspicious(0.5)),
+      observation: { ...pending(suspicious(0.5)).observation, priceCop: 6000 },
+    };
+    const same = {
+      ...pending({ status: 'sin_datos', references: 0 }, 1),
+      observation: {
+        ...pending(suspicious(0)).observation,
+        priceCop: 4000,
+        verdict: suspicious(0),
+      },
+    };
+    const noMedian = pending({ status: 'sin_datos', references: 0 }, 1);
+
+    const queue = await setup([below, above, same, noMedian]).list({});
+
+    const direction = (item: PendingItem) =>
+      queue.find((found) => found.id === item.observation.reportId)?.deviationDirection;
+    expect(direction(below)).toBe('menor');
+    expect(direction(above)).toBe('mayor');
+    // Sin diferencia o sin mediana no hay dirección: el campo no aparece.
+    expect(queue.find((found) => found.id === same.observation.reportId)).not.toHaveProperty(
+      'deviationDirection',
+    );
+    expect(queue.find((found) => found.id === noMedian.observation.reportId)).not.toHaveProperty(
+      'deviationDirection',
+    );
   });
 
   // RN2 de RF-013 y grill de la #32, pregunta 6.
@@ -99,6 +133,7 @@ describe('cola de moderación (RF-013)', () => {
   it('si catalog o establishments no dan el nombre, la cola dice «Sin nombre»', async () => {
     const queue = new ModerationQueue({
       moderation: { pending: () => Promise.resolve([pending(suspicious(0.5))]) },
+      officialReviews: { pending: () => Promise.resolve([]) },
       labels: { of: () => Promise.resolve(new Map()) },
       names: { of: () => Promise.resolve(new Map()) },
     });
@@ -140,5 +175,67 @@ describe('cola de moderación (RF-013)', () => {
 
     expect(queue.map((item) => item.reason)).toEqual(['desviacion', 'rafaga', 'marcado']);
     await expect(setup([flagged, burst]).list({ reason: 'rafaga' })).resolves.toHaveLength(1);
+  });
+
+  // ADR-037: un precio oficial sin referencia con qué compararlo entra a la cola con su propio motivo.
+  describe('precios oficiales sin referencia (ADR-037)', () => {
+    const official = (reviewId: string, minutes: number): OfficialReview => ({
+      reviewId,
+      presentationId: 'arroz-500g',
+      establishmentId: 'don-jose',
+      reporterKey: 'clave-del-comercio',
+      priceCop: 300,
+      receivedAt: minutesAgo(minutes),
+    });
+
+    it('aparece como «sin_referencia», sin mediana ni desviación y sin quién lo publicó', async () => {
+      const queue = await setup([], [official('revision-1', 5)]).list({});
+
+      expect(queue).toEqual([
+        {
+          id: 'revision-1',
+          reason: 'sin_referencia',
+          productName: 'Arroz Diana · 500 g',
+          establishmentName: 'Don José',
+          reportedPriceCop: 300,
+          reportersCount: 0,
+          createdAt: minutesAgo(5),
+        },
+      ]);
+    });
+
+    it('va después de las apelaciones y las desviaciones y antes de las ráfagas y las marcas', async () => {
+      const detected = pending(suspicious(0.5));
+      const flagged = pending({ status: 'sin_datos', references: 0 }, 1);
+      const burst: PendingItem = {
+        ...pending({ status: 'sin_datos', references: 0 }),
+        burst: true,
+      };
+
+      const queue = await setup([flagged, burst, detected], [official('revision-1', 5)]).list({});
+
+      expect(queue.map((item) => item.reason)).toEqual([
+        'desviacion',
+        'sin_referencia',
+        'rafaga',
+        'marcado',
+      ]);
+    });
+
+    it('entre varios, el que llegó antes va primero', async () => {
+      const queue = await setup([], [official('reciente', 1), official('antiguo', 30)]).list({});
+
+      expect(queue.map((item) => item.id)).toEqual(['antiguo', 'reciente']);
+    });
+
+    it('se filtra por motivo y respeta el límite', async () => {
+      const reviews = [official('a', 3), official('b', 2), official('c', 1)];
+      const queue = setup([pending(suspicious(0.5))], reviews);
+
+      await expect(queue.list({ reason: 'sin_referencia' })).resolves.toHaveLength(3);
+      await expect(queue.list({ reason: 'sin_referencia', limit: 2 })).resolves.toHaveLength(2);
+      await expect(queue.list({ reason: 'desviacion' })).resolves.toHaveLength(1);
+      await expect(queue.list({ limit: 2 })).resolves.toHaveLength(2);
+    });
   });
 });

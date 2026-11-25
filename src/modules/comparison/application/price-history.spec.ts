@@ -13,7 +13,8 @@ const rice: ProductForComparisonView = {
   ],
 };
 
-function setup(prices: HistoryPrice[]) {
+function setup(prices: HistoryPrice[], retiredStores: string[] = []) {
+  const excluded: string[][] = [];
   const asked: { presentationIds: string[]; since: Date; establishmentId?: string }[] = [];
   const history = new PriceHistory({
     products: { find: (id) => Promise.resolve(id === rice.id ? rice : null) },
@@ -27,17 +28,27 @@ function setup(prices: HistoryPrice[]) {
         ),
     },
     history: {
-      countedSince: (presentationIds, since, establishmentId) => {
+      countedSince: (presentationIds, since, establishmentId, excludedIds = []) => {
+        excluded.push(excludedIds);
         asked.push({ presentationIds, since, ...(establishmentId ? { establishmentId } : {}) });
         return Promise.resolve(prices);
       },
     },
+    retired: { ids: () => Promise.resolve(retiredStores) },
     clock: { now: () => now },
   });
-  return { asked, history };
+  return { asked, excluded, history };
 }
 
 describe('historial de precios de un producto (RF-008 RN4, grill de la #83)', () => {
+  it('H36: los precios de las tiendas retiradas se conservan pero no entran al historial', async () => {
+    const { excluded, history } = setup([], ['tienda-retirada']);
+
+    await history.of('arroz', {});
+
+    expect(excluded).toEqual([['tienda-retirada']]);
+  });
+
   it('una serie por presentación, con su nombre y la fuente de cada punto', async () => {
     const { asked, history } = setup([
       { presentationId: 'arroz-500', priceCop: 2400, observedAt: new Date('2026-11-14T15:00:00Z') },

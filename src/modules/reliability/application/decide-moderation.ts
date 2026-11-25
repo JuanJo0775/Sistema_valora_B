@@ -10,11 +10,15 @@ import type {
   ModerationStore,
   Observation,
   ObservationStore,
+  OfficialReview,
+  OfficialReviewStore,
   ReputationStore,
 } from './stores';
 
 export interface DecideModerationPorts {
   moderation: ModerationStore;
+  // ADR-037: los precios oficiales sin referencia que esperan decisión.
+  officialReviews: OfficialReviewStore;
   observations: ObservationStore;
   reputations: ReputationStore;
   events: { publish(event: DomainEvent): Promise<void> };
@@ -43,6 +47,9 @@ export class InvalidNoteError extends Error {
 }
 
 export const PRICE_WITHDRAWN = 'PriceWithdrawn';
+// ADR-037: lo que moderación decidió sobre un precio oficial en revisión; commerce lo escucha por su
+// nombre. v1: { reviewId, establishmentId, presentationId, decision: 'aprobado' | 'descartado' }.
+export const OFFICIAL_PRICE_REVIEWED = 'OfficialPriceReviewed';
 export const REPORTER_SUSPENSION_REQUESTED = 'ReporterSuspensionRequested';
 export const REPORTER_SUSPENSION_LIFTED = 'ReporterSuspensionLifted';
 
@@ -82,6 +89,15 @@ export class DecisionNotAllowedError extends DomainError {
   }
 }
 
+// ADR-037: un precio oficial en revisión solo se aprueba o se descarta (422).
+export class OfficialDecisionNotAllowedError extends DomainError {
+  readonly code = 'DECISION_NOT_ALLOWED';
+
+  constructor() {
+    super('Un precio oficial en revisión solo se aprueba o se descarta.');
+  }
+}
+
 // No existe, no está en revisión o ya se decidió: la capa HTTP la traduce a 404 NOT_FOUND.
 export class ReportNotInQueueError extends Error {
   constructor(readonly reportId: string) {
@@ -104,7 +120,11 @@ export class DecideModeration {
     if (note.length < NOTE_LENGTH.min || note.length > NOTE_LENGTH.max) {
       throw new InvalidNoteError();
     }
-    const { moderation, events, clock } = this.ports;
+    const { moderation, events, clock, officialReviews } = this.ports;
+    const official = (await officialReviews.pending()).find(
+      (review) => review.reviewId === request.reportId,
+    );
+    if (official) return this.decideOfficial(official, request, note);
     const item = (await moderation.pending()).find(
       (pending) => pending.observation.reportId === request.reportId,
     );
@@ -136,7 +156,7 @@ export class DecideModeration {
     // Grill de la #71, pregunta 4: rechazar la apelación deja el descarte como estaba, sin castigar
     // dos veces.
     if (request.decision === 'descartar' && stage === 'revision') {
-      await this.discard(reported);
+      await this.discard(reported, { penalize: true });
       // RN6 de RF-013: la decisión recién guardada ya está en la lista.
       const until = suspensionAfter(
         await moderation.decisionsAbout(reported.reporterKey),
@@ -145,9 +165,35 @@ export class DecideModeration {
       if (until) await this.requestSuspension(reported, 'rechazos_seguidos', until);
     }
     if (request.decision === 'observar_cuentas') {
+      // H34 (ADR-039): el reporte observado se retira como un descarte, para que ningún lugar lo siga
+      // mostrando «en revisión». La reputación no baja: la sanción de esta decisión es la suspensión.
+      await this.discard(reported, { penalize: false });
       // Grill de la #33, pregunta 2: el autor queda suspendido sin que el moderador sepa quién es.
       await this.requestSuspension(reported, 'observar_cuentas', suspensionEnd(decidedAt));
     }
+  }
+
+  // ADR-037: aprobar vuelve el precio el oficial vigente de la tienda; descartarlo lo retira. La
+  // decisión queda en la misma bitácora; commerce la aplica al recibir OfficialPriceReviewed.
+  private async decideOfficial(
+    review: OfficialReview,
+    request: DecisionRequest,
+    note: string,
+  ): Promise<void> {
+    if (request.decision === 'observar_cuentas') throw new OfficialDecisionNotAllowedError();
+    if (review.reporterKey === request.moderatorKey) throw new OwnReportError();
+    const { moderation, officialReviews, events, clock } = this.ports;
+    await moderation.decide({ ...request, note, decidedAt: clock.now(), stage: 'revision' });
+    const decision = request.decision === 'aprobar' ? 'aprobado' : 'descartado';
+    await officialReviews.decide(review.reviewId, decision);
+    await events.publish(
+      createEvent(OFFICIAL_PRICE_REVIEWED, 1, {
+        reviewId: review.reviewId,
+        establishmentId: review.establishmentId,
+        presentationId: review.presentationId,
+        decision,
+      }),
+    );
   }
 
   // Grill de la #71, pregunta 4: el descarte revertido devuelve la reputación y, si suspendió la
@@ -197,9 +243,9 @@ export class DecideModeration {
     await reputations.save(reported.reporterKey, updateReputation(value, event));
   }
 
-  private async discard(reported: Observation): Promise<void> {
+  private async discard(reported: Observation, { penalize }: { penalize: boolean }): Promise<void> {
     const { observations, events } = this.ports;
-    await this.adjustReputation(reported, 'rejected');
+    if (penalize) await this.adjustReputation(reported, 'rejected');
 
     const inStore = await observations.forPresentation(reported.presentationId, [
       reported.establishmentId,

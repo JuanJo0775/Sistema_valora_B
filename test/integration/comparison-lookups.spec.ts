@@ -6,6 +6,7 @@ import {
   ImportCatalog,
   PresentationFreshness,
   PresentationLabels,
+  PresentationNames,
   PresentationsForPricing,
   ProductForComparison,
 } from '../../src/modules/catalog';
@@ -160,6 +161,17 @@ describe('consultas públicas que usa la comparación (grill de la #15, pregunta
       new Map([
         ['f1111111-1111-4111-8111-aaaaaaaaaaaa', 'Arroz blanco Diana · 500 g'],
         ['f1111111-1111-4111-8111-bbbbbbbbbbbb', 'Arroz blanco Diana · 6 × 1 kg'],
+      ]),
+    );
+    // H3: el nombre y la etiqueta por separado, con el formato del frontend.
+    await expect(
+      app.get(PresentationNames).of(['f1111111-1111-4111-8111-bbbbbbbbbbbb', missingId]),
+    ).resolves.toEqual(
+      new Map([
+        [
+          'f1111111-1111-4111-8111-bbbbbbbbbbbb',
+          { productName: 'Arroz blanco Diana', presentationLabel: '6 × 1 kg' },
+        ],
       ]),
     );
     await expect(app.get(EstablishmentNames).of([nearId, missingId])).resolves.toEqual(

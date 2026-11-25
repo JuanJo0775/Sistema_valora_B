@@ -27,6 +27,7 @@ Redactado con apoyo de IA (Claude Code). **No es asesoría jurídica:** el equip
 | Seguridad (art. 4, literal g) | Contraseñas con argon2id, cookies HttpOnly + CSRF, HTTPS, esquema separado, pruebas guardianas `privacy-schema.spec.ts` y `privacy-public-responses.spec.ts` |
 | Transmisión y transferencia internacional (art. 26 y Decreto 1377/2013, art. 25) | Sección 5: proveedores en EE. UU. como encargados; Estados Unidos figura entre los países con nivel adecuado según la SIC |
 | Aviso de cookies | Aviso inferior de la PWA (`CookieNotice`) y sección 4. Solo se usan cookies y almacenamiento necesarios; no requieren aceptación, pero se informan |
+| Rectificación del nombre (art. 8, actualizar y rectificar) | La persona puede cambiar su nombre desde la app (`PATCH /v1/me/profile`, sin contraseña, hasta 10 veces por hora); solo lo ve su dueña y no sale en respuestas públicas ni en registros |
 
 ## Pendientes del equipo (`PENDIENTE (equipo)`)
 
@@ -54,6 +55,8 @@ Desde la app, sin intervención del equipo: la opción de eliminar la cuenta, co
 | `identity.accounts`: correo, nombre, hash de la contraseña, versión y fecha de la política aceptada, fecha de verificación, suspensión y la clave seudónima (`reporter_key`) | Los **reportes de precios** y su historial (`pricing.reports`, solo con un identificador interno que ya no corresponde a ninguna cuenta), porque la comunidad depende de ellos |
 | `identity.sessions`: todas las sesiones | La **reputación**, las observaciones y las **marcas** de `reliability`, las **propuestas** de producto y de tienda y la bitácora de moderación, todas con la clave seudónima |
 | `identity.email_verifications` e `identity.password_resets`: los enlaces de verificación y de restablecimiento de contraseña | La bitácora inmutable de cambios de rol (`identity.role_changes`: ids, sin correo) |
+
+**Disputas de comercio (H18).** También se borran los datos del responsable que la cuenta escribió al disputar una tienda (`commerce.dispute_challengers`); el caso queda solo con la clave seudónima.
 
 **Por qué lo que se conserva no identifica a nadie.** La clave seudónima es `HMAC-SHA256(REPORTER_KEY_SECRET, id de la cuenta)`. La única tabla que la unía a una persona era `identity.accounts`, que se borra. Sin la cuenta no hay correo ni nombre al que llegar, y quien se registre de nuevo con el mismo correo recibe un id nuevo, otra clave y reputación neutra. Los reportes de una misma persona siguen pudiendo agruparse entre sí (es un seudónimo), pero no vincularse con ella.
 

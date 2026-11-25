@@ -40,10 +40,14 @@ describe('suspensión pedida por reliability (grill de la #33, pregunta 6)', () 
     );
   });
 
-  const requestSuspension = async (reporterKey: string, suspendedUntil: Date) => {
+  const requestSuspension = async (
+    reporterKey: string,
+    suspendedUntil: Date,
+    reason: 'observar_cuentas' | 'rechazos_seguidos' = 'observar_cuentas',
+  ) => {
     const event = events.createEvent('ReporterSuspensionRequested', 1, {
       reporterKey,
-      reason: 'observar_cuentas',
+      reason,
       suspendedUntil: suspendedUntil.toISOString(),
     });
     await db.transaction((tx) => app.get(events.OutboxPublisher).publish(tx, event));
@@ -63,6 +67,38 @@ describe('suspensión pedida por reliability (grill de la #33, pregunta 6)', () 
     );
     expect(stored.rows.map((row) => new Date(row.suspended_until))).toEqual([until]);
   });
+
+  // H33: la sesión limitada dice hasta cuándo y por qué, con una causa estable y sin datos internos.
+  it.each([
+    ['observar_cuentas', 'observada_por_moderacion'],
+    ['rechazos_seguidos', 'descartes_seguidos'],
+  ] as const)(
+    'la sesión de la cuenta suspendida por %s trae suspension { until, reason: %s }',
+    async (cause, expected) => {
+      const ana = await signIn(server, db, 'ana@correo.com');
+      const { reporterKey } = await app.get(identity.ReporterIdentity).of(ana.accountId);
+      const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await requestSuspension(reporterKey, until, cause);
+
+      const login = await request(server)
+        .post('/v1/auth/login')
+        .send({ email: 'ana@correo.com', password: 'una-clave-larga' });
+      const cookie = (login.headers['set-cookie'] as unknown as string[]).map(
+        (line) => line.split(';')[0] ?? '',
+      );
+      const session = await request(server).get('/v1/auth/session').set('Cookie', cookie);
+
+      expect(session.status).toBe(200);
+      expect(session.body).toMatchObject({
+        suspendedUntil: until.toISOString(),
+        suspension: { until: until.toISOString(), reason: expected },
+      });
+      expect(Object.keys((session.body as { suspension: object }).suspension).sort()).toEqual([
+        'reason',
+        'until',
+      ]);
+    },
+  );
 
   it('una clave que ninguna cuenta tiene no cambia nada', async () => {
     const ana = await signIn(server, db, 'ana@correo.com');

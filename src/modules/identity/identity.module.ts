@@ -14,6 +14,7 @@ import { GrantMerchantRole } from './application/grant-merchant-role';
 import { RevokeMerchantRole } from './application/revoke-merchant-role';
 import { NotifyAccount } from './application/notify-account';
 import { DeleteOwnAccount } from './application/delete-own-account';
+import { ChangeOwnDisplayName } from './application/change-own-display-name';
 import { ChangeOwnPassword } from './application/change-own-password';
 import { PASSWORD_REPOSITORY, type PasswordRepository } from './application/password-repository';
 import { RequestPasswordReset } from './application/request-password-reset';
@@ -294,6 +295,12 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         new OwnDisplayName({ displayNames: new DrizzleAccountRepository(db) }),
     },
     {
+      provide: ChangeOwnDisplayName,
+      inject: [DATABASE, ATTEMPT_LIMITER],
+      useFactory: (db: Database, limiter: AttemptLimiter): ChangeOwnDisplayName =>
+        new ChangeOwnDisplayName({ names: new DrizzleAccountRepository(db), limiter }),
+    },
+    {
       provide: SESSION_REPOSITORY,
       inject: [DATABASE],
       useFactory: (db: Database): SessionRepository => new DrizzleSessionRepository(db),
@@ -456,7 +463,11 @@ export class IdentityModule implements OnModuleInit {
       'identity.accounts',
       'ReporterSuspensionRequested',
       async (event: DomainEvent, tx: Transaction) => {
-        const payload = event.payload as { reporterKey: string; suspendedUntil: string };
+        const payload = event.payload as {
+          reporterKey: string;
+          suspendedUntil: string;
+          reason: string;
+        };
         await new SuspendReporter({
           accounts: new DrizzleAccountRepository(tx),
           sessions: new DrizzleSessionRepository(tx),
@@ -464,6 +475,11 @@ export class IdentityModule implements OnModuleInit {
         }).execute({
           reporterKey: payload.reporterKey,
           suspendedUntil: new Date(payload.suspendedUntil),
+          // H33 (ADR-039): el motivo interno del evento se traduce a la causa estable que ve la cuenta.
+          reason:
+            payload.reason === 'rechazos_seguidos'
+              ? 'descartes_seguidos'
+              : 'observada_por_moderacion',
         });
       },
     );
@@ -503,6 +519,18 @@ export class IdentityModule implements OnModuleInit {
           accounts: new DrizzleAccountRepository(tx),
           clock: { now: () => new Date() },
         }).execute(payload.accountId);
+      },
+    );
+    // H36 (ADR-040): el comercio que deja o elimina su tienda vuelve a reportante.
+    this.bus.subscribe(
+      'identity.accounts',
+      'MerchantLeft',
+      async (event: DomainEvent, tx: Transaction) => {
+        const payload = event.payload as { accountId: string };
+        await new RevokeMerchantRole({
+          accounts: new DrizzleAccountRepository(tx),
+          clock: { now: () => new Date() },
+        }).execute(payload.accountId, 'El comercio dejó su tienda por decisión propia (ADR-040).');
       },
     );
   }

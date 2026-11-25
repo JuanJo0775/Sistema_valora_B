@@ -15,6 +15,7 @@ import {
   StoreContactOf,
   EstablishmentsModule,
   EstablishmentsWithinRadius,
+  RetiredEstablishments,
 } from '../establishments';
 import { PeerPrices } from './application/peer-prices';
 import { DrizzlePeerPrices } from './infrastructure/drizzle-peer-prices';
@@ -127,15 +128,17 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
     // Grill de la #83: historial de precios de un producto.
     {
       provide: PriceHistory,
-      inject: [DATABASE, ProductForComparison, PresentationLabels],
+      inject: [DATABASE, ProductForComparison, PresentationLabels, RetiredEstablishments],
       useFactory: (
         db: Database,
         products: ProductForComparison,
         labels: PresentationLabels,
+        retired: RetiredEstablishments,
       ): PriceHistory =>
         new PriceHistory({
           products,
           labels,
+          retired,
           history: new DrizzlePriceHistory(db),
           clock: { now: () => new Date() },
         }),

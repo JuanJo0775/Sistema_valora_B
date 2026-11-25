@@ -37,6 +37,8 @@ const official = (presentationId: string, confirmedAt: string): OfficialPrice =>
   confirmedAt: new Date(confirmedAt),
 });
 
+const namesAsked: string[][] = [];
+
 function setup(promotions: Promotion[], officials: OfficialPrice[]) {
   return new MerchantPromotions({
     claims: { findByAccount: () => Promise.resolve(merchant) },
@@ -53,6 +55,18 @@ function setup(promotions: Promotion[], officials: OfficialPrice[]) {
         ),
     },
     presentations: { isFresh: () => Promise.resolve(false) },
+    names: {
+      namesOf: (ids) => {
+        namesAsked.push(ids);
+        return Promise.resolve(
+          new Map(
+            ids
+              .filter((id) => id !== 'cafe')
+              .map((id) => [id, { productName: `Producto ${id}`, presentationLabel: '1 kg' }]),
+          ),
+        );
+      },
+    },
     clock: { now: () => now },
   });
 }
@@ -82,6 +96,25 @@ describe('las promociones del comercio (GET /commerce/promotions, D6)', () => {
       ['aceite', 'pausada', 2700],
       ['panela', 'vencida', 2700],
       ['cafe', 'programada', 2700],
+    ]);
+  });
+
+  it('trae el nombre y la etiqueta de cada presentación en una sola consulta al catálogo (H3)', async () => {
+    namesAsked.length = 0;
+    const list = setup(
+      [
+        promotion('arroz', '2026-11-20', '2026-11-30'),
+        promotion('cafe', '2026-11-20', '2026-11-30'),
+      ],
+      [official('arroz', '2026-11-21T15:00:00Z'), official('cafe', '2026-11-21T15:00:00Z')],
+    );
+
+    const result = await list.execute('cuenta-de-dona-rosa');
+
+    expect(namesAsked).toEqual([['arroz', 'cafe']]);
+    expect(result.map((p) => [p.productName, p.presentationLabel])).toEqual([
+      ['Producto arroz', '1 kg'],
+      ['Producto sin nombre', ''],
     ]);
   });
 });

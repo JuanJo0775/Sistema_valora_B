@@ -26,14 +26,19 @@ Respuestas:
 
 | Código | Cuándo |
 |---|---|
-| `201` `{ status: "verificado" }` | Tienda del mapa y todas las validaciones bien |
+| `201` `{ status: "verificado" }` | Tienda de barrio o minimercado del mapa y todas las validaciones bien |
+| `201` `{ status: "pre_aprobado", establishmentId, unlocks: [...] }` | Supermercado del mapa que no es de cadena (ADR-038, H11): queda en revisión, sin rol de comercio hasta que un moderador apruebe el caso `reclamo` |
 | `201` `{ status: "pre_aprobado", unlocks: [...] }` | Tienda nueva: espera la aprobación de la propuesta. `unlocks` lista lo que se desbloquea |
 | `400 VALIDATION_ERROR` | Campos con formato inválido (incluye NIT con dígito de verificación mal) |
 | `403 EMAIL_NOT_VERIFIED` | Correo sin verificar |
 | `403 FORBIDDEN` | La cuenta no es `reportante` (ya es comercio o moderador) |
 | `409 ESTABLISHMENT_HAS_OWNER` | La tienda ya tiene dueño: queda una **disputa** para el moderador |
 | `409 ACCOUNT_HAS_ESTABLISHMENT` | La cuenta ya tiene una tienda (una por cuenta) |
+| `422 CHAIN_STORE_NOT_CLAIMABLE` | Tienda de cadena (tipo `descuento` o nombre de D1, Ara, Éxito, Olímpica, Carulla…): no se puede reclamar. Se comprueba antes de la cercanía (ADR-038, H11) |
 | `422 NOT_AT_ESTABLISHMENT` | La ubicación está a más de 50 m de la tienda |
+| `422 REVOKED_FROM_ESTABLISHMENT` | Un moderador revocó a esta cuenta de esa tienda |
+
+Orden de comprobación: sesión, correo verificado, datos y NIT, tienda existente (404), cadena (422), cercanía (422), cuenta revocada, una tienda por cuenta (409) y dueño existente (409, con disputa).
 
 ### `GET /v1/commerce/me` (nueva)
 
@@ -48,6 +53,8 @@ Rol `comercio` verificado. `{ presentationId, priceCop }` publica o actualiza el
 ### `GET /v1/commerce/prices` (nueva)
 
 Sus precios oficiales con `freshness` (`vigente`, `por_confirmar`, `desactualizado`, ADR-005) y la fecha de la última confirmación.
+
+**Precisión H3 (informe de QA del 24-nov-2026).** Cada elemento de `items` y de `inReview` trae también `productName` (nombre con marca, como lo arma el catálogo: «Arroz blanco Diana») y `presentationLabel` (cantidad y unidad, con el formato de `formatPresentation` del frontend: «1 kg», «6 × 400 ml»). Se calculan en el servidor con el catálogo canónico, en una consulta por lote, y no dependen de la lista pública de la tienda, que se actualiza con retraso (modelo de lectura asíncrono). Si la presentación ya no está en el catálogo, `productName` es «Producto sin nombre» y `presentationLabel` es una cadena vacía; nunca se devuelve un identificador como nombre. Cambio aditivo: no se quita ni se renombra ningún campo. `GET /v1/commerce/alerts` ya traía `productName` y no cambia.
 
 ### `POST /v1/commerce/prices/reconfirm` (nueva, D4)
 
@@ -80,9 +87,13 @@ El esquema `Promotion` gana `conditions`:
 
 `paymentMethod`: `cualquiera` | `efectivo` | `tarjeta`. Sin texto libre. `422 OFFICIAL_PRICE_REQUIRED` si la presentación no tiene un oficial **vigente**.
 
+**Precisión H20 (informe de QA del 24-nov-2026): sin promociones solapadas.** Una presentación no puede tener dos promociones a la vez en la misma tienda. Si el rango `validFrom`-`validUntil` comparte al menos un día (los dos extremos cuentan) con otra promoción de esa presentación que no esté retirada ni vencida (activa, pausada o programada), `POST` responde `422` con el código estable `PROMOTION_OVERLAP` y un mensaje como «Ya tienes una promoción vigente o programada para este producto del 23 de noviembre de 2026 al 28 de noviembre de 2026. Retírala o cambia las fechas de la nueva para que no coincidan.». Las fechas de la promoción en conflicto van en el mensaje: el modelo de errores (`code` y `message`) no admite campos extra. Retirar la primera libera sus fechas. Una promoción que empieza al día siguiente del fin de la otra no choca. La regla corre después de las demás validaciones (oferta, fechas, plausibilidad). Límite conocido: dos solicitudes simultáneas pueden pasar la comprobación a la vez; se acepta por el bajo volumen de un comercio y se cerraría con una restricción en base de datos si hiciera falta.
+
 ### `GET /v1/commerce/promotions` y `DELETE /v1/commerce/promotions/{promotionId}` (nuevas)
 
 Listar las suyas, con estado `activa`, `pausada` o `vencida`, y retirarlas.
+
+**Precisión H3.** La lista y la respuesta de `POST` traen `productName` y `presentationLabel`, con las mismas reglas que en `GET /v1/commerce/prices`.
 
 ## Datos de la tienda (D5)
 
@@ -90,13 +101,50 @@ Listar las suyas, con estado `activa`, `pausada` o `vencida`, y retirarlas.
 
 `{ openingHours?, phone?, name?, location? }`. Horario, teléfono y nombre se aplican al instante, salvo un nombre equivalente a otra tienda a menos de 50 m, que va a revisión. `location` crea siempre una propuesta para el moderador. Responde qué se aplicó y qué quedó en revisión. `commerce` lo pide a `establishments` por su `index.ts`.
 
+## Dejar y eliminar la tienda (ADR-040, H36)
+
+| Ruta | Respuestas |
+|---|---|
+| `POST /v1/commerce/me/leave` (sin cuerpo) | `200 { status: "dejada", establishmentId }` o `200 { status: "sin_tienda" }`; `401`; `403` (moderador o CSRF) |
+| `DELETE /v1/commerce/establishment` | `204`; `403 ESTABLISHMENT_NOT_CREATED_BY_ACCOUNT` o `MERCHANT_NOT_VERIFIED`; `404` sin tienda; `401` |
+
+`GET /v1/commerce/me` suma `canDeleteEstablishment` (boolean) en el perfil activo.
+
+Eventos nuevos: `MerchantLeft { accountId, establishmentId }` (identity devuelve el rol) y `MerchantEstablishmentDeleted { establishmentId }` (establishments retira la tienda). Los precios y las promociones se retiran con los mismos eventos de la revocación. Detalle en `docs/adr/0040-dejar-y-eliminar-la-tienda-por-el-propio-comercio.md`.
+
 ## Denuncias, disputas y revocación (D2, D3)
 
 | Ruta | Quién | Qué |
 |---|---|---|
 | `POST /v1/establishments/{establishmentId}/merchant-reports` | Cualquier cuenta con sesión | «Este comercio no es de quien dice», con motivo de 10 a 500 caracteres. `202` |
-| `GET /v1/moderation/merchant-cases` | Moderador | Disputas (dos cuentas por la misma tienda) y denuncias pendientes |
-| `POST /v1/moderation/merchant-cases/{caseId}/decision` | Moderador | `revocar` o `descartar`, con motivo. Revocar retira al instante precios y promociones y devuelve la cuenta a `reportante` |
+| `GET /v1/moderation/merchant-cases` | Moderador | Disputas (dos cuentas por la misma tienda), denuncias y reclamos pendientes. `kind`: `denuncia`, `disputa` o `reclamo` (ADR-038); en el reclamo, `owner.status` es `pre_aprobado` |
+| `POST /v1/moderation/merchant-cases/{caseId}/decision` | Moderador | Con motivo. Denuncia y disputa: `revocar` (retira al instante precios y promociones y devuelve la cuenta a `reportante`) o `descartar`. Reclamo: `aprobar` (verifica y concede el rol `comercio`) o `rechazar` (cierra la solicitud con el motivo; `GET /commerce/me` responde `rechazado`). Una decisión que no corresponde al tipo: `422 DECISION_NOT_APPLICABLE` |
+
+### Tarjetas de moderación con contexto (H5, H18 y H25 del informe de QA del 24-nov-2026)
+
+Cambios **aditivos**: ningún campo cambia de nombre, tipo ni significado.
+
+**`GET /v1/moderation/merchant-cases`**
+
+| `kind` | Campos nuevos |
+|---|---|
+| `disputa` | `challenger: { responsibleName, phone, nit?, requestedAt } \| null`. Quien disputa. `requestedAt` es cuándo se abrió la disputa. `null` en las disputas anteriores a este cambio (sus datos no se guardaban) y si la cuenta que disputó se eliminó |
+| `denuncia` | `reportCount` (denuncias abiertas sobre la tienda, contando esta), `distinctReporters` (número de cuentas distintas) y `firstReportedAt` (la más antigua abierta). Se repiten en cada denuncia de la tienda |
+| `reclamo` | Ninguno: `owner` ya es el solicitante (`status: pre_aprobado`, responsable, teléfono y NIT) y `createdAt` la fecha del reclamo |
+
+```json
+{
+  "kind": "disputa",
+  "owner": { "responsibleName": "Rosa Gómez", "nit": null, "phone": "3001234567", "status": "verificado", "verifiedAt": "2026-11-21T15:00:00.000Z" },
+  "challenger": { "responsibleName": "Luis Ramírez", "phone": "3157654321", "requestedAt": "2026-11-23T09:30:00.000Z" }
+}
+```
+
+**`GET /v1/moderation/store-proposals`.** Las propuestas (`kind: tienda`) que nacen de un reclamo de comercio traen `claim: { responsibleName, phone, nit?, grantsMerchantRole: true }`. Aprobarlas (o fusionarlas con una tienda sin dueño) verifica al solicitante y le da el rol `comercio`; la interfaz debe decirlo antes de decidir. Las propuestas sin reclamo y las correcciones no cambian: el campo no está. `establishments` no lee tablas de `commerce`: expone el puerto `ProposalClaims` en su `index.ts` y `commerce` registra ahí su fuente al arrancar.
+
+**`GET /v1/moderation/queue`** (reliability). `deviationDirection: "menor" | "mayor"` junto a `deviationPercent`, que sigue sin signo. No está sin mediana o si el precio es igual a ella.
+
+**Datos que se guardan.** Los de quien disputa van en `commerce.dispute_challengers` (migración 0049) solo mientras el caso está pendiente: se borran al descartar, al revocar y al eliminar la cuenta. Si la misma cuenta reintenta con la disputa abierta, no se abre otra ni se cambian los datos.
 
 ## Avisos para el comercio (ADR-008, D4)
 

@@ -1,4 +1,5 @@
 import type { DomainEvent } from '../../../shared/events';
+import type { MerchantCase } from './merchant-cases';
 
 // D2 y D3 del grill comercial: la solicitud con la que una cuenta se vuelve dueña de una tienda.
 // No guarda la ubicación del celular: solo sirvió para comprobar la presencia (EC-08).
@@ -15,7 +16,18 @@ export interface MerchantClaim {
   status: 'pre_aprobado' | 'verificado';
   // null mientras está pre-aprobado.
   verifiedAt: Date | null;
+  // H36 (ADR-040): la tienda la creó esta cuenta con su reclamo (newEstablishment). Ausente es false.
+  createdEstablishment?: boolean;
 }
+
+// D2: lo que el comercio podrá hacer cuando se apruebe su tienda.
+export const PRE_APPROVED_UNLOCKS = [
+  'precios_oficiales',
+  'carga_por_archivo',
+  'promociones',
+  'avisos_de_precio',
+  'datos_de_la_tienda',
+] as const;
 
 // Puerto hacia el esquema commerce.
 export interface MerchantClaimRepository {
@@ -27,8 +39,9 @@ export interface MerchantClaimRepository {
   wasRevokedFrom(accountId: string, establishmentId: string): Promise<boolean>;
   // La solicitud de la cuenta, o null si no tiene tienda.
   findByAccount(accountId: string): Promise<MerchantClaim | null>;
-  // La solicitud y sus eventos se confirman juntos o no se guarda ninguno (ADR-015).
-  save(claim: MerchantClaim, events: DomainEvent[]): Promise<void>;
+  // La solicitud, sus eventos y, si lo hay, el caso de reclamo para el moderador (H11) se confirman
+  // juntos o no se guarda ninguno (ADR-015).
+  save(claim: MerchantClaim, events: DomainEvent[], reviewCase?: MerchantCase): Promise<void>;
 }
 
 // Solicitud cerrada porque su tienda propuesta no se aprobó: sale de las activas, así la cuenta puede

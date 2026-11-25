@@ -11,3 +11,11 @@ export {
   type InitialPricesResult,
   SeedInitialPrices,
 } from './application/initial-prices';
+
+export { PreviewOlimpica } from './application/preview-olimpica';
+export { OlimpicaVtex } from './infrastructure/olimpica-vtex';
+
+export { applyOlimpica, type OnlineObservation } from './application/apply-olimpica';
+export { OlimpicaObservations } from './infrastructure/olimpica-observations';
+
+export { ONLINE_OFFERS_ENABLED } from './application/list-online-offers';

@@ -7,6 +7,7 @@ import { configureApp } from '../../src/app.setup';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
+import { contractErrors } from '../support/contract';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Tienda de prueba: solo existe dentro de esta prueba.
@@ -56,7 +57,7 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.role_changes, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.merchant_claim_rejections`,
+      sql`truncate identity.role_changes, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.merchant_claim_rejections, commerce.merchant_cases, commerce.dispute_challengers`,
     );
     // Cada prueba empieza con los reportantes sin tienda.
     await db.execute(sql`update identity.accounts set role = 'reportante' where role = 'comercio'`);
@@ -89,6 +90,7 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
       responsibleName: 'Rosa Gómez',
       informal: false,
       verifiedAt: expect.any(String) as unknown,
+      canDeleteEstablishment: false,
     });
   });
 
@@ -196,6 +198,47 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
       });
     });
 
+    // H5: el moderador sabe que aprobar esta tienda verifica a una cuenta, y a quién.
+    it('la cola de tiendas trae al responsable solo en la propuesta que nace de un reclamo (H5)', async () => {
+      const { establishmentId } = (await claim(rosa, newStoreBody).expect(201)).body as {
+        establishmentId: string;
+      };
+      const plain = await request(server)
+        .post('/v1/establishment-proposals')
+        .set('Cookie', ana.cookie)
+        .set('X-CSRF-Token', ana.csrfToken)
+        .send({ name: 'Granero La Vecina', type: 'barrio', municipality: 'cordoba', ...HERE })
+        .expect(202);
+
+      const queue = await request(server)
+        .get('/v1/moderation/store-proposals')
+        .set('Cookie', moderator.cookie)
+        .expect(200);
+
+      const items = (queue.body as { items: { id: string; claim?: object }[] }).items;
+      expect(items.find((item) => item.id === establishmentId)?.claim).toEqual({
+        responsibleName: 'Luis Ramírez',
+        phone: '3157654321',
+        grantsMerchantRole: true,
+      });
+      expect(
+        items.find((item) => item.id === (plain.body as { id: string }).id),
+      ).not.toHaveProperty('claim');
+      expect(contractErrors('GET /moderation/store-proposals', 200, queue.body as unknown)).toEqual(
+        [],
+      );
+      // EC-08: ni la cuenta, ni el correo, ni la clave seudónima.
+      const secrets = await db.execute<{ secret: string }>(
+        sql`select id::text as secret from identity.accounts
+            union select email from identity.accounts
+            union select reporter_key from identity.accounts where reporter_key is not null
+            union select proposer_key from establishments.store_proposals`,
+      );
+      expect(secrets.rows.length).toBeGreaterThan(2);
+      const text = JSON.stringify(queue.body);
+      for (const { secret } of secrets.rows) expect(text).not.toContain(secret);
+    });
+
     it('al rechazarse la tienda ve el motivo y puede registrar otra', async () => {
       const luis = rosa;
       const { establishmentId } = (await claim(luis, newStoreBody).expect(201)).body as {
@@ -214,6 +257,39 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
       await claim(luis).expect(201);
     });
 
+    it('422 CHAIN_STORE_NOT_CLAIMABLE si la tienda nueva es de cadena (H11); no deja propuesta ni solicitud', async () => {
+      for (const [name, type] of [
+        ['D1', 'barrio'],
+        ['Éxito Express', 'minimercado'],
+        ['Tienda cualquiera', 'descuento'],
+      ]) {
+        const response = await claim(rosa, {
+          ...newStoreBody,
+          newEstablishment: { ...newStoreBody.newEstablishment, name, type },
+        });
+
+        expect([response.status, (response.body as { code: string }).code]).toEqual([
+          422,
+          'CHAIN_STORE_NOT_CLAIMABLE',
+        ]);
+      }
+      await me(rosa).expect(404);
+      const proposals = await db.execute(sql`select 1 from establishments.store_proposals`);
+      expect(proposals.rows).toEqual([]);
+    });
+
+    it('«Panadería D10» no es cadena: la tienda nueva queda pre_aprobado', async () => {
+      const response = await claim(rosa, {
+        ...newStoreBody,
+        newEstablishment: { ...newStoreBody.newEstablishment, name: 'Panadería D10' },
+      });
+
+      expect([response.status, (response.body as { status: string }).status]).toEqual([
+        201,
+        'pre_aprobado',
+      ]);
+    });
+
     it('400 sin tienda o con las dos formas a la vez', async () => {
       const luis = rosa;
       const { newEstablishment, ...withoutStore } = newStoreBody;
@@ -228,6 +304,183 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
       ]);
 
       expect(responses.map((response) => response.status)).toEqual([400, 400, 400]);
+    });
+  });
+
+  // H11 (ADR-037): tiendas de cadena y supermercados.
+  describe('tiendas de cadena y supermercados (H11, ADR-037)', () => {
+    const chainId = 'c0777777-7777-4777-8777-777777777777';
+    const marketId = 'c0888888-8888-4888-8888-888888888888';
+    const claimOn = (establishmentId: string, body: object = {}) => ({
+      ...claimBody,
+      establishmentId,
+      ...body,
+    });
+    const roleOf = async (as: SignedIn) =>
+      (
+        (await request(server).get('/v1/auth/session').set('Cookie', as.cookie)).body as {
+          role: string;
+        }
+      ).role;
+    const decide = (caseId: string, decision: string) =>
+      request(server)
+        .post(`/v1/moderation/merchant-cases/${caseId}/decision`)
+        .set('Cookie', moderator.cookie)
+        .set('X-CSRF-Token', moderator.csrfToken)
+        .send({ decision, note: 'Revisado por la persona moderadora' });
+    const queue = async () =>
+      (
+        (
+          await request(server)
+            .get('/v1/moderation/merchant-cases')
+            .set('Cookie', moderator.cookie)
+            .expect(200)
+        ).body as { items: { id: string; kind: string; owner: { status: string } | null }[] }
+      ).items;
+
+    beforeEach(async () => {
+      const stores = app.get(ImportEstablishments);
+      await stores.save({ id: chainId, name: 'D1 Avenida 19', type: 'descuento', ...STORE });
+      await stores.save({
+        id: marketId,
+        name: 'Supermercado Laureles',
+        type: 'supermercado',
+        ...STORE,
+      });
+    });
+
+    it('422 CHAIN_STORE_NOT_CLAIMABLE en una tienda de cadena, también lejos de ella; no hay rol, ni solicitud, ni caso', async () => {
+      const near = await claim(rosa, claimOn(chainId));
+      const far = await claim(rosa, claimOn(chainId, { location: { lat: 4.6, lng: -75.6 } }));
+
+      for (const response of [near, far]) {
+        expect([response.status, response.body]).toEqual([
+          422,
+          { code: 'CHAIN_STORE_NOT_CLAIMABLE', message: expect.any(String) as unknown },
+        ]);
+      }
+      expect(contractErrors('POST /commerce/claims', 422, near.body as unknown)).toEqual([]);
+      await me(rosa).expect(404);
+      expect(await queue()).toEqual([]);
+    });
+
+    it('la cadena se rechaza aunque ya tenga dueño: no abre disputa', async () => {
+      await db.execute(
+        sql`insert into commerce.merchant_claims (account_id, establishment_id, responsible_name, informal, phone, accepted_terms_version, status, verified_at) values (${ana.accountId}, ${chainId}, 'Dueño anterior', true, '3001234567', '2026-11', 'verificado', now())`,
+      );
+
+      await claim(rosa, claimOn(chainId)).expect(422);
+
+      expect(await queue()).toEqual([]);
+    });
+
+    it('401 sin sesión y 403 sin correo verificado van antes que la regla de cadena', async () => {
+      const responses = await Promise.all([
+        claim(null, claimOn(chainId)),
+        claim(unverified, claimOn(chainId)),
+      ]);
+
+      expect(responses.map((response) => response.status)).toEqual([401, 403]);
+    });
+
+    it('un supermercado que no es cadena queda pre_aprobado, sin rol, con un caso de reclamo', async () => {
+      const response = await claim(rosa, claimOn(marketId)).expect(201);
+
+      expect(response.body).toEqual({
+        status: 'pre_aprobado',
+        establishmentId: marketId,
+        unlocks: expect.arrayContaining(['precios_oficiales']) as unknown,
+      });
+      expect(contractErrors('POST /commerce/claims', 201, response.body as unknown)).toEqual([]);
+      await app.get(OutboxRelay).runOnce();
+      expect(await roleOf(rosa)).toBe('reportante');
+      const profile = await me(rosa).expect(200);
+      expect(profile.body).toMatchObject({
+        status: 'pre_aprobado',
+        establishment: { id: marketId, name: 'Supermercado Laureles' },
+        verifiedAt: null,
+      });
+      expect(contractErrors('GET /commerce/me', 200, profile.body as unknown)).toEqual([]);
+      const items = await queue();
+      expect(items).toEqual([
+        expect.objectContaining({
+          kind: 'reclamo',
+          owner: expect.objectContaining({ status: 'pre_aprobado' }) as unknown,
+        }),
+      ]);
+      expect(JSON.stringify(items)).not.toContain(rosa.accountId);
+    });
+
+    it('lejos de un supermercado sigue el 422 NOT_AT_ESTABLISHMENT', async () => {
+      const far = await claim(
+        rosa,
+        claimOn(marketId, { location: { lat: 4.5349, lng: -75.6811 } }),
+      );
+
+      expect([far.status, (far.body as { code: string }).code]).toEqual([
+        422,
+        'NOT_AT_ESTABLISHMENT',
+      ]);
+      expect(await queue()).toEqual([]);
+    });
+
+    it('otra cuenta que reclama el supermercado pre-aprobado abre la disputa de siempre (409)', async () => {
+      await claim(rosa, claimOn(marketId)).expect(201);
+
+      const second = await claim(pedro, claimOn(marketId)).expect(409);
+
+      expect((second.body as { code: string }).code).toBe('ESTABLISHMENT_HAS_OWNER');
+      expect((await queue()).map((item) => item.kind).sort()).toEqual(['disputa', 'reclamo']);
+    });
+
+    it('aprobar el reclamo lo verifica y concede el rol de comercio', async () => {
+      await claim(rosa, claimOn(marketId)).expect(201);
+      const [item] = await queue();
+
+      await decide(item?.id ?? '', 'aprobar').expect(204);
+      await app.get(OutboxRelay).runOnce();
+
+      expect(await roleOf(rosa)).toBe('comercio');
+      expect((await me(rosa).expect(200)).body).toMatchObject({ status: 'verificado' });
+      expect(await queue()).toEqual([]);
+      await decide(item?.id ?? '', 'aprobar').expect(404);
+    });
+
+    it('rechazar el reclamo cierra la solicitud con el motivo y deja a la cuenta como reportante', async () => {
+      await claim(rosa, claimOn(marketId)).expect(201);
+      const [item] = await queue();
+
+      await decide(item?.id ?? '', 'rechazar').expect(204);
+      await app.get(OutboxRelay).runOnce();
+
+      expect(await roleOf(rosa)).toBe('reportante');
+      expect((await me(rosa).expect(200)).body).toEqual({
+        status: 'rechazado',
+        reason: 'Revisado por la persona moderadora',
+        rejectedAt: expect.any(String) as unknown,
+      });
+      expect(await queue()).toEqual([]);
+    });
+
+    it('422 DECISION_NOT_APPLICABLE si la decisión no corresponde al tipo de caso; 400 con una decisión desconocida', async () => {
+      await claim(rosa, claimOn(marketId)).expect(201);
+      const [item] = await queue();
+
+      const wrong = await decide(item?.id ?? '', 'revocar');
+      const unknown = await decide(item?.id ?? '', 'perdonar');
+
+      expect([wrong.status, (wrong.body as { code: string }).code]).toEqual([
+        422,
+        'DECISION_NOT_APPLICABLE',
+      ]);
+      expect(unknown.status).toBe(400);
+      expect(await queue()).toHaveLength(1);
+    });
+
+    it('barrio: sigue verificándose al instante', async () => {
+      const response = await claim(rosa).expect(201);
+
+      expect(response.body).toEqual({ status: 'verificado', establishmentId: storeId });
     });
   });
 });

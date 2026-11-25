@@ -30,6 +30,7 @@ import {
   ClaimProposedEstablishment,
   type ProposedClaimResult,
 } from '../application/claim-proposed-establishment';
+import { LeaveEstablishment, type LeaveResult } from '../application/leave-establishment';
 import { MerchantProfile, type MerchantProfileView } from '../application/merchant-profile';
 import { ClaimEstablishmentDto } from './merchant.dto';
 
@@ -40,13 +41,14 @@ export class MerchantController {
     private readonly claimEstablishment: ClaimEstablishment,
     private readonly claimProposedEstablishment: ClaimProposedEstablishment,
     private readonly merchantProfile: MerchantProfile,
+    private readonly leaveEstablishment: LeaveEstablishment,
   ) {}
 
   @Post('claims')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(SessionGuard, VerifiedEmailGuard)
   @Roles('reportante')
-  // NOT_AT_ESTABLISHMENT es un DomainError: el filtro de errores responde 422.
+  // NOT_AT_ESTABLISHMENT y CHAIN_STORE_NOT_CLAIMABLE son DomainError: el filtro de errores responde 422.
   async claim(
     @Body() body: ClaimEstablishmentDto,
     @CurrentSession() session: AuthenticatedSession,
@@ -102,5 +104,15 @@ export class MerchantController {
     const profile = await this.merchantProfile.find(session.accountId);
     if (!profile) throw new NotFoundException();
     return profile;
+  }
+
+  // H36 (ADR-040): la propia cuenta deja de administrar su tienda. También el reportante: la cuenta
+  // pre-aprobada lo es, y repetir la llamada tras el cambio de rol responde sin_tienda.
+  @Post('me/leave')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(SessionGuard)
+  @Roles('reportante', 'comercio')
+  leave(@CurrentSession() session: AuthenticatedSession): Promise<LeaveResult> {
+    return this.leaveEstablishment.execute(session.accountId);
   }
 }

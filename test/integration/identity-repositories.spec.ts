@@ -116,6 +116,7 @@ describe('repositorios de identity', () => {
       revokedAt: null,
       role: 'reportante',
       accountSuspendedUntil: null,
+      accountSuspensionReason: null,
       accountEmailVerifiedAt: null,
       accountHasPassword: true,
     });
@@ -156,7 +157,7 @@ describe('repositorios de identity', () => {
     const until = new Date('2026-11-21T14:00:00Z');
     const at = new Date('2026-11-14T14:00:00Z');
 
-    await accounts.suspend(ana.id, until);
+    await accounts.suspend(ana.id, until, 'observada_por_moderacion');
     await sessions.revokeAllOf(ana.id, at);
 
     await expect(accounts.byReporterKey('f'.repeat(64))).resolves.toEqual({
@@ -165,7 +166,10 @@ describe('repositorios de identity', () => {
     });
     await expect(accounts.byReporterKey('e'.repeat(64))).resolves.toBeNull();
     for (const tokenHash of [session.tokenHash, 'c'.repeat(64)]) {
-      await expect(sessions.findByTokenHash(tokenHash)).resolves.toMatchObject({ revokedAt: at });
+      await expect(sessions.findByTokenHash(tokenHash)).resolves.toMatchObject({
+        revokedAt: at,
+        accountSuspensionReason: 'observada_por_moderacion',
+      });
     }
   });
 

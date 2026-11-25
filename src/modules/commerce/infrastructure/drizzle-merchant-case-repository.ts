@@ -4,8 +4,9 @@ import type {
   MerchantCase,
   MerchantCaseDecisionRecord,
   MerchantCaseRepository,
+  NewDisputeChallenger,
 } from '../application/merchant-cases';
-import { merchantCases } from './schema';
+import { disputeChallengers, merchantCases } from './schema';
 
 export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
   constructor(private readonly db: NodePgDatabase) {}
@@ -24,18 +25,38 @@ export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
     return found !== undefined;
   }
 
-  async open(merchantCase: MerchantCase): Promise<void> {
-    await this.db.insert(merchantCases).values(merchantCase);
+  async open(merchantCase: MerchantCase, challenger?: NewDisputeChallenger): Promise<void> {
+    const { id, establishmentId, kind, reporterKey, reason, createdAt } = merchantCase;
+    await this.db.transaction(async (tx) => {
+      await tx
+        .insert(merchantCases)
+        .values({ id, establishmentId, kind, reporterKey, reason, createdAt });
+      if (challenger) {
+        await tx.insert(disputeChallengers).values({ caseId: id, establishmentId, ...challenger });
+      }
+    });
   }
 
   // Los pendientes, el más antiguo primero.
   async pending(): Promise<MerchantCase[]> {
+    // La cuenta de quien disputa no se lee: no hace falta para decidir (EC-08).
     const rows = await this.db
-      .select(caseColumns)
+      .select({
+        ...caseColumns,
+        challenger: {
+          responsibleName: disputeChallengers.responsibleName,
+          nit: disputeChallengers.nit,
+          phone: disputeChallengers.phone,
+        },
+      })
       .from(merchantCases)
+      .leftJoin(disputeChallengers, eq(disputeChallengers.caseId, merchantCases.id))
       .where(eq(merchantCases.status, 'pendiente'))
       .orderBy(asc(merchantCases.createdAt));
-    return rows.map(toCase);
+    return rows.map(({ challenger, ...row }) => ({
+      ...toCase(row),
+      ...(challenger ? { challenger } : {}),
+    }));
   }
 
   async findPending(caseId: string): Promise<MerchantCase | null> {
@@ -47,15 +68,19 @@ export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
   }
 
   async close(record: MerchantCaseDecisionRecord): Promise<void> {
-    await this.db
-      .update(merchantCases)
-      .set({
-        status: record.status,
-        note: record.note,
-        moderatorKey: record.moderatorKey,
-        decidedAt: record.decidedAt,
-      })
-      .where(and(eq(merchantCases.id, record.caseId), eq(merchantCases.status, 'pendiente')));
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(merchantCases)
+        .set({
+          status: record.status,
+          note: record.note,
+          moderatorKey: record.moderatorKey,
+          decidedAt: record.decidedAt,
+        })
+        .where(and(eq(merchantCases.id, record.caseId), eq(merchantCases.status, 'pendiente')));
+      // H18: decidido el caso, los datos de quien disputó ya no hacen falta.
+      await tx.delete(disputeChallengers).where(eq(disputeChallengers.caseId, record.caseId));
+    });
   }
 }
 

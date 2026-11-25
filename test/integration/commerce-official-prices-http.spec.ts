@@ -8,6 +8,7 @@ import { ImportCatalog } from '../../src/modules/catalog';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
+import { seedReferencePrices } from '../support/reference-prices';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Datos de prueba: solo existen dentro de esta prueba.
@@ -31,7 +32,7 @@ describe('precios oficiales por HTTP (RF-016, #203)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.official_prices, shared.outbox, shared.processed_events, establishments.establishments, catalog.presentations, catalog.products, catalog.product_aliases`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.official_prices, commerce.official_price_reviews, reliability.official_reviews, comparison.price_current, shared.outbox, shared.processed_events, establishments.establishments, catalog.presentations, catalog.products, catalog.product_aliases`,
     );
     await app.get(ImportEstablishments).save({
       id: storeId,
@@ -48,6 +49,13 @@ describe('precios oficiales por HTTP (RF-016, #203)', () => {
       presentations: [
         { id: riceId, quantity: 500, unit: 'g', packCount: 1, barcode: '7702511999014' },
       ],
+    });
+    // ADR-037: el precio oficial se compara con otras tres tiendas del municipio.
+    await seedReferencePrices(app, {
+      idPrefix: 'c1000001',
+      presentationIds: [riceId],
+      priceCop: 2600,
+      near: STORE,
     });
     // Un comercio verificado: registra su tienda estando en ella (B1) y recibe el rol.
     merchant = await signIn(server, db, 'oficiales@correo.com');
@@ -72,7 +80,7 @@ describe('precios oficiales por HTTP (RF-016, #203)', () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`truncate commerce.official_prices`);
+    await db.execute(sql`truncate commerce.official_prices, commerce.official_price_reviews`);
   });
 
   const send = (method: 'put' | 'post', path: string, as: SignedIn | null, body?: object) => {
@@ -94,9 +102,24 @@ describe('precios oficiales por HTTP (RF-016, #203)', () => {
       presentationId: riceId,
       priceCop: 2600,
       confirmedAt: expect.any(String) as unknown,
+      status: 'vigente',
     });
     const mine = await list(merchant).expect(200).expect('Cache-Control', 'private, no-store');
-    expect(mine.body).toEqual({ items: [{ ...(response.body as object), freshness: 'vigente' }] });
+    expect(mine.body).toEqual({
+      items: [
+        {
+          establishmentId: storeId,
+          presentationId: riceId,
+          // H3: del catálogo canónico, sin esperar a la lista pública.
+          productName: 'Arroz de los oficiales Marca de prueba',
+          presentationLabel: '500 g',
+          priceCop: 2600,
+          confirmedAt: expect.any(String) as unknown,
+          freshness: 'vigente',
+        },
+      ],
+      inReview: [],
+    });
   });
 
   it('«Todos mis precios siguen igual» responde cuántos reconfirmó', async () => {
@@ -156,6 +179,7 @@ describe('precios oficiales por HTTP (RF-016, #203)', () => {
 
       expect(first.body).toEqual({
         published: 1,
+        inReview: [],
         errors: [
           {
             row: 3,

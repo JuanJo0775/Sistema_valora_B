@@ -8,11 +8,15 @@ import type {
   NewAccount,
   Role,
   RoleChange,
+  SuspensionReason,
 } from '../application/account-repository';
+import type { DisplayNameWriter } from '../application/change-own-display-name';
 import type { DisplayNames } from '../application/own-display-name';
 import { accounts, roleChanges } from './schema';
 
-export class DrizzleAccountRepository implements AccountRepository, AccountCreation, DisplayNames {
+export class DrizzleAccountRepository
+  implements AccountRepository, AccountCreation, DisplayNames, DisplayNameWriter
+{
   // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
   constructor(private readonly db: NodePgDatabase | Transaction) {}
 
@@ -41,6 +45,16 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
     return found?.displayName ?? null;
   }
 
+  // La persona cambia su propio nombre; false si la cuenta ya no existe.
+  async changeDisplayName(accountId: string, displayName: string): Promise<boolean> {
+    const updated = await this.db
+      .update(accounts)
+      .set({ displayName })
+      .where(eq(accounts.id, accountId))
+      .returning({ id: accounts.id });
+    return updated.length > 0;
+  }
+
   // Grill de la #31, pregunta 2: el día de creación de la cuenta, para la identidad seudónima.
   async createdAtOf(accountId: string): Promise<Date> {
     const [found] = await this.db
@@ -65,8 +79,15 @@ export class DrizzleAccountRepository implements AccountRepository, AccountCreat
     return found ?? null;
   }
 
-  async suspend(accountId: string, until: Date | null): Promise<void> {
-    await this.db.update(accounts).set({ suspendedUntil: until }).where(eq(accounts.id, accountId));
+  async suspend(
+    accountId: string,
+    until: Date | null,
+    reason: SuspensionReason | null,
+  ): Promise<void> {
+    await this.db
+      .update(accounts)
+      .set({ suspendedUntil: until, suspensionReason: reason })
+      .where(eq(accounts.id, accountId));
   }
 
   // B9 (#209): solo identity conoce el correo; null si no está verificado o la cuenta no existe.

@@ -1,5 +1,5 @@
 import { isSessionActive, needsTouch } from '../../../domain/session-lifetime';
-import type { Role } from './account-repository';
+import type { Role, SuspensionReason } from './account-repository';
 import type { Clock } from './clock';
 import type { SessionRepository } from './session-repository';
 import { hashSessionToken } from './session-token';
@@ -23,6 +23,8 @@ export interface ActiveSession {
   hasPassword: boolean;
   // Grill de la #71, pregunta 5: solo si la cuenta está suspendida; la sesión queda limitada.
   suspendedUntil?: Date;
+  // H33: la causa de la suspensión, solo si la cuenta está suspendida.
+  suspensionReason?: SuspensionReason;
 }
 
 export class ResolveSession {
@@ -42,7 +44,12 @@ export class ResolveSession {
       emailVerified: session.accountEmailVerifiedAt !== null,
       createdAt: session.createdAt,
       hasPassword: session.accountHasPassword,
-      ...(suspendedUntil && suspendedUntil > now ? { suspendedUntil } : {}),
+      ...(suspendedUntil && suspendedUntil > now
+        ? {
+            suspendedUntil,
+            suspensionReason: session.accountSuspensionReason ?? 'no_registrada',
+          }
+        : {}),
     };
   }
 }

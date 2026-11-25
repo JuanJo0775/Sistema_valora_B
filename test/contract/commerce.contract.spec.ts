@@ -9,11 +9,14 @@ import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { OutboxRelay } from '../../src/shared/events';
 import { contractErrors } from '../support/contract';
+import { seedReferencePrices } from '../support/reference-prices';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 // Datos de prueba: solo existen dentro de esta prueba.
 const storeId = 'c0777777-7777-4777-8777-777777777777';
 const riceId = 'c0777777-7777-4777-8777-aaaaaaaaaaaa';
+// Sin precios de referencia: un precio oficial suyo queda en revisión (ADR-037).
+const oilId = 'c0777777-7777-4777-8777-cccccccccccc';
 const STORE = { lat: 4.5339, lng: -75.6811 };
 const claimBody = {
   establishmentId: storeId,
@@ -37,7 +40,7 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.official_prices, catalog.presentations, catalog.products, catalog.product_aliases`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.official_prices, commerce.official_price_reviews, reliability.official_reviews, comparison.price_current, catalog.presentations, catalog.products, catalog.product_aliases`,
     );
     await app.get(ImportEstablishments).save({
       id: storeId,
@@ -53,7 +56,15 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
       aliases: [],
       presentations: [
         { id: riceId, quantity: 500, unit: 'g', packCount: 1, barcode: '7702511777014' },
+        { id: oilId, quantity: 1000, unit: 'g', packCount: 1, barcode: '7707211777016' },
       ],
+    });
+    // ADR-037: el arroz tiene tres tiendas de referencia; el aceite, ninguna.
+    await seedReferencePrices(app, {
+      idPrefix: 'c0777778',
+      presentationIds: [riceId],
+      priceCop: 2600,
+      near: STORE,
     });
   });
 
@@ -107,7 +118,8 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     const foreign = await request(server).get(eligibility).set('Cookie', other.cookie).expect(200);
     await request(server).get(eligibility).expect(401);
     expect(own.body).toEqual({ canReport: false });
-    expect(foreign.body).toEqual({ canReport: true });
+    // `other` ya intentó registrar la tienda y quedó una disputa abierta suya (el POST también la rechazaría).
+    expect(foreign.body).toEqual({ canReport: false, alreadyReported: true });
     expect(foreign.headers['cache-control']).toBe('private, no-store');
     expect(
       contractErrors(
@@ -139,6 +151,13 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     const created = await claim(luis, newStore);
     const preApproved = await me(luis);
     const { establishmentId } = created.body as { establishmentId: string };
+    // H5: la propuesta que nace del reclamo trae al responsable y avisa que concede el rol.
+    const proposals = await request(server)
+      .get('/v1/moderation/store-proposals')
+      .set('Cookie', moderator.cookie);
+    expect(proposals.body).toMatchObject({
+      items: [{ id: establishmentId, claim: { grantsMerchantRole: true } }],
+    });
     await request(server)
       .post(`/v1/moderation/store-proposals/${establishmentId}/decision`)
       .set('Cookie', moderator.cookie)
@@ -152,8 +171,9 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
       ['POST /commerce/claims', 201, created],
       ['GET /commerce/me', 200, preApproved],
       ['GET /commerce/me', 200, rejected],
+      ['GET /moderation/store-proposals', 200, proposals],
     ] as const;
-    expect(responses.map(([, , response]) => response.status)).toEqual([201, 200, 200]);
+    expect(responses.map(([, , response]) => response.status)).toEqual([201, 200, 200, 200]);
     expect((rejected.body as { status: string }).status).toBe('rechazado');
     expect(
       responses.flatMap(([route, status, response]) =>
@@ -194,6 +214,17 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
         422,
         await send('put', '/commerce/prices', { presentationId: riceId, priceCop: 50 }),
       ],
+      // ADR-037 (H19): claramente fuera de rango se rechaza; sin referencia queda en revisión.
+      [
+        'PUT /commerce/prices',
+        422,
+        await send('put', '/commerce/prices', { presentationId: riceId, priceCop: 52_000 }),
+      ],
+      [
+        'PUT /commerce/prices',
+        200,
+        await send('put', '/commerce/prices', { presentationId: oilId, priceCop: 8900 }),
+      ],
       [
         'PUT /commerce/prices',
         400,
@@ -205,7 +236,11 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
         await request(server).get('/v1/commerce/prices').set('Cookie', owner.cookie),
       ],
       ['POST /commerce/prices/reconfirm', 200, await send('post', '/commerce/prices/reconfirm')],
-      ['POST /commerce/prices/bulk', 200, await bulk(['7702511777014;2600', '1;2600'])],
+      [
+        'POST /commerce/prices/bulk',
+        200,
+        await bulk(['7702511777014;300', '1;2600', '7707211777016;8900']),
+      ],
       ['POST /commerce/prices/bulk', 400, await bulk([], '7702511777014;2600')],
       [
         'POST /commerce/prices/bulk',
@@ -217,6 +252,56 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
         401,
         await request(server).post('/v1/commerce/prices/reconfirm'),
       ],
+    ] as const;
+
+    expect(responses.map(([, status, response]) => [status, response.status])).toEqual(
+      responses.map(([, status]) => [status, status]),
+    );
+    expect(
+      responses.flatMap(([route, status, response]) =>
+        contractErrors(route, status, response.body as unknown),
+      ),
+    ).toEqual([]);
+  });
+
+  it('dejar y eliminar la tienda responden como dice el contrato (ADR-040)', async () => {
+    const owner = await signIn(server, db, 'contrato-salida@correo.com');
+    const moderator = await signIn(
+      server,
+      db,
+      'contrato-moderadora-salida@correo.com',
+      'moderador',
+    );
+    await db.execute(sql`truncate commerce.merchant_claims, establishments.store_proposals`);
+    await claim(owner).expect(201);
+    await app.get(OutboxRelay).runOnce();
+    const send = (as: SignedIn, method: 'post' | 'delete', path: string) =>
+      request(server)
+        [method](`/v1${path}`)
+        .set('Cookie', as.cookie)
+        .set('X-CSRF-Token', as.csrfToken);
+
+    const responses = [
+      // La tienda del catálogo no la creó la cuenta.
+      [
+        'DELETE /commerce/establishment',
+        403,
+        await send(owner, 'delete', '/commerce/establishment'),
+      ],
+      ['POST /commerce/me/leave', 200, await send(owner, 'post', '/commerce/me/leave')],
+      ['POST /commerce/me/leave', 200, await send(owner, 'post', '/commerce/me/leave')],
+      [
+        'DELETE /commerce/establishment',
+        404,
+        await send(owner, 'delete', '/commerce/establishment'),
+      ],
+      ['POST /commerce/me/leave', 401, await request(server).post('/v1/commerce/me/leave')],
+      [
+        'DELETE /commerce/establishment',
+        401,
+        await request(server).delete('/v1/commerce/establishment'),
+      ],
+      ['POST /commerce/me/leave', 403, await send(moderator, 'post', '/commerce/me/leave')],
     ] as const;
 
     expect(responses.map(([, status, response]) => [status, response.status])).toEqual(

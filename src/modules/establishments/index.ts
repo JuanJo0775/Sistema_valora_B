@@ -5,10 +5,18 @@ export {
   type EstablishmentImport,
 } from './application/import-establishments';
 export { EstablishmentExists } from './application/establishment-exists';
+// H36 (ADR-040): comparison deja fuera del historial las tiendas retiradas.
+export { RetiredEstablishments } from './application/retired-establishments';
 export { EstablishmentDetails } from './application/establishment-details';
 // D2 del grill comercial: commerce propone la tienda de un comercio y muestra su nombre mientras espera.
 export { ProposeStore } from './application/propose-store';
 export { PendingStoreProposalName } from './application/pending-store-proposal-name';
+// H5: puerto por el que commerce dice qué propuestas nacen de un reclamo.
+export {
+  ProposalClaims,
+  type ProposalClaim,
+  type ProposalClaimSource,
+} from './application/proposal-claims';
 // D5 (#207): datos del negocio para la ficha de la tienda.
 export { StoreContactOf } from './application/store-contact-of';
 export { UpdateStoreDetails } from './application/update-store-details';

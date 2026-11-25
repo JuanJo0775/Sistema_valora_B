@@ -45,7 +45,7 @@ describe('plausibilidad del precio de punta a punta (EC-03, ADR-030)', () => {
       sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.accounts`,
     );
     await db.execute(
-      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, comparison.price_history, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.appeals, reliability.official_reviews, catalog.presentations, catalog.products, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,

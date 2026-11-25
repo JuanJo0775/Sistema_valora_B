@@ -25,7 +25,18 @@ import { FlagsController } from './http/flags.controller';
 import { ModerationController } from './http/moderation.controller';
 import { MyReportsController } from './http/my-reports.controller';
 import { DrizzleModerationStore } from './infrastructure/drizzle-moderation-store';
+import { DrizzleOfficialReviewStore } from './infrastructure/drizzle-official-review-store';
 import { DrizzleObservationStore, DrizzleReputationStore } from './infrastructure/drizzle-stores';
+
+// Datos de OfficialPriceHeld versión 1 (commerce, ADR-037).
+interface OfficialPriceHeldV1 {
+  reviewId: string;
+  establishmentId: string;
+  presentationId: string;
+  priceCop: number;
+  submittedAt: string;
+  reporterKey: string;
+}
 
 // Grill de la #31, pregunta 7: radio de la zona de referencia (provisional).
 const ZONE_RADIUS_METERS = 1000;
@@ -102,7 +113,12 @@ const ZONE_RADIUS_METERS = 1000;
         labels: PresentationLabels,
         names: EstablishmentNames,
       ): ModerationQueue =>
-        new ModerationQueue({ moderation: new DrizzleModerationStore(db), labels, names }),
+        new ModerationQueue({
+          moderation: new DrizzleModerationStore(db),
+          officialReviews: new DrizzleOfficialReviewStore(db),
+          labels,
+          names,
+        }),
     },
     {
       provide: MODERATION_DECIDER,
@@ -112,6 +128,7 @@ const ZONE_RADIUS_METERS = 1000;
           db.transaction((tx) =>
             new DecideModeration({
               moderation: new DrizzleModerationStore(tx),
+              officialReviews: new DrizzleOfficialReviewStore(tx),
               observations: new DrizzleObservationStore(tx),
               reputations: new DrizzleReputationStore(tx),
               events: { publish: (event) => outbox.publish(tx, event) },
@@ -150,6 +167,32 @@ export class ReliabilityModule implements OnModuleInit {
           freshness: this.freshness,
           events: { publish: (assessed) => this.outbox.publish(tx, assessed) },
         }).execute(event.payload as unknown as PriceReportedV2);
+      },
+    );
+    // ADR-037: commerce avisa un precio oficial sin referencia; entra a la cola de moderación. Solo se
+    // conoce el nombre de los eventos de commerce, no su código (EC-05).
+    this.bus.subscribe(
+      'reliability.official_reviews',
+      'OfficialPriceHeld',
+      async (event: DomainEvent, tx: Transaction) => {
+        const held = event.payload as unknown as OfficialPriceHeldV1;
+        await new DrizzleOfficialReviewStore(tx).save({
+          reviewId: held.reviewId,
+          presentationId: held.presentationId,
+          establishmentId: held.establishmentId,
+          reporterKey: held.reporterKey,
+          priceCop: held.priceCop,
+          receivedAt: new Date(held.submittedAt),
+        });
+      },
+    );
+    // ADR-037: otro precio lo reemplazó o se retiró la tienda: sale de la cola.
+    this.bus.subscribe(
+      'reliability.official_reviews_closed',
+      'OfficialPriceReviewClosed',
+      async (event: DomainEvent, tx: Transaction) => {
+        const { reviewId } = event.payload as { reviewId: string };
+        await new DrizzleOfficialReviewStore(tx).close(reviewId);
       },
     );
     // Grill de la #29, pregunta 3 (RF-012 RN2): pricing avisa una ráfaga y sus reportes van a la cola.

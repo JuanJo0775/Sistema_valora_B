@@ -6,5 +6,7 @@ export interface PriceHistoryRepository {
     presentationIds: string[],
     since: Date,
     establishmentId?: string,
+    // H36 (ADR-040): tiendas cuyos precios se conservan pero no se muestran.
+    excludedEstablishmentIds?: string[],
   ): Promise<HistoryPrice[]>;
 }

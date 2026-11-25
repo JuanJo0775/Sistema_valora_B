@@ -1,8 +1,13 @@
 import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentType } from '../../establishments';
 import { isValidNit } from '../../../domain/merchant-claim';
-import { AccountHasEstablishmentError, InvalidNitError } from './claim-establishment';
-import type { MerchantClaimRepository } from './merchant-claims';
+import { claimPathFor } from '../../../domain/chain-store';
+import {
+  AccountHasEstablishmentError,
+  ChainStoreNotClaimableError,
+  InvalidNitError,
+} from './claim-establishment';
+import { PRE_APPROVED_UNLOCKS, type MerchantClaimRepository } from './merchant-claims';
 
 type Point = { lat: number; lng: number };
 
@@ -33,15 +38,6 @@ export interface ProposedClaimRequest {
   location: Point;
 }
 
-// D2: lo que el comercio podrá hacer cuando se apruebe su tienda.
-export const PRE_APPROVED_UNLOCKS = [
-  'precios_oficiales',
-  'carga_por_archivo',
-  'promociones',
-  'avisos_de_precio',
-  'datos_de_la_tienda',
-] as const;
-
 export interface ProposedClaimResult {
   status: 'pre_aprobado';
   establishmentId: string;
@@ -54,6 +50,9 @@ export class ClaimProposedEstablishment {
 
   async execute(request: ProposedClaimRequest): Promise<ProposedClaimResult> {
     if (request.nit !== undefined && !isValidNit(request.nit)) throw new InvalidNitError();
+    // H11 y ADR-038: nadie es dueño de una cadena, tampoco proponiéndola como tienda nueva.
+    const { name, type } = request.newEstablishment;
+    if (claimPathFor(name, type) === 'cadena') throw new ChainStoreNotClaimableError();
     const { proposals, claims } = this.ports;
     // D3: una tienda por cuenta, también mientras espera la aprobación.
     if ((await claims.establishmentOf(request.accountId)) !== null) {
@@ -74,6 +73,8 @@ export class ClaimProposedEstablishment {
         acceptedTermsVersion: request.acceptedTermsVersion,
         status: 'pre_aprobado',
         verifiedAt: null,
+        // H36 (ADR-040): solo quien crea la tienda puede eliminarla.
+        createdEstablishment: true,
       },
       [],
     );

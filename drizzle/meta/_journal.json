@@ -316,6 +316,48 @@
       "when": 1795447922368,
       "tag": "0044_identity-welcome-email",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1795538105618,
+      "tag": "0045_oficial-en-revision",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795548555064,
+      "tag": "0046_imports-olimpica-observations",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795549695732,
+      "tag": "0047_identity-suspension-reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795551589355,
+      "tag": "0048_commerce-claim-review-cases",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795569176031,
+      "tag": "0049_commerce-dispute-challengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795570612306,
+      "tag": "0050_store-retirement-and-creator",
+      "breakpoints": true
     }
   ]
 }

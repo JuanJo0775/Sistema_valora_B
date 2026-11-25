@@ -80,4 +80,48 @@ describe('denunciar un comercio (D2 y D3 del grill comercial)', () => {
     await expect(report.execute(request())).rejects.toThrow(MerchantReportOpenError);
     expect(cases).toHaveLength(1);
   });
+
+  // H31: la consulta de elegibilidad distingue «no puede» de «ya denunció».
+  describe('elegibilidad (GET merchant-reports)', () => {
+    it('una cuenta ajena a una tienda con dueño puede denunciar', async () => {
+      const { report } = setup();
+
+      expect(await report.eligibility(STORE, 'cuenta-de-ana', 'clave-de-ana')).toEqual({
+        canReport: true,
+        alreadyReported: false,
+      });
+    });
+
+    it('el dueño no puede denunciar, y no es porque ya haya denunciado', async () => {
+      const { report } = setup();
+
+      expect(await report.eligibility(STORE, 'cuenta-del-dueno', 'clave-del-dueno')).toEqual({
+        canReport: false,
+        alreadyReported: false,
+      });
+    });
+
+    it('con una denuncia abierta sobre esa tienda, no puede denunciar y ya denunció', async () => {
+      const { report } = setup();
+      await report.execute(request());
+
+      expect(await report.eligibility(STORE, 'cuenta-de-ana', 'clave-de-ana')).toEqual({
+        canReport: false,
+        alreadyReported: true,
+      });
+      expect(await report.eligibility(STORE, 'cuenta-de-luis', 'clave-de-luis')).toEqual({
+        canReport: true,
+        alreadyReported: false,
+      });
+    });
+
+    it('una tienda sin dueño no se puede denunciar', async () => {
+      const { report } = setup({});
+
+      expect(await report.eligibility(STORE, 'cuenta-de-ana', 'clave-de-ana')).toEqual({
+        canReport: false,
+        alreadyReported: false,
+      });
+    });
+  });
 });

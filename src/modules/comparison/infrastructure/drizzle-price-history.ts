@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, notInArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { HistoryPrice } from '../../../domain/price-history';
 import type { PriceHistoryRepository } from '../application/price-history-repository';
@@ -11,6 +11,7 @@ export class DrizzlePriceHistory implements PriceHistoryRepository {
     presentationIds: string[],
     since: Date,
     establishmentId?: string,
+    excludedEstablishmentIds: string[] = [],
   ): Promise<HistoryPrice[]> {
     if (presentationIds.length === 0) return [];
     return this.db
@@ -28,6 +29,9 @@ export class DrizzlePriceHistory implements PriceHistoryRepository {
           establishmentId === undefined
             ? undefined
             : eq(priceHistory.establishmentId, establishmentId),
+          excludedEstablishmentIds.length === 0
+            ? undefined
+            : notInArray(priceHistory.establishmentId, excludedEstablishmentIds),
         ),
       )
       .orderBy(asc(priceHistory.observedAt));
