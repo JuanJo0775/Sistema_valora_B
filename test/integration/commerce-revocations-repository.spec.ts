@@ -190,10 +190,9 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
 
       await claims.verify(claim.accountId, 'cb555555-5555-4555-8555-555555555555', revokedAt, []);
 
-      await expect(claims.findByAccount(claim.accountId)).resolves.toMatchObject({
-        establishmentId: 'cb555555-5555-4555-8555-555555555555',
-        createdEstablishment: false,
-      });
+      const merged = await claims.findByAccount(claim.accountId);
+      expect(merged).toMatchObject({ establishmentId: 'cb555555-5555-4555-8555-555555555555' });
+      expect(merged).not.toHaveProperty('createdEstablishment');
     });
   });
 });

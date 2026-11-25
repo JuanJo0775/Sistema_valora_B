@@ -16,10 +16,15 @@ import { merchantCases, merchantClaimRejections, merchantClaims } from './schema
 
 const UNIQUE_VIOLATION = '23505';
 
-// La restricción CHECK de la tabla garantiza el estado.
-const toClaim = (row: typeof merchantClaims.$inferSelect): MerchantClaim => ({
+// La restricción CHECK de la tabla garantiza el estado. H36: createdEstablishment solo aparece
+// cuando es verdadero (ausente es false).
+const toClaim = ({
+  createdEstablishment,
+  ...row
+}: typeof merchantClaims.$inferSelect): MerchantClaim => ({
   ...row,
   status: row.status as MerchantClaim['status'],
+  ...(createdEstablishment ? { createdEstablishment } : {}),
 });
 
 // Dos registros simultáneos pasan las comprobaciones del caso de uso; la base deja uno solo (D3).

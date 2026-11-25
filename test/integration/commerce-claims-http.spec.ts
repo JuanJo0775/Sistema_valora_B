@@ -90,6 +90,7 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
       responsibleName: 'Rosa Gómez',
       informal: false,
       verifiedAt: expect.any(String) as unknown,
+      canDeleteEstablishment: false,
     });
   });
 

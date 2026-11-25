@@ -26,7 +26,8 @@ export interface ActiveMerchantProfile {
   responsibleName: string;
   informal: boolean;
   verifiedAt: Date | null;
-  // H36 (ADR-040): si el portal puede ofrecer «eliminar la tienda» (la creó esta cuenta).
+  // H36 (ADR-040): si el portal puede ofrecer «eliminar la tienda» (la creó esta cuenta). Siempre
+  // presente en el perfil activo.
   canDeleteEstablishment: boolean;
   // Solo pre-aprobado: lo que podrá hacer cuando se apruebe su tienda (D2).
   unlocks?: typeof PRE_APPROVED_UNLOCKS;
