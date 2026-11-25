@@ -1,5 +1,5 @@
 {
-  "id": "71c15997-d855-4038-8129-564ba6f06a05",
+  "id": "8af02fee-fffd-4ef8-bd59-c1b74e78154b",
   "prevId": "7ffbb2fd-6937-46b9-9fa7-dd24fa9ace3f",
   "version": "7",
   "dialect": "postgresql",
@@ -455,6 +455,86 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.dispute_challengers": {
+      "name": "dispute_challengers",
+      "schema": "commerce",
+      "columns": {
+        "case_id": {
+          "name": "case_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "establishment_id": {
+          "name": "establishment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsible_name": {
+          "name": "responsible_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nit": {
+          "name": "nit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "dispute_challengers_account_idx": {
+          "name": "dispute_challengers_account_idx",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "dispute_challengers_establishment_idx": {
+          "name": "dispute_challengers_establishment_idx",
+          "columns": [
+            {
+              "expression": "establishment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "commerce.merchant_cases": {
       "name": "merchant_cases",
       "schema": "commerce",
@@ -684,13 +764,6 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
-        },
-        "created_establishment": {
-          "name": "created_establishment",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         }
       },
       "indexes": {
@@ -1340,19 +1413,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'activa'"
-        },
-        "retired_at": {
-          "name": "retired_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -1377,10 +1437,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "establishments_status_valid": {
-          "name": "establishments_status_valid",
-          "value": "\"establishments\".\"establishments\".\"status\" in ('activa', 'retirada')"
-        },
         "establishments_municipality_valid": {
           "name": "establishments_municipality_valid",
           "value": "municipality in ('armenia', 'buenavista', 'calarca', 'circasia', 'cordoba', 'filandia', 'genova', 'la-tebaida', 'montenegro', 'pijao', 'quimbaya', 'salento')"

@@ -148,6 +148,24 @@ export const merchantCases = commerceSchema.table(
   ],
 );
 
+// H18: los datos del responsable de quien disputa, solo mientras su caso está pendiente (se borran al
+// decidirlo y al eliminar la cuenta). La cuenta sirve para ese borrado y nunca sale en respuestas.
+export const disputeChallengers = commerceSchema.table(
+  'dispute_challengers',
+  {
+    caseId: uuid('case_id').primaryKey(),
+    establishmentId: uuid('establishment_id').notNull(),
+    accountId: uuid('account_id').notNull(),
+    responsibleName: text('responsible_name').notNull(),
+    nit: text('nit'),
+    phone: text('phone').notNull(),
+  },
+  (table) => [
+    index('dispute_challengers_account_idx').on(table.accountId),
+    index('dispute_challengers_establishment_idx').on(table.establishmentId),
+  ],
+);
+
 // B9 (#209): lo ya avisado por correo a cada comercio (un aviso por clave) y el día del correo, para
 // no repetirlo. Se borra con la cuenta (ADR-032).
 export const merchantNotices = commerceSchema.table(
