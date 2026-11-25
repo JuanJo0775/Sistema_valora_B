@@ -521,5 +521,17 @@ export class IdentityModule implements OnModuleInit {
         }).execute(payload.accountId);
       },
     );
+    // H36 (ADR-040): el comercio que deja o elimina su tienda vuelve a reportante.
+    this.bus.subscribe(
+      'identity.accounts',
+      'MerchantLeft',
+      async (event: DomainEvent, tx: Transaction) => {
+        const payload = event.payload as { accountId: string };
+        await new RevokeMerchantRole({
+          accounts: new DrizzleAccountRepository(tx),
+          clock: { now: () => new Date() },
+        }).execute(payload.accountId, 'El comercio dejó su tienda por decisión propia (ADR-040).');
+      },
+    );
   }
 }

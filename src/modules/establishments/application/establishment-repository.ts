@@ -73,6 +73,8 @@ export interface EstablishmentRepository {
     meters: number,
   ): Promise<{ id: string; name: string; distanceM: number }[]>;
   exists(establishmentId: string): Promise<boolean>;
+  // H36 (ADR-040): las tiendas retiradas.
+  retiredIds(): Promise<string[]>;
 }
 
 export const ESTABLISHMENT_REPOSITORY = Symbol('ESTABLISHMENT_REPOSITORY');

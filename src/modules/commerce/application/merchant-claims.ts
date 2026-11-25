@@ -16,6 +16,8 @@ export interface MerchantClaim {
   status: 'pre_aprobado' | 'verificado';
   // null mientras está pre-aprobado.
   verifiedAt: Date | null;
+  // H36 (ADR-040): la tienda la creó esta cuenta con su reclamo (newEstablishment). Ausente es false.
+  createdEstablishment?: boolean;
 }
 
 // D2: lo que el comercio podrá hacer cuando se apruebe su tienda.

@@ -11,13 +11,17 @@ export interface RevokeMerchantRolePorts {
 export class RevokeMerchantRole {
   constructor(private readonly ports: RevokeMerchantRolePorts) {}
 
-  async execute(accountId: string): Promise<void> {
+  // H36 (ADR-040): el mismo cambio cuando el comercio deja su tienda, con su propia nota.
+  async execute(
+    accountId: string,
+    note = 'Comercio revocado por un moderador (D3).',
+  ): Promise<void> {
     await this.ports.accounts.applyRoleChange({
       accountId,
       fromRole: 'comercio',
       toRole: 'reportante',
       changedBy: null,
-      note: 'Comercio revocado por un moderador (D3).',
+      note,
       changedAt: this.ports.clock.now(),
     });
   }

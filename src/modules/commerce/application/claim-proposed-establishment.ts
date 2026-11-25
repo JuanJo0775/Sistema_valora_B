@@ -73,6 +73,8 @@ export class ClaimProposedEstablishment {
         acceptedTermsVersion: request.acceptedTermsVersion,
         status: 'pre_aprobado',
         verifiedAt: null,
+        // H36 (ADR-040): solo quien crea la tienda puede eliminarla.
+        createdEstablishment: true,
       },
       [],
     );

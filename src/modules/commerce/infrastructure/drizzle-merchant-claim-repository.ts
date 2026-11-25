@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import {
@@ -120,7 +120,13 @@ export class DrizzleMerchantClaimRepository
     await this.db.transaction(async (tx) => {
       await tx
         .update(merchantClaims)
-        .set({ establishmentId, status: 'verificado', verifiedAt })
+        .set({
+          establishmentId,
+          status: 'verificado',
+          verifiedAt,
+          // H36 (ADR-040): si la propuesta se fusionó con otra tienda, la cuenta no creó esa.
+          createdEstablishment: sql`${merchantClaims.createdEstablishment} and ${merchantClaims.establishmentId} = ${establishmentId}`,
+        })
         .where(eq(merchantClaims.accountId, accountId));
       for (const event of events) await this.outbox.publish(tx, event);
     });

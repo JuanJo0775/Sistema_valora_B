@@ -27,6 +27,9 @@ import { ClaimEstablishment } from './application/claim-establishment';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
 import { CreatePromotion } from './application/create-promotion';
 import { DecideMerchantCase } from './application/decide-merchant-case';
+import { DeleteMyEstablishment } from './application/delete-my-establishment';
+import { LeaveEstablishment } from './application/leave-establishment';
+import type { MerchantDeparturePorts } from './application/merchant-departures';
 import { MerchantAlerts } from './application/merchant-alerts';
 import { MerchantCasesQueue } from './application/merchant-cases-queue';
 import { SendMerchantDigests } from './application/send-merchant-digests';
@@ -47,6 +50,7 @@ import { DrizzleMerchantNotices } from './infrastructure/drizzle-merchant-notice
 import { MerchantDigestScheduler } from './infrastructure/merchant-digest-scheduler';
 import { MerchantCasesController } from './http/merchant-cases.controller';
 import { DrizzleMerchantClaimReviews } from './infrastructure/drizzle-merchant-claim-reviews';
+import { DrizzleMerchantDepartures } from './infrastructure/drizzle-merchant-departures';
 import { DrizzleMerchantRevocations } from './infrastructure/drizzle-merchant-revocations';
 import { MerchantController } from './http/merchant.controller';
 import { OfficialPricesController } from './http/official-prices.controller';
@@ -65,6 +69,15 @@ const referenceOf = (plausibility: GatherPlausibilityContext): PriceReference =>
 // La clave seudónima de la cuenta (EC-08).
 const reportersOf = (identities: ReporterIdentity) => ({
   keyOf: async (accountId: string): Promise<string> => (await identities.of(accountId)).reporterKey,
+});
+
+// H36 (ADR-040): lo que necesitan dejar la tienda y eliminarla.
+const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDeparturePorts => ({
+  claims: new DrizzleMerchantClaimRepository(db, outbox),
+  prices: new DrizzleOfficialPriceRepository(db, outbox),
+  promotions: new DrizzlePromotionRepository(db, outbox),
+  departures: new DrizzleMerchantDepartures(db, outbox),
+  clock: { now: () => new Date() },
 });
 
 // EPIC-B08: comercios verificados (D1 a D8 del grill comercial). B1 (#201) y B2 (#202): registro y
@@ -230,6 +243,19 @@ const reportersOf = (identities: ReporterIdentity) => ({
           claimReviews: new DrizzleMerchantClaimReviews(db, outbox),
           clock: { now: () => new Date() },
         }),
+    },
+    // H36 (ADR-040): dejar de administrar la tienda y eliminar la tienda propia.
+    {
+      provide: LeaveEstablishment,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): LeaveEstablishment =>
+        new LeaveEstablishment(departurePortsOf(db, outbox)),
+    },
+    {
+      provide: DeleteMyEstablishment,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): DeleteMyEstablishment =>
+        new DeleteMyEstablishment(departurePortsOf(db, outbox)),
     },
     // D6 (#206): promociones.
     {

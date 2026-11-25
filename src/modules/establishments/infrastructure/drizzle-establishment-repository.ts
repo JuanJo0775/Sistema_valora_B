@@ -55,6 +55,9 @@ function toDetail({
   };
 }
 
+// H36 (ADR-040): las tiendas retiradas no se muestran ni se pueden usar.
+const isActive = eq(establishments.status, 'activa');
+
 // El nombre sin tildes y en minúsculas, como la búsqueda de productos (unaccent de PostgreSQL).
 const plain = (text: SQL) => sql`lower(public.unaccent('public.unaccent'::regdictionary, ${text}))`;
 
@@ -86,7 +89,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     const [found] = await this.db
       .select({ id: establishments.id })
       .from(establishments)
-      .where(eq(establishments.id, establishmentId));
+      .where(and(eq(establishments.id, establishmentId), isActive));
     return found !== undefined;
   }
 
@@ -101,6 +104,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       .from(establishments)
       .where(
         and(
+          isActive,
           ...wordConditions(query.q ?? ''),
           query.municipality === undefined
             ? undefined
@@ -133,6 +137,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       .from(establishments)
       .where(
         and(
+          isActive,
           inArray(establishments.id, query.ids),
           eq(establishments.municipality, query.municipality),
         ),
@@ -147,7 +152,12 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     const rows = await this.db
       .select({ id: establishments.id })
       .from(establishments)
-      .where(sql`ST_DWithin(${establishments.location}, ${center}, ${query.radiusMeters})`);
+      .where(
+        and(
+          isActive,
+          sql`ST_DWithin(${establishments.location}, ${center}, ${query.radiusMeters})`,
+        ),
+      );
     return rows.map((row) => row.id);
   }
 
@@ -179,11 +189,29 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
     };
   }
 
+  async retiredIds(): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: establishments.id })
+      .from(establishments)
+      .where(eq(establishments.status, 'retirada'));
+    return rows.map((row) => row.id);
+  }
+
+  // H36 (ADR-040): false si no existe o ya estaba retirada (el evento puede llegar repetido).
+  async retire(establishmentId: string, retiredAt: Date): Promise<boolean> {
+    const retired = await this.db
+      .update(establishments)
+      .set({ status: 'retirada', retiredAt })
+      .where(and(eq(establishments.id, establishmentId), isActive))
+      .returning({ id: establishments.id });
+    return retired.length > 0;
+  }
+
   async findById(establishmentId: string): Promise<EstablishmentDetail | null> {
     const [row] = await this.db
       .select(detailColumns)
       .from(establishments)
-      .where(eq(establishments.id, establishmentId));
+      .where(and(eq(establishments.id, establishmentId), isActive));
     return row ? toDetail(row) : null;
   }
 
@@ -200,7 +228,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
         distanceM: sql<number>`round(${distance})::int`.mapWith(Number),
       })
       .from(establishments)
-      .where(sql`ST_DWithin(${establishments.location}, ${origin}, ${meters})`)
+      .where(and(isActive, sql`ST_DWithin(${establishments.location}, ${origin}, ${meters})`))
       .orderBy(distance);
   }
 
@@ -225,6 +253,7 @@ export class DrizzleEstablishmentRepository implements EstablishmentRepository {
       // ST_DWithin usa el índice GiST de la ubicación.
       .where(
         and(
+          isActive,
           sql`ST_DWithin(${establishments.location}, ${point}, ${search.radiusMeters})`,
           search.where,
         ),
