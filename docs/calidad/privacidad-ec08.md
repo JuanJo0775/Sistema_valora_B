@@ -69,7 +69,7 @@ El derecho de supresión es automático: `POST /v1/me/account-deletion` programa
 
 ## Dejar y eliminar la tienda (ADR-040)
 
-Dejar la tienda borra la solicitud del comercio (nombre del responsable, NIT y teléfono), sus avisos enviados, sus precios oficiales y sus promociones; no se guarda un historial de la salida en `commerce`. En `identity.role_changes` queda el cambio a reportante (ids, sin correo). Los casos de moderación cerrados conservan solo claves seudónimas. El dato nuevo `commerce.merchant_claims.created_establishment` es un booleano que se borra con la solicitud. Eliminar la tienda no borra datos: la marca `retirada` y sus reportes quedan ocultos. Ninguna respuesta nueva trae datos de personas (solo el id de la tienda). La purga de la cuenta (ADR-032) funciona igual después de dejar o eliminar la tienda (`commerce-leave-http.spec.ts`).
+Dejar la tienda borra la solicitud del comercio (nombre del responsable, NIT y teléfono), sus avisos enviados, sus precios oficiales y sus promociones; no se guarda un historial de la salida en `commerce`. En `identity.role_changes` queda el cambio a reportante (ids, sin correo). Los casos de moderación cerrados conservan solo claves seudónimas, y se borran los datos del responsable de quien disputaba esa tienda (`commerce.dispute_challengers`). El dato nuevo `commerce.merchant_claims.created_establishment` es un booleano que se borra con la solicitud. Eliminar la tienda no borra datos: la marca `retirada` y sus reportes quedan ocultos. Ninguna respuesta nueva trae datos de personas (solo el id de la tienda). La purga de la cuenta (ADR-032) funciona igual después de dejar o eliminar la tienda (`commerce-leave-http.spec.ts`).
 
 ## Hallazgos
 
