@@ -74,3 +74,7 @@ No lleva quién reportó ni quién marcó.
 ```
 
 `replacement` es `null` si no queda otro precio confiable en esa tienda. `comparison` solo actúa si el precio que muestra es el retirado.
+
+## Precisión H25 (24 de noviembre de 2026)
+
+Cada elemento de la cola con mediana suma `deviationDirection` (`menor` o `mayor`): `deviationPercent` va sin signo y el cliente no debe deducirlo. Sin mediana, o con el precio igual a ella, el campo no está. Cambio aditivo.
