@@ -14,10 +14,7 @@ interface ObservationBase {
 }
 
 export type OnlineObservation = ObservationBase &
-  (
-    | { status: 'available'; priceCop: number; expiresAt: Date }
-    | { status: 'unavailable' }
-  );
+  ({ status: 'available'; priceCop: number; expiresAt: Date } | { status: 'unavailable' });
 
 function toObservation(row: typeof table.$inferSelect): OnlineObservation {
   const { priceCop, expiresAt, status, ...base } = row;
