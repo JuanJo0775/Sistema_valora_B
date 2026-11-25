@@ -22,6 +22,8 @@ export interface QueueItem {
   reportedPriceCop: number;
   medianPriceCop?: number;
   deviationPercent?: number;
+  // H25: deviationPercent va en valor absoluto; esto dice hacia qué lado. Sin diferencia, no está.
+  deviationDirection?: 'menor' | 'mayor';
   reportersCount: number;
   createdAt: Date;
   // Grill de la #71, pregunta 3: el motivo del autor, solo en las apelaciones.
@@ -58,6 +60,11 @@ const UNNAMED = 'Sin nombre';
 
 const deviationOf = ({ observation }: PendingItem): number =>
   'deviation' in observation.verdict ? observation.verdict.deviation : 0;
+
+const directionOf = (priceCop: number, median: number) => {
+  if (priceCop === median) return {};
+  return { deviationDirection: priceCop < median ? ('menor' as const) : ('mayor' as const) };
+};
 
 // RN2 de RF-013: primero las desviaciones (la mayor primero), luego las marcas (más marcas
 // primero); en empate, el que llegó antes.
@@ -116,6 +123,7 @@ export class ModerationQueue {
           ? {
               medianPriceCop: verdict.median,
               deviationPercent: Math.round(verdict.deviation * 100),
+              ...directionOf(observation.priceCop, verdict.median),
             }
           : {}),
         reportersCount: item.flags,

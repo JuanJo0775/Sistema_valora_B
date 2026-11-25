@@ -1815,6 +1815,8 @@ paths:
         menos de 50 m con un nombre equivalente (RN3; valores provisionales). No dice quién la propuso
         (EC-08). Sin caché (#27). Desde la #207 trae también las correcciones de nombre o ubicación
         que pidió un comercio (kind correccion), con el valor actual y el propuesto (D5).
+        Cuando la propuesta nace de un reclamo de comercio trae claim con los datos del responsable:
+        aprobarla verifica a esa cuenta como comerciante. Sin reclamo, el campo no está (H5).
       security:
         - sessionCookie: []
       responses:
@@ -1832,6 +1834,36 @@ paths:
                       oneOf:
                         - $ref: '#/components/schemas/StoreProposalQueueItem'
                         - $ref: '#/components/schemas/StoreCorrectionQueueItem'
+              examples:
+                conReclamo:
+                  summary: Una tienda propuesta por un comerciante y otra sin reclamo
+                  value:
+                    items:
+                      - kind: tienda
+                        id: 2f6a1c1e-5d0b-4b5e-9c1a-1b2c3d4e5f60
+                        name: Tienda El Paraíso
+                        type: barrio
+                        lat: 4.4613
+                        lng: -75.6674
+                        municipality: cordoba
+                        outOfZone: false
+                        possibleDuplicates: []
+                        createdAt: '2026-11-24T14:00:00.000Z'
+                        claim:
+                          responsibleName: Luis Ramírez
+                          phone: '3157654321'
+                          nit: 800.197.268-4
+                          grantsMerchantRole: true
+                      - kind: tienda
+                        id: 7b1d9a40-2c3e-4f51-8a6b-0c9d8e7f6a5b
+                        name: Granero La Vecina
+                        type: barrio
+                        lat: 4.4621
+                        lng: -75.6669
+                        municipality: cordoba
+                        outOfZone: false
+                        possibleDuplicates: []
+                        createdAt: '2026-11-24T15:00:00.000Z'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /moderation/store-proposals/{proposalId}/decision:
@@ -2358,8 +2390,10 @@ paths:
         cuenta, estando en la tienda (presencia, D2), intenta registrar una tienda que ya tiene dueño.
         Un reclamo se abre solo cuando una cuenta, estando en la tienda, reclama un supermercado que
         no es de cadena (ADR-038): su owner es el comercio pre_aprobado que espera la decisión.
-        Trae los datos del comercio para verificarlo; nunca quién abrió el caso ni la cuenta del
-        dueño (EC-08). Sin caché.
+        Trae los datos del comercio para verificarlo. Una disputa trae además challenger, los datos
+        del responsable que escribió quien disputa; una denuncia, cuántas denuncias abiertas lleva la
+        tienda y de cuántas cuentas distintas (H18). Nunca la cuenta, el correo ni la clave seudónima
+        de nadie, ni quién denunció (EC-08). Sin caché.
       x-corte: 3
       security:
         - sessionCookie: []
@@ -2376,6 +2410,45 @@ paths:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/MerchantCase' }
+              examples:
+                disputaYDenuncia:
+                  summary: Una disputa y una denuncia sobre la misma tienda
+                  value:
+                    items:
+                      - id: 0d8f5b2a-6c1e-4a77-9f3b-2e4d5c6b7a81
+                        kind: disputa
+                        establishment:
+                          id: 5a9c3e12-7f48-4d2b-8e61-9b0a1c2d3e4f
+                          name: Tienda La Esperanza
+                        owner:
+                          responsibleName: Rosa Gómez
+                          nit: null
+                          phone: '3001234567'
+                          status: verificado
+                          verifiedAt: '2026-11-21T15:00:00.000Z'
+                        reason: Otra cuenta, estando en la tienda, intentó registrarla.
+                        createdAt: '2026-11-23T09:30:00.000Z'
+                        challenger:
+                          responsibleName: Luis Ramírez
+                          phone: '3157654321'
+                          nit: 800.197.268-4
+                          requestedAt: '2026-11-23T09:30:00.000Z'
+                      - id: 3c7e1f94-8a25-4b60-a1d3-6f5e4d3c2b19
+                        kind: denuncia
+                        establishment:
+                          id: 5a9c3e12-7f48-4d2b-8e61-9b0a1c2d3e4f
+                          name: Tienda La Esperanza
+                        owner:
+                          responsibleName: Rosa Gómez
+                          nit: null
+                          phone: '3001234567'
+                          status: verificado
+                          verifiedAt: '2026-11-21T15:00:00.000Z'
+                        reason: El dueño real de la tienda es don Luis.
+                        createdAt: '2026-11-23T11:00:00.000Z'
+                        reportCount: 3
+                        distinctReporters: 3
+                        firstReportedAt: '2026-11-23T11:00:00.000Z'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /moderation/merchant-cases/{caseId}/decision:
@@ -3077,6 +3150,24 @@ components:
         outOfZone: { type: boolean }
         possibleDuplicates: { $ref: '#/components/schemas/PossibleDuplicates' }
         createdAt: { type: string, format: date-time }
+        claim: { $ref: '#/components/schemas/StoreProposalClaim' }
+    StoreProposalClaim:
+      type: object
+      description: >-
+        Solo si la tienda propuesta nace de un reclamo de comercio (H5). Datos del responsable que
+        escribió el solicitante; nunca su cuenta, correo ni clave seudónima (EC-08).
+      additionalProperties: false
+      required: [responsibleName, phone, grantsMerchantRole]
+      properties:
+        responsibleName: { type: string }
+        phone: { type: string }
+        nit: { type: string, description: No está si el comercio es informal. }
+        grantsMerchantRole:
+          type: boolean
+          enum: [true]
+          description: >-
+            Aprobar la propuesta (o fusionarla con una tienda sin dueño) verifica al solicitante y le
+            da el rol comercio.
     StoreCorrectionQueueItem:
       type: object
       description: >-
@@ -3146,6 +3237,31 @@ components:
             verifiedAt: { type: [string, 'null'], format: date-time }
         reason: { type: string }
         createdAt: { type: string, format: date-time }
+        challenger:
+          type: [object, 'null']
+          description: >-
+            Solo en disputa (H18): quien disputa, con los datos del responsable que escribió. null si
+            la disputa es anterior a que se guardaran o si esa cuenta se eliminó. Nunca su cuenta,
+            correo ni clave seudónima (EC-08).
+          additionalProperties: false
+          required: [responsibleName, phone, requestedAt]
+          properties:
+            responsibleName: { type: string }
+            phone: { type: string }
+            nit: { type: string, description: No está si no lo escribió. }
+            requestedAt: { type: string, format: date-time, description: Cuándo se abrió la disputa. }
+        reportCount:
+          type: integer
+          minimum: 1
+          description: Solo en denuncia (H18). Denuncias abiertas sobre esa tienda, contando esta.
+        distinctReporters:
+          type: integer
+          minimum: 1
+          description: Solo en denuncia. De cuántas cuentas distintas vienen; es un número, sin identificarlas.
+        firstReportedAt:
+          type: string
+          format: date-time
+          description: Solo en denuncia. La denuncia abierta más antigua de esa tienda.
     MerchantAlert:
       type: object
       description: Un aviso del comercio (#209). Los campos de precio solo vienen en discrepancia.
@@ -3636,7 +3752,13 @@ components:
         reportedPriceCop: { type: integer }
         medianPriceCop: { type: integer, description: Mediana de referencia; no está si no había con qué comparar. }
         officialPriceCop: { type: integer }
-        deviationPercent: { type: number, description: Desviación frente a la mediana, en porcentaje entero. }
+        deviationPercent: { type: number, description: 'Desviación frente a la mediana, en porcentaje entero y sin signo.' }
+        deviationDirection:
+          type: string
+          enum: [menor, mayor]
+          description: >-
+            Si el precio reportado es menor o mayor que la mediana (H25). No está sin mediana o si
+            son iguales.
         reportersCount: { type: integer, minimum: 0, description: Cuántas cuentas lo marcaron como dudoso. }
         createdAt: { type: string, format: date-time }
         appealNote:

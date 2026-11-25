@@ -56,6 +56,8 @@ Desde la app, sin intervención del equipo: la opción de eliminar la cuenta, co
 | `identity.sessions`: todas las sesiones | La **reputación**, las observaciones y las **marcas** de `reliability`, las **propuestas** de producto y de tienda y la bitácora de moderación, todas con la clave seudónima |
 | `identity.email_verifications` e `identity.password_resets`: los enlaces de verificación y de restablecimiento de contraseña | La bitácora inmutable de cambios de rol (`identity.role_changes`: ids, sin correo) |
 
+**Disputas de comercio (H18).** También se borran los datos del responsable que la cuenta escribió al disputar una tienda (`commerce.dispute_challengers`); el caso queda solo con la clave seudónima.
+
 **Por qué lo que se conserva no identifica a nadie.** La clave seudónima es `HMAC-SHA256(REPORTER_KEY_SECRET, id de la cuenta)`. La única tabla que la unía a una persona era `identity.accounts`, que se borra. Sin la cuenta no hay correo ni nombre al que llegar, y quien se registre de nuevo con el mismo correo recibe un id nuevo, otra clave y reputación neutra. Los reportes de una misma persona siguen pudiendo agruparse entre sí (es un seudónimo), pero no vincularse con ella.
 
 **Salvedades.** Los respaldos de la base (Neon) y los registros del proveedor de correo (Resend) conservan datos hasta que vence su retención. Un moderador no puede eliminar su cuenta si es el último (403 `LAST_MODERATOR_CANNOT_DELETE`). Una cuenta suspendida también puede eliminarse y volver a registrarse sin la suspensión; el derecho de supresión pesa más.
