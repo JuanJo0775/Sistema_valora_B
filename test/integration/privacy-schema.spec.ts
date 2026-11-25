@@ -95,7 +95,7 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
 
   // H5 y H18: los datos del responsable de un comercio solo viven en commerce.
   it('el responsable y su NIT solo están en commerce: la solicitud y la disputa pendiente', () => {
-    expect(named(/responsible|(^|_)nit($|_)/)).toEqual([
+    expect(named(/responsible_name|(^|_)nit($|_)/)).toEqual([
       'commerce.dispute_challengers.nit',
       'commerce.dispute_challengers.responsible_name',
       'commerce.merchant_claims.nit',

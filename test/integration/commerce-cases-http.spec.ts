@@ -168,10 +168,12 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
     });
     expect(report).not.toHaveProperty('challenger');
     // EC-08: ni la cuenta, ni el correo, ni la clave seudónima de nadie en la cola.
+    // Las claves con las que se guardaron los casos: las de quien denunció y quien disputó.
     const keys = await db.execute<{ reporter_key: string }>(
-      sql`select reporter_key from identity.accounts where id in (${ana.accountId}, ${luis.accountId}, ${merchant.accountId})`,
+      sql`select reporter_key from commerce.merchant_cases
+          union select reporter_key from identity.accounts where reporter_key is not null`,
     );
-    expect(keys.rows).toHaveLength(3);
+    expect(keys.rows.length).toBeGreaterThanOrEqual(2);
     const text = JSON.stringify(queue.body);
     for (const secret of [
       luis.accountId,

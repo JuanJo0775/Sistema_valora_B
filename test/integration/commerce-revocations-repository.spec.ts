@@ -130,7 +130,7 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
       nit: null,
       phone: '3157654321',
     });
-    expect(pending.find((found) => found.kind === 'denuncia')?.challenger).toBeNull();
+    expect(pending.find((found) => found.kind === 'denuncia')).not.toHaveProperty('challenger');
     expect(JSON.stringify(pending)).not.toContain(challenger.accountId);
   });
 

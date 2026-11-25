@@ -227,15 +227,15 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
         [],
       );
       // EC-08: ni la cuenta, ni el correo, ni la clave seudónima.
-      const accounts = await db.execute<{ id: string; email: string; reporter_key: string }>(
-        sql`select id, email, reporter_key from identity.accounts`,
+      const secrets = await db.execute<{ secret: string }>(
+        sql`select id::text as secret from identity.accounts
+            union select email from identity.accounts
+            union select reporter_key from identity.accounts where reporter_key is not null
+            union select proposer_key from establishments.store_proposals`,
       );
+      expect(secrets.rows.length).toBeGreaterThan(2);
       const text = JSON.stringify(queue.body);
-      for (const account of accounts.rows) {
-        expect(text).not.toContain(account.id);
-        expect(text).not.toContain(account.email);
-        expect(text).not.toContain(account.reporter_key);
-      }
+      for (const { secret } of secrets.rows) expect(text).not.toContain(secret);
     });
 
     it('al rechazarse la tienda ve el motivo y puede registrar otra', async () => {
