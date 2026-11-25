@@ -1,7 +1,23 @@
 import { and, desc, eq } from 'drizzle-orm';
 import type { Database } from '../../../shared/database/database.module';
-import type { OnlineObservation } from '../application/apply-olimpica';
 import { onlineObservations as table } from './schema';
+
+interface ObservationBase {
+  source: 'olimpica_vtex';
+  zoneId: string;
+  runId: string;
+  presentationId: string;
+  ean: string;
+  skuId: string;
+  sellerId: string;
+  observedAt: Date;
+}
+
+export type OnlineObservation = ObservationBase &
+  (
+    | { status: 'available'; priceCop: number; expiresAt: Date }
+    | { status: 'unavailable' }
+  );
 
 function toObservation(row: typeof table.$inferSelect): OnlineObservation {
   const { priceCop, expiresAt, status, ...base } = row;

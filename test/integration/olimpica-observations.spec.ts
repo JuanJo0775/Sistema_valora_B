@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { openTestDatabase } from '../support/test-database';
-import { OlimpicaObservations } from '../../src/modules/imports/infrastructure/olimpica-observations';
-import type { OnlineObservation } from '../../src/modules/imports/application/apply-olimpica';
+import {
+  OlimpicaObservations,
+  type OnlineObservation,
+} from '../../src/modules/imports/infrastructure/olimpica-observations';
 
 const { pool, db } = openTestDatabase();
 const observations = new OlimpicaObservations(db);
