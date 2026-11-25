@@ -1,5 +1,7 @@
 # Contrato del piloto interno de Olímpica con VTEX
 
+> **Cerrado el 25 de noviembre de 2026.** La verificación del punto 8 mostró que los términos de olimpica.com (2.4.1) prohíben consultar su contenido con programas. La integración se cerró y el código se retiró; este documento queda como registro. Ver [ADR-041](../../adr/0041-cierre-integracion-olimpica-vtex.md) y [ADR-042](../../adr/0042-precio-en-linea-separado-del-precio-por-sede.md).
+
 ## Necesidad y permisos
 
 El operador del backend valida entre 5 y 10 presentaciones para una zona de entrega de Armenia. No hay pantalla consumidora durante el piloto. El permiso consiste en acceso al entorno operativo del backend y a su base de datos. Ningún rol de la aplicación invoca el importador por HTTP.
