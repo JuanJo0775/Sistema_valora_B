@@ -21,8 +21,8 @@ export interface MerchantCase {
   reporterKey: string;
   reason: string;
   createdAt: Date;
-  // Solo en las disputas pendientes; null en las anteriores a guardar estos datos.
-  challenger?: DisputeChallenger | null;
+  // Solo en las disputas pendientes; no está en las anteriores a guardar estos datos.
+  challenger?: DisputeChallenger;
 }
 
 // Puerto hacia el esquema commerce.

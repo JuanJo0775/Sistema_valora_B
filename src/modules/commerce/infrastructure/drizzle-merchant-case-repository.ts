@@ -53,7 +53,10 @@ export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
       .leftJoin(disputeChallengers, eq(disputeChallengers.caseId, merchantCases.id))
       .where(eq(merchantCases.status, 'pendiente'))
       .orderBy(asc(merchantCases.createdAt));
-    return rows.map(({ challenger, ...row }) => ({ ...toCase(row), challenger }));
+    return rows.map(({ challenger, ...row }) => ({
+      ...toCase(row),
+      ...(challenger ? { challenger } : {}),
+    }));
   }
 
   async findPending(caseId: string): Promise<MerchantCase | null> {
