@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import {
@@ -113,6 +113,20 @@ export class DrizzleMerchantClaimRepository
         ),
       );
     return row ? toClaim(row) : null;
+  }
+
+  // H5: las solicitudes que esperan alguna de esas tiendas propuestas.
+  async pendingForMany(establishmentIds: string[]): Promise<MerchantClaim[]> {
+    const rows = await this.db
+      .select()
+      .from(merchantClaims)
+      .where(
+        and(
+          inArray(merchantClaims.establishmentId, establishmentIds),
+          eq(merchantClaims.status, 'pre_aprobado'),
+        ),
+      );
+    return rows.map(toClaim);
   }
 
   // ADR-015: la verificación y MerchantVerified se confirman juntos.

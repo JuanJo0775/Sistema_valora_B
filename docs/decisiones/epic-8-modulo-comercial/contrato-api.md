@@ -120,6 +120,32 @@ Eventos nuevos: `MerchantLeft { accountId, establishmentId }` (identity devuelve
 | `GET /v1/moderation/merchant-cases` | Moderador | Disputas (dos cuentas por la misma tienda), denuncias y reclamos pendientes. `kind`: `denuncia`, `disputa` o `reclamo` (ADR-038); en el reclamo, `owner.status` es `pre_aprobado` |
 | `POST /v1/moderation/merchant-cases/{caseId}/decision` | Moderador | Con motivo. Denuncia y disputa: `revocar` (retira al instante precios y promociones y devuelve la cuenta a `reportante`) o `descartar`. Reclamo: `aprobar` (verifica y concede el rol `comercio`) o `rechazar` (cierra la solicitud con el motivo; `GET /commerce/me` responde `rechazado`). Una decisión que no corresponde al tipo: `422 DECISION_NOT_APPLICABLE` |
 
+### Tarjetas de moderación con contexto (H5, H18 y H25 del informe de QA del 24-nov-2026)
+
+Cambios **aditivos**: ningún campo cambia de nombre, tipo ni significado.
+
+**`GET /v1/moderation/merchant-cases`**
+
+| `kind` | Campos nuevos |
+|---|---|
+| `disputa` | `challenger: { responsibleName, phone, nit?, requestedAt } \| null`. Quien disputa. `requestedAt` es cuándo se abrió la disputa. `null` en las disputas anteriores a este cambio (sus datos no se guardaban) y si la cuenta que disputó se eliminó |
+| `denuncia` | `reportCount` (denuncias abiertas sobre la tienda, contando esta), `distinctReporters` (número de cuentas distintas) y `firstReportedAt` (la más antigua abierta). Se repiten en cada denuncia de la tienda |
+| `reclamo` | Ninguno: `owner` ya es el solicitante (`status: pre_aprobado`, responsable, teléfono y NIT) y `createdAt` la fecha del reclamo |
+
+```json
+{
+  "kind": "disputa",
+  "owner": { "responsibleName": "Rosa Gómez", "nit": null, "phone": "3001234567", "status": "verificado", "verifiedAt": "2026-11-21T15:00:00.000Z" },
+  "challenger": { "responsibleName": "Luis Ramírez", "phone": "3157654321", "requestedAt": "2026-11-23T09:30:00.000Z" }
+}
+```
+
+**`GET /v1/moderation/store-proposals`.** Las propuestas (`kind: tienda`) que nacen de un reclamo de comercio traen `claim: { responsibleName, phone, nit?, grantsMerchantRole: true }`. Aprobarlas (o fusionarlas con una tienda sin dueño) verifica al solicitante y le da el rol `comercio`; la interfaz debe decirlo antes de decidir. Las propuestas sin reclamo y las correcciones no cambian: el campo no está. `establishments` no lee tablas de `commerce`: expone el puerto `ProposalClaims` en su `index.ts` y `commerce` registra ahí su fuente al arrancar.
+
+**`GET /v1/moderation/queue`** (reliability). `deviationDirection: "menor" | "mayor"` junto a `deviationPercent`, que sigue sin signo. No está sin mediana o si el precio es igual a ella.
+
+**Datos que se guardan.** Los de quien disputa van en `commerce.dispute_challengers` (migración 0049) solo mientras el caso está pendiente: se borran al descartar, al revocar y al eliminar la cuenta. Si la misma cuenta reintenta con la disputa abierta, no se abre otra ni se cambian los datos.
+
 ## Avisos para el comercio (ADR-008, D4)
 
 ### `GET /v1/commerce/alerts` (nueva)

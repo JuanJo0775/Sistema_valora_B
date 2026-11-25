@@ -27,6 +27,8 @@
 | Id de la cuenta que reportó | `pricing.reports.reporter_id` | Idempotencia, duplicados y ráfagas (#14, #29). Ver hallazgo 1. |
 | Cambios de rol | `identity.role_changes` (ids, sin correo) | Bitácora inmutable (#73). |
 | Causa de la suspensión | `identity.accounts.suspension_reason` (ADR-039) | Explicarle a la propia cuenta por qué está suspendida. Es un código de un conjunto estable (`observada_por_moderacion`, `descartes_seguidos`, `no_registrada`), nunca la nota del moderador ni quién denunció. Solo la dice `GET /v1/auth/session` de esa cuenta en `suspension.reason` (`identity-suspension.spec.ts`). |
+| Responsable de un comercio: nombre, teléfono y NIT (opcional) | `commerce.merchant_claims` | Registrar el comercio y que moderación lo verifique (ADR-038). Se borran al eliminar la cuenta o al revocar. |
+| Responsable de quien disputa una tienda: nombre, teléfono, NIT (opcional) y el id de su cuenta | `commerce.dispute_challengers` | Que moderación compare a las dos partes (H18). Solo mientras la disputa está pendiente: se borra al descartarla, al revocar y al eliminar la cuenta. El id solo sirve para ese último borrado y no sale en ninguna respuesta. |
 | Fecha de eliminación pendiente | `identity.accounts.deletion_scheduled_for` | Gracia de 10 días antes de borrar la cuenta (ADR-032). Solo sale como `scheduledFor` para quien la pidió o quien acierta su contraseña. |
 
 **Ubicación:** la única columna geográfica es `establishments.establishments.location`, la ubicación pública de la tienda. La ubicación del usuario solo viaja como parámetro de la consulta (`/nearby`, la comparación y la canasta básica de hoy, B#128) y no se guarda.
@@ -54,6 +56,19 @@
 
 Las rutas con sesión tampoco devuelven el correo: `GET /v1/auth/session` da el rol, si el correo está verificado (`emailVerified`) y el token CSRF; la cola de moderación y el estado de un aporte no dicen quién reportó, quién marcó ni quién decidió (#32, #71, #76). Los eventos internos llevan solo la clave seudónima (#31, #33, #29).
 
+## Qué ve el moderador del responsable de un comercio (H5, H18)
+
+Solo con sesión de `moderador` y con `Cache-Control: no-store`.
+
+| Ruta | Ve | Por qué |
+|---|---|---|
+| `GET /v1/moderation/merchant-cases` | `owner`: responsable, teléfono, NIT, estado y fecha de verificación. | Verificar al comercio de la tienda; en un reclamo es el solicitante. |
+| `GET /v1/moderation/merchant-cases`, disputa | `challenger`: responsable, teléfono, NIT y fecha de la disputa. | Comparar a las dos partes con los mismos datos antes de revocar o descartar. |
+| `GET /v1/moderation/merchant-cases`, denuncia | `reportCount`, `distinctReporters` y `firstReportedAt`. | Distinguir una denuncia aislada de un patrón. Son cifras y una fecha. |
+| `GET /v1/moderation/store-proposals` | `claim`: responsable, teléfono, NIT y `grantsMerchantRole`. | Saber que aprobar la tienda verifica a una cuenta, y a quién. |
+
+Son los datos que la propia persona escribió para que moderación revisara su registro. **Nunca se ve**, de ninguna de las partes: el id de la cuenta, el correo, el nombre visible de la cuenta, la clave seudónima ni la ubicación del celular. De quien denuncia no se ve ningún dato, solo cuántas cuentas distintas denunciaron. Las propuestas sin reclamo siguen sin decir quién las propuso.
+
 ## Qué guardan los registros
 
 - No hay registro de peticiones: ni la URL (con la ubicación) ni la IP se escriben.
@@ -77,6 +92,8 @@ Dejar la tienda borra la solicitud del comercio (nombre del responsable, NIT y t
 2. **`identity:set-role` muestra el correo en la consola del administrador.** Es intencional: confirma a quién se le cambió el rol.
 
 ## Pruebas guardianas
+
+- H5 y H18: `merchant-cases-queue.spec.ts`, `claims-of-proposals.spec.ts` y `store-proposals-queue.spec.ts` fallan si las tarjetas traen una cuenta o una clave; `commerce-cases-http.spec.ts` y `commerce-claims-http.spec.ts` comprueban contra la base que ni el correo, ni el id, ni la clave seudónima salen; `commerce-revocations-repository.spec.ts` comprueba que los datos de quien disputa se borran, y `privacy-schema.spec.ts` que responsable y NIT solo están en `commerce`.
 
 - `privacy-schema.spec.ts` falla si una migración agrega correo o contraseña fuera de `identity`, una columna de coordenadas fuera de la tienda, una columna de IP o una referencia a la cuenta fuera de `identity` y `pricing.reports`.
 - `privacy-public-responses.spec.ts` recorre las rutas públicas con una cuenta que reportó y otra que marcó, y falla si alguna respuesta trae su correo, su id, su clave seudónima o la ubicación consultada. Una ruta pública nueva debe agregarse a esa lista.

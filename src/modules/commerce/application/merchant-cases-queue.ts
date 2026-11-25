@@ -23,6 +23,40 @@ export interface MerchantCaseItem {
   } | null;
   reason: string;
   createdAt: Date;
+  // H18, solo en las disputas: quien disputa. null si la disputa es anterior a guardar sus datos.
+  challenger?: {
+    responsibleName: string;
+    phone: string;
+    nit?: string;
+    requestedAt: Date;
+  } | null;
+  // H18, solo en las denuncias: las denuncias abiertas sobre la tienda, de cuántas cuentas distintas
+  // vienen (un número, sin identificarlas) y desde cuándo.
+  reportCount?: number;
+  distinctReporters?: number;
+  firstReportedAt?: Date;
+}
+
+// Se calcula con las claves seudónimas, que no salen de aquí (EC-08).
+function reportStatsOf(pending: MerchantCase[], { establishmentId, createdAt }: MerchantCase) {
+  const reports = pending.filter(
+    (found) => found.kind === 'denuncia' && found.establishmentId === establishmentId,
+  );
+  return {
+    reportCount: reports.length,
+    distinctReporters: new Set(reports.map((found) => found.reporterKey)).size,
+    firstReportedAt: reports.reduce(
+      (first, found) => (found.createdAt < first ? found.createdAt : first),
+      createdAt,
+    ),
+  };
+}
+
+// Campo por campo: nada más de lo guardado sale en la respuesta.
+function challengerOf({ challenger, createdAt }: MerchantCase): MerchantCaseItem['challenger'] {
+  if (!challenger) return null;
+  const { responsibleName, phone, nit } = challenger;
+  return { responsibleName, phone, ...(nit === null ? {} : { nit }), requestedAt: createdAt };
 }
 
 // D2 y D3 del grill comercial: denuncias y disputas pendientes, la más antigua primero.
@@ -32,7 +66,8 @@ export class MerchantCasesQueue {
   async list(): Promise<MerchantCaseItem[]> {
     const { cases, claims, establishments } = this.ports;
     const items: MerchantCaseItem[] = [];
-    for (const merchantCase of await cases.pending()) {
+    const pending = await cases.pending();
+    for (const merchantCase of pending) {
       const { establishmentId } = merchantCase;
       const store = await establishments.find(establishmentId);
       const claim = await claims.findByEstablishment(establishmentId);
@@ -49,6 +84,8 @@ export class MerchantCasesQueue {
         },
         reason: merchantCase.reason,
         createdAt: merchantCase.createdAt,
+        ...(merchantCase.kind === 'disputa' ? { challenger: challengerOf(merchantCase) } : {}),
+        ...(merchantCase.kind === 'denuncia' ? reportStatsOf(pending, merchantCase) : {}),
       });
     }
     return items;

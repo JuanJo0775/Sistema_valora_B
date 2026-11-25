@@ -151,6 +151,13 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
     const created = await claim(luis, newStore);
     const preApproved = await me(luis);
     const { establishmentId } = created.body as { establishmentId: string };
+    // H5: la propuesta que nace del reclamo trae al responsable y avisa que concede el rol.
+    const proposals = await request(server)
+      .get('/v1/moderation/store-proposals')
+      .set('Cookie', moderator.cookie);
+    expect(proposals.body).toMatchObject({
+      items: [{ id: establishmentId, claim: { grantsMerchantRole: true } }],
+    });
     await request(server)
       .post(`/v1/moderation/store-proposals/${establishmentId}/decision`)
       .set('Cookie', moderator.cookie)
@@ -164,8 +171,9 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
       ['POST /commerce/claims', 201, created],
       ['GET /commerce/me', 200, preApproved],
       ['GET /commerce/me', 200, rejected],
+      ['GET /moderation/store-proposals', 200, proposals],
     ] as const;
-    expect(responses.map(([, , response]) => response.status)).toEqual([201, 200, 200]);
+    expect(responses.map(([, , response]) => response.status)).toEqual([201, 200, 200, 200]);
     expect((rejected.body as { status: string }).status).toBe('rechazado');
     expect(
       responses.flatMap(([route, status, response]) =>

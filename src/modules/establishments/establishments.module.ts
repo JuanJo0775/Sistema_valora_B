@@ -24,6 +24,7 @@ import { DecideStoreCorrection } from './application/decide-store-correction';
 import { StoreCorrectionsQueue } from './application/store-corrections-queue';
 import { UpdateStoreDetails } from './application/update-store-details';
 import { DrizzleStoreCorrectionRepository } from './infrastructure/drizzle-store-correction-repository';
+import { ProposalClaims } from './application/proposal-claims';
 import { ProposeStore } from './application/propose-store';
 import { RetireEstablishment } from './application/retire-establishment';
 import { RetiredEstablishments } from './application/retired-establishments';
@@ -90,17 +91,21 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
           clock: { now: () => new Date() },
         }),
     },
+    // H5: commerce registra aquí de qué reclamos nacen las propuestas.
+    ProposalClaims,
     {
       provide: StoreProposalsQueue,
-      inject: [DATABASE, OutboxPublisher, ESTABLISHMENT_REPOSITORY],
+      inject: [DATABASE, OutboxPublisher, ESTABLISHMENT_REPOSITORY, ProposalClaims],
       useFactory: (
         db: Database,
         outbox: OutboxPublisher,
         stores: EstablishmentRepository,
+        claims: ProposalClaims,
       ): StoreProposalsQueue =>
         new StoreProposalsQueue({
           proposals: new DrizzleStoreProposalRepository(db, outbox),
           stores,
+          claims,
         }),
     },
     {
@@ -184,6 +189,7 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     },
   ],
   exports: [
+    ProposalClaims,
     StoreContactOf,
     UpdateStoreDetails,
     ProposeStore,

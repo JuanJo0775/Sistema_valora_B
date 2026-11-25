@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Inject, Module, type OnModuleInit } from '@nestjs/common';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
 import { type DomainEvent, EventBus, OutboxPublisher } from '../../shared/events';
 import {
   EstablishmentDetails,
   EstablishmentsModule,
   PendingStoreProposalName,
+  ProposalClaims,
   ProposeStore,
   UpdateStoreDetails,
 } from '../establishments';
@@ -24,6 +25,7 @@ import { ApplyOfficialPriceReview } from './application/apply-official-price-rev
 import type { OfficialPriceReviewedV1 } from './application/apply-official-price-review';
 import type { PriceReference } from './application/publish-official-price';
 import { ClaimEstablishment } from './application/claim-establishment';
+import { ClaimsOfProposals } from './application/claims-of-proposals';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
 import { CreatePromotion } from './application/create-promotion';
 import { DecideMerchantCase } from './application/decide-merchant-case';
@@ -364,18 +366,21 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
           // Precisión de D3 (#208): una disputa por cuenta y tienda mientras esté abierta, con la
           // clave seudónima de quien la abre (EC-08).
           disputes: {
-            open: async (establishmentId, accountId) => {
+            open: async (establishmentId, accountId, challenger) => {
               const cases = new DrizzleMerchantCaseRepository(db);
               const { reporterKey } = await identities.of(accountId);
               if (await cases.hasOpen(establishmentId, reporterKey)) return;
-              await cases.open({
-                id: randomUUID(),
-                establishmentId,
-                kind: 'disputa',
-                reporterKey,
-                reason: 'Otra cuenta, estando en la tienda, intentó registrarla.',
-                createdAt: new Date(),
-              });
+              await cases.open(
+                {
+                  id: randomUUID(),
+                  establishmentId,
+                  kind: 'disputa',
+                  reporterKey,
+                  reason: 'Otra cuenta, estando en la tienda, intentó registrarla.',
+                  createdAt: new Date(),
+                },
+                { accountId, ...challenger },
+              );
             },
           },
           clock: { now: () => new Date() },
@@ -432,11 +437,17 @@ export class CommerceModule implements OnModuleInit {
   constructor(
     private readonly bus: EventBus,
     private readonly outbox: OutboxPublisher,
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly proposalClaims: ProposalClaims,
   ) {}
 
   // D2: al decidirse la tienda propuesta, el comercio pre-aprobado se resuelve solo. Solo se conoce
   // el nombre del evento de establishments; el cambio va en la transacción del suscriptor (ADR-015).
   onModuleInit(): void {
+    // H5: la cola de tiendas de establishments pregunta aquí qué propuestas nacen de un reclamo.
+    this.proposalClaims.register(
+      new ClaimsOfProposals(new DrizzleMerchantClaimRepository(this.db, this.outbox)),
+    );
     this.bus.subscribe(
       'commerce.merchant_claims',
       'StoreProposalDecided',

@@ -7,6 +7,7 @@ import {
   NotAtEstablishmentError,
 } from '../../../domain/merchant-claim';
 import { createEvent } from '../../../shared/events';
+import type { DisputeChallenger } from './merchant-cases';
 import {
   type MerchantClaim,
   type MerchantClaimRepository,
@@ -30,7 +31,10 @@ export interface ClaimEstablishmentPorts {
   reporters: { keyOf(accountId: string): Promise<string> };
   claims: Pick<MerchantClaimRepository, 'ownerOf' | 'establishmentOf' | 'wasRevokedFrom' | 'save'>;
   // Precisión de D3 (#208): quien está en una tienda con dueño abre una disputa para el moderador.
-  disputes: { open(establishmentId: string, accountId: string): Promise<void> };
+  // H18: la disputa lleva los datos del responsable de quien la abre.
+  disputes: {
+    open(establishmentId: string, accountId: string, challenger: DisputeChallenger): Promise<void>;
+  };
   clock: { now(): Date };
 }
 
@@ -165,8 +169,9 @@ export class ClaimEstablishment {
   }
 
   // D3: una tienda por cuenta y un dueño por tienda.
-  private async ensureNoOwnership({ accountId, establishmentId }: ClaimRequest): Promise<void> {
+  private async ensureNoOwnership(request: ClaimRequest): Promise<void> {
     const { claims } = this.ports;
+    const { accountId, establishmentId } = request;
     if (await claims.wasRevokedFrom(accountId, establishmentId)) {
       throw new RevokedFromEstablishmentError();
     }
@@ -174,7 +179,11 @@ export class ClaimEstablishment {
       throw new AccountHasEstablishmentError();
     }
     if ((await claims.ownerOf(establishmentId)) !== null) {
-      await this.ports.disputes.open(establishmentId, accountId);
+      await this.ports.disputes.open(establishmentId, accountId, {
+        responsibleName: request.responsibleName.trim(),
+        nit: request.nit ?? null,
+        phone: request.phone,
+      });
       throw new EstablishmentHasOwnerError();
     }
   }

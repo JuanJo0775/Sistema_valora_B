@@ -43,6 +43,7 @@ interface ModerationItemResponse {
   reportedPriceCop: number;
   medianPriceCop?: number;
   deviationPercent?: number;
+  deviationDirection?: 'menor' | 'mayor';
   reportersCount: number;
   createdAt: string;
   appealNote?: string;

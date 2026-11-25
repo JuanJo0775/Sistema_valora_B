@@ -26,6 +26,14 @@ const claimBody = {
   location: { lat: STORE.lat + 0.00018, lng: STORE.lng },
 };
 
+// H18: quien disputa deja sus propios datos de responsable; el moderador los ve junto a los del dueño.
+const challengerBody = {
+  ...claimBody,
+  responsibleName: 'Luis Ramírez',
+  phone: '3157654321',
+  nit: '800.197.268-4',
+};
+
 // D2, D3 y ADR-032 (#208), de punta a punta.
 describe('denuncias, disputas y revocación por HTTP (#208)', () => {
   let app: INestApplication;
@@ -44,7 +52,7 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, commerce.merchant_cases, commerce.official_prices, commerce.promotions, comparison.official_prices, comparison.promotions, comparison.price_current, shared.outbox, shared.processed_events, establishments.establishments, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references`,
+      sql`truncate identity.email_verifications, identity.password_resets, identity.sessions, identity.role_changes, identity.accounts, commerce.merchant_claims, commerce.merchant_claim_rejections, commerce.merchant_cases, commerce.dispute_challengers, commerce.official_prices, commerce.promotions, comparison.official_prices, comparison.promotions, comparison.price_current, shared.outbox, shared.processed_events, establishments.establishments, catalog.presentations, catalog.products, catalog.product_aliases, catalog.wholesale_references`,
     );
     await app.get(ImportEstablishments).save({
       id: storeId,
@@ -128,7 +136,7 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
       ),
     ).toEqual([]);
     // Luis está en la tienda e intenta registrarla: 409 y queda una disputa.
-    await post(luis, '/commerce/claims', claimBody).expect(409);
+    await post(luis, '/commerce/claims', challengerBody).expect(409);
 
     const queue = await request(server)
       .get('/v1/moderation/merchant-cases')
@@ -138,6 +146,44 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
     expect(items.map((item) => item.kind).sort()).toEqual(['denuncia', 'disputa']);
     expect(JSON.stringify(queue.body)).not.toContain(ana.accountId);
     expect(JSON.stringify(queue.body)).not.toContain(merchant.accountId);
+    // H18: la disputa trae a las dos partes; la denuncia, cuántas lleva la tienda.
+    const [dispute, report] = [
+      items.find((item) => item.kind === 'disputa'),
+      items.find((item) => item.kind === 'denuncia'),
+    ];
+    expect(dispute).toMatchObject({
+      owner: { responsibleName: 'Rosa Gómez', phone: '3001234567' },
+      challenger: {
+        responsibleName: 'Luis Ramírez',
+        phone: '3157654321',
+        nit: '800.197.268-4',
+        requestedAt: expect.any(String) as unknown,
+      },
+    });
+    expect(dispute).not.toHaveProperty('reportCount');
+    expect(report).toMatchObject({
+      reportCount: 1,
+      distinctReporters: 1,
+      firstReportedAt: expect.any(String) as unknown,
+    });
+    expect(report).not.toHaveProperty('challenger');
+    // EC-08: ni la cuenta, ni el correo, ni la clave seudónima de nadie en la cola.
+    // Las claves con las que se guardaron los casos: las de quien denunció y quien disputó.
+    const keys = await db.execute<{ reporter_key: string }>(
+      sql`select reporter_key from commerce.merchant_cases
+          union select reporter_key from identity.accounts where reporter_key is not null`,
+    );
+    expect(keys.rows.length).toBeGreaterThanOrEqual(2);
+    const text = JSON.stringify(queue.body);
+    for (const secret of [
+      luis.accountId,
+      'luis-casos@correo.com',
+      'ana-casos@correo.com',
+      'comercio-casos@correo.com',
+      ...keys.rows.map((row) => row.reporter_key),
+    ]) {
+      expect(text).not.toContain(secret);
+    }
     expect([
       ...contractErrors(
         'POST /establishments/:establishmentId/merchant-reports',
@@ -153,6 +199,11 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
     }).expect(204);
     await relay();
 
+    // H18: al cerrarse los casos, los datos de quien disputó se borran.
+    const challengers = await db.execute<{ total: string }>(
+      sql`select count(*) as total from commerce.dispute_challengers`,
+    );
+    expect(challengers.rows[0]?.total).toBe('0');
     expect(await roleOf(merchant)).toBe('reportante');
     expect((await compare().expect(200)).body).toMatchObject({ results: [] });
     const me = await request(server).get('/v1/commerce/me').set('Cookie', merchant.cookie);
