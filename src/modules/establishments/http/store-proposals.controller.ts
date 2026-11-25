@@ -28,6 +28,7 @@ import {
   DecideStoreCorrection,
   StoreCorrectionNotFoundError,
 } from '../application/decide-store-correction';
+import type { ProposalClaim } from '../application/proposal-claims';
 import { ProposeStore } from '../application/propose-store';
 import {
   type StoreCorrectionItem,
@@ -49,6 +50,7 @@ interface StoreProposalResponse {
   outOfZone: boolean;
   possibleDuplicates: { id: string; name: string; distanceM: number }[];
   createdAt: string;
+  claim?: ProposalClaim;
 }
 
 // D5 (#207): una corrección de nombre o ubicación en la misma cola; nunca quién la pidió (EC-08).

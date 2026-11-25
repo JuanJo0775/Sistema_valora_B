@@ -5,6 +5,7 @@ import { OFFICIAL_PRICE_REVIEW_CLOSED } from '../application/official-prices';
 import type { MerchantRevocation, MerchantRevocations } from '../application/merchant-cases';
 import type { MerchantPurges } from '../application/purge-merchant-account';
 import {
+  disputeChallengers,
   merchantCases,
   merchantClaimRejections,
   merchantClaims,
@@ -63,6 +64,9 @@ export class DrizzleMerchantRevocations implements MerchantRevocations, Merchant
             eq(merchantCases.status, 'pendiente'),
           ),
         );
+      await tx
+        .delete(disputeChallengers)
+        .where(eq(disputeChallengers.establishmentId, establishmentId));
       for (const event of events) await this.outbox.publish(tx, event);
     });
   }
@@ -79,6 +83,8 @@ export class DrizzleMerchantRevocations implements MerchantRevocations, Merchant
         .delete(merchantClaimRejections)
         .where(eq(merchantClaimRejections.accountId, accountId));
       await tx.delete(merchantNotices).where(eq(merchantNotices.accountId, accountId));
+      // H18: sus datos como solicitante de una disputa; el caso queda, solo con la clave seudónima.
+      await tx.delete(disputeChallengers).where(eq(disputeChallengers.accountId, accountId));
       if (establishmentId !== null) await withdrawPublished(tx, this.outbox, establishmentId);
       for (const event of events) await this.outbox.publish(tx, event);
     });

@@ -4,6 +4,16 @@ import type { DomainEvent } from '../../../shared/events';
 // denuncia: «este comercio no es de quien dice». disputa: otra cuenta, estando en la tienda, intentó
 // registrarla y ya tenía dueño. reclamo (H11, ADR-037): una cuenta reclamó un supermercado que no es
 // de cadena y espera que un moderador lo apruebe. Solo la clave seudónima de quien lo abre (EC-08).
+// H18: los datos del responsable que puso quien disputa, para compararlos con los del dueño.
+export interface DisputeChallenger {
+  responsibleName: string;
+  nit: string | null;
+  phone: string;
+}
+
+// La cuenta solo se guarda para borrar los datos si se elimina (ADR-032); nunca se lee de vuelta.
+export type NewDisputeChallenger = DisputeChallenger & { accountId: string };
+
 export interface MerchantCase {
   id: string;
   establishmentId: string;
@@ -11,13 +21,16 @@ export interface MerchantCase {
   reporterKey: string;
   reason: string;
   createdAt: Date;
+  // Solo en las disputas pendientes; null en las anteriores a guardar estos datos.
+  challenger?: DisputeChallenger | null;
 }
 
 // Puerto hacia el esquema commerce.
 export interface MerchantCaseRepository {
   // Si esa clave ya tiene un caso abierto sobre esa tienda.
   hasOpen(establishmentId: string, reporterKey: string): Promise<boolean>;
-  open(merchantCase: MerchantCase): Promise<void>;
+  // El caso y, en una disputa, quien disputa se guardan juntos.
+  open(merchantCase: MerchantCase, challenger?: NewDisputeChallenger): Promise<void>;
   findPending(caseId: string): Promise<MerchantCase | null>;
   close(record: MerchantCaseDecisionRecord): Promise<void>;
 }

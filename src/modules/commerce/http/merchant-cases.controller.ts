@@ -53,7 +53,14 @@ const uuidOf = (name: string) =>
     exceptionFactory: () => new RequestValidationError(`${name}: debe ser un UUID`),
   });
 
-type MerchantCaseResponse = Omit<MerchantCaseItem, 'createdAt' | 'owner'> & {
+type MerchantCaseResponse = Omit<
+  MerchantCaseItem,
+  'createdAt' | 'owner' | 'challenger' | 'firstReportedAt'
+> & {
+  challenger?:
+    | (Omit<NonNullable<MerchantCaseItem['challenger']>, 'requestedAt'> & { requestedAt: string })
+    | null;
+  firstReportedAt?: string;
   owner:
     | (Omit<NonNullable<MerchantCaseItem['owner']>, 'verifiedAt'> & {
         verifiedAt: string | null;
@@ -124,8 +131,19 @@ export class MerchantCasesController {
   async list(): Promise<{ items: MerchantCaseResponse[] }> {
     const items = await this.queue.list();
     return {
-      items: items.map(({ owner, createdAt, ...item }) => ({
+      items: items.map(({ owner, createdAt, challenger, firstReportedAt, ...item }) => ({
         ...item,
+        ...(challenger === undefined
+          ? {}
+          : {
+              challenger: challenger && {
+                ...challenger,
+                requestedAt: challenger.requestedAt.toISOString(),
+              },
+            }),
+        ...(firstReportedAt === undefined
+          ? {}
+          : { firstReportedAt: firstReportedAt.toISOString() }),
         owner: owner && { ...owner, verifiedAt: owner.verifiedAt?.toISOString() ?? null },
         createdAt: createdAt.toISOString(),
       })),
