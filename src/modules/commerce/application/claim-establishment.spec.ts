@@ -160,7 +160,7 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
         establishmentId: STORE.id,
         accountId: 'cuenta-de-dona-rosa',
         challenger: {
-          responsibleName: request().responsibleName,
+          responsibleName: 'Rosa Gómez',
           nit: request().nit ?? null,
           phone: request().phone,
         },
