@@ -16,10 +16,15 @@ import { merchantCases, merchantClaimRejections, merchantClaims } from './schema
 
 const UNIQUE_VIOLATION = '23505';
 
-// La restricción CHECK de la tabla garantiza el estado.
-const toClaim = (row: typeof merchantClaims.$inferSelect): MerchantClaim => ({
+// La restricción CHECK de la tabla garantiza el estado. H36: createdEstablishment solo aparece
+// cuando es verdadero (ausente es false).
+const toClaim = ({
+  createdEstablishment,
+  ...row
+}: typeof merchantClaims.$inferSelect): MerchantClaim => ({
   ...row,
   status: row.status as MerchantClaim['status'],
+  ...(createdEstablishment ? { createdEstablishment } : {}),
 });
 
 // Dos registros simultáneos pasan las comprobaciones del caso de uso; la base deja uno solo (D3).
@@ -134,7 +139,16 @@ export class DrizzleMerchantClaimRepository
     await this.db.transaction(async (tx) => {
       await tx
         .update(merchantClaims)
-        .set({ establishmentId, status: 'verificado', verifiedAt })
+        .set({
+          establishmentId,
+          status: 'verificado',
+          verifiedAt,
+          // H36 (ADR-040): si la propuesta se fusionó con otra tienda, la cuenta no creó esa.
+          createdEstablishment: and(
+            eq(merchantClaims.createdEstablishment, true),
+            eq(merchantClaims.establishmentId, establishmentId),
+          ),
+        })
         .where(eq(merchantClaims.accountId, accountId));
       for (const event of events) await this.outbox.publish(tx, event);
     });

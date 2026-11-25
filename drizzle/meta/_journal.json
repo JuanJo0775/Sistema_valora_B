@@ -351,6 +351,13 @@
       "when": 1795569176031,
       "tag": "0049_commerce-dispute-challengers",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795570612306,
+      "tag": "0050_store-retirement-and-creator",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { MerchantClaim } from '../../src/modules/commerce/application/merchant-claims';
+import { DrizzleMerchantDepartures } from '../../src/modules/commerce/infrastructure/drizzle-merchant-departures';
 import { DrizzleMerchantCaseRepository } from '../../src/modules/commerce/infrastructure/drizzle-merchant-case-repository';
 import { DrizzleMerchantClaimRepository } from '../../src/modules/commerce/infrastructure/drizzle-merchant-claim-repository';
 import { DrizzleMerchantRevocations } from '../../src/modules/commerce/infrastructure/drizzle-merchant-revocations';
@@ -188,5 +189,80 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
     await expect(count('commerce.merchant_claim_rejections')).resolves.toBe(0);
     await expect(count('commerce.official_prices')).resolves.toBe(0);
     await expect(count('shared.outbox')).resolves.toBe(1);
+  });
+
+  // H36: dejar o eliminar la tienda por decisión propia.
+  describe('dejar la tienda por decisión propia (H36)', () => {
+    const departure = {
+      accountId: claim.accountId,
+      establishmentId: STORE,
+      kind: 'dejada' as const,
+      departedAt: revokedAt,
+    };
+    let departures: DrizzleMerchantDepartures;
+
+    beforeAll(() => {
+      departures = new DrizzleMerchantDepartures(db, new OutboxPublisher());
+    });
+
+    it('la solicitud se borra sin historial de revocación, se retira lo publicado y se cierran los casos', async () => {
+      await expect(
+        departures.depart(departure, [createEvent('MerchantLeft', 1, {})]),
+      ).resolves.toBe(true);
+
+      await expect(claims.findByAccount(claim.accountId)).resolves.toBeNull();
+      // A diferencia de la revocación, no queda un rechazo que impida volver a reclamar.
+      await expect(claims.lastRejection(claim.accountId)).resolves.toBeNull();
+      await expect(claims.wasRevokedFrom(claim.accountId, STORE)).resolves.toBe(false);
+      await expect(prices.listFor(STORE)).resolves.toEqual([]);
+      await expect(cases.findPending('cb444444-4444-4444-8444-444444444444')).resolves.toBeNull();
+      await expect(count('shared.outbox')).resolves.toBe(1);
+    });
+
+    // H18: los datos de quien disputa solo viven mientras su caso está pendiente.
+    it('borra los datos de quienes disputaban la tienda, porque sus casos se cierran', async () => {
+      await db.execute(sql`truncate commerce.dispute_challengers`);
+      await db.execute(
+        sql`insert into commerce.dispute_challengers (case_id, establishment_id, account_id, responsible_name, phone)
+            values ('cb777777-7777-4777-8777-777777777777', ${STORE}, 'cb666666-6666-4666-8666-666666666666', 'Luis Ramírez', '3157654321')`,
+      );
+
+      await departures.depart(departure, []);
+
+      await expect(count('commerce.dispute_challengers')).resolves.toBe(0);
+    });
+
+    it('si la solicitud ya no está, no publica nada y devuelve false', async () => {
+      await departures.depart(departure, [createEvent('MerchantLeft', 1, {})]);
+
+      await expect(
+        departures.depart(departure, [createEvent('MerchantLeft', 1, {})]),
+      ).resolves.toBe(false);
+      await expect(count('shared.outbox')).resolves.toBe(1);
+    });
+
+    it('el reclamo de una tienda nueva guarda que la cuenta la creó', async () => {
+      await db.execute(sql`truncate commerce.merchant_claims`);
+      await claims.save({ ...claim, createdEstablishment: true }, []);
+
+      await expect(claims.findByAccount(claim.accountId)).resolves.toMatchObject({
+        createdEstablishment: true,
+      });
+      await claims.verify(claim.accountId, STORE, revokedAt, []);
+      await expect(claims.findByAccount(claim.accountId)).resolves.toMatchObject({
+        createdEstablishment: true,
+      });
+    });
+
+    it('si la propuesta se fusiona con otra tienda, la cuenta ya no figura como su creadora', async () => {
+      await db.execute(sql`truncate commerce.merchant_claims`);
+      await claims.save({ ...claim, createdEstablishment: true }, []);
+
+      await claims.verify(claim.accountId, 'cb555555-5555-4555-8555-555555555555', revokedAt, []);
+
+      const merged = await claims.findByAccount(claim.accountId);
+      expect(merged).toMatchObject({ establishmentId: 'cb555555-5555-4555-8555-555555555555' });
+      expect(merged).not.toHaveProperty('createdEstablishment');
+    });
   });
 });

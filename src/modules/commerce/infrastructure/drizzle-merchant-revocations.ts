@@ -15,11 +15,11 @@ import {
   promotions,
 } from './schema';
 
-type Transaction = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
+export type Transaction = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
 
 // Lo publicado por la tienda deja de mostrarse (D3). ADR-037: sus precios en revisión se cierran y
 // moderación los saca de la cola.
-async function withdrawPublished(
+export async function withdrawPublished(
   tx: Transaction,
   outbox: OutboxPublisher,
   establishmentId: string,

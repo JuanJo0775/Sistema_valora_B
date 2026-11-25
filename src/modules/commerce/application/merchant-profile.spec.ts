@@ -44,7 +44,19 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
       responsibleName: 'Rosa Gómez',
       informal: true,
       verifiedAt: claim.verifiedAt,
+      canDeleteEstablishment: false,
     });
+  });
+
+  it('H36: solo la cuenta verificada que creó la tienda puede eliminarla', async () => {
+    const created = { ...claim, createdEstablishment: true };
+
+    await expect(setup([created]).find('cuenta-de-dona-rosa')).resolves.toMatchObject({
+      canDeleteEstablishment: true,
+    });
+    await expect(
+      setup([{ ...created, status: 'pre_aprobado', verifiedAt: null }]).find('cuenta-de-dona-rosa'),
+    ).resolves.toMatchObject({ canDeleteEstablishment: false });
   });
 
   it('una cuenta sin tienda registrada no tiene perfil de comercio', async () => {
@@ -68,6 +80,7 @@ describe('perfil del comercio (GET /commerce/me, D3 del grill comercial)', () =>
       responsibleName: 'Rosa Gómez',
       informal: true,
       verifiedAt: null,
+      canDeleteEstablishment: false,
       unlocks: [
         'precios_oficiales',
         'carga_por_archivo',

@@ -34,6 +34,9 @@ export const merchantClaims = commerceSchema.table(
     status: text('status').notNull(),
     // null mientras está pre-aprobado (D2).
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    // H36 (ADR-040): la cuenta creó esta tienda (tienda nueva) y por eso puede eliminarla. Los
+    // reclamos anteriores a la columna quedan en false.
+    createdEstablishment: boolean('created_establishment').notNull().default(false),
   },
   (table) => [
     // D3: un dueño por tienda. La llave primaria ya deja una tienda por cuenta.

@@ -86,6 +86,8 @@ describe('registrar un comercio con una tienda que no está en el mapa (RF-015, 
         acceptedTermsVersion: '2026-11',
         status: 'pre_aprobado',
         verifiedAt: null,
+        // H36: la cuenta creó esta tienda, así que podrá eliminarla.
+        createdEstablishment: true,
       },
     ]);
     // Todavía no es comercio: el rol cambia cuando se aprueba la tienda.

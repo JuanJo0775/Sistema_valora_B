@@ -82,6 +82,10 @@ Son los datos que la propia persona escribió para que moderación revisara su r
 
 El derecho de supresión es automático: `POST /v1/me/account-deletion` programa el borrado a 10 días y una purga interna lo ejecuta. Qué se borra y qué se conserva está en `docs/privacidad.md` («Supresión de la cuenta»). Resumen para EC-08: se borran el correo, el nombre, el hash, las sesiones, los enlaces de verificación y de restablecimiento de contraseña y la clave seudónima (la única unión entre persona y clave); se conservan los reportes, la reputación, las propuestas, las marcas y las bitácoras, que solo llevan ids internos y claves seudónimas. Las respuestas (202, 403 `ACCOUNT_PENDING_DELETION`) no traen correo, nombre, hash ni id.
 
+## Dejar y eliminar la tienda (ADR-040)
+
+Dejar la tienda borra la solicitud del comercio (nombre del responsable, NIT y teléfono), sus avisos enviados, sus precios oficiales y sus promociones; no se guarda un historial de la salida en `commerce`. En `identity.role_changes` queda el cambio a reportante (ids, sin correo). Los casos de moderación cerrados conservan solo claves seudónimas, y se borran los datos del responsable de quien disputaba esa tienda (`commerce.dispute_challengers`). El dato nuevo `commerce.merchant_claims.created_establishment` es un booleano que se borra con la solicitud. Eliminar la tienda no borra datos: la marca `retirada` y sus reportes quedan ocultos. Ninguna respuesta nueva trae datos de personas (solo el id de la tienda). La purga de la cuenta (ADR-032) funciona igual después de dejar o eliminar la tienda (`commerce-leave-http.spec.ts`).
+
 ## Hallazgos
 
 1. **`pricing.reports.reporter_id` guarda el id de la cuenta fuera de `identity`.** Tras la supresión de la cuenta (ADR-032) queda como un UUID huérfano, sin persona detrás. Es un UUID sin correo ni nombre, que `pricing` usa para la idempotencia, el duplicado y la ráfaga. Nunca sale en respuestas ni eventos (lo verifican `privacy-public-responses.spec.ts`, `reports-http.spec.ts` y las pruebas de punta a punta). Se deja así (grill de la #36, pregunta 1). Cambiarlo por la clave seudónima pediría una migración que recalcule claves con el secreto.

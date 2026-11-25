@@ -101,6 +101,17 @@ Listar las suyas, con estado `activa`, `pausada` o `vencida`, y retirarlas.
 
 `{ openingHours?, phone?, name?, location? }`. Horario, teléfono y nombre se aplican al instante, salvo un nombre equivalente a otra tienda a menos de 50 m, que va a revisión. `location` crea siempre una propuesta para el moderador. Responde qué se aplicó y qué quedó en revisión. `commerce` lo pide a `establishments` por su `index.ts`.
 
+## Dejar y eliminar la tienda (ADR-040, H36)
+
+| Ruta | Respuestas |
+|---|---|
+| `POST /v1/commerce/me/leave` (sin cuerpo) | `200 { status: "dejada", establishmentId }` o `200 { status: "sin_tienda" }`; `401`; `403` (moderador o CSRF) |
+| `DELETE /v1/commerce/establishment` | `204`; `403 ESTABLISHMENT_NOT_CREATED_BY_ACCOUNT` o `MERCHANT_NOT_VERIFIED`; `404` sin tienda; `401` |
+
+`GET /v1/commerce/me` suma `canDeleteEstablishment` (boolean) en el perfil activo.
+
+Eventos nuevos: `MerchantLeft { accountId, establishmentId }` (identity devuelve el rol) y `MerchantEstablishmentDeleted { establishmentId }` (establishments retira la tienda). Los precios y las promociones se retiran con los mismos eventos de la revocación. Detalle en `docs/adr/0040-dejar-y-eliminar-la-tienda-por-el-propio-comercio.md`.
+
 ## Denuncias, disputas y revocación (D2, D3)
 
 | Ruta | Quién | Qué |
