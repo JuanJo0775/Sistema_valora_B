@@ -31,7 +31,11 @@ function setup(
   const reviewCases: MerchantCase[] = [];
   // Eventos guardados junto con la solicitud, en la misma transacción (ADR-015).
   const events: DomainEvent[] = [];
-  const disputes: { establishmentId: string; accountId: string }[] = [];
+  const disputes: {
+    establishmentId: string;
+    accountId: string;
+    challenger: { responsibleName: string; nit: string | null; phone: string };
+  }[] = [];
   const claim = new ClaimEstablishment({
     establishments: {
       find: (id) =>
@@ -56,8 +60,8 @@ function setup(
     },
     // Precisión de D3 (#208): una disputa para el moderador.
     disputes: {
-      open: (establishmentId, accountId) => {
-        disputes.push({ establishmentId, accountId });
+      open: (establishmentId, accountId, challenger) => {
+        disputes.push({ establishmentId, accountId, challenger });
         return Promise.resolve();
       },
     },
@@ -150,7 +154,18 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
     expect(claims).toEqual([owner]);
     expect(events).toEqual([]);
     // Precisión de D3 (#208): estaba en la tienda (presencia), así que el moderador decide.
-    expect(disputes).toEqual([{ establishmentId: STORE.id, accountId: 'cuenta-de-dona-rosa' }]);
+    // H18: la disputa guarda los datos de quien disputa para que el moderador compare a las dos partes.
+    expect(disputes).toEqual([
+      {
+        establishmentId: STORE.id,
+        accountId: 'cuenta-de-dona-rosa',
+        challenger: {
+          responsibleName: request().responsibleName,
+          nit: request().nit ?? null,
+          phone: request().phone,
+        },
+      },
+    ]);
   });
 
   it('una cuenta que ya tiene una tienda no puede registrar otra (una por cuenta)', async () => {

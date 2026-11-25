@@ -93,6 +93,16 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     ]);
   });
 
+  // H5 y H18: los datos del responsable de un comercio solo viven en commerce.
+  it('el responsable y su NIT solo están en commerce: la solicitud y la disputa pendiente', () => {
+    expect(named(/responsible|(^|_)nit($|_)/)).toEqual([
+      'commerce.dispute_challengers.nit',
+      'commerce.dispute_challengers.responsible_name',
+      'commerce.merchant_claims.nit',
+      'commerce.merchant_claims.responsible_name',
+    ]);
+  });
+
   it('ninguna tabla guarda la IP de quien hace la petición', () => {
     expect(named(/(^|_)ip($|_)|ip_address|user_agent/)).toEqual([]);
   });
@@ -106,6 +116,8 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
         .map((column) => `${column.table_schema}.${column.table_name}.${column.column_name}`)
         .sort(),
     ).toEqual([
+      // H18: quien disputa una tienda, solo mientras el caso está pendiente.
+      'commerce.dispute_challengers.account_id',
       'commerce.merchant_claim_rejections.account_id',
       'commerce.merchant_claims.account_id',
       'commerce.merchant_notices.account_id',

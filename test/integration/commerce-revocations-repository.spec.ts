@@ -59,7 +59,7 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate commerce.merchant_claims, commerce.merchant_claim_rejections, commerce.merchant_cases, commerce.official_prices, commerce.promotions, shared.outbox`,
+      sql`truncate commerce.merchant_claims, commerce.merchant_claim_rejections, commerce.merchant_cases, commerce.dispute_challengers, commerce.official_prices, commerce.promotions, shared.outbox`,
     );
     await claims.save(claim, []);
     await prices.save(
@@ -102,6 +102,76 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
     await expect(prices.listFor(STORE)).resolves.toEqual([]);
     await expect(cases.findPending('cb444444-4444-4444-8444-444444444444')).resolves.toBeNull();
     await expect(count('shared.outbox')).resolves.toBe(1);
+  });
+
+  // H18: los datos de quien disputa solo viven mientras el caso está pendiente.
+  const challenger = {
+    accountId: 'cb666666-6666-4666-8666-666666666666',
+    responsibleName: 'Luis Ramírez',
+    nit: null,
+    phone: '3157654321',
+  };
+  const dispute = {
+    id: 'cb777777-7777-4777-8777-777777777777',
+    establishmentId: STORE,
+    kind: 'disputa' as const,
+    reporterKey: 'd'.repeat(64),
+    reason: 'Otra cuenta, estando en la tienda, intentó registrarla.',
+    createdAt: revokedAt,
+  };
+
+  it('la disputa pendiente trae a quien disputa, sin su cuenta; las demás, null', async () => {
+    await cases.open(dispute, challenger);
+
+    const pending = await cases.pending();
+
+    expect(pending.find((found) => found.id === dispute.id)?.challenger).toEqual({
+      responsibleName: 'Luis Ramírez',
+      nit: null,
+      phone: '3157654321',
+    });
+    expect(pending.find((found) => found.kind === 'denuncia')?.challenger).toBeNull();
+    expect(JSON.stringify(pending)).not.toContain(challenger.accountId);
+  });
+
+  it('descartar la disputa borra los datos de quien disputó', async () => {
+    await cases.open(dispute, challenger);
+
+    await cases.close({
+      caseId: dispute.id,
+      status: 'descartado',
+      note: 'El dueño actual es el correcto',
+      moderatorKey: 'c'.repeat(64),
+      decidedAt: revokedAt,
+    });
+
+    await expect(count('commerce.dispute_challengers')).resolves.toBe(0);
+  });
+
+  it('revocar borra los datos de quienes disputaban esa tienda', async () => {
+    await cases.open(dispute, challenger);
+
+    await revocations.revoke(
+      {
+        accountId: claim.accountId,
+        establishmentId: STORE,
+        reason: 'Confirmado con el dueño real: suplantación',
+        moderatorKey: 'c'.repeat(64),
+        revokedAt,
+      },
+      [],
+    );
+
+    await expect(count('commerce.dispute_challengers')).resolves.toBe(0);
+  });
+
+  it('borrar la cuenta de quien disputó borra sus datos, aunque el caso siga pendiente', async () => {
+    await cases.open(dispute, challenger);
+
+    await revocations.purge(challenger.accountId, null, []);
+
+    await expect(count('commerce.dispute_challengers')).resolves.toBe(0);
+    await expect(cases.findPending(dispute.id)).resolves.not.toBeNull();
   });
 
   it('borrar la cuenta: no queda su solicitud, su historial ni lo que publicó', async () => {

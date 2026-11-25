@@ -56,6 +56,7 @@ describe('cola de moderación (RF-013)', () => {
         reportedPriceCop: 2000,
         medianPriceCop: 4000,
         deviationPercent: 50,
+        deviationDirection: 'menor',
         reportersCount: 2,
         createdAt: detected.observation.receivedAt,
       },
@@ -70,6 +71,38 @@ describe('cola de moderación (RF-013)', () => {
       },
     ]);
     expect(JSON.stringify(queue)).not.toContain('clave-del-autor');
+  });
+
+  // H25: deviationPercent va en valor absoluto; la dirección viaja aparte para no depender del cliente.
+  it('dice si el precio reportado está por debajo o por encima de la mediana (H25)', async () => {
+    const below = pending(suspicious(0.5));
+    const above = {
+      ...pending(suspicious(0.5)),
+      observation: { ...pending(suspicious(0.5)).observation, priceCop: 6000 },
+    };
+    const same = {
+      ...pending({ status: 'sin_datos', references: 0 }, 1),
+      observation: {
+        ...pending(suspicious(0)).observation,
+        priceCop: 4000,
+        verdict: suspicious(0),
+      },
+    };
+    const noMedian = pending({ status: 'sin_datos', references: 0 }, 1);
+
+    const queue = await setup([below, above, same, noMedian]).list({});
+
+    const direction = (item: PendingItem) =>
+      queue.find((found) => found.id === item.observation.reportId)?.deviationDirection;
+    expect(direction(below)).toBe('menor');
+    expect(direction(above)).toBe('mayor');
+    // Sin diferencia o sin mediana no hay dirección: el campo no aparece.
+    expect(queue.find((found) => found.id === same.observation.reportId)).not.toHaveProperty(
+      'deviationDirection',
+    );
+    expect(queue.find((found) => found.id === noMedian.observation.reportId)).not.toHaveProperty(
+      'deviationDirection',
+    );
   });
 
   // RN2 de RF-013 y grill de la #32, pregunta 6.

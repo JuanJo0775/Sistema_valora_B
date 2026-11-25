@@ -57,7 +57,7 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate identity.role_changes, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.merchant_claim_rejections, commerce.merchant_cases`,
+      sql`truncate identity.role_changes, commerce.merchant_claims, shared.outbox, shared.processed_events, establishments.establishments, establishments.store_proposals, commerce.merchant_claim_rejections, commerce.merchant_cases, commerce.dispute_challengers`,
     );
     // Cada prueba empieza con los reportantes sin tienda.
     await db.execute(sql`update identity.accounts set role = 'reportante' where role = 'comercio'`);
@@ -195,6 +195,47 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
         status: 'verificado',
         establishment: { id: establishmentId, name: 'Tienda El Paraíso' },
       });
+    });
+
+    // H5: el moderador sabe que aprobar esta tienda verifica a una cuenta, y a quién.
+    it('la cola de tiendas trae al responsable solo en la propuesta que nace de un reclamo (H5)', async () => {
+      const { establishmentId } = (await claim(rosa, newStoreBody).expect(201)).body as {
+        establishmentId: string;
+      };
+      const plain = await request(server)
+        .post('/v1/establishment-proposals')
+        .set('Cookie', ana.cookie)
+        .set('X-CSRF-Token', ana.csrfToken)
+        .send({ name: 'Granero La Vecina', type: 'barrio', municipality: 'cordoba', ...HERE })
+        .expect(202);
+
+      const queue = await request(server)
+        .get('/v1/moderation/store-proposals')
+        .set('Cookie', moderator.cookie)
+        .expect(200);
+
+      const items = (queue.body as { items: { id: string; claim?: object }[] }).items;
+      expect(items.find((item) => item.id === establishmentId)?.claim).toEqual({
+        responsibleName: 'Luis Ramírez',
+        phone: '3157654321',
+        grantsMerchantRole: true,
+      });
+      expect(
+        items.find((item) => item.id === (plain.body as { id: string }).id),
+      ).not.toHaveProperty('claim');
+      expect(contractErrors('GET /moderation/store-proposals', 200, queue.body as unknown)).toEqual(
+        [],
+      );
+      // EC-08: ni la cuenta, ni el correo, ni la clave seudónima.
+      const accounts = await db.execute<{ id: string; email: string; reporter_key: string }>(
+        sql`select id, email, reporter_key from identity.accounts`,
+      );
+      const text = JSON.stringify(queue.body);
+      for (const account of accounts.rows) {
+        expect(text).not.toContain(account.id);
+        expect(text).not.toContain(account.email);
+        expect(text).not.toContain(account.reporter_key);
+      }
     });
 
     it('al rechazarse la tienda ve el motivo y puede registrar otra', async () => {
