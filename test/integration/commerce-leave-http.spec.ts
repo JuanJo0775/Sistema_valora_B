@@ -215,24 +215,19 @@ describe('dejar y eliminar la tienda por HTTP (H36, ADR-040)', () => {
     expect(await roleOf(luis)).toBe('comercio');
     await publishPrice(luis, 2600);
     // Un reporte de la comunidad en la tienda nueva.
-    await send(
-      ana,
-      'post',
-      '/reports',
-      {
-        presentationId: riceId,
-        establishmentId: storeId,
-        priceCop: 2650,
-        observedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      },
-    )
+    await send(ana, 'post', '/reports', {
+      presentationId: riceId,
+      establishmentId: storeId,
+      priceCop: 2650,
+      observedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    })
       .set('Idempotency-Key', crypto.randomUUID())
       .expect(201);
     await relay();
     expect(JSON.stringify((await search('paraíso').expect(200)).body)).toContain(storeId);
-    expect(((await compare(NEW_STORE).expect(200)).body as { results: unknown[] }).results).not.toEqual(
-      [],
-    );
+    expect(
+      ((await compare(NEW_STORE).expect(200)).body as { results: unknown[] }).results,
+    ).not.toEqual([]);
 
     await send(luis, 'delete', '/commerce/establishment').expect(204);
     await relay();
@@ -243,6 +238,12 @@ describe('dejar y eliminar la tienda por HTTP (H36, ADR-040)', () => {
       [],
     );
     await request(server).get(`/v1/establishments/${storeId}/prices`).expect(404);
+    // Tampoco entran al historial público del producto.
+    const history = await request(server)
+      .get(`/v1/products/${productId}/history`)
+      .query({ establishmentId: storeId })
+      .expect(200);
+    expect(history.body).toMatchObject({ presentations: [{ points: [] }] });
     // Borrado lógico: la tienda queda «retirada» y los reportes de la comunidad se conservan.
     const kept = await db.execute<{ status: string; reports: string }>(
       sql`select e.status, (select count(*) from pricing.reports where establishment_id = e.id) as reports
