@@ -165,6 +165,22 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
       await expect(claims.findByAccount(claim.accountId)).resolves.toMatchObject({
         createdEstablishment: true,
       });
+      await claims.verify(claim.accountId, STORE, revokedAt, []);
+      await expect(claims.findByAccount(claim.accountId)).resolves.toMatchObject({
+        createdEstablishment: true,
+      });
+    });
+
+    it('si la propuesta se fusiona con otra tienda, la cuenta ya no figura como su creadora', async () => {
+      await db.execute(sql`truncate commerce.merchant_claims`);
+      await claims.save({ ...claim, createdEstablishment: true }, []);
+
+      await claims.verify(claim.accountId, 'cb555555-5555-4555-8555-555555555555', revokedAt, []);
+
+      await expect(claims.findByAccount(claim.accountId)).resolves.toMatchObject({
+        establishmentId: 'cb555555-5555-4555-8555-555555555555',
+        createdEstablishment: false,
+      });
     });
   });
 });

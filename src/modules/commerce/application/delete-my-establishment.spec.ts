@@ -62,7 +62,8 @@ describe('eliminar la tienda propia (H36)', () => {
   });
 
   it('una tienda del catálogo o ajena (no creada por la cuenta) no se elimina y no cambia nada', async () => {
-    const { createdEstablishment: _created, ...unmarked } = owner;
+    const unmarked: MerchantClaim = { ...owner };
+    delete unmarked.createdEstablishment;
     for (const claim of [{ ...owner, createdEstablishment: false }, unmarked]) {
       const { remove, departures } = setup(claim);
 

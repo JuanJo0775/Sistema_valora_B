@@ -160,7 +160,10 @@ describe('repositorio de establecimientos con PostGIS', () => {
         ids: [near.id, middle.id],
         municipality: 'armenia',
       });
-      const around = await repository.findAround({ establishmentId: middle.id, radiusMeters: 5000 });
+      const around = await repository.findAround({
+        establishmentId: middle.id,
+        radiusMeters: 5000,
+      });
       const duplicates = await repository.findWithinMeters(at(100), 200);
 
       expect(nearby.map((store) => store.id)).toEqual([middle.id]);
@@ -172,6 +175,7 @@ describe('repositorio de establecimientos con PostGIS', () => {
       await expect(repository.findById(near.id)).resolves.toBeNull();
       await expect(repository.exists(near.id)).resolves.toBe(false);
       await expect(repository.exists(middle.id)).resolves.toBe(true);
+      await expect(repository.retiredIds()).resolves.toEqual([near.id]);
     });
 
     it('el nombre de una retirada se sigue resolviendo, para el historial de quien reportó', async () => {

@@ -255,4 +255,54 @@ describe('registro de un comercio frente a docs/openapi.yaml (#201)', () => {
       ),
     ).toEqual([]);
   });
+
+  it('dejar y eliminar la tienda responden como dice el contrato (ADR-040)', async () => {
+    const owner = await signIn(server, db, 'contrato-salida@correo.com');
+    const moderator = await signIn(
+      server,
+      db,
+      'contrato-moderadora-salida@correo.com',
+      'moderador',
+    );
+    await db.execute(sql`truncate commerce.merchant_claims, establishments.store_proposals`);
+    await claim(owner).expect(201);
+    await app.get(OutboxRelay).runOnce();
+    const send = (as: SignedIn, method: 'post' | 'delete', path: string) =>
+      request(server)
+        [method](`/v1${path}`)
+        .set('Cookie', as.cookie)
+        .set('X-CSRF-Token', as.csrfToken);
+
+    const responses = [
+      // La tienda del catálogo no la creó la cuenta.
+      [
+        'DELETE /commerce/establishment',
+        403,
+        await send(owner, 'delete', '/commerce/establishment'),
+      ],
+      ['POST /commerce/me/leave', 200, await send(owner, 'post', '/commerce/me/leave')],
+      ['POST /commerce/me/leave', 200, await send(owner, 'post', '/commerce/me/leave')],
+      [
+        'DELETE /commerce/establishment',
+        404,
+        await send(owner, 'delete', '/commerce/establishment'),
+      ],
+      ['POST /commerce/me/leave', 401, await request(server).post('/v1/commerce/me/leave')],
+      [
+        'DELETE /commerce/establishment',
+        401,
+        await request(server).delete('/v1/commerce/establishment'),
+      ],
+      ['POST /commerce/me/leave', 403, await send(moderator, 'post', '/commerce/me/leave')],
+    ] as const;
+
+    expect(responses.map(([, status, response]) => [status, response.status])).toEqual(
+      responses.map(([, status]) => [status, status]),
+    );
+    expect(
+      responses.flatMap(([route, status, response]) =>
+        contractErrors(route, status, response.body as unknown),
+      ),
+    ).toEqual([]);
+  });
 });

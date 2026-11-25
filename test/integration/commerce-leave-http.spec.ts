@@ -213,6 +213,9 @@ describe('dejar y eliminar la tienda por HTTP (H36, ADR-040)', () => {
     const luis = await signIn(server, db, 'luis-salida@correo.com');
     const storeId = await registerNewStore(luis);
     expect(await roleOf(luis)).toBe('comercio');
+    const profile = await request(server).get('/v1/commerce/me').set('Cookie', luis.cookie);
+    expect(profile.body).toMatchObject({ canDeleteEstablishment: true });
+    expect(contractErrors('GET /commerce/me', 200, profile.body as unknown)).toEqual([]);
     await publishPrice(luis, 2600);
     // Un reporte de la comunidad en la tienda nueva.
     await send(ana, 'post', '/reports', {
@@ -263,6 +266,9 @@ describe('dejar y eliminar la tienda por HTTP (H36, ADR-040)', () => {
     await relay();
     await publishPrice(marta, 2600);
     await relay();
+
+    const profile = await request(server).get('/v1/commerce/me').set('Cookie', marta.cookie);
+    expect(profile.body).toMatchObject({ canDeleteEstablishment: false });
 
     const refused = await send(marta, 'delete', '/commerce/establishment').expect(403);
     await relay();
