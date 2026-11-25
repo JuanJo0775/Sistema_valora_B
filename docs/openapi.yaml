@@ -266,8 +266,8 @@ paths:
         Pública, sin cuenta (RN3). Una serie por presentación con el precio mínimo, el promedio
         (redondeado al peso) y la cantidad de reportes de cada día, en hora de Colombia. Los días sin
         precios no salen. No cuentan los precios descartados por moderación ni los sospechosos que
-        nadie ha aprobado. Sin datos de quién reportó (EC-08). Caché pública de 5 minutos con ETag
-        (EC-04) (#83).
+        nadie ha aprobado. Tampoco los de tiendas retiradas (ADR-040). Sin datos de quién reportó
+        (EC-08). Caché pública de 5 minutos con ETag (EC-04) (#83).
       parameters:
         - $ref: '#/components/parameters/ProductId'
         - name: establishmentId
@@ -2256,6 +2256,35 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /commerce/me/leave:
+    post:
+      tags: [Comercios]
+      operationId: leaveMerchantEstablishment
+      summary: Dejar de administrar la tienda (RF-015, ADR-040)
+      description: >-
+        H36. La propia cuenta deja su tienda; el cliente pide la confirmación antes de llamar. Sin
+        cuerpo. Se retiran sus precios oficiales (también los que estaban en revisión) y sus
+        promociones, se cierran los casos de moderación abiertos de la tienda y la cuenta vuelve a
+        reportante desde la siguiente acción, con la misma sesión. La tienda sigue en el mapa como
+        tienda de la comunidad, sin dueño. No impide volver a reclamarla (con las reglas de POST
+        /commerce/claims). Una solicitud pre-aprobada también se puede dejar. Idempotente: sin tienda
+        responde sin_tienda.
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        '200':
+          description: La cuenta ya no administra ninguna tienda.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeaveEstablishmentResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN (moderador) o CSRF_TOKEN_INVALID.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /establishments/{establishmentId}/merchant-reports:
     get:
       tags: [Comercios]
@@ -2468,6 +2497,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
   /commerce/establishment:
+    delete:
+      tags: [Comercios]
+      operationId: deleteMerchantEstablishment
+      summary: Eliminar la tienda que la cuenta creó (RF-015, ADR-040)
+      description: >-
+        H36. Solo un comercio verificado cuya tienda nació de su propio reclamo de tienda nueva
+        (newEstablishment) desde este cambio; el cliente pide la confirmación antes de llamar. Hace lo
+        mismo que POST /commerce/me/leave y además retira la tienda (borrado lógico): deja de salir en
+        cercanas, búsqueda, detalle, comparación, destacados e historial público, y ya no admite
+        reportes ni reclamos. Los reportes de la comunidad se conservan ocultos con ella. Las tiendas
+        del catálogo, las fusionadas por moderación, las reclamadas ya existentes y las anteriores a
+        este cambio solo se pueden dejar. El retiro llega unos instantes después de la respuesta.
+      x-corte: 3
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        '204':
+          description: Tienda eliminada y cuenta sin tienda.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: >-
+            code ESTABLISHMENT_NOT_CREATED_BY_ACCOUNT (la tienda no la creó esta cuenta),
+            MERCHANT_NOT_VERIFIED (solicitud pre-aprobada: se puede dejar), FORBIDDEN (moderador) o
+            CSRF_TOKEN_INVALID.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: code NOT_FOUND, la cuenta no tiene tienda (también al repetir la eliminación).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     patch:
       tags: [Comercios]
       operationId: updateMerchantEstablishment
@@ -3170,6 +3232,19 @@ components:
       items:
         type: string
         enum: [precios_oficiales, carga_por_archivo, promociones, avisos_de_precio, datos_de_la_tienda]
+    LeaveEstablishmentResult:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [dejada, sin_tienda]
+          description: dejada si la cuenta dejó una tienda ahora; sin_tienda si no tenía ninguna.
+        establishmentId:
+          type: string
+          format: uuid
+          description: Solo con dejada.
     MerchantProfile:
       oneOf:
         - $ref: '#/components/schemas/ActiveMerchantProfile'
@@ -3195,7 +3270,7 @@ components:
     ActiveMerchantProfile:
       type: object
       additionalProperties: false
-      required: [status, establishment, responsibleName, informal, verifiedAt]
+      required: [status, establishment, responsibleName, informal, verifiedAt, canDeleteEstablishment]
       properties:
         status: { type: string, enum: [pre_aprobado, verificado] }
         establishment:
@@ -3209,6 +3284,11 @@ components:
         informal: { type: boolean, description: Sin NIT. }
         verifiedAt: { type: [string, 'null'], format: date-time, description: null si está pre-aprobado. }
         unlocks: { $ref: '#/components/schemas/MerchantUnlocks' }
+        canDeleteEstablishment:
+          type: boolean
+          description: >-
+            true si la cuenta puede usar DELETE /commerce/establishment (verificada y creó la tienda,
+            ADR-040).
     OnlineOffer:
       type: object
       additionalProperties: false

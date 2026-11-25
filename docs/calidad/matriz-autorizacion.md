@@ -48,6 +48,15 @@ Desde ADR-029, `POST /v1/reports` también exige el correo verificado: un report
 
 La regla de cadenas no cambia quién puede llamar: `POST /v1/commerce/claims` sigue siendo solo del reportante con el correo verificado y `POST /v1/moderation/merchant-cases/{caseId}/decision` solo del moderador (lo cubre `route-guardian.spec.ts`). Lo que cambia es el orden de los controles dentro de `POST /v1/commerce/claims`: sin sesión 401, correo sin verificar 403, tienda de cadena 422 `CHAIN_STORE_NOT_CLAIMABLE` (antes de la cercanía, así quien está lejos de una D1 no recibe la pista falsa de acercarse), lejos 422 `NOT_AT_ESTABLISHMENT`. `commerce-claims-http.spec.ts` comprueba 401 y 403 antes de la regla de cadena. La regla de cadena también aplica al camino de tienda nueva (`newEstablishment`), con el mismo 422, y decidir un reclamo es atómico: una segunda decisión sobre el mismo caso responde 404 y no publica nada (ADR-038, enmienda). Un supermercado que no es de cadena no concede el rol: solo `aprobar` del moderador publica `MerchantVerified`.
 
+## Comercio: dejar y eliminar la tienda (ADR-040, H36)
+
+| Ruta | Sin sesión | Reportante | Moderador | Comercio | Suspendida |
+|---|---|---|---|---|---|
+| `POST /v1/commerce/me/leave` | 401 | Permitido (sin tienda: 200 `sin_tienda`) | 403 | Permitido | 403 |
+| `DELETE /v1/commerce/establishment` | 401 | Permitido (sin tienda: 404) | 403 | Solo su tienda y solo si la creó (403 `ESTABLISHMENT_NOT_CREATED_BY_ACCOUNT`) | 403 |
+
+Las dos exigen `X-CSRF-Token` y actúan solo sobre la tienda de la cuenta de la sesión: no reciben ningún identificador, así que no se puede nombrar la tienda de otra cuenta. El reportante pasa el control porque la cuenta pre-aprobada lo es y porque repetir la llamada tras el cambio de rol no debe responder 403. `commerce-leave-http.spec.ts` comprueba el 401, el 403 del moderador y el rechazo de una tienda no creada por la cuenta; `route-guardian.spec.ts`, que las dos tienen sesión y roles.
+
 ## Rutas públicas
 
 `GET /v1/health`, `GET /v1/products`, `GET /v1/products/{productId}`, `GET /v1/products/{productId}/comparison`, `GET /v1/featured-products` (B#120), `GET /v1/establishments` (#116), `GET /v1/establishments/nearby`, `GET /v1/establishments/{establishmentId}/prices` (#28), `POST /v1/auth/register`, `POST /v1/auth/login` y `POST /v1/auth/restore-account` (ADR-032; la credencial es el correo con la contraseña), `POST /v1/auth/forgot-password` y `POST /v1/auth/reset-password` (ADR-033; la credencial de la segunda es el token del enlace del correo, y la primera responde siempre 202).
