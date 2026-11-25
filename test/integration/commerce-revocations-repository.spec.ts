@@ -149,6 +149,19 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
       await expect(count('shared.outbox')).resolves.toBe(1);
     });
 
+    // H18: los datos de quien disputa solo viven mientras su caso está pendiente.
+    it('borra los datos de quienes disputaban la tienda, porque sus casos se cierran', async () => {
+      await db.execute(sql`truncate commerce.dispute_challengers`);
+      await db.execute(
+        sql`insert into commerce.dispute_challengers (case_id, establishment_id, account_id, responsible_name, phone)
+            values ('cb777777-7777-4777-8777-777777777777', ${STORE}, 'cb666666-6666-4666-8666-666666666666', 'Luis Ramírez', '3157654321')`,
+      );
+
+      await departures.depart(departure, []);
+
+      await expect(count('commerce.dispute_challengers')).resolves.toBe(0);
+    });
+
     it('si la solicitud ya no está, no publica nada y devuelve false', async () => {
       await departures.depart(departure, [createEvent('MerchantLeft', 1, {})]);
 
