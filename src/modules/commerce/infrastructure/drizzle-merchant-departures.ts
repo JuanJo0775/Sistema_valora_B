@@ -3,7 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type { MerchantDeparture, MerchantDepartures } from '../application/merchant-departures';
 import { withdrawPublished } from './drizzle-merchant-revocations';
-import { merchantCases, merchantClaims, merchantNotices } from './schema';
+import { disputeChallengers, merchantCases, merchantClaims, merchantNotices } from './schema';
 
 const CASE_NOTES = {
   dejada: 'El comercio dejó la tienda por decisión propia.',
@@ -44,6 +44,10 @@ export class DrizzleMerchantDepartures implements MerchantDepartures {
             eq(merchantCases.status, 'pendiente'),
           ),
         );
+      // H18: los datos de quien disputaba solo viven mientras su caso está pendiente.
+      await tx
+        .delete(disputeChallengers)
+        .where(eq(disputeChallengers.establishmentId, establishmentId));
       for (const event of events) await this.outbox.publish(tx, event);
       return true;
     });
