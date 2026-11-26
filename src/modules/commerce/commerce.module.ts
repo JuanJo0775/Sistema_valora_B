@@ -432,6 +432,8 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
         }),
     },
   ],
+  // #257: el resumen de moderación cuenta los casos pendientes.
+  exports: [MerchantCasesQueue],
 })
 export class CommerceModule implements OnModuleInit {
   constructor(

@@ -138,7 +138,7 @@ const ZONE_RADIUS_METERS = 1000;
       }),
     },
   ],
-  exports: [ReliabilityOfPrices],
+  exports: [ReliabilityOfPrices, ModerationQueue],
 })
 export class ReliabilityModule implements OnModuleInit {
   constructor(

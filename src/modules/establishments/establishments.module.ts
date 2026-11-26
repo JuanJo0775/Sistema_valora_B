@@ -203,6 +203,8 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     RetiredEstablishments,
     EstablishmentsWithinRadius,
     EstablishmentsAround,
+    StoreProposalsQueue,
+    StoreCorrectionsQueue,
   ],
 })
 export class EstablishmentsModule implements OnModuleInit {
