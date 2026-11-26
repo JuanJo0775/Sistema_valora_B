@@ -115,6 +115,25 @@ describe('suscripciones a los avisos por HTTP (#259)', () => {
     expect(rows.rows).toHaveLength(0);
   });
 
+  describe('DELETE /v1/notifications/subscriptions', () => {
+    const unsubscribe = (
+      as: SignedIn | null,
+      body: object = { endpoint: subscription.endpoint },
+    ) => {
+      const call = request(server).delete('/v1/notifications/subscriptions').send(body);
+      return as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call;
+    };
+
+    it('un moderador desactiva los avisos de su dispositivo: 204 y se borra', async () => {
+      await subscribe(moderator).expect(204);
+
+      await unsubscribe(moderator).expect(204);
+
+      const rows = await db.execute(sql`select 1 from notifications.push_subscriptions`);
+      expect(rows.rows).toHaveLength(0);
+    });
+  });
+
   describe('GET /v1/notifications/vapid-public-key', () => {
     it('es pública y entrega la clave pública, con caché', async () => {
       const response = await request(server).get('/v1/notifications/vapid-public-key').expect(200);
