@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, lte, or, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Transaction } from '../../../shared/database/database.module';
 import type { AccountCreation } from '../application/reporter-identity';
@@ -21,11 +21,18 @@ export class DrizzleAccountRepository
   // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
   constructor(private readonly db: NodePgDatabase | Transaction) {}
 
+  // Solo cuentas que pueden recibir avisos: sin eliminación pendiente ni suspensión vigente.
   async idsWithRole(role: Role): Promise<string[]> {
     const rows = await this.db
       .select({ id: accounts.id })
       .from(accounts)
-      .where(eq(accounts.role, role));
+      .where(
+        and(
+          eq(accounts.role, role),
+          isNull(accounts.deletionScheduledFor),
+          or(isNull(accounts.suspendedUntil), lte(accounts.suspendedUntil, sql`now()`)),
+        ),
+      );
     return rows.map((row) => row.id);
   }
 
