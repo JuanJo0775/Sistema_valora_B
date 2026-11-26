@@ -8,6 +8,7 @@ import { PurgeAccountSubscriptions } from './application/purge-account-subscript
 import { SubscribePush } from './application/subscribe-push';
 import { UnsubscribePush } from './application/unsubscribe-push';
 import { NotificationsController, VAPID_PUBLIC_KEY } from './http/notifications.controller';
+import { DrizzleNoticeLog } from './infrastructure/drizzle-notice-log';
 import { DrizzlePushSubscriptions } from './infrastructure/drizzle-push-subscriptions';
 
 // Avisos por Web Push a moderadores y comercios (ADR-044, ADR-045). Nadie lo importa: solo AppModule
@@ -52,6 +53,7 @@ export class NotificationsModule implements OnModuleInit {
         const { accountId } = event.payload as { accountId: string };
         await new PurgeAccountSubscriptions({
           subscriptions: new DrizzlePushSubscriptions(tx),
+          notices: new DrizzleNoticeLog(tx),
         }).execute(accountId);
       },
     );

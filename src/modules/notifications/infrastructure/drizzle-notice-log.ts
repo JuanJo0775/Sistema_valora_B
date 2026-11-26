@@ -23,4 +23,9 @@ export class DrizzleNoticeLog implements NoticeLog {
         set: { sentAt: at },
       });
   }
+
+  // ADR-032: al eliminar la cuenta no queda constancia de sus avisos.
+  async removeAll(accountId: string): Promise<void> {
+    await this.db.delete(sentNotices).where(eq(sentNotices.accountId, accountId));
+  }
 }
