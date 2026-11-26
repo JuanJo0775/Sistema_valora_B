@@ -3,17 +3,20 @@ flowchart TB
   COMM["<b>commerce</b> · corte 3<br/><small>puede usar a todos</small>"]:::evol
   NUC["<b>Núcleo de precios</b><br/><small>pricing · reliability · comparison</small>"]:::nucleo
   SOP["<b>Soporte</b><br/><small>identity · catalog · establishments · imports</small>"]:::soporte
+  NOTI["<b>notifications</b> · corte 3<br/><small>avisos por Web Push · se alimenta del outbox</small>"]:::evol
   SH["<b>shared</b><br/><small>bus, outbox, configuración, errores, logs</small>"]:::datos
   DOM["<b>domain</b> · núcleo puro<br/><small>no importa framework, base de datos ni módulos</small>"]:::dominio
   COMM -->|"solo por index.ts"| NUC
   COMM -->|"solo por index.ts"| SOP
   NUC -->|"solo por index.ts"| SOP
+  NOTI -->|"solo por index.ts"| SOP
+  NOTI --> SH
   NUC --> SH
   SOP --> SH
   NUC --> DOM
   SOP --> DOM
   COMM --> DOM
-  NO["<b>Prohibido</b><br/>· núcleo o soporte → commerce<br/>· leer tablas de otro módulo<br/>· domain → cualquier cosa<br/><small>dependency-cruiser lo bloquea en CI</small>"]:::nota
+  NO["<b>Prohibido</b><br/>· núcleo o soporte → commerce<br/>· cualquier módulo → notifications<br/>· leer tablas de otro módulo<br/>· domain → cualquier cosa<br/><small>dependency-cruiser lo bloquea en CI</small>"]:::nota
 
 classDef persona fill:#FFD7A8,stroke:#C2570C,stroke-width:2px,color:#3A2414
 classDef sistema fill:#FD8A2E,stroke:#C2570C,stroke-width:2px,color:#2A1405

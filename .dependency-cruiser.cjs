@@ -43,6 +43,16 @@ module.exports = {
       to: { path: '^src/modules/commerce/' },
     },
     {
+      name: 'nadie-conoce-notifications',
+      comment:
+        'ADR-044: ningún módulo importa notifications. Se alimenta del outbox y solo AppModule lo registra.',
+      severity: 'error',
+      from: {
+        path: '^src/modules/(identity|catalog|establishments|imports|pricing|reliability|comparison|commerce)/',
+      },
+      to: { path: '^src/modules/notifications/' },
+    },
+    {
       name: 'fuera-de-modulos-solo-por-index',
       comment: 'El código fuera de src/modules solo importa el index.ts de cada módulo.',
       severity: 'error',

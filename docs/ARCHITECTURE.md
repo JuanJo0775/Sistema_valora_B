@@ -16,6 +16,7 @@ El backend implementará un **monolito modular**. Los módulos se organizan por 
 | comparison | Consulta, normalización por unidad, estado de confianza y orden neutral | Comparación |
 | imports | Carga semilla manual y tratamiento de referencias SIPSA | RF-014 |
 | commerce | Perfiles, precios oficiales, promociones e integración con reportes | Corte 3; RF-015 a RF-018 |
+| notifications | Suscripciones push y avisos por Web Push a moderadores y comercios, alimentado por el outbox (ADR-044, ADR-045; por construir en #259 y #260) | Avisos a moderación y comercio |
 
 La moderación no es un módulo aparte: vive en `reliability`, porque decide sobre sus observaciones y cambia la reputación (grill de la #32, pregunta 2).
 
@@ -30,6 +31,7 @@ Los nombres son límites lógicos propuestos para organizar el trabajo. Los deta
 5. `commerce` no puede alterar el orden neutral de resultados.
 6. Los datos personales del reportante se separan de los datos públicos del reporte.
 7. Los reportes se conservan como historial; la moderación cambia su estado, no los borra.
+8. Ningún módulo importa `notifications` (ADR-044): se alimenta de los eventos del outbox y solo `AppModule` lo registra. Lo comprueba dependency-cruiser con la regla `nadie-conoce-notifications`.
 
 ## Flujo de un precio reportado (issue #31)
 
