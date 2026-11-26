@@ -7,7 +7,7 @@ import {
   NotAtEstablishmentError,
 } from '../../../domain/merchant-claim';
 import { createEvent } from '../../../shared/events';
-import type { DisputeChallenger } from './merchant-cases';
+import { caseOpenedEvent, type DisputeChallenger, type MerchantCase } from './merchant-cases';
 import {
   type MerchantClaim,
   type MerchantClaimRepository,
@@ -141,14 +141,20 @@ export class ClaimEstablishment {
     };
     if (path === 'revision') {
       // H11: queda pre-aprobado hasta que un moderador lo apruebe; el rol cambia entonces, no ahora.
-      await claims.save({ ...claim, status: 'pre_aprobado', verifiedAt: null }, [], {
+      const reviewCase: MerchantCase = {
         id: randomUUID(),
         establishmentId,
         kind: 'reclamo',
         reporterKey: await this.ports.reporters.keyOf(accountId),
         reason: REVIEW_REASON,
         createdAt: clock.now(),
-      });
+      };
+      // #260: moderación se entera del reclamo por el outbox; el rol sigue sin cambiar.
+      await claims.save(
+        { ...claim, status: 'pre_aprobado', verifiedAt: null },
+        [caseOpenedEvent(reviewCase)],
+        reviewCase,
+      );
       return { status: 'pre_aprobado', establishmentId, unlocks: PRE_APPROVED_UNLOCKS };
     }
     await claims.save(claim, [createEvent(MERCHANT_VERIFIED, 1, { accountId, establishmentId })]);
