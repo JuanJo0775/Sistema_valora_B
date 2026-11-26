@@ -238,4 +238,33 @@ describe('cola de moderación (RF-013)', () => {
       await expect(queue.list({ limit: 2 })).resolves.toHaveLength(2);
     });
   });
+  // #257: el contador de la campana y de la pestaña «Precios» del panel de moderación.
+  describe('cuántos esperan decisión (#257)', () => {
+    const official = (reviewId: string): OfficialReview => ({
+      reviewId,
+      presentationId: 'arroz-500g',
+      establishmentId: 'don-jose',
+      reporterKey: 'clave-del-comercio',
+      priceCop: 300,
+      receivedAt: minutesAgo(5),
+    });
+
+    it('con la cola vacía son cero', async () => {
+      await expect(setup([]).count()).resolves.toBe(0);
+    });
+
+    it('suma los reportes pendientes y los precios oficiales sin referencia', async () => {
+      const items = [pending(suspicious(0.5)), pending({ status: 'sin_datos', references: 1 }, 1)];
+
+      await expect(setup(items, [official('revision-1')]).count()).resolves.toBe(3);
+    });
+
+    it('cuenta todos los pendientes aunque la lista muestre solo los primeros 20', async () => {
+      const items = Array.from({ length: 25 }, () => pending(suspicious(0.5)));
+      const queue = setup(items);
+
+      await expect(queue.list({})).resolves.toHaveLength(20);
+      await expect(queue.count()).resolves.toBe(25);
+    });
+  });
 });
