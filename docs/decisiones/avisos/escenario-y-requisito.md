@@ -23,7 +23,7 @@
 - **RN2.** La campana se actualiza cada 60 s mientras la app está visible. Es un contador de pendientes por atender: el número baja cuando se decide el caso o se reconfirma el precio. No hay historial de «leído».
 - **RN3.** Las notificaciones push son opcionales: la persona las activa con un botón y puede desactivarlas. Solo las reciben las cuentas moderador y comercio.
 - **RN4.** El aviso es un texto genérico, sin número (la campana ya muestra cuántos hay al abrir la app). Nunca trae nombres de tiendas ni de productos ni datos de quien reportó (EC-08).
-- **RN5.** Varios hechos seguidos en una misma cola producen una sola notificación: como máximo un aviso por cola y por cuenta cada 5 minutos (valor provisional).
+- **RN5.** Varios hechos seguidos en una misma cola producen una sola notificación: como máximo un aviso por cola y por cuenta cada 5 minutos para moderación, y uno al día por comercio, como su resumen por correo (valores provisionales).
 - **RN6.** Un fallo del aviso nunca afecta la operación que lo originó.
 - **RN7.** La app le explica a la persona cómo activar los avisos según su dispositivo y su estado: en iPhone hay que instalar la app primero; si el permiso fue denegado, dice cómo volver a permitirlo; si el navegador no los soporta, lo dice; y si el servidor no los tiene configurados, no muestra la opción (Sistema_valora_F#213).
 
