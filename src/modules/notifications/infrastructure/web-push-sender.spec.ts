@@ -1,4 +1,5 @@
 import { contentOf } from '../application/moderation-notice-content';
+import { PushUnavailableError } from '../application/push-sender';
 import { WebPushSender } from './web-push-sender';
 
 const device = {
@@ -37,4 +38,18 @@ describe('envío por Web Push (ADR-044)', () => {
       },
     ]);
   });
+
+  // La librería rechaza la promesa con un error que trae statusCode cuando el servicio responde mal.
+  const failing = (statusCode?: number) =>
+    new WebPushSender(() =>
+      Promise.reject(Object.assign(new Error('Received unexpected response code'), { statusCode })),
+    );
+
+  // ADR-045: 404 y 410 son la respuesta del servicio de push a una suscripción que ya no existe.
+  it.each([404, 410])(
+    'un %s del servicio de push quiere decir que el dispositivo ya no existe',
+    async (code) => {
+      await expect(failing(code).send(device, contentOf('precios'))).resolves.toBe('gone');
+    },
+  );
 });
