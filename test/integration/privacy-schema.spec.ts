@@ -15,7 +15,7 @@ type Column = {
 // estos: la imagen de PostGIS de la CI trae otros, como el geocodificador «tiger», que no son de
 // Valora. Un módulo nuevo debe agregarse aquí.
 const APP_SCHEMAS = sql.raw(
-  "('identity', 'catalog', 'establishments', 'pricing', 'reliability', 'comparison', 'commerce', 'shared')",
+  "('identity', 'catalog', 'establishments', 'pricing', 'reliability', 'comparison', 'commerce', 'notifications', 'shared')",
 );
 
 // EC-08 y PR-15 (grill de la #36, pregunta 2): la base no guarda datos personales fuera de identity
