@@ -19,9 +19,13 @@
     <button id="enable" type="button">1. Activar avisos</button>
     <label>Código del servidor <input id="token" autocomplete="off" /></label>
     <button id="send" type="button">2. Enviar aviso de prueba (cierra la app y espera)</button>
+    <button id="local" type="button">3. Notificación local (sin push): prueba solo Windows y Chrome</button>
     <pre id="log">Listo.</pre>
     <script>
       const log = (m) => (document.getElementById('log').textContent = `${new Date().toLocaleTimeString()} ${m}\n` + document.getElementById('log').textContent);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => log(`SW: ${JSON.stringify(event.data)}`));
+      }
       const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
       const ios = /iphone|ipad/i.test(navigator.userAgent);
       document.getElementById('env').textContent =
@@ -44,6 +48,17 @@
           log(`Suscrito (${r.status}). Servicio de push: ${new URL(sub.endpoint).host}`);
         } catch (error) {
           log(`Error: ${error.message}`);
+        }
+      };
+
+      document.getElementById('local').onclick = async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('/sw.js');
+          await navigator.serviceWorker.ready;
+          await reg.showNotification('Valora', { body: 'Notificación local de prueba', icon: '/icon-192.png', tag: 'local' });
+          log('Notificación local pedida. Si no la ves, el problema es Windows o Chrome, no el push.');
+        } catch (error) {
+          log(`Error local: ${error.message}`);
         }
       };
 
