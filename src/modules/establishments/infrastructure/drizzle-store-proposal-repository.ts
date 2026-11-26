@@ -18,9 +18,12 @@ export class DrizzleStoreProposalRepository implements StoreProposalRepository {
     private readonly outbox: OutboxPublisher,
   ) {}
 
-  async save(proposal: NewStoreProposal): Promise<void> {
+  async save(proposal: NewStoreProposal, events: DomainEvent[]): Promise<void> {
     const { lat, lng, ...rest } = proposal;
-    await this.db.insert(storeProposals).values({ ...rest, location: { lat, lng } });
+    await this.db.transaction(async (tx) => {
+      await tx.insert(storeProposals).values({ ...rest, location: { lat, lng } });
+      for (const event of events) await this.outbox.publish(tx, event);
+    });
   }
 
   async pending(): Promise<NewStoreProposal[]> {

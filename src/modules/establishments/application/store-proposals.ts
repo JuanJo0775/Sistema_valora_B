@@ -31,7 +31,8 @@ export interface StoreProposalDecisionRecord {
 }
 
 export interface StoreProposalRepository {
-  save(proposal: NewStoreProposal): Promise<void>;
+  // Los eventos se guardan con la propuesta, en la misma transacción (ADR-015).
+  save(proposal: NewStoreProposal, events: DomainEvent[]): Promise<void>;
   // Las pendientes, la más antigua primero.
   pending(): Promise<NewStoreProposal[]>;
   // Aprobar crea la tienda con el id de la propuesta, en la misma transacción. false si la propuesta
