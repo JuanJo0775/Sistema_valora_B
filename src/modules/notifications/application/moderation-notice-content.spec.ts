@@ -11,4 +11,13 @@ describe('contenido del aviso a moderación (ADR-044)', () => {
       tag: 'moderacion-precios',
     });
   });
+
+  it('el aviso de tiendas lleva a la pestaña de tiendas, con su propia etiqueta', () => {
+    expect(contentOf('tiendas')).toEqual({
+      title: 'Valora',
+      body: 'Hay casos nuevos para revisar en Tiendas',
+      url: '/moderacion?vista=tiendas',
+      tag: 'moderacion-tiendas',
+    });
+  });
 });
