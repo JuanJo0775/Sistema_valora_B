@@ -112,6 +112,13 @@ export class Env {
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
   APP_URL?: string;
 
+  // ADR-044: avisos push. Con «console» (por defecto) el aviso solo se muestra en el registro de
+  // desarrollo y no se envía nada; con «webpush» se envía de verdad y las claves son obligatorias.
+  @IsIn(['console', 'webpush'])
+  PUSH_PROVIDER: string = 'console';
+
+  VAPID_PRIVATE_KEY?: string;
+
   // ADR-029, fase 2 (#181): inicio de sesión con Google. Las tres o ninguna: sin ellas la API arranca y
   // las rutas de Google responden 404. El secreto solo va en el panel de Render, nunca en Git.
   @Transform(emptyAsAbsent)
