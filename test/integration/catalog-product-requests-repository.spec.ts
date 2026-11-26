@@ -6,6 +6,7 @@ import { DrizzleProductImportRepository } from '../../src/modules/catalog/infras
 import { DrizzleProductRepository } from '../../src/modules/catalog/infrastructure/drizzle-product-repository';
 import { DrizzleProductRequestRepository } from '../../src/modules/catalog/infrastructure/drizzle-product-request-repository';
 import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
+import { OutboxPublisher } from '../../src/shared/events';
 
 // Propuestas y productos de prueba: solo existen dentro de esta prueba.
 const request: NewProductRequest = {
@@ -49,7 +50,7 @@ describe('propuestas de productos (RF-003, #26)', () => {
       }),
     });
     db = drizzle(pool);
-    requests = new DrizzleProductRequestRepository(db);
+    requests = new DrizzleProductRequestRepository(db, new OutboxPublisher());
     products = new DrizzleProductRepository(db);
   });
 
@@ -64,14 +65,14 @@ describe('propuestas de productos (RF-003, #26)', () => {
   });
 
   it('una propuesta queda pendiente y no aparece en la búsqueda', async () => {
-    await requests.save(request);
+    await requests.save(request, []);
 
     await expect(requests.pending()).resolves.toEqual([request]);
     await expect(products.search({ text: 'panela', limit: 20 })).resolves.toEqual([]);
   });
 
   it('aprobarla crea el producto con el id de la propuesta y su presentación', async () => {
-    await requests.save(request);
+    await requests.save(request, []);
 
     await expect(
       requests.decide({ requestId: request.id, decision: 'aprobar', ...decision }),
@@ -118,8 +119,8 @@ describe('propuestas de productos (RF-003, #26)', () => {
       quantity: 1,
       unit: 'kg',
     };
-    await requests.save(samePresentation);
-    await requests.save(newPresentation);
+    await requests.save(samePresentation, []);
+    await requests.save(newPresentation, []);
 
     for (const id of [samePresentation.id, newPresentation.id]) {
       await requests.decide({
@@ -140,7 +141,7 @@ describe('propuestas de productos (RF-003, #26)', () => {
   });
 
   it('rechazarla no crea nada', async () => {
-    await requests.save(request);
+    await requests.save(request, []);
 
     await requests.decide({ requestId: request.id, decision: 'rechazar', ...decision });
 

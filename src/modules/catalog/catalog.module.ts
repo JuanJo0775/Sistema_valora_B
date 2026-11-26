@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../shared/config/env.validation';
+import { OutboxPublisher } from '../../shared/events';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { IdentityModule } from '../identity';
 import { DecideProductRequest } from './application/decide-product-request';
@@ -74,9 +75,9 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
     },
     {
       provide: PRODUCT_REQUEST_REPOSITORY,
-      inject: [DATABASE],
-      useFactory: (db: Database): ProductRequestRepository =>
-        new DrizzleProductRequestRepository(db),
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): ProductRequestRepository =>
+        new DrizzleProductRequestRepository(db, outbox),
     },
     // Grill de la #26, pregunta 3: un reportante propone un producto.
     {
