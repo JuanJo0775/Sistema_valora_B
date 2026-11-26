@@ -11,8 +11,11 @@ const device = (endpoint: string): PushDevice => ({
 
 class RecordingSender implements PushSender {
   readonly sent: { endpoint: string; body: string }[] = [];
+  // Direcciones que el servicio de push ya no reconoce (404 o 410).
+  readonly gone = new Set<string>();
 
   send(target: PushDevice, content: { body: string }): Promise<'sent' | 'gone'> {
+    if (this.gone.has(target.endpoint)) return Promise.resolve('gone');
     this.sent.push({ endpoint: target.endpoint, body: content.body });
     return Promise.resolve('sent');
   }
@@ -95,5 +98,19 @@ describe('avisar a los moderadores (ADR-044)', () => {
 
     expect(MIN_NOTICE_INTERVAL_MS).toBe(5 * 60 * 1000);
     expect(sender.sent).toHaveLength(2);
+  });
+
+  // ADR-045: un 404 o 410 del servicio de push quiere decir que la suscripción caducó.
+  it('borra el dispositivo que el servicio de push ya no reconoce y sigue con los demás', async () => {
+    const { notify, sender, removed, log } = setup({
+      'moderadora-1': [device('caducado'), device('telefono-1')],
+    });
+    sender.gone.add(device('caducado').endpoint);
+
+    await notify.execute('precios');
+
+    expect(removed).toEqual([device('caducado').endpoint]);
+    expect(sender.sent.map(({ endpoint }) => endpoint)).toEqual([device('telefono-1').endpoint]);
+    expect(await log.lastSent('moderadora-1', 'precios')).toEqual(NOW);
   });
 });
