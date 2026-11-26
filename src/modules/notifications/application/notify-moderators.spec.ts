@@ -140,4 +140,26 @@ describe('avisar a los moderadores (ADR-044)', () => {
       device('telefono-1').endpoint,
     ]);
   });
+
+  // Pruebas de resguardo: ya pasan con las reglas hechas.
+  it('una moderadora sin dispositivos no recibe nada ni deja constancia', async () => {
+    const { notify, sender, log } = setup({ 'moderadora-1': [] });
+
+    await notify.execute('precios');
+
+    expect(sender.sent).toHaveLength(0);
+    expect(await log.lastSent('moderadora-1', 'precios')).toBeNull();
+  });
+
+  it('si un dispositivo falla pero otro de la misma cuenta recibe el aviso, no se reintenta', async () => {
+    const { notify, sender, log } = setup({
+      'moderadora-1': [device('apagado'), device('telefono-1')],
+    });
+    sender.down.add(device('apagado').endpoint);
+
+    await expect(notify.execute('precios')).resolves.toBeUndefined();
+
+    expect(sender.sent.map(({ endpoint }) => endpoint)).toEqual([device('telefono-1').endpoint]);
+    expect(await log.lastSent('moderadora-1', 'precios')).toEqual(NOW);
+  });
 });
