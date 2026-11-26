@@ -49,6 +49,7 @@ import { WithdrawPromotion } from './application/withdraw-promotion';
 import { type ProposalDecision, ResolveProposedClaim } from './application/resolve-proposed-claim';
 import { AlertsController } from './http/alerts.controller';
 import { EstablishmentController } from './http/establishment.controller';
+import { DrizzleMerchantAlertEvents } from './infrastructure/drizzle-merchant-alert-events';
 import { DrizzleMerchantNotices } from './infrastructure/drizzle-merchant-notices';
 import { MerchantDigestScheduler } from './infrastructure/merchant-digest-scheduler';
 import { MerchantCasesController } from './http/merchant-cases.controller';
@@ -191,9 +192,10 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
     },
     {
       provide: SendMerchantDigests,
-      inject: [DATABASE, MerchantAlerts, NotifyAccount],
+      inject: [DATABASE, OutboxPublisher, MerchantAlerts, NotifyAccount],
       useFactory: (
         db: Database,
+        outbox: OutboxPublisher,
         alerts: MerchantAlerts,
         notify: NotifyAccount,
       ): SendMerchantDigests => {
@@ -203,6 +205,7 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
           alerts,
           notices,
           notify,
+          raised: new DrizzleMerchantAlertEvents(db, outbox),
           clock: { now: () => new Date() },
         });
       },
