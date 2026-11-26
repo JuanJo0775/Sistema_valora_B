@@ -17,6 +17,10 @@ const MERCHANT_CONTENT: NoticeContent = {
   tag: 'comercio-avisos',
 };
 
+// ADR-044: a lo sumo un aviso al día por comercio (valor provisional, parametrizable), como el resumen
+// diario por correo (D4).
+export const MERCHANT_MIN_NOTICE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
 // ADR-044: avisar al comercio de sus avisos nuevos (vencimiento y discrepancia).
 export class NotifyMerchant {
   constructor(private readonly ports: NotifyMerchantPorts) {}
