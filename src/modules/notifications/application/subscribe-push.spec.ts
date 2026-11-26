@@ -1,5 +1,5 @@
 import type { NewPushSubscription, PushSubscriptionRepository } from './push-subscriptions';
-import { SubscribePush } from './subscribe-push';
+import { MAX_SUBSCRIPTIONS_PER_ACCOUNT, SubscribePush } from './subscribe-push';
 
 // Repositorio en memoria con el mismo contrato que el real: una dirección tiene un solo dueño y
 // activar de nuevo renueva las claves y la fecha.
@@ -54,5 +54,20 @@ describe('activar los avisos en un dispositivo (ADR-045)', () => {
       p256dh: device(1).p256dh,
       auth: device(1).auth,
     });
+  });
+
+  it('guarda como máximo 5 dispositivos por cuenta y reemplaza el más antiguo', async () => {
+    const { subscriptions, subscribe } = setup();
+    for (let n = 1; n <= MAX_SUBSCRIPTIONS_PER_ACCOUNT; n += 1) {
+      await subscribe.execute({ accountId: 'moderadora', ...device(n) });
+    }
+
+    await subscribe.execute({ accountId: 'moderadora', ...device(6) });
+
+    const kept = await subscriptions.endpointsOf('moderadora');
+    expect(MAX_SUBSCRIPTIONS_PER_ACCOUNT).toBe(5);
+    expect(kept).toHaveLength(5);
+    expect(kept).not.toContain(device(1).endpoint);
+    expect(kept).toContain(device(6).endpoint);
   });
 });
