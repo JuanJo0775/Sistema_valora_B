@@ -13,6 +13,7 @@ const QUEUE_OF_FACT: Record<string, ModerationQueue> = {
   PriceAssessed: 'precios',
   StoreProposed: 'tiendas',
   StoreCorrectionRequested: 'tiendas',
+  ProductRequested: 'productos',
 };
 
 // Los hechos del outbox a los que se suscribe notifications para avisar a moderación.
