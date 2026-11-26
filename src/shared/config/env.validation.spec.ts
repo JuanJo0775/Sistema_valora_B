@@ -236,3 +236,12 @@ describe('validateEnv con el inicio de sesión con Google (ADR-029, fase 2)', ()
     ).toThrow(/GOOGLE_REDIRECT_URI/);
   });
 });
+
+describe('validateEnv con los avisos push (ADR-044, ADR-045)', () => {
+  it('por defecto los avisos van a la consola y no piden claves', () => {
+    const env = validateEnv(validEnv);
+
+    expect(env.PUSH_PROVIDER).toBe('console');
+    expect(env.VAPID_PRIVATE_KEY).toBeUndefined();
+  });
+});
