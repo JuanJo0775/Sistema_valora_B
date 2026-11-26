@@ -1711,6 +1711,40 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /moderation/summary:
+    get:
+      tags: [Moderación]
+      operationId: getModerationSummary
+      summary: Cuántos casos esperan decisión en cada cola (RF-012, RF-013)
+      description: >-
+        Solo el rol moderador. Un entero por pestaña del panel de moderación, para el contador de la
+        campana y de las pestañas (#257). precios suma la cola de reportes (desviación, marcas, ráfaga,
+        apelación) y los precios oficiales sin referencia (ADR-037); tiendas suma las propuestas de tienda
+        y las correcciones; productos son las propuestas de producto; comercios son las denuncias,
+        disputas y reclamos de comercio (ADR-038). Cada número es el total pendiente, sin el límite de
+        20 elementos que aplica a la lista de precios. Son solo números: nunca ids ni claves de quien
+        reportó o pidió (EC-08). Sin caché.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Pendientes por cola
+          headers:
+            Cache-Control:
+              description: private, no-store
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [precios, tiendas, productos, comercios]
+                properties:
+                  precios: { type: integer, minimum: 0 }
+                  tiendas: { type: integer, minimum: 0 }
+                  productos: { type: integer, minimum: 0 }
+                  comercios: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /moderation/queue:
     get:
       tags: [Moderación]
