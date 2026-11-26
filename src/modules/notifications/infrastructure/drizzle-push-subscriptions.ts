@@ -44,4 +44,9 @@ export class DrizzlePushSubscriptions implements PushSubscriptionRepository {
         ),
       );
   }
+
+  // ADR-032: al eliminar la cuenta no queda ningún dispositivo suyo.
+  async removeAll(accountId: string): Promise<void> {
+    await this.db.delete(pushSubscriptions).where(eq(pushSubscriptions.accountId, accountId));
+  }
 }
