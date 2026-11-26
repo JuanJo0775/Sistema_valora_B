@@ -119,4 +119,52 @@ describe('envío de avisos a moderación (#260)', () => {
       },
     ]);
   });
+
+  // Pruebas de resguardo: ya pasan con el envío hecho.
+  it('un segundo caso a los pocos minutos no manda otro aviso a la misma cuenta', async () => {
+    await flag(reportId).expect(202);
+    await relay();
+    await flag(secondReportId).expect(202);
+    await relay();
+
+    expect(sender.sent).toHaveLength(1);
+  });
+
+  // EC-04: el aviso corre después de confirmar el reporte; si falla, el reporte ya está guardado.
+  it('si el servicio de push no responde, marcar el reporte sigue funcionando', async () => {
+    sender.down = true;
+
+    await flag(reportId).expect(202);
+    await relay();
+
+    expect(sender.sent).toHaveLength(0);
+    const flags = await db.execute(sql`select 1 from reliability.flags`);
+    expect(flags.rows).toHaveLength(1);
+    const notices = await db.execute(sql`select 1 from notifications.sent_notices`);
+    expect(notices.rows).toHaveLength(0);
+  });
+
+  it('cuando el servicio de push vuelve, el outbox reintenta y el aviso llega una sola vez', async () => {
+    sender.down = true;
+    await flag(reportId).expect(202);
+    await relay();
+
+    sender.down = false;
+    await relay();
+    await relay();
+
+    expect(sender.sent).toHaveLength(1);
+  });
+
+  // EC-08: el aviso no lleva el id del reporte, ni la clave de quien lo hizo, ni la tienda.
+  it('el contenido enviado no trae ningún dato del reporte ni de las personas', async () => {
+    await flag(reportId).expect(202);
+    await relay();
+
+    const written = JSON.stringify(sender.sent);
+    expect(written).not.toContain(reportId);
+    expect(written).not.toContain(reporterKey);
+    expect(written).not.toContain('e6333333');
+    expect(written).not.toContain(moderator.accountId);
+  });
 });
