@@ -12,15 +12,27 @@ export type SendNotification = (
 // que hay casos por revisar.
 const TTL_SECONDS = 60 * 60;
 
+// El código HTTP con que respondió el servicio de push, si el error lo trae.
+function statusOf(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null || !('statusCode' in error)) return undefined;
+  return typeof error.statusCode === 'number' ? error.statusCode : undefined;
+}
+
 export class WebPushSender implements PushSender {
   constructor(private readonly sendNotification: SendNotification) {}
 
   async send(device: PushDevice, content: NoticeContent): Promise<PushResult> {
-    await this.sendNotification(
-      { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
-      JSON.stringify(content),
-      { TTL: TTL_SECONDS, urgency: 'normal', topic: content.tag },
-    );
-    return 'sent';
+    try {
+      await this.sendNotification(
+        { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
+        JSON.stringify(content),
+        { TTL: TTL_SECONDS, urgency: 'normal', topic: content.tag },
+      );
+      return 'sent';
+    } catch (error) {
+      // ADR-045: 404 y 410 son la respuesta del servicio de push a una suscripción que ya no existe.
+      if (statusOf(error) === 404 || statusOf(error) === 410) return 'gone';
+      throw error;
+    }
   }
 }
