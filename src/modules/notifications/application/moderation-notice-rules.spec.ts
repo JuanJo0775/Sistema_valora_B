@@ -39,4 +39,8 @@ describe('qué hechos avisan a moderación (ADR-044)', () => {
       expect(queueOf(event(type, { proposalId: 'p1' }))).toBe('tiendas');
     },
   );
+
+  it('una solicitud de producto deja un caso en la cola de productos', () => {
+    expect(queueOf(event('ProductRequested', { requestId: 'r1' }))).toBe('productos');
+  });
 });

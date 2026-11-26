@@ -20,4 +20,13 @@ describe('contenido del aviso a moderación (ADR-044)', () => {
       tag: 'moderacion-tiendas',
     });
   });
+
+  it('el aviso de productos lleva a la pestaña de productos, con su propia etiqueta', () => {
+    expect(contentOf('productos')).toEqual({
+      title: 'Valora',
+      body: 'Hay casos nuevos para revisar en Productos',
+      url: '/moderacion?vista=productos',
+      tag: 'moderacion-productos',
+    });
+  });
 });
