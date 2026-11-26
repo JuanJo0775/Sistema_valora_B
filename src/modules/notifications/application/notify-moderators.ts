@@ -27,17 +27,27 @@ export class NotifyModerators {
     const { moderators, subscriptions, sender, log, clock } = this.ports;
     const now = clock.now();
     const content = contentOf(queue);
+    // Cuentas a las que no les llegó por un fallo pasajero: se reintenta después de avisar a las demás.
+    const failures: unknown[] = [];
     for (const accountId of await moderators.ids()) {
       const last = await log.lastSent(accountId, queue);
       if (last !== null && now.getTime() - last.getTime() < MIN_NOTICE_INTERVAL_MS) continue;
       let sent = false;
+      let failure: unknown;
       for (const device of await subscriptions.devicesOf(accountId)) {
-        const result = await sender.send(device, content);
-        // ADR-045: la suscripción caducó (404 o 410); no vale la pena guardarla.
-        if (result === 'gone') await subscriptions.remove(accountId, [device.endpoint]);
-        else sent = true;
+        try {
+          const result = await sender.send(device, content);
+          // ADR-045: la suscripción caducó (404 o 410); no vale la pena guardarla.
+          if (result === 'gone') await subscriptions.remove(accountId, [device.endpoint]);
+          else sent = true;
+        } catch (error) {
+          failure ??= error;
+        }
       }
       if (sent) await log.record(accountId, queue, now);
+      else if (failure !== undefined) failures.push(failure);
     }
+    // El outbox reintenta el evento; quien ya recibió el aviso queda fuera por el límite de 5 minutos.
+    if (failures.length > 0) throw failures[0];
   }
 }
