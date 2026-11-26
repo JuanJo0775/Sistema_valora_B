@@ -1,4 +1,4 @@
-import { NotifyMerchant } from './notify-merchant';
+import { MERCHANT_MIN_NOTICE_INTERVAL_MS, NotifyMerchant } from './notify-merchant';
 import type { NoticeLog } from './notice-log';
 import type { PushDevice, PushSender } from './push-sender';
 
@@ -73,5 +73,26 @@ describe('avisar a un comercio (ADR-044)', () => {
       tag: 'comercio-avisos',
     });
     expect(await log.lastSent('cuenta-de-dona-rosa', 'comercio')).toEqual(NOW);
+  });
+
+  // El resumen diario (D4) manda a lo sumo un correo al día; el aviso push sigue el mismo ritmo.
+  it('no vuelve a avisar al mismo comercio antes de 24 horas', async () => {
+    let now = NOW;
+    const { notify, sender } = setup(
+      { 'cuenta-de-dona-rosa': [device('telefono')] },
+      undefined,
+      () => now,
+    );
+
+    await notify.execute('cuenta-de-dona-rosa');
+    now = new Date(NOW.getTime() + MERCHANT_MIN_NOTICE_INTERVAL_MS - 1000);
+    await notify.execute('cuenta-de-dona-rosa');
+    expect(sender.sent).toHaveLength(1);
+
+    now = new Date(NOW.getTime() + MERCHANT_MIN_NOTICE_INTERVAL_MS);
+    await notify.execute('cuenta-de-dona-rosa');
+
+    expect(MERCHANT_MIN_NOTICE_INTERVAL_MS).toBe(24 * 60 * 60 * 1000);
+    expect(sender.sent).toHaveLength(2);
   });
 });
