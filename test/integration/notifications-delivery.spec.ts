@@ -283,4 +283,40 @@ describe('envío de avisos a moderación (#260)', () => {
       },
     ]);
   });
+
+  // Pruebas de resguardo: ya pasan con el envío hecho.
+  const subscribeMerchant = () =>
+    post(merchant, '/notifications/subscriptions', {
+      endpoint: 'https://push.example.net/comercio-telefono',
+      keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
+    }).expect(204);
+
+  it('un segundo evento el mismo día no manda otro aviso al comercio', async () => {
+    await subscribeMerchant();
+
+    await raise(merchant.accountId);
+    await raise(merchant.accountId);
+
+    expect(sender.sent).toHaveLength(1);
+  });
+
+  it('una cuenta que no es comercio no recibe el aviso aunque llegue el evento', async () => {
+    await post(reporter, '/notifications/subscriptions', {
+      endpoint: 'https://push.example.net/reportante',
+      keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
+    }).expect(403);
+
+    await raise(reporter.accountId);
+
+    expect(sender.sent).toEqual([]);
+  });
+
+  // EC-08: el id de la cuenta viaja en el evento pero no en el aviso.
+  it('el aviso al comercio no lleva el id de su cuenta', async () => {
+    await subscribeMerchant();
+
+    await raise(merchant.accountId);
+
+    expect(JSON.stringify(sender.sent)).not.toContain(merchant.accountId);
+  });
 });
