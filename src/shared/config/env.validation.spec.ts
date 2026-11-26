@@ -244,4 +244,32 @@ describe('validateEnv con los avisos push (ADR-044, ADR-045)', () => {
     expect(env.PUSH_PROVIDER).toBe('console');
     expect(env.VAPID_PRIVATE_KEY).toBeUndefined();
   });
+
+  const conWebpush = {
+    ...validEnv,
+    PUSH_PROVIDER: 'webpush',
+    VAPID_PUBLIC_KEY: 'B' + 'A'.repeat(86),
+    VAPID_PRIVATE_KEY: 'x'.repeat(43),
+    VAPID_SUBJECT: 'https://valora.example.org',
+  };
+
+  it('con webpush acepta la configuración completa', () => {
+    const env = validateEnv(conWebpush);
+
+    expect(env.PUSH_PROVIDER).toBe('webpush');
+    expect(env.VAPID_SUBJECT).toBe('https://valora.example.org');
+  });
+
+  it.each(['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'])(
+    'con webpush exige %s',
+    (name) => {
+      expect(() => validateEnv({ ...conWebpush, [name]: undefined })).toThrow(new RegExp(name));
+      // Un panel de variables puede dejarla creada pero vacía: cuenta como ausente.
+      expect(() => validateEnv({ ...conWebpush, [name]: '  ' })).toThrow(new RegExp(name));
+    },
+  );
+
+  it('rechaza un proveedor de avisos desconocido', () => {
+    expect(() => validateEnv({ ...validEnv, PUSH_PROVIDER: 'otro' })).toThrow(/PUSH_PROVIDER/);
+  });
 });
