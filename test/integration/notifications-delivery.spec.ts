@@ -14,7 +14,7 @@ import {
 import type { Observation } from '../../src/modules/reliability/application/stores';
 import { DrizzleObservationStore } from '../../src/modules/reliability/infrastructure/drizzle-stores';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
-import { OutboxRelay } from '../../src/shared/events';
+import { createEvent, OutboxPublisher, OutboxRelay } from '../../src/shared/events';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 const storeId = 'e6444444-4444-4444-8444-444444444444';
@@ -54,6 +54,7 @@ describe('envío de avisos a moderación (#260)', () => {
   let moderator: SignedIn;
   let reporter: SignedIn;
   let owner: SignedIn;
+  let merchant: SignedIn;
   const sender = new RecordingSender();
 
   beforeAll(async () => {
@@ -72,6 +73,7 @@ describe('envío de avisos a moderación (#260)', () => {
     moderator = await signIn(server, db, 'envio-moderadora@correo.com', 'moderador');
     reporter = await signIn(server, db, 'envio-reportante@correo.com');
     owner = await signIn(server, db, 'envio-dueno@correo.com');
+    merchant = await signIn(server, db, 'envio-comercio@correo.com', 'comercio');
   });
 
   afterAll(async () => {
@@ -248,5 +250,73 @@ describe('envío de avisos a moderación (#260)', () => {
       'Hay casos nuevos para revisar en Precios',
       'Hay casos nuevos para revisar en Productos',
     ]);
+  });
+
+  // Fase 3 de #260: el resumen diario de commerce publica MerchantAlertsRaised y el comercio recibe un
+  // aviso push, independiente del correo.
+  const raise = async (accountId: string) => {
+    await db.transaction(async (tx) => {
+      await app
+        .get(OutboxPublisher)
+        .publish(tx, createEvent('MerchantAlertsRaised', 1, { accountId }));
+    });
+    await relay();
+  };
+
+  it('un comercio con avisos nuevos recibe un aviso genérico que lleva a Comercios', async () => {
+    await post(merchant, '/notifications/subscriptions', {
+      endpoint: 'https://push.example.net/comercio-telefono',
+      keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
+    }).expect(204);
+
+    await raise(merchant.accountId);
+
+    expect(sender.sent).toEqual([
+      {
+        endpoint: 'https://push.example.net/comercio-telefono',
+        content: {
+          title: 'Valora',
+          body: 'Tienes avisos nuevos sobre tus precios',
+          url: '/comercios',
+          tag: 'comercio-avisos',
+        },
+      },
+    ]);
+  });
+
+  // Pruebas de resguardo: ya pasan con el envío hecho.
+  const subscribeMerchant = () =>
+    post(merchant, '/notifications/subscriptions', {
+      endpoint: 'https://push.example.net/comercio-telefono',
+      keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
+    }).expect(204);
+
+  it('un segundo evento el mismo día no manda otro aviso al comercio', async () => {
+    await subscribeMerchant();
+
+    await raise(merchant.accountId);
+    await raise(merchant.accountId);
+
+    expect(sender.sent).toHaveLength(1);
+  });
+
+  it('una cuenta que no es comercio no recibe el aviso aunque llegue el evento', async () => {
+    await post(reporter, '/notifications/subscriptions', {
+      endpoint: 'https://push.example.net/reportante',
+      keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
+    }).expect(403);
+
+    await raise(reporter.accountId);
+
+    expect(sender.sent).toEqual([]);
+  });
+
+  // EC-08: el id de la cuenta viaja en el evento pero no en el aviso.
+  it('el aviso al comercio no lleva el id de su cuenta', async () => {
+    await subscribeMerchant();
+
+    await raise(merchant.accountId);
+
+    expect(JSON.stringify(sender.sent)).not.toContain(merchant.accountId);
   });
 });

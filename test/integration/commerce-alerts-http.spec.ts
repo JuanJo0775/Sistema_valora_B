@@ -7,9 +7,11 @@ import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
 import { MerchantAlerts } from '../../src/modules/commerce/application/merchant-alerts';
 import { SendMerchantDigests } from '../../src/modules/commerce/application/send-merchant-digests';
+import { DrizzleMerchantAlertEvents } from '../../src/modules/commerce/infrastructure/drizzle-merchant-alert-events';
 import { DrizzleMerchantNotices } from '../../src/modules/commerce/infrastructure/drizzle-merchant-notices';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { OutboxPublisher } from '../../src/shared/events';
 import { OutboxRelay } from '../../src/shared/events';
 import { contractErrors } from '../support/contract';
 import { seedReferencePrices } from '../support/reference-prices';
@@ -156,6 +158,7 @@ describe('avisos para el comercio por HTTP (#209)', () => {
           return Promise.resolve(true);
         },
       },
+      raised: new DrizzleMerchantAlertEvents(db, new OutboxPublisher()),
       clock: { now: () => morning },
     });
 
@@ -165,6 +168,11 @@ describe('avisos para el comercio por HTTP (#209)', () => {
     expect(sent).toEqual([
       { accountId: merchant.accountId, subject: 'Tienes 2 avisos nuevos en Valora' },
     ]);
+    // #260: una sola vez, con solo el id de la cuenta; la segunda pasada no repite el evento.
+    const raised = await db.execute(
+      sql`select payload from shared.outbox where type = 'MerchantAlertsRaised'`,
+    );
+    expect(raised.rows).toEqual([{ payload: { accountId: merchant.accountId } }]);
   });
 
   it('401 sin sesión; 403 un reportante', async () => {

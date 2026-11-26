@@ -14,8 +14,14 @@ export interface SendMerchantDigestsPorts {
   notify: {
     send(accountId: string, notice: { subject: string; text: string }): Promise<boolean>;
   };
+  // #260: avisa por el outbox que el comercio tiene avisos nuevos. Solo lleva el id de la cuenta; el
+  // módulo que avisa por push no se conoce aquí (ADR-044).
+  raised: { raise(accountId: string): Promise<void> };
   clock: { now(): Date };
 }
+
+// #260: el evento que lee notifications. Solo lleva el id de la cuenta del comercio.
+export const MERCHANT_ALERTS_RAISED = 'MerchantAlertsRaised';
 
 // Precisión de D4 (22-nov): el resumen sale desde esta hora de Colombia.
 export const DIGEST_FROM_HOUR = 7;
@@ -36,7 +42,7 @@ export class SendMerchantDigests {
   constructor(private readonly ports: SendMerchantDigestsPorts) {}
 
   async execute(): Promise<{ sent: number }> {
-    const { merchants, alerts, notices, notify, clock } = this.ports;
+    const { merchants, alerts, notices, notify, raised, clock } = this.ports;
     const now = clock.now();
     if (colombiaHour(now) < DIGEST_FROM_HOUR) return { sent: 0 };
     const day = colombiaDate(now);
@@ -47,6 +53,8 @@ export class SendMerchantDigests {
       const known = await notices.knownKeys(accountId);
       const fresh = current.map(alertKey).filter((key) => !known.has(key));
       if (fresh.length === 0) continue;
+      // Un aviso push por cuenta; el correo y el push van por separado (el correo puede no entregarse).
+      await raised.raise(accountId);
       const delivered = await notify.send(accountId, {
         subject:
           fresh.length === 1
