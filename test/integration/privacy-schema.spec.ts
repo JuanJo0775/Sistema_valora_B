@@ -107,7 +107,10 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
   // ADR-045: de un dispositivo solo se guarda lo necesario para enviarle avisos.
   it('las suscripciones push solo guardan la dirección, las claves, la cuenta y la fecha', () => {
     const subscription = columns
-      .filter((column) => column.table_schema === 'notifications')
+      .filter(
+        (column) =>
+          column.table_schema === 'notifications' && column.table_name === 'push_subscriptions',
+      )
       .map((column) => `${column.table_name}.${column.column_name}`)
       .sort();
 
@@ -119,6 +122,18 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
       'push_subscriptions.id',
       'push_subscriptions.p256dh',
     ]);
+  });
+
+  // ADR-044: del aviso enviado solo se recuerda a qué cuenta, por qué cola y cuándo; no qué decía.
+  it('el registro de avisos solo guarda la cuenta, la cola y la fecha', () => {
+    const notices = columns
+      .filter(
+        (column) => column.table_schema === 'notifications' && column.table_name === 'sent_notices',
+      )
+      .map((column) => column.column_name)
+      .sort();
+
+    expect(notices).toEqual(['account_id', 'queue', 'sent_at']);
   });
 
   it('ninguna tabla guarda la IP de quien hace la petición', () => {
@@ -141,6 +156,8 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
       'commerce.merchant_notices.account_id',
       // ADR-045: a qué cuenta pertenece cada dispositivo suscrito a los avisos.
       'notifications.push_subscriptions.account_id',
+      // ADR-044: cuándo se avisó por última vez a cada cuenta, para limitar la frecuencia.
+      'notifications.sent_notices.account_id',
       'pricing.reports.reporter_id',
     ]);
     // Grill de la #36, pregunta 1: reporter_id es una referencia interna de pricing (idempotencia,

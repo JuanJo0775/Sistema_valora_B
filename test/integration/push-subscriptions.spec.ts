@@ -75,4 +75,13 @@ describe('suscripciones push en la base (ADR-045)', () => {
     await expect(subscriptions.endpointsOf(CUENTA_A)).resolves.toEqual([]);
     await expect(subscriptions.endpointsOf(CUENTA_B)).resolves.toEqual([device(3).endpoint]);
   });
+
+  it('devuelve la dirección y las claves de los dispositivos de una cuenta para avisarle', async () => {
+    await subscriptions.save(device(1, CUENTA_A));
+    await subscriptions.save(device(2, CUENTA_B));
+
+    await expect(subscriptions.devicesOf(CUENTA_A)).resolves.toEqual([
+      { endpoint: device(1).endpoint, p256dh: device(1).p256dh, auth: device(1).auth },
+    ]);
+  });
 });

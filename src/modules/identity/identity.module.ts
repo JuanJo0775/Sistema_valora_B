@@ -40,6 +40,7 @@ import { Login } from './application/login';
 import { Logout } from './application/logout';
 import { OwnDisplayName } from './application/own-display-name';
 import { RegisterAccount } from './application/register-account';
+import { AccountsByRole } from './application/accounts-by-role';
 import { ReporterIdentity } from './application/reporter-identity';
 import { ResendVerification } from './application/resend-verification';
 import { ResolveSession } from './application/resolve-session';
@@ -425,6 +426,12 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
         }),
     },
     {
+      provide: AccountsByRole,
+      inject: [DATABASE],
+      useFactory: (db: Database): AccountsByRole =>
+        new AccountsByRole(new DrizzleAccountRepository(db)),
+    },
+    {
       provide: ChangeRole,
       inject: [ACCOUNT_REPOSITORY, ATTEMPT_LIMITER, CLOCK],
       useFactory: (
@@ -449,6 +456,7 @@ const DEFAULT_APP_URL = 'http://localhost:5173';
     SessionGuard,
     VerifiedEmailGuard,
     ReporterIdentity,
+    AccountsByRole,
     ChangeRole,
     NotifyAccount,
   ],

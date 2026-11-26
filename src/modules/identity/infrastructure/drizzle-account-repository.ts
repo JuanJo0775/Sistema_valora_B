@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, lte, or, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Transaction } from '../../../shared/database/database.module';
 import type { AccountCreation } from '../application/reporter-identity';
@@ -10,15 +10,31 @@ import type {
   RoleChange,
   SuspensionReason,
 } from '../application/account-repository';
+import type { AccountsWithRole } from '../application/accounts-by-role';
 import type { DisplayNameWriter } from '../application/change-own-display-name';
 import type { DisplayNames } from '../application/own-display-name';
 import { accounts, roleChanges } from './schema';
 
 export class DrizzleAccountRepository
-  implements AccountRepository, AccountCreation, DisplayNames, DisplayNameWriter
+  implements AccountRepository, AccountCreation, DisplayNames, DisplayNameWriter, AccountsWithRole
 {
   // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
   constructor(private readonly db: NodePgDatabase | Transaction) {}
+
+  // Solo cuentas que pueden recibir avisos: sin eliminación pendiente ni suspensión vigente.
+  async idsWithRole(role: Role): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: accounts.id })
+      .from(accounts)
+      .where(
+        and(
+          eq(accounts.role, role),
+          isNull(accounts.deletionScheduledFor),
+          or(isNull(accounts.suspendedUntil), lte(accounts.suspendedUntil, sql`now()`)),
+        ),
+      );
+    return rows.map((row) => row.id);
+  }
 
   async findByEmail(email: string): Promise<Account | null> {
     const [found] = await this.db

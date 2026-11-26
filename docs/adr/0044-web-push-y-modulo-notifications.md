@@ -34,7 +34,7 @@ El spike #256 (`docs/decisiones/avisos/spike-web-push.md`) probó Web Push con c
    - Moderador: un reporte entra a la cola (sospechoso o marcado), un precio oficial sin referencia, una solicitud o denuncia o disputa de comercio, una propuesta de tienda, una solicitud de producto.
    - Comercio: una discrepancia corroborada y el vencimiento próximo de una confirmación (desde el planificador del resumen diario).
    - Los eventos que hoy no existen se crean en #260 sin que el módulo que los publica conozca a `notifications`.
-7. **Contenido:** texto genérico con un conteo («Tienes 3 casos por revisar») y la dirección a abrir; nunca nombres de tiendas ni de productos ni nada de quien reportó (EC-08). Una etiqueta (`tag`) por cola agrupa los avisos en una sola notificación, y se envía como máximo un aviso por cola y por cuenta cada 5 minutos (valor provisional, parametrizable). TTL del mensaje de una hora.
+7. **Contenido:** texto genérico («Hay casos nuevos para revisar en Precios») y la dirección a abrir; nunca nombres de tiendas ni de productos ni nada de quien reportó (EC-08). No lleva un número: `notifications` no puede importar el resumen de moderación sin invertir las dependencias (EC-05), y al abrir la app la campana (ADR-043) ya muestra cuántos hay. Enmienda del 25 de noviembre de 2026. Una etiqueta (`tag`) por cola agrupa los avisos en una sola notificación, y se envía como máximo un aviso por cola y por cuenta cada 5 minutos (valor provisional, parametrizable). TTL del mensaje de una hora.
 8. **iPhone:** solo con la PWA instalada; la pantalla lo explica (spike #256).
 
 Queda fuera: correo al moderador, preferencias por tipo de aviso, avisos al reportante y el historial de avisos.
