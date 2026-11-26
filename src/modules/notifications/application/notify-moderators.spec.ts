@@ -162,4 +162,16 @@ describe('avisar a los moderadores (ADR-044)', () => {
     expect(sender.sent.map(({ endpoint }) => endpoint)).toEqual([device('telefono-1').endpoint]);
     expect(await log.lastSent('moderadora-1', 'precios')).toEqual(NOW);
   });
+
+  // Para medir cuánto tarda un aviso desde que ocurre el hecho (escenario EC-09).
+  it('dice cuántos avisos se enviaron', async () => {
+    const { notify } = setup({
+      'moderadora-1': [device('telefono-1'), device('computador-1')],
+      'moderadora-2': [],
+    });
+
+    await expect(notify.execute('precios')).resolves.toBe(2);
+    // El segundo intento queda dentro de los 5 minutos: no se envía nada.
+    await expect(notify.execute('precios')).resolves.toBe(0);
+  });
 });
