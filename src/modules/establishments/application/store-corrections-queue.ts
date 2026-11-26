@@ -30,6 +30,15 @@ export interface StoreCorrectionItem {
 export class StoreCorrectionsQueue {
   constructor(private readonly ports: StoreCorrectionsQueuePorts) {}
 
+  // #257: cuántas esperan decisión. Igual que la lista, no cuenta la de una tienda que ya no existe.
+  async count(): Promise<number> {
+    const { corrections, stores } = this.ports;
+    const found = await Promise.all(
+      (await corrections.pending()).map(({ establishmentId }) => stores.findById(establishmentId)),
+    );
+    return found.filter((store) => store !== null).length;
+  }
+
   async list(): Promise<StoreCorrectionItem[]> {
     const { corrections, stores } = this.ports;
     const items: StoreCorrectionItem[] = [];
