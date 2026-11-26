@@ -4,6 +4,7 @@ import type { Env } from '../../shared/config/env.validation';
 import { DATABASE, type Database } from '../../shared/database/database.module';
 import { IdentityModule } from '../identity';
 import { SubscribePush } from './application/subscribe-push';
+import { UnsubscribePush } from './application/unsubscribe-push';
 import { NotificationsController, VAPID_PUBLIC_KEY } from './http/notifications.controller';
 import { DrizzlePushSubscriptions } from './infrastructure/drizzle-push-subscriptions';
 
@@ -27,6 +28,12 @@ import { DrizzlePushSubscriptions } from './infrastructure/drizzle-push-subscrip
           subscriptions: new DrizzlePushSubscriptions(db),
           clock: { now: () => new Date() },
         }),
+    },
+    {
+      provide: UnsubscribePush,
+      inject: [DATABASE],
+      useFactory: (db: Database): UnsubscribePush =>
+        new UnsubscribePush({ subscriptions: new DrizzlePushSubscriptions(db) }),
     },
   ],
 })
