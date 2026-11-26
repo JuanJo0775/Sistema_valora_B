@@ -17,15 +17,17 @@ Un servidor mínimo en Node con la librería `web-push` 3.6.7, una página que p
 | PC con Windows 11 | Chrome (perfil administrado de un centro educativo) | Pestaña abierta | `fcm.googleapis.com` | 201 | Sí. El service worker lo recibió en 700 ms. |
 | PC con Windows 11 | Chrome | Pestaña cerrada | `fcm.googleapis.com` | 201 en 578 ms | Sí, en el centro de notificaciones de Windows. |
 | iPhone | PWA instalada desde Safari | Cerrada, pantalla bloqueada | `web.push.apple.com` | 201 en 543 ms | Sí, en la pantalla de bloqueo, como notificación de la app instalada. |
-| Android | Chrome | Pendiente | | | |
+| Android | Chrome | Cerrado, pantalla bloqueada | `fcm.googleapis.com` | 201 en 186 ms | Sí, como notificación de Chrome. Dice «llegó en 553 ms». |
 
-Tiempo en que el servicio de push aceptó el mensaje (respuesta 201 del servidor): entre 362 y 1.718 ms con Google en nueve envíos, y 543 ms con Apple.
+Tiempo en que el servicio de push aceptó el mensaje (respuesta 201 del servidor): entre 186 y 1.718 ms con Google en diez envíos, y entre 543 y 4.035 ms con Apple en dos.
+
+Tiempo de llegada al dispositivo, medido con el reloj de cada uno: 553 ms en Android y 700 ms en el PC.
 
 ## Hallazgos
 
-1. **Funciona con la app cerrada** en el computador y en el iPhone. El mensaje viaja cifrado por el servicio de push del navegador; el servicio no lee su contenido.
+1. **Funciona con la app cerrada** en el computador, en Android y en el iPhone. El mensaje viaja cifrado por el servicio de push del navegador; el servicio no lee su contenido.
 2. **Apple rechaza una firma VAPID con un contacto no válido.** Con `VAPID_SUBJECT=mailto:equipo@valora.example` respondió `403 BadJwtToken`. Con una dirección `https` válida respondió 201. En producción el contacto debe ser un correo institucional del equipo o la dirección del sitio, nunca el correo personal de una persona, porque viaja a Google y a Apple dentro de la firma.
-3. **La latencia no se puede medir con el reloj del dispositivo.** El reloj del iPhone iba unos dos minutos atrasado y el aviso decía «llegó en −120745 ms». El escenario de calidad debe medir hasta que el servicio de push acepta el mensaje, en el servidor.
+3. **La latencia de llegada solo es fiable si el reloj del dispositivo está al día.** El reloj del iPhone iba unos dos minutos atrasado y el aviso decía «llegó en −120745 ms»; el aviso sí llegó, pero ese número no sirve. En Android (553 ms) y en el PC (700 ms) los relojes estaban bien. El escenario de calidad debe medir hasta que el servicio de push acepta el mensaje, en el servidor, que es lo que controlamos.
 4. **En iPhone solo funciona con la PWA instalada** en la pantalla de inicio. Abierta en Safari normal no hay permiso de notificaciones. La pantalla debe explicar cómo instalarla.
 5. **La etiqueta (`tag`) agrupa los avisos.** Varios envíos con la misma etiqueta dejan una sola notificación en Windows, sin apilarlos. Sirve para no saturar a un moderador.
 6. **El permiso se pide al tocar un botón,** nunca al cargar la página.
@@ -35,11 +37,10 @@ Tiempo en que el servicio de push aceptó el mensaje (respuesta 201 del servidor
 
 ## No comprobado todavía
 
-- Android con Chrome (pendiente de la prueba).
 - Qué responde el servicio de push cuando la suscripción caduca (404 o 410). El kit borra la suscripción en ese caso, pero no se provocó.
 - Desde Render y Vercel reales: el spike corrió en el computador con un túnel, no en el despliegue. Falta comprobar el envío desde Render dormido y la suscripción por `/v1/*` reenviado desde Vercel.
 - Integración con el service worker de la PWA (`generateSW`, `workbox.importScripts`): el spike usó un service worker propio.
 
 ## Recomendación
 
-**Sí, seguir** con la épica. La parte de mayor riesgo, que el aviso llegue con la app cerrada, funciona en el computador y en el iPhone. Antes de cerrar la épica (#261) hay que confirmar Android, el 404 o 410, y el envío desde Render. Cuentan como criterios de aceptación de #259 y #260.
+**Sí, seguir** con la épica. La parte de mayor riesgo, que el aviso llegue con la app cerrada, funciona en el computador, en Android y en el iPhone. Lo que queda sin comprobar (404 o 410, envío desde Render y Vercel, y la integración con el service worker de la PWA) pasa como criterio de aceptación a #259 y #260.
