@@ -117,7 +117,24 @@ export class Env {
   @IsIn(['console', 'webpush'])
   PUSH_PROVIDER: string = 'console';
 
+  // ADR-045: claves VAPID. La privada solo vive en el entorno de la API (Render), nunca en Git.
+  @Transform(emptyAsAbsent)
+  @ValidateIf(usesWebPush)
+  @IsString()
+  @IsNotEmpty()
+  VAPID_PUBLIC_KEY?: string;
+
+  @Transform(emptyAsAbsent)
+  @ValidateIf(usesWebPush)
+  @IsString()
+  @IsNotEmpty()
   VAPID_PRIVATE_KEY?: string;
+
+  @Transform(emptyAsAbsent)
+  @ValidateIf(usesWebPush)
+  @IsString()
+  @IsNotEmpty()
+  VAPID_SUBJECT?: string;
 
   // ADR-029, fase 2 (#181): inicio de sesión con Google. Las tres o ninguna: sin ellas la API arranca y
   // las rutas de Google responden 404. El secreto solo va en el panel de Render, nunca en Git.
@@ -142,6 +159,10 @@ export class Env {
 // #182: un panel de variables puede dejarlas creadas pero vacías; vacía cuenta como ausente.
 function emptyAsAbsent({ value }: { value: unknown }): unknown {
   return typeof value === 'string' && value.trim() === '' ? undefined : value;
+}
+
+function usesWebPush(env: Env): boolean {
+  return env.PUSH_PROVIDER === 'webpush';
 }
 
 function hasGoogleConfig(env: Env): boolean {
