@@ -90,6 +90,12 @@ const routes: Record<string, Route> = {
     path: `/v1/moderation/products/${someReport}/image`,
   },
   queue: { name: 'GET /v1/moderation/queue', method: 'get', path: '/v1/moderation/queue' },
+  // #257: el contador de la campana y de las pestañas de moderación.
+  moderationSummary: {
+    name: 'GET /v1/moderation/summary',
+    method: 'get',
+    path: '/v1/moderation/summary',
+  },
   decision: {
     name: 'POST /v1/moderation/{itemId}/decision',
     method: 'post',
@@ -178,6 +184,11 @@ const matrix: [keyof typeof routes, Actor, Expected][] = [
   ['queue', 'moderador', 'permitido'],
   ['queue', 'comercio', 403],
   ['queue', 'suspendida', 403],
+  ['moderationSummary', 'sin_sesion', 401],
+  ['moderationSummary', 'reportante', 403],
+  ['moderationSummary', 'moderador', 'permitido'],
+  ['moderationSummary', 'comercio', 403],
+  ['moderationSummary', 'suspendida', 403],
   ['decision', 'sin_sesion', 401],
   ['decision', 'reportante', 403],
   ['decision', 'moderador', 'permitido'],
