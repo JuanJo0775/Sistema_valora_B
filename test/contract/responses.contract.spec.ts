@@ -142,6 +142,32 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     ).toEqual([]);
   });
 
+  // #257: el contador de moderación cumple el contrato, también sus errores.
+  it('el resumen de pendientes de moderación cumple el contrato (#257)', async () => {
+    const moderator = await signIn(server, db, 'contrato-resumen@correo.com', 'moderador');
+    const summary = (cookie?: string) => {
+      const call = request(server).get('/v1/moderation/summary');
+      return cookie ? call.set('Cookie', cookie) : call;
+    };
+
+    const ok = await summary(moderator.cookie);
+    const withoutSession = await summary();
+    const asReporter = await summary(reporter.cookie);
+
+    expect([ok.status, withoutSession.status, asReporter.status]).toEqual([200, 401, 403]);
+    expect(Object.keys(ok.body as object).sort()).toEqual([
+      'comercios',
+      'precios',
+      'productos',
+      'tiendas',
+    ]);
+    for (const response of [ok, withoutSession, asReporter]) {
+      expect(
+        contractErrors('GET /moderation/summary', response.status, response.body as unknown),
+      ).toEqual([]);
+    }
+  });
+
   it('expone la oferta sintética vigente y la retira si vence o queda sin stock', async () => {
     onlineOffersEnabled = true;
     const observations = new OlimpicaObservations(db);
