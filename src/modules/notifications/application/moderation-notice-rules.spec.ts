@@ -17,4 +17,18 @@ describe('qué hechos avisan a moderación (ADR-044)', () => {
   it.each(['normal', 'sin_datos'])('un precio %s no avisa a nadie', (verdict) => {
     expect(queueOf(event('PriceAssessed', { verdict }))).toBeNull();
   });
+
+  it.each(['ReportBurstDetected', 'OfficialPriceHeld'])(
+    '%s deja un caso en la cola de precios',
+    (type) => {
+      expect(queueOf(event(type))).toBe('precios');
+    },
+  );
+
+  it.each(['PriceReported', 'PriceWithdrawn', 'MerchantVerified', 'AccountPurged'])(
+    'el hecho %s no avisa a nadie',
+    (type) => {
+      expect(queueOf(event(type))).toBeNull();
+    },
+  );
 });
