@@ -17,6 +17,9 @@ export interface PushSender {
   send(device: PushDevice, content: NoticeContent): Promise<PushResult>;
 }
 
+// Para reemplazar el envío en las pruebas.
+export const PUSH_SENDER = Symbol('PUSH_SENDER');
+
 export class PushUnavailableError extends Error {
   constructor(message = 'El servicio de push no está disponible') {
     super(message);

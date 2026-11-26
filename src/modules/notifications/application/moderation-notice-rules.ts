@@ -4,6 +4,9 @@ export type ModerationQueue = 'precios';
 
 const QUEUES_OF_PRICES = new Set(['PriceFlagged', 'ReportBurstDetected', 'OfficialPriceHeld']);
 
+// Los hechos del outbox a los que se suscribe notifications para avisar a moderación.
+export const MODERATION_FACT_TYPES = [...QUEUES_OF_PRICES, 'PriceAssessed'];
+
 export interface OutboxFact {
   type: string;
   payload: Record<string, unknown>;
