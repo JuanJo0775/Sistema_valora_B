@@ -6,6 +6,7 @@ import { type DomainEvent, EventBus } from '../../shared/events';
 import { AccountsByRole, IdentityModule } from '../identity';
 import { PurgeAccountSubscriptions } from './application/purge-account-subscriptions';
 import { MODERATION_FACT_TYPES, queueOf } from './application/moderation-notice-rules';
+import { NotifyMerchant } from './application/notify-merchant';
 import { NotifyModerators } from './application/notify-moderators';
 import { PUSH_SENDER, type PushSender } from './application/push-sender';
 import { SubscribePush } from './application/subscribe-push';
@@ -95,6 +96,27 @@ export class NotificationsModule implements OnModuleInit {
         },
       );
     }
+    // Fase 3 de #260: el resumen diario de commerce publica MerchantAlertsRaised (solo el id de la
+    // cuenta) y el comercio recibe un aviso push, independiente del correo. Vencimientos y
+    // discrepancias salen juntos porque commerce ya los calcula en el mismo resumen.
+    this.bus.subscribe(
+      'notifications.merchant_notices',
+      'MerchantAlertsRaised',
+      async (event: DomainEvent, tx: Transaction) => {
+        const { accountId } = event.payload as { accountId: string };
+        const delivered = await new NotifyMerchant({
+          merchants: { ids: () => this.accounts.ids('comercio') },
+          subscriptions: new DrizzlePushSubscriptions(tx),
+          sender: this.sender,
+          log: new DrizzleNoticeLog(tx),
+          clock: { now: () => new Date() },
+        }).execute(accountId);
+        if (delivered > 0) {
+          const ms = Date.now() - event.occurredAt.getTime();
+          this.logger.log(`Aviso a comercio: enviados=${String(delivered)} ms=${String(ms)}`);
+        }
+      },
+    );
     this.bus.subscribe(
       'notifications.push_subscriptions',
       'AccountPurged',
