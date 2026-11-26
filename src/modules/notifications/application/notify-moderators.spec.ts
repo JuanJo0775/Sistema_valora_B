@@ -1,5 +1,5 @@
 import { contentOf } from './moderation-notice-content';
-import { NotifyModerators } from './notify-moderators';
+import { MIN_NOTICE_INTERVAL_MS, NotifyModerators } from './notify-moderators';
 import type { NoticeLog } from './notice-log';
 import { type PushDevice, type PushSender } from './push-sender';
 
@@ -33,7 +33,7 @@ class InMemoryNoticeLog implements NoticeLog {
 
 const NOW = new Date('2026-11-25T20:00:00Z');
 
-function setup(devicesByAccount: Record<string, PushDevice[]>) {
+function setup(devicesByAccount: Record<string, PushDevice[]>, now: () => Date = () => NOW) {
   const sender = new RecordingSender();
   const log = new InMemoryNoticeLog();
   const removed: string[] = [];
@@ -48,7 +48,7 @@ function setup(devicesByAccount: Record<string, PushDevice[]>) {
     },
     sender,
     log,
-    clock: { now: () => NOW },
+    clock: { now },
   });
   return { notify, sender, log, removed };
 }
@@ -71,5 +71,29 @@ describe('avisar a los moderadores (ADR-044)', () => {
     expect(sender.sent.every(({ body }) => body === contentOf('precios').body)).toBe(true);
     expect(await log.lastSent('moderadora-1', 'precios')).toEqual(NOW);
     expect(await log.lastSent('moderadora-2', 'precios')).toEqual(NOW);
+  });
+
+  // Una racha de reportes no debe llenar el celular: un aviso por cola y cuenta cada 5 minutos.
+  it('no vuelve a avisar a la misma cuenta por la misma cola antes de 5 minutos', async () => {
+    let now = NOW;
+    const { notify, sender } = setup({ 'moderadora-1': [device('telefono-1')] }, () => now);
+
+    await notify.execute('precios');
+    now = new Date(NOW.getTime() + MIN_NOTICE_INTERVAL_MS - 1000);
+    await notify.execute('precios');
+
+    expect(sender.sent).toHaveLength(1);
+  });
+
+  it('avisa de nuevo cuando pasaron los 5 minutos', async () => {
+    let now = NOW;
+    const { notify, sender } = setup({ 'moderadora-1': [device('telefono-1')] }, () => now);
+
+    await notify.execute('precios');
+    now = new Date(NOW.getTime() + MIN_NOTICE_INTERVAL_MS);
+    await notify.execute('precios');
+
+    expect(MIN_NOTICE_INTERVAL_MS).toBe(5 * 60 * 1000);
+    expect(sender.sent).toHaveLength(2);
   });
 });
