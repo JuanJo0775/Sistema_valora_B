@@ -64,4 +64,15 @@ describe('suscripciones push en la base (ADR-045)', () => {
     await expect(subscriptions.endpointsOf(CUENTA_A)).resolves.toEqual([]);
     await expect(subscriptions.endpointsOf(CUENTA_B)).resolves.toEqual([device(2).endpoint]);
   });
+
+  it('borrar todo lo de una cuenta deja intactas las de las otras', async () => {
+    await subscriptions.save(device(1, CUENTA_A));
+    await subscriptions.save(device(2, CUENTA_A));
+    await subscriptions.save(device(3, CUENTA_B));
+
+    await subscriptions.removeAll(CUENTA_A);
+
+    await expect(subscriptions.endpointsOf(CUENTA_A)).resolves.toEqual([]);
+    await expect(subscriptions.endpointsOf(CUENTA_B)).resolves.toEqual([device(3).endpoint]);
+  });
 });
