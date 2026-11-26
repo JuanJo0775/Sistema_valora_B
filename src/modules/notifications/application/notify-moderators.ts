@@ -32,7 +32,10 @@ export class NotifyModerators {
       if (last !== null && now.getTime() - last.getTime() < MIN_NOTICE_INTERVAL_MS) continue;
       let sent = false;
       for (const device of await subscriptions.devicesOf(accountId)) {
-        if ((await sender.send(device, content)) === 'sent') sent = true;
+        const result = await sender.send(device, content);
+        // ADR-045: la suscripción caducó (404 o 410); no vale la pena guardarla.
+        if (result === 'gone') await subscriptions.remove(accountId, [device.endpoint]);
+        else sent = true;
       }
       if (sent) await log.record(accountId, queue, now);
     }
