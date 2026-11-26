@@ -71,7 +71,7 @@ describe('reclamos de supermercados en el esquema commerce (H11)', () => {
     db = drizzle(pool);
     const outbox = new OutboxPublisher();
     claims = new DrizzleMerchantClaimRepository(db, outbox);
-    cases = new DrizzleMerchantCaseRepository(db);
+    cases = new DrizzleMerchantCaseRepository(db, outbox);
     reviews = new DrizzleMerchantClaimReviews(db, outbox);
   });
 

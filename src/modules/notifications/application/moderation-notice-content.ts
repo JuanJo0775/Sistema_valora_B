@@ -10,10 +10,18 @@ export interface NoticeContent {
   tag: string;
 }
 
+// El nombre de cada pestaña del panel de moderación.
+const QUEUE_LABEL: Record<ModerationQueue, string> = {
+  precios: 'Precios',
+  tiendas: 'Tiendas',
+  productos: 'Productos',
+  comercios: 'Comercios',
+};
+
 export function contentOf(queue: ModerationQueue): NoticeContent {
   return {
     title: 'Valora',
-    body: 'Hay casos nuevos para revisar en Precios',
+    body: `Hay casos nuevos para revisar en ${QUEUE_LABEL[queue]}`,
     url: `/moderacion?vista=${queue}`,
     tag: `moderacion-${queue}`,
   };

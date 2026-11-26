@@ -1,3 +1,4 @@
+import type { DomainEvent } from '../../../shared/events';
 import type { OpeningHours } from '../../../domain/opening-hours';
 import type { EstablishmentRepository } from './establishment-repository';
 
@@ -34,7 +35,8 @@ export interface StoreDetailsRepository extends Pick<
 }
 
 export interface StoreCorrections {
-  propose(correction: StoreCorrection): Promise<void>;
+  // Los eventos se guardan con la corrección, en la misma transacción (ADR-015).
+  propose(correction: StoreCorrection, events: DomainEvent[]): Promise<void>;
 }
 
 // D5: la decisión del moderador sobre una corrección; no se fusiona.

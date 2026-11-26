@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { ImportEstablishments } from '../../src/modules/establishments';
 import { configureApp } from '../../src/app.setup';
 import { PUSH_SENDER } from '../../src/modules/notifications';
 import {
@@ -16,6 +17,8 @@ import { DATABASE, type Database } from '../../src/shared/database/database.modu
 import { OutboxRelay } from '../../src/shared/events';
 import { type SignedIn, signIn } from '../support/sign-in';
 
+const storeId = 'e6444444-4444-4444-8444-444444444444';
+const STORE = { lat: 4.5339, lng: -75.6811 };
 const reportId = 'e6111111-1111-4111-8111-111111111111';
 const secondReportId = 'e6111111-1111-4111-8111-222222222222';
 const reporterKey = 'c'.repeat(64);
@@ -50,6 +53,7 @@ describe('envío de avisos a moderación (#260)', () => {
   let db: Database;
   let moderator: SignedIn;
   let reporter: SignedIn;
+  let owner: SignedIn;
   const sender = new RecordingSender();
 
   beforeAll(async () => {
@@ -67,6 +71,7 @@ describe('envío de avisos a moderación (#260)', () => {
     );
     moderator = await signIn(server, db, 'envio-moderadora@correo.com', 'moderador');
     reporter = await signIn(server, db, 'envio-reportante@correo.com');
+    owner = await signIn(server, db, 'envio-dueno@correo.com');
   });
 
   afterAll(async () => {
@@ -77,7 +82,7 @@ describe('envío de avisos a moderación (#260)', () => {
     sender.sent = [];
     sender.down = false;
     await db.execute(
-      sql`truncate notifications.push_subscriptions, notifications.sent_notices, reliability.observations, reliability.flags, reliability.moderation_log, reliability.reputations, shared.outbox, shared.processed_events`,
+      sql`truncate notifications.push_subscriptions, notifications.sent_notices, reliability.observations, reliability.flags, reliability.moderation_log, reliability.reputations, establishments.establishments, establishments.store_proposals, establishments.store_corrections, catalog.product_requests, commerce.merchant_claims, commerce.merchant_claim_rejections, commerce.merchant_cases, commerce.dispute_challengers, shared.outbox, shared.processed_events`,
     );
     await request(server)
       .post('/v1/notifications/subscriptions')
@@ -88,6 +93,12 @@ describe('envío de avisos a moderación (#260)', () => {
         keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
       })
       .expect(204);
+    await app.get(ImportEstablishments).save({
+      id: storeId,
+      name: 'Tienda La Esperanza',
+      type: 'barrio',
+      ...STORE,
+    });
     await new DrizzleObservationStore(db).save(observation(reportId));
     await new DrizzleObservationStore(db).save(observation(secondReportId));
   });
@@ -166,5 +177,76 @@ describe('envío de avisos a moderación (#260)', () => {
     expect(written).not.toContain(reporterKey);
     expect(written).not.toContain('e6333333');
     expect(written).not.toContain(moderator.accountId);
+  });
+
+  // Fase 2 de #260: las otras colas del panel avisan con los eventos de sus módulos.
+  const post = (as: SignedIn, path: string, body: object) =>
+    request(server)
+      .post(`/v1${path}`)
+      .set('Cookie', as.cookie)
+      .set('X-CSRF-Token', as.csrfToken)
+      .send(body);
+  const bodies = () => sender.sent.map(({ content }) => (content as { body: string }).body);
+
+  it('proponer una tienda avisa a la cola de tiendas', async () => {
+    await post(reporter, '/establishment-proposals', {
+      name: 'Granero La Vecina',
+      type: 'barrio',
+      municipality: 'armenia',
+      ...STORE,
+    }).expect(202);
+    await relay();
+
+    expect(bodies()).toEqual(['Hay casos nuevos para revisar en Tiendas']);
+  });
+
+  it('pedir un producto avisa a la cola de productos', async () => {
+    await post(reporter, '/product-requests', {
+      name: 'Panela del aviso',
+      categoryCode: 'grains-groceries',
+      quantity: 500,
+      unit: 'g',
+    }).expect(202);
+    await relay();
+
+    expect(bodies()).toEqual(['Hay casos nuevos para revisar en Productos']);
+  });
+
+  it('denunciar un comercio avisa a la cola de comercios', async () => {
+    await post(owner, '/commerce/claims', {
+      establishmentId: storeId,
+      responsibleName: 'Rosa Gómez',
+      phone: '3001234567',
+      acceptedTermsVersion: '2026-11',
+      location: { lat: STORE.lat + 0.00018, lng: STORE.lng },
+    }).expect(201);
+    await relay();
+    sender.sent = [];
+    await db.execute(sql`truncate notifications.sent_notices`);
+
+    await post(reporter, `/establishments/${storeId}/merchant-reports`, {
+      reason: 'El dueño real de la tienda es don Luis, no esta persona.',
+    }).expect(202);
+    await relay();
+
+    expect(bodies()).toEqual(['Hay casos nuevos para revisar en Comercios']);
+  });
+
+  // El límite de 5 minutos es por cola: un caso de otra cola no queda callado por el de precios.
+  it('cada cola tiene su propia ventana de 5 minutos', async () => {
+    await flag(reportId).expect(202);
+    await relay();
+    await post(reporter, '/product-requests', {
+      name: 'Panela de la segunda cola',
+      categoryCode: 'grains-groceries',
+      quantity: 500,
+      unit: 'g',
+    }).expect(202);
+    await relay();
+
+    expect(bodies()).toEqual([
+      'Hay casos nuevos para revisar en Precios',
+      'Hay casos nuevos para revisar en Productos',
+    ]);
   });
 });

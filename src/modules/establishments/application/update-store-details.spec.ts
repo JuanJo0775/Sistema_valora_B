@@ -1,4 +1,5 @@
 import { InvalidOpeningHoursError, type OpeningHours } from '../../../domain/opening-hours';
+import type { DomainEvent } from '../../../shared/events';
 import type { EstablishmentDetail } from './establishment-repository';
 import type { StoreCorrection, StoreDetailsChange } from './store-details';
 import { UpdateStoreDetails, type UpdateStoreDetailsRequest } from './update-store-details';
@@ -27,6 +28,7 @@ const hours: OpeningHours = {
 function setup(neighbors: { id: string; name: string; distanceM: number }[] = []) {
   const applied: { establishmentId: string; change: StoreDetailsChange }[] = [];
   const corrections: StoreCorrection[] = [];
+  const events: DomainEvent[][] = [];
   const update = new UpdateStoreDetails({
     stores: {
       findById: (id) => Promise.resolve(id === STORE.id ? STORE : null),
@@ -38,14 +40,15 @@ function setup(neighbors: { id: string; name: string; distanceM: number }[] = []
       },
     },
     corrections: {
-      propose: (correction) => {
+      propose: (correction, published) => {
         corrections.push(correction);
+        events.push(published);
         return Promise.resolve();
       },
     },
     clock: { now: () => now },
   });
-  return { update, applied, corrections };
+  return { update, applied, corrections, events };
 }
 
 const request = (change: Partial<UpdateStoreDetailsRequest> = {}): UpdateStoreDetailsRequest => ({
@@ -127,5 +130,31 @@ describe('el comercio corrige los datos de su tienda (D5 del grill comercial)', 
     ).rejects.toThrow(InvalidOpeningHoursError);
     expect(applied).toEqual([]);
     expect(corrections).toEqual([]);
+  });
+
+  // #260: moderación se entera de que hay una corrección nueva por el outbox. Solo lleva el id (EC-08).
+  it('publica StoreCorrectionRequested con el id de la corrección, para avisar a moderación', async () => {
+    const { update, corrections, events } = setup();
+
+    await update.execute(request({ location: { lat: 4.534, lng: -75.6812 } }));
+
+    expect(events).toEqual([
+      [
+        expect.objectContaining({
+          type: 'StoreCorrectionRequested',
+          version: 1,
+          payload: { correctionId: corrections[0]?.id },
+        }),
+      ],
+    ]);
+    expect(JSON.stringify(events)).not.toContain('clave-de-dona-rosa');
+  });
+
+  it('un cambio que se aplica sin revisión no publica ningún evento', async () => {
+    const { update, events } = setup();
+
+    await update.execute(request({ phone: '3001234567' }));
+
+    expect(events).toEqual([]);
   });
 });

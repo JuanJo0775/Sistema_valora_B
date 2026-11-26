@@ -43,29 +43,29 @@ import { DrizzleStoreProposalRepository } from './infrastructure/drizzle-store-p
     // D5 (#207): datos de la tienda y correcciones.
     {
       provide: UpdateStoreDetails,
-      inject: [DATABASE],
-      useFactory: (db: Database): UpdateStoreDetails =>
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): UpdateStoreDetails =>
         new UpdateStoreDetails({
           stores: new DrizzleEstablishmentRepository(db),
-          corrections: new DrizzleStoreCorrectionRepository(db),
+          corrections: new DrizzleStoreCorrectionRepository(db, outbox),
           clock: { now: () => new Date() },
         }),
     },
     {
       provide: StoreCorrectionsQueue,
-      inject: [DATABASE],
-      useFactory: (db: Database): StoreCorrectionsQueue =>
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): StoreCorrectionsQueue =>
         new StoreCorrectionsQueue({
-          corrections: new DrizzleStoreCorrectionRepository(db),
+          corrections: new DrizzleStoreCorrectionRepository(db, outbox),
           stores: new DrizzleEstablishmentRepository(db),
         }),
     },
     {
       provide: DecideStoreCorrection,
-      inject: [DATABASE],
-      useFactory: (db: Database): DecideStoreCorrection =>
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): DecideStoreCorrection =>
         new DecideStoreCorrection({
-          corrections: new DrizzleStoreCorrectionRepository(db),
+          corrections: new DrizzleStoreCorrectionRepository(db, outbox),
           clock: { now: () => new Date() },
         }),
     },

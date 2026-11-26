@@ -1,5 +1,6 @@
 import { and, asc, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type {
   MerchantCase,
   MerchantCaseDecisionRecord,
@@ -9,7 +10,10 @@ import type {
 import { disputeChallengers, merchantCases } from './schema';
 
 export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly outbox: OutboxPublisher,
+  ) {}
 
   async hasOpen(establishmentId: string, reporterKey: string): Promise<boolean> {
     const [found] = await this.db
@@ -25,7 +29,11 @@ export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
     return found !== undefined;
   }
 
-  async open(merchantCase: MerchantCase, challenger?: NewDisputeChallenger): Promise<void> {
+  async open(
+    merchantCase: MerchantCase,
+    challenger: NewDisputeChallenger | undefined,
+    events: DomainEvent[],
+  ): Promise<void> {
     const { id, establishmentId, kind, reporterKey, reason, createdAt } = merchantCase;
     await this.db.transaction(async (tx) => {
       await tx
@@ -34,6 +42,7 @@ export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
       if (challenger) {
         await tx.insert(disputeChallengers).values({ caseId: id, establishmentId, ...challenger });
       }
+      for (const event of events) await this.outbox.publish(tx, event);
     });
   }
 

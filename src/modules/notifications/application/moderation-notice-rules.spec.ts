@@ -31,4 +31,24 @@ describe('qué hechos avisan a moderación (ADR-044)', () => {
       expect(queueOf(event(type))).toBeNull();
     },
   );
+
+  // Fase 2 de #260: las otras colas del panel avisan con los eventos que crean sus módulos.
+  it.each(['StoreProposed', 'StoreCorrectionRequested'])(
+    '%s deja un caso en la cola de tiendas',
+    (type) => {
+      expect(queueOf(event(type, { proposalId: 'p1' }))).toBe('tiendas');
+    },
+  );
+
+  it('una solicitud de producto deja un caso en la cola de productos', () => {
+    expect(queueOf(event('ProductRequested', { requestId: 'r1' }))).toBe('productos');
+  });
+
+  // Denuncia, disputa y reclamo de un comercio comparten la pestaña de comercios.
+  it.each(['denuncia', 'disputa', 'reclamo'])(
+    'un caso de comercio de tipo %s deja un caso en la cola de comercios',
+    (kind) => {
+      expect(queueOf(event('MerchantCaseOpened', { caseId: 'c1', kind }))).toBe('comercios');
+    },
+  );
 });

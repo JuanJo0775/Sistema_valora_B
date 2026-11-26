@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { createEvent } from '../../../shared/events';
 import type { Municipality } from '../../../domain/municipality';
 import type { EstablishmentType } from './establishment-repository';
 import type { StoreProposalRepository } from './store-proposals';
+
+// #260: moderación se entera por el outbox de que hay una propuesta nueva. Solo lleva el id (EC-08).
+export const STORE_PROPOSED = 'StoreProposed';
 
 export interface ProposeStorePorts {
   proposals: Pick<StoreProposalRepository, 'save'>;
@@ -28,17 +32,20 @@ export class ProposeStore {
   async execute(request: StoreProposalRequest): Promise<{ id: string; status: 'pendiente' }> {
     const id = randomUUID();
     const address = request.address?.trim();
-    await this.ports.proposals.save({
-      id,
-      name: request.name.trim(),
-      type: request.type,
-      ...(address ? { address } : {}),
-      lat: request.lat,
-      lng: request.lng,
-      municipality: request.municipality,
-      proposerKey: request.proposerKey,
-      createdAt: this.ports.clock.now(),
-    });
+    await this.ports.proposals.save(
+      {
+        id,
+        name: request.name.trim(),
+        type: request.type,
+        ...(address ? { address } : {}),
+        lat: request.lat,
+        lng: request.lng,
+        municipality: request.municipality,
+        proposerKey: request.proposerKey,
+        createdAt: this.ports.clock.now(),
+      },
+      [createEvent(STORE_PROPOSED, 1, { proposalId: id })],
+    );
     return { id, status: 'pendiente' };
   }
 }

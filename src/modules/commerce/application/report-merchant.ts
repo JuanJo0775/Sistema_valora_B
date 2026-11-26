@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
-import type { MerchantCaseRepository } from './merchant-cases';
+import { caseOpenedEvent, type MerchantCase, type MerchantCaseRepository } from './merchant-cases';
 import type { MerchantClaimRepository } from './merchant-claims';
 
 export interface ReportMerchantPorts {
@@ -71,14 +71,15 @@ export class ReportMerchant {
       throw new MerchantReportOpenError();
     }
     const id = randomUUID();
-    await cases.open({
+    const opened: MerchantCase = {
       id,
       establishmentId: request.establishmentId,
       kind: 'denuncia',
       reporterKey: request.reporterKey,
       reason: request.reason.trim(),
       createdAt: this.ports.clock.now(),
-    });
+    };
+    await cases.open(opened, undefined, [caseOpenedEvent(opened)]);
     return { id, status: 'pendiente' };
   }
 }
