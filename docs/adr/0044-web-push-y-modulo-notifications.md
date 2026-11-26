@@ -50,7 +50,7 @@ Queda fuera: correo al moderador, preferencias por tipo de aviso, avisos al repo
 - Spike #256 (`docs/decisiones/avisos/spike-web-push.md`): los tres dispositivos.
 - dependency-cruiser: la regla `nadie-conoce-notifications` en `pnpm depcheck`.
 - #259 y #260: pruebas de la regla de audiencia, de que un fallo de envío no cambia la respuesta de `POST /v1/reports` y de que el contenido no trae campos identificadores.
-- #261: pruebas manuales en Android e iPhone y medición del p95 hasta la aceptación del servicio de push (meta: 95 % en 60 s o menos).
+- #261: pruebas manuales en Android e iPhone y medición del p95 hasta la aceptación del servicio de push (meta: 95 % en 60 s o menos). Protocolo y tablas de resultados en `docs/decisiones/avisos/evidencia-push.md` (resultados por llenar).
 
 ## Referencias
 
