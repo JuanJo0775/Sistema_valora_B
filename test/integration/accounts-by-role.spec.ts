@@ -40,4 +40,30 @@ describe('cuentas por rol (#260)', () => {
     expect([...ids].sort()).toEqual([moderator.accountId, secondModerator.accountId].sort());
     expect(ids).not.toContain(reporter.accountId);
   });
+
+  // Una cuenta que se va a borrar, o que está suspendida, no recibe avisos.
+  it('no incluye las cuentas pendientes de eliminación ni las suspendidas', async () => {
+    const leaving = await signIn(
+      app.getHttpServer() as Parameters<typeof signIn>[0],
+      db,
+      'rol-se-va@correo.com',
+      'moderador',
+    );
+    const suspended = await signIn(
+      app.getHttpServer() as Parameters<typeof signIn>[0],
+      db,
+      'rol-suspendida@correo.com',
+      'moderador',
+    );
+    await db.execute(
+      sql`update identity.accounts set deletion_scheduled_for = now() + interval '5 days' where id = ${leaving.accountId}`,
+    );
+    await db.execute(
+      sql`update identity.accounts set suspended_until = now() + interval '2 days' where id = ${suspended.accountId}`,
+    );
+
+    const ids = await app.get(AccountsByRole).ids('moderador');
+
+    expect([...ids].sort()).toEqual([moderator.accountId, secondModerator.accountId].sort());
+  });
 });
