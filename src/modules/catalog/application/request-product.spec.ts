@@ -1,3 +1,4 @@
+import type { DomainEvent } from '../../../shared/events';
 import type { ProductView } from './product-repository';
 import type { NewProductRequest } from './product-requests';
 import { BarcodeTakenError, RequestProduct, UnknownCategoryError } from './request-product';
@@ -10,12 +11,18 @@ const existing: ProductView = {
   presentations: [{ id: 'p1', barcode: '7701234567897', quantity: 500, unit: 'g', packCount: 1 }],
 };
 
-function setup(): { saved: NewProductRequest[]; request: RequestProduct } {
+function setup(): {
+  saved: NewProductRequest[];
+  events: DomainEvent[][];
+  request: RequestProduct;
+} {
   const saved: NewProductRequest[] = [];
+  const events: DomainEvent[][] = [];
   const request = new RequestProduct({
     requests: {
-      save: (proposal) => {
+      save: (proposal, published) => {
         saved.push(proposal);
+        events.push(published);
         return Promise.resolve();
       },
     },
@@ -25,7 +32,7 @@ function setup(): { saved: NewProductRequest[]; request: RequestProduct } {
     categories: { listCategoryCodes: () => Promise.resolve(['grains-groceries', 'beverages']) },
     clock: { now: () => now },
   });
-  return { saved, request };
+  return { saved, events, request };
 }
 
 const proposal = {
@@ -78,5 +85,31 @@ describe('proponer un producto nuevo (RF-003 RN3, grill de la #26)', () => {
       UnknownCategoryError,
     );
     expect(saved).toEqual([]);
+  });
+
+  // #260: moderación se entera de que hay una solicitud nueva por el outbox. Solo lleva el id (EC-08).
+  it('publica ProductRequested con el id de la solicitud, para avisar a moderación', async () => {
+    const { saved, events, request } = setup();
+
+    await request.execute(proposal);
+
+    expect(events).toEqual([
+      [
+        expect.objectContaining({
+          type: 'ProductRequested',
+          version: 1,
+          payload: { requestId: saved[0]?.id },
+        }),
+      ],
+    ]);
+    expect(JSON.stringify(events)).not.toContain('clave-de-quien-propone');
+  });
+
+  it('una solicitud rechazada por validación no publica ningún evento', async () => {
+    const { events, request } = setup();
+
+    await expect(request.execute({ ...proposal, categoryCode: 'no-existe' })).rejects.toThrow();
+
+    expect(events).toEqual([]);
   });
 });
