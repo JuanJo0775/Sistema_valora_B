@@ -58,6 +58,7 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
       'comparison',
       'establishments',
       'identity',
+      'notifications',
       'pricing',
       'reliability',
       'shared',
@@ -103,6 +104,23 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
     ]);
   });
 
+  // ADR-045: de un dispositivo solo se guarda lo necesario para enviarle avisos.
+  it('las suscripciones push solo guardan la dirección, las claves, la cuenta y la fecha', () => {
+    const subscription = columns
+      .filter((column) => column.table_schema === 'notifications')
+      .map((column) => `${column.table_name}.${column.column_name}`)
+      .sort();
+
+    expect(subscription).toEqual([
+      'push_subscriptions.account_id',
+      'push_subscriptions.auth',
+      'push_subscriptions.created_at',
+      'push_subscriptions.endpoint',
+      'push_subscriptions.id',
+      'push_subscriptions.p256dh',
+    ]);
+  });
+
   it('ninguna tabla guarda la IP de quien hace la petición', () => {
     expect(named(/(^|_)ip($|_)|ip_address|user_agent/)).toEqual([]);
   });
@@ -121,6 +139,8 @@ describe('privacidad del esquema de la base (EC-08, #36)', () => {
       'commerce.merchant_claim_rejections.account_id',
       'commerce.merchant_claims.account_id',
       'commerce.merchant_notices.account_id',
+      // ADR-045: a qué cuenta pertenece cada dispositivo suscrito a los avisos.
+      'notifications.push_subscriptions.account_id',
       'pricing.reports.reporter_id',
     ]);
     // Grill de la #36, pregunta 1: reporter_id es una referencia interna de pricing (idempotencia,
