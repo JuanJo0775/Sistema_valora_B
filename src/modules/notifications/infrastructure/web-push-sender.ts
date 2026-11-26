@@ -1,5 +1,10 @@
 import type { NoticeContent } from '../application/moderation-notice-content';
-import type { PushDevice, PushResult, PushSender } from '../application/push-sender';
+import {
+  type PushDevice,
+  type PushResult,
+  type PushSender,
+  PushUnavailableError,
+} from '../application/push-sender';
 
 // Lo que usamos de la función `sendNotification` de la librería web-push; se inyecta para probarlo.
 export type SendNotification = (
@@ -31,8 +36,14 @@ export class WebPushSender implements PushSender {
       return 'sent';
     } catch (error) {
       // ADR-045: 404 y 410 son la respuesta del servicio de push a una suscripción que ya no existe.
-      if (statusOf(error) === 404 || statusOf(error) === 410) return 'gone';
-      throw error;
+      const status = statusOf(error);
+      if (status === 404 || status === 410) return 'gone';
+      // Solo el código HTTP: el mensaje de la librería puede traer la dirección del dispositivo.
+      throw new PushUnavailableError(
+        status === undefined
+          ? 'No se pudo contactar al servicio de push'
+          : `El servicio de push respondió ${String(status)}`,
+      );
     }
   }
 }
