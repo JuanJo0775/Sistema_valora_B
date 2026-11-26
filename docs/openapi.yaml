@@ -25,6 +25,7 @@ tags:
   - name: Autenticación
   - name: Moderación
   - name: Comercios
+  - name: Avisos
   - name: Operación
 security: []
 paths:
@@ -1711,6 +1712,67 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /notifications/vapid-public-key:
+    get:
+      tags: [Avisos]
+      operationId: getVapidPublicKey
+      summary: Clave pública con la que el navegador se suscribe a los avisos (ADR-044)
+      description: >-
+        Pública y sin cuenta: es la clave pública VAPID, que el navegador necesita para pedir una
+        suscripción push. Responde 404 mientras el servidor no tenga una clave configurada
+        (PUSH_PROVIDER sin VAPID_PUBLIC_KEY); la PWA lo usa para no mostrar «Activar avisos».
+        Cambiar la clave invalida todas las suscripciones (ADR-045) (#259).
+      responses:
+        '200':
+          description: La clave pública VAPID, en base64url
+          headers:
+            Cache-Control:
+              description: Caché del navegador y de la caché compartida (CDN) de 5 minutos (ADR-031).
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [publicKey]
+                properties:
+                  publicKey: { type: string, minLength: 20, maxLength: 200 }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifications/subscriptions:
+    post:
+      tags: [Avisos]
+      operationId: subscribeToNotifications
+      summary: Activar los avisos en este dispositivo (ADR-044, ADR-045)
+      description: >-
+        Solo los roles moderador y comercio. Guarda la suscripción push del dispositivo: la dirección
+        del servicio de push y las dos claves que entrega el navegador. Es idempotente: repetir el
+        mismo dispositivo no duplica, solo renueva las claves. Una dirección pertenece a una sola
+        cuenta: si otra cuenta la activa desde el mismo navegador, pasa a esa cuenta y la anterior
+        deja de recibir avisos ahí. Cada cuenta guarda como máximo 5 dispositivos; al pasar el
+        máximo se reemplaza el más antiguo. La respuesta nunca devuelve la dirección ni las claves
+        (EC-08) (#259).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint, keys]
+              properties:
+                endpoint: { type: string, format: uri, maxLength: 2048, pattern: '^https://' }
+                keys:
+                  type: object
+                  required: [p256dh, auth]
+                  properties:
+                    p256dh: { type: string, minLength: 20, maxLength: 200, pattern: '^[A-Za-z0-9_-]+$' }
+                    auth: { type: string, minLength: 10, maxLength: 100, pattern: '^[A-Za-z0-9_-]+$' }
+      responses:
+        '204': { description: Avisos activados en este dispositivo }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /moderation/summary:
     get:
       tags: [Moderación]
