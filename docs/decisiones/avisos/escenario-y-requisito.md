@@ -1,17 +1,20 @@
-# Escenario EC-09 y requisito de avisos
+# EC-09 y RF-020: avisos a moderación y comercio
 
-> **Estado: el escenario EC-09 fue aceptado el 25 de noviembre de 2026 y está registrado en Notion. El requisito sigue como borrador sin numerar** (RF-020 propuesto) hasta que el equipo lo acepte.
+> **Estado: aceptados el 25 de noviembre de 2026 y registrados en Notion: el escenario EC-09 y el requisito RF-020.**
 
-## Requisito propuesto: Avisos a moderación y comercio
+## RF-020: Avisos a moderación y comercio
 
 | Campo | Valor |
 |---|---|
+| ID | RF-020 |
+| Estado | Definido |
 | Descripción | Un moderador o un comercio se entera de lo que espera su atención sin revisar a mano: una campana con un contador dentro de la app y, cuando la app está cerrada, una notificación en el celular o el computador. |
 | Actor | Moderador, Comercio, Sistema |
 | Incremento | Módulo comercial |
 | Corte de construcción | Corte 3 |
 | Prioridad | Media |
 | Escenarios de calidad | EC-09, EC-04, EC-05, EC-08 |
+| Módulo (Notion) | Confiabilidad y Moderación |
 | ADRs relacionados | ADR-043, ADR-044, ADR-045 |
 
 ### Reglas de negocio
@@ -75,6 +78,6 @@ Quedan parametrizables y se ajustan con datos reales; el equipo los aceptó el 2
 
 ## Cómo se registra en Notion
 
-1. **EC-09:** registrado en la base Escenarios de calidad (Corte 3, prioridad Media, origen Equipo), enlazado a ADR-043, 044 y 045.
+1. **EC-09:** en la base Escenarios de calidad (Corte 3, prioridad Media, origen Equipo), enlazado a ADR-043, 044 y 045 y a RF-020.
 2. **ADR-043, 044 y 045:** en la base ADRs, en estado Aceptado.
-3. **Requisito:** pendiente. Cuando el equipo lo acepte, una página en la base Requisitos Funcionales con los campos de la primera tabla, el ID que asigne el equipo y la relación a los tres ADR.
+3. **RF-020:** en la base Requisitos Funcionales (estado Definido, Corte 3), enlazado a los tres ADR y a EC-09, con una tabla del estado de construcción de cada regla.
