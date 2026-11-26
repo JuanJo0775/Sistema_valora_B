@@ -100,4 +100,16 @@ describe('resumen diario de avisos por correo (B9, #209)', () => {
     // Sin correo entregado no se anota: se reintenta en la siguiente pasada, como siempre.
     expect(recorded).toEqual([]);
   });
+
+  // Prueba de resguardo: ya pasa con la regla hecha.
+  it('sin avisos nuevos, o antes de las 7:00 a. m., no publica el evento', async () => {
+    const known = { 'cuenta-de-dona-rosa': ['vence_pronto:arroz:2026-11-09T15:00:00.000Z'] };
+    const repeated = setup({ 'cuenta-de-dona-rosa': [expiring] }, morning, known);
+    const early = setup({ 'cuenta-de-dona-rosa': [expiring] }, dawn);
+
+    await repeated.digests.execute();
+    await early.digests.execute();
+
+    expect([...repeated.raised, ...early.raised]).toEqual([]);
+  });
 });
