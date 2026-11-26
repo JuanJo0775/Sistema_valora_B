@@ -9,6 +9,8 @@ export { EstablishmentExists } from './application/establishment-exists';
 export { RetiredEstablishments } from './application/retired-establishments';
 export { EstablishmentDetails } from './application/establishment-details';
 // D2 del grill comercial: commerce propone la tienda de un comercio y muestra su nombre mientras espera.
+export { StoreProposalsQueue } from './application/store-proposals-queue';
+export { StoreCorrectionsQueue } from './application/store-corrections-queue';
 export { ProposeStore } from './application/propose-store';
 export { PendingStoreProposalName } from './application/pending-store-proposal-name';
 // H5: puerto por el que commerce dice qué propuestas nacen de un reclamo.

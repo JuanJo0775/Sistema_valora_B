@@ -63,6 +63,11 @@ function challengerOf({ challenger, createdAt }: MerchantCase): MerchantCaseItem
 export class MerchantCasesQueue {
   constructor(private readonly ports: MerchantCasesQueuePorts) {}
 
+  // #257: cuántos casos esperan decisión; es el número de la pestaña «Comercios».
+  async count(): Promise<number> {
+    return (await this.ports.cases.pending()).length;
+  }
+
   async list(): Promise<MerchantCaseItem[]> {
     const { cases, claims, establishments } = this.ports;
     const items: MerchantCaseItem[] = [];

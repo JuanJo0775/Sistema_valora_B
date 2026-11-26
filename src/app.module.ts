@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
+import { ModerationSummaryModule } from './moderation/moderation-summary.module';
 import { CatalogModule } from './modules/catalog';
 import { CommerceModule } from './modules/commerce';
 import { ComparisonModule } from './modules/comparison';
@@ -27,6 +28,8 @@ import { EventsModule } from './shared/events';
     // Corte 3 (EPIC-B08): nadie del núcleo lo importa (EC-05).
     CommerceModule,
     ImportsModule,
+    // #257: el resumen de pendientes de moderación junta cuatro módulos.
+    ModerationSummaryModule,
   ],
   controllers: [HealthController],
 })

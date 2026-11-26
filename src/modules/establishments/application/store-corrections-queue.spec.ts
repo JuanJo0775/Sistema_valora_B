@@ -51,3 +51,35 @@ describe('correcciones de tiendas pendientes (D5 del grill comercial, cola de la
     expect(JSON.stringify(items)).not.toContain('clave-de-dona-rosa');
   });
 });
+
+// #257: la otra mitad del número de la pestaña «Tiendas» del panel de moderación.
+describe('cuántas correcciones de tienda esperan decisión (#257)', () => {
+  const queueWith = (pending: StoreCorrection[]) =>
+    new StoreCorrectionsQueue({
+      corrections: { pending: () => Promise.resolve(pending) },
+      stores: {
+        findById: (id) => Promise.resolve(id === STORE.id ? STORE : null),
+        findWithinMeters: () => Promise.resolve([]),
+      },
+    });
+
+  it('sin correcciones son cero', async () => {
+    await expect(queueWith([]).count()).resolves.toBe(0);
+  });
+
+  it('cuenta las correcciones pendientes de tiendas que todavía existen', async () => {
+    const queue = queueWith([correction, { ...correction, id: 'correccion-2' }]);
+
+    await expect(queue.count()).resolves.toBe(2);
+  });
+
+  // Igual que la lista: una corrección de una tienda que ya no existe no se muestra, así que
+  // tampoco cuenta (el número y la lista deben coincidir).
+  it('no cuenta la corrección de una tienda que ya no existe', async () => {
+    const orphan = { ...correction, id: 'correccion-3', establishmentId: 'tienda-eliminada' };
+    const queue = queueWith([correction, orphan]);
+
+    await expect(queue.list()).resolves.toHaveLength(1);
+    await expect(queue.count()).resolves.toBe(1);
+  });
+});

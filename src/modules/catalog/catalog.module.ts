@@ -225,6 +225,7 @@ import { SharpImageProcessor } from './infrastructure/sharp-image-processor';
     PresentationNames,
     PresentationsForPricing,
     ProductSummaries,
+    ProductRequestsQueue,
   ],
 })
 export class CatalogModule {}
