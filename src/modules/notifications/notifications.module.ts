@@ -1,4 +1,4 @@
-import { Inject, Module, type OnModuleInit } from '@nestjs/common';
+import { Inject, Logger, Module, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../shared/config/env.validation';
 import { DATABASE, type Database, type Transaction } from '../../shared/database/database.module';
@@ -56,6 +56,8 @@ import { DrizzlePushSubscriptions } from './infrastructure/drizzle-push-subscrip
   ],
 })
 export class NotificationsModule implements OnModuleInit {
+  private readonly logger = new Logger(NotificationsModule.name);
+
   constructor(
     private readonly bus: EventBus,
     @Inject(PUSH_SENDER) private readonly sender: PushSender,
@@ -75,13 +77,21 @@ export class NotificationsModule implements OnModuleInit {
         async (event: DomainEvent, tx: Transaction) => {
           const queue = queueOf(event);
           if (queue === null) return;
-          await new NotifyModerators({
+          const delivered = await new NotifyModerators({
             moderators: { ids: () => this.accounts.ids('moderador') },
             subscriptions: new DrizzlePushSubscriptions(tx),
             sender: this.sender,
             log: new DrizzleNoticeLog(tx),
             clock: { now: () => new Date() },
           }).execute(queue);
+          // Medida del escenario EC-09: solo números (cola, avisos y milisegundos desde el hecho
+          // hasta que el servicio de push aceptó el mensaje); nunca datos de nadie.
+          if (delivered > 0) {
+            const ms = Date.now() - event.occurredAt.getTime();
+            this.logger.log(
+              `Aviso a moderación: cola=${queue} enviados=${String(delivered)} ms=${String(ms)}`,
+            );
+          }
         },
       );
     }

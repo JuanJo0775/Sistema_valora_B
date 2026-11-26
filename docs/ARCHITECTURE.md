@@ -16,7 +16,7 @@ El backend implementará un **monolito modular**. Los módulos se organizan por 
 | comparison | Consulta, normalización por unidad, estado de confianza y orden neutral | Comparación |
 | imports | Carga semilla manual y tratamiento de referencias SIPSA | RF-014 |
 | commerce | Perfiles, precios oficiales, promociones e integración con reportes | Corte 3; RF-015 a RF-018 |
-| notifications | Suscripciones push y avisos por Web Push a moderadores y comercios, alimentado por el outbox (ADR-044, ADR-045; las suscripciones están hechas (#259); el envío llega con #260) | Avisos a moderación y comercio |
+| notifications | Suscripciones push y avisos por Web Push a moderadores y comercios, alimentado por el outbox (ADR-044, ADR-045; las suscripciones están hechas (#259); el envío de los avisos de la cola de precios, también (#260); faltan las otras colas y el comercio) | Avisos a moderación y comercio |
 
 La moderación no es un módulo aparte: vive en `reliability`, porque decide sobre sus observaciones y cambia la reputación (grill de la #32, pregunta 2).
 
