@@ -157,7 +157,7 @@ describe('avisar a los moderadores (ADR-044)', () => {
     });
     sender.down.add(device('apagado').endpoint);
 
-    await expect(notify.execute('precios')).resolves.toBeUndefined();
+    await expect(notify.execute('precios')).resolves.toBe(1);
 
     expect(sender.sent.map(({ endpoint }) => endpoint)).toEqual([device('telefono-1').endpoint]);
     expect(await log.lastSent('moderadora-1', 'precios')).toEqual(NOW);
