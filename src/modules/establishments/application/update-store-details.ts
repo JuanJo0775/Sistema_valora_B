@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createEvent } from '../../../shared/events';
 import { assertValidOpeningHours, type OpeningHours } from '../../../domain/opening-hours';
 import { equivalentStoreNames } from '../../../domain/store-proposal';
 import type { StoreCorrections, StoreDetailsChange, StoreDetailsRepository } from './store-details';
@@ -27,6 +28,9 @@ export interface UpdateStoreDetailsResult {
 // D5: un nombre igual al de otra tienda a menos de esta distancia pasa por el moderador.
 export const NEIGHBOR_NAME_METERS = 50;
 
+// #260: moderación se entera por el outbox de que hay una corrección nueva. Solo lleva el id (EC-08).
+export const STORE_CORRECTION_REQUESTED = 'StoreCorrectionRequested';
+
 // D5 del grill comercial: el comercio corrige los datos de su tienda; commerce lo pide por la
 // interfaz pública de establishments.
 export class UpdateStoreDetails {
@@ -49,13 +53,17 @@ export class UpdateStoreDetails {
       ...(request.location === undefined ? {} : { location: request.location }),
     };
     if (Object.keys(inReview).length > 0) {
-      await corrections.propose({
-        id: randomUUID(),
-        establishmentId: request.establishmentId,
-        ...inReview,
-        proposerKey: request.proposerKey,
-        createdAt: clock.now(),
-      });
+      const id = randomUUID();
+      await corrections.propose(
+        {
+          id,
+          establishmentId: request.establishmentId,
+          ...inReview,
+          proposerKey: request.proposerKey,
+          createdAt: clock.now(),
+        },
+        [createEvent(STORE_CORRECTION_REQUESTED, 1, { correctionId: id })],
+      );
     }
     return {
       applied: Object.keys(change) as (keyof StoreDetailsChange)[],
