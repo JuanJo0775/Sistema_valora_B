@@ -70,4 +70,40 @@ describe('activar los avisos en un dispositivo (ADR-045)', () => {
     expect(kept).not.toContain(device(1).endpoint);
     expect(kept).toContain(device(6).endpoint);
   });
+
+  // Pruebas de resguardo: ya pasan con la regla del máximo; evitan que un cambio futuro saque a un
+  // dispositivo por error.
+  it('reactivar un dispositivo de una cuenta que ya tiene 5 no saca a ninguno', async () => {
+    const { subscriptions, subscribe } = setup();
+    for (let n = 1; n <= MAX_SUBSCRIPTIONS_PER_ACCOUNT; n += 1) {
+      await subscribe.execute({ accountId: 'moderadora', ...device(n) });
+    }
+
+    await subscribe.execute({ accountId: 'moderadora', ...device(3) });
+
+    expect(await subscriptions.endpointsOf('moderadora')).toHaveLength(5);
+    expect(await subscriptions.endpointsOf('moderadora')).toContain(device(1).endpoint);
+  });
+
+  it('el límite es por cuenta: los dispositivos de otra cuenta no cuentan', async () => {
+    const { subscriptions, subscribe } = setup();
+    for (let n = 1; n <= MAX_SUBSCRIPTIONS_PER_ACCOUNT; n += 1) {
+      await subscribe.execute({ accountId: 'moderadora', ...device(n) });
+    }
+
+    await subscribe.execute({ accountId: 'comercio', ...device(7) });
+
+    expect(await subscriptions.endpointsOf('moderadora')).toHaveLength(5);
+    expect(await subscriptions.endpointsOf('comercio')).toEqual([device(7).endpoint]);
+  });
+
+  it('activar de nuevo el mismo dispositivo no lo duplica y renueva sus claves', async () => {
+    const { subscriptions, subscribe } = setup();
+    await subscribe.execute({ accountId: 'moderadora', ...device(1) });
+
+    await subscribe.execute({ accountId: 'moderadora', ...device(1), auth: 'secreto-nuevo' });
+
+    expect(await subscriptions.endpointsOf('moderadora')).toHaveLength(1);
+    expect(subscriptions.rows.get(device(1).endpoint)?.auth).toBe('secreto-nuevo');
+  });
 });
