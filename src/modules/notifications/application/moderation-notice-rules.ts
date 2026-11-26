@@ -11,5 +11,8 @@ export interface OutboxFact {
 // identifique a alguien (EC-08).
 export function queueOf(fact: OutboxFact): ModerationQueue | null {
   if (fact.type === 'PriceFlagged') return 'precios';
+  // PriceAssessed también se publica con un precio normal o aprobado por moderación: no hay nada pendiente.
+  if (fact.type === 'PriceAssessed')
+    return fact.payload['verdict'] === 'sospechoso' ? 'precios' : null;
   return null;
 }
