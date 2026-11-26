@@ -1,4 +1,4 @@
-import type { DomainEvent } from '../../../shared/events';
+import { createEvent, type DomainEvent } from '../../../shared/events';
 
 // D2 y D3 del grill comercial (#208): los casos que decide el moderador sobre un comercio.
 // denuncia: «este comercio no es de quien dice». disputa: otra cuenta, estando en la tienda, intentó
@@ -25,12 +25,24 @@ export interface MerchantCase {
   challenger?: DisputeChallenger;
 }
 
+// #260: moderación se entera por el outbox de que hay un caso nuevo. Solo lleva el id y el tipo del
+// caso: nunca la clave de quien lo abre ni los datos del responsable (EC-08).
+export const MERCHANT_CASE_OPENED = 'MerchantCaseOpened';
+
+export function caseOpenedEvent(merchantCase: Pick<MerchantCase, 'id' | 'kind'>): DomainEvent {
+  return createEvent(MERCHANT_CASE_OPENED, 1, { caseId: merchantCase.id, kind: merchantCase.kind });
+}
+
 // Puerto hacia el esquema commerce.
 export interface MerchantCaseRepository {
   // Si esa clave ya tiene un caso abierto sobre esa tienda.
   hasOpen(establishmentId: string, reporterKey: string): Promise<boolean>;
-  // El caso y, en una disputa, quien disputa se guardan juntos.
-  open(merchantCase: MerchantCase, challenger?: NewDisputeChallenger): Promise<void>;
+  // El caso, en una disputa quien disputa, y los eventos se guardan juntos (ADR-015).
+  open(
+    merchantCase: MerchantCase,
+    challenger: NewDisputeChallenger | undefined,
+    events: DomainEvent[],
+  ): Promise<void>;
   findPending(caseId: string): Promise<MerchantCase | null>;
   close(record: MerchantCaseDecisionRecord): Promise<void>;
 }

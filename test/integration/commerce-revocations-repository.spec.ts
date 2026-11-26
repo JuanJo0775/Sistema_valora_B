@@ -49,7 +49,7 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
     db = drizzle(pool);
     const outbox = new OutboxPublisher();
     claims = new DrizzleMerchantClaimRepository(db, outbox);
-    cases = new DrizzleMerchantCaseRepository(db);
+    cases = new DrizzleMerchantCaseRepository(db, outbox);
     prices = new DrizzleOfficialPriceRepository(db, outbox);
     revocations = new DrizzleMerchantRevocations(db, new OutboxPublisher());
   });
@@ -72,14 +72,18 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
       },
       [],
     );
-    await cases.open({
-      id: 'cb444444-4444-4444-8444-444444444444',
-      establishmentId: STORE,
-      kind: 'denuncia',
-      reporterKey: 'b'.repeat(64),
-      reason: 'El dueño real es don Luis.',
-      createdAt: revokedAt,
-    });
+    await cases.open(
+      {
+        id: 'cb444444-4444-4444-8444-444444444444',
+        establishmentId: STORE,
+        kind: 'denuncia',
+        reporterKey: 'b'.repeat(64),
+        reason: 'El dueño real es don Luis.',
+        createdAt: revokedAt,
+      },
+      undefined,
+      [],
+    );
   });
 
   it('revocar: la solicitud pasa al historial, se borra lo publicado y se cierran los casos', async () => {
@@ -122,7 +126,7 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
   };
 
   it('la disputa pendiente trae a quien disputa, sin su cuenta; las demás, null', async () => {
-    await cases.open(dispute, challenger);
+    await cases.open(dispute, challenger, []);
 
     const pending = await cases.pending();
 
@@ -136,7 +140,7 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
   });
 
   it('descartar la disputa borra los datos de quien disputó', async () => {
-    await cases.open(dispute, challenger);
+    await cases.open(dispute, challenger, []);
 
     await cases.close({
       caseId: dispute.id,
@@ -150,7 +154,7 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
   });
 
   it('revocar borra los datos de quienes disputaban esa tienda', async () => {
-    await cases.open(dispute, challenger);
+    await cases.open(dispute, challenger, []);
 
     await revocations.revoke(
       {
@@ -167,7 +171,7 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
   });
 
   it('borrar la cuenta de quien disputó borra sus datos, aunque el caso siga pendiente', async () => {
-    await cases.open(dispute, challenger);
+    await cases.open(dispute, challenger, []);
 
     await revocations.purge(challenger.accountId, null, []);
 

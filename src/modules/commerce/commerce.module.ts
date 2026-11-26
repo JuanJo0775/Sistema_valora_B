@@ -29,6 +29,7 @@ import { ClaimsOfProposals } from './application/claims-of-proposals';
 import { ClaimProposedEstablishment } from './application/claim-proposed-establishment';
 import { CreatePromotion } from './application/create-promotion';
 import { DecideMerchantCase } from './application/decide-merchant-case';
+import { caseOpenedEvent, type MerchantCase } from './application/merchant-cases';
 import { DeleteMyEstablishment } from './application/delete-my-establishment';
 import { LeaveEstablishment } from './application/leave-establishment';
 import type { MerchantDeparturePorts } from './application/merchant-departures';
@@ -214,7 +215,7 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
       useFactory: (db: Database, outbox: OutboxPublisher): ReportMerchant =>
         new ReportMerchant({
           claims: new DrizzleMerchantClaimRepository(db, outbox),
-          cases: new DrizzleMerchantCaseRepository(db),
+          cases: new DrizzleMerchantCaseRepository(db, outbox),
           clock: { now: () => new Date() },
         }),
     },
@@ -227,7 +228,7 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
         establishments: EstablishmentDetails,
       ): MerchantCasesQueue =>
         new MerchantCasesQueue({
-          cases: new DrizzleMerchantCaseRepository(db),
+          cases: new DrizzleMerchantCaseRepository(db, outbox),
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           establishments,
         }),
@@ -237,7 +238,7 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
       inject: [DATABASE, OutboxPublisher],
       useFactory: (db: Database, outbox: OutboxPublisher): DecideMerchantCase =>
         new DecideMerchantCase({
-          cases: new DrizzleMerchantCaseRepository(db),
+          cases: new DrizzleMerchantCaseRepository(db, outbox),
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           prices: new DrizzleOfficialPriceRepository(db, outbox),
           promotions: new DrizzlePromotionRepository(db, outbox),
@@ -367,20 +368,18 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
           // clave seudónima de quien la abre (EC-08).
           disputes: {
             open: async (establishmentId, accountId, challenger) => {
-              const cases = new DrizzleMerchantCaseRepository(db);
+              const cases = new DrizzleMerchantCaseRepository(db, outbox);
               const { reporterKey } = await identities.of(accountId);
               if (await cases.hasOpen(establishmentId, reporterKey)) return;
-              await cases.open(
-                {
-                  id: randomUUID(),
-                  establishmentId,
-                  kind: 'disputa',
-                  reporterKey,
-                  reason: 'Otra cuenta, estando en la tienda, intentó registrarla.',
-                  createdAt: new Date(),
-                },
-                { accountId, ...challenger },
-              );
+              const opened: MerchantCase = {
+                id: randomUUID(),
+                establishmentId,
+                kind: 'disputa',
+                reporterKey,
+                reason: 'Otra cuenta, estando en la tienda, intentó registrarla.',
+                createdAt: new Date(),
+              };
+              await cases.open(opened, { accountId, ...challenger }, [caseOpenedEvent(opened)]);
             },
           },
           clock: { now: () => new Date() },
