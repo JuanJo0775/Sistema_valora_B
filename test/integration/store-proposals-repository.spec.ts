@@ -62,6 +62,17 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
     );
   });
 
+  // #260: el evento para avisar a moderación se guarda con la propuesta, en la misma transacción.
+  it('la propuesta y su evento se guardan juntos, y sin la propuesta no queda evento', async () => {
+    const event = createEvent('StoreProposed', 1, { proposalId: proposal.id });
+
+    await proposals.save(proposal, [event]);
+    await expect(proposals.save(proposal, [createEvent('StoreProposed', 1, {})])).rejects.toThrow();
+
+    const saved = await db.execute(sql`select type, payload from shared.outbox`);
+    expect(saved.rows).toEqual([{ type: 'StoreProposed', payload: { proposalId: proposal.id } }]);
+  });
+
   it('una propuesta queda pendiente y no aparece entre las tiendas', async () => {
     await proposals.save(proposal, []);
 
