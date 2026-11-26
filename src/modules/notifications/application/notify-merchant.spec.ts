@@ -95,4 +95,14 @@ describe('avisar a un comercio (ADR-044)', () => {
     expect(MERCHANT_MIN_NOTICE_INTERVAL_MS).toBe(24 * 60 * 60 * 1000);
     expect(sender.sent).toHaveLength(2);
   });
+
+  // El evento puede llegar cuando la cuenta ya dejó la tienda o la suspendieron (ADR-045).
+  it('una cuenta que ya no es comercio no recibe el aviso', async () => {
+    const { notify, sender, log } = setup({ 'cuenta-que-se-fue': [device('telefono')] }, []);
+
+    await expect(notify.execute('cuenta-que-se-fue')).resolves.toBe(0);
+
+    expect(sender.sent).toEqual([]);
+    expect(await log.lastSent('cuenta-que-se-fue', 'comercio')).toBeNull();
+  });
 });
