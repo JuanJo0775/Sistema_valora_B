@@ -1,7 +1,7 @@
 import { contentOf } from './moderation-notice-content';
 import { MIN_NOTICE_INTERVAL_MS, NotifyModerators } from './notify-moderators';
 import type { NoticeLog } from './notice-log';
-import { type PushDevice, type PushSender } from './push-sender';
+import { type PushDevice, type PushSender, PushUnavailableError } from './push-sender';
 
 const device = (endpoint: string): PushDevice => ({
   endpoint: `https://push.example.net/${endpoint}`,
@@ -13,8 +13,11 @@ class RecordingSender implements PushSender {
   readonly sent: { endpoint: string; body: string }[] = [];
   // Direcciones que el servicio de push ya no reconoce (404 o 410).
   readonly gone = new Set<string>();
+  // Direcciones cuyo servicio de push no responde por ahora.
+  readonly down = new Set<string>();
 
   send(target: PushDevice, content: { body: string }): Promise<'sent' | 'gone'> {
+    if (this.down.has(target.endpoint)) return Promise.reject(new PushUnavailableError());
     if (this.gone.has(target.endpoint)) return Promise.resolve('gone');
     this.sent.push({ endpoint: target.endpoint, body: content.body });
     return Promise.resolve('sent');
@@ -112,5 +115,29 @@ describe('avisar a los moderadores (ADR-044)', () => {
     expect(removed).toEqual([device('caducado').endpoint]);
     expect(sender.sent.map(({ endpoint }) => endpoint)).toEqual([device('telefono-1').endpoint]);
     expect(await log.lastSent('moderadora-1', 'precios')).toEqual(NOW);
+  });
+
+  // ADR-044: un fallo pasajero hace fallar el suscriptor para que el outbox reintente; como la
+  // constancia solo se deja al enviar, el reintento no duplica el aviso a quien sí lo recibió.
+  it('si el servicio de push no responde, falla para que se reintente y no deja constancia', async () => {
+    const { notify, sender, log } = setup({
+      'moderadora-1': [device('telefono-1')],
+      'moderadora-2': [device('telefono-2')],
+    });
+    sender.down.add(device('telefono-1').endpoint);
+
+    await expect(notify.execute('precios')).rejects.toBeInstanceOf(PushUnavailableError);
+
+    expect(await log.lastSent('moderadora-1', 'precios')).toBeNull();
+    // A la otra moderadora sí le llegó, y queda constancia.
+    expect(await log.lastSent('moderadora-2', 'precios')).toEqual(NOW);
+
+    sender.down.clear();
+    await notify.execute('precios');
+
+    expect(sender.sent.map(({ endpoint }) => endpoint)).toEqual([
+      device('telefono-2').endpoint,
+      device('telefono-1').endpoint,
+    ]);
   });
 });
