@@ -27,6 +27,14 @@ export class NotifyMerchant {
 
   // Devuelve cuántos avisos se enviaron.
   async execute(accountId: string): Promise<number> {
-    return deliverNotice(this.ports, [accountId], MERCHANT_QUEUE, MERCHANT_CONTENT, 60 * 60 * 1000);
+    // El evento puede llegar cuando la cuenta ya dejó la tienda o está suspendida o por eliminar.
+    if (!(await this.ports.merchants.ids()).includes(accountId)) return 0;
+    return deliverNotice(
+      this.ports,
+      [accountId],
+      MERCHANT_QUEUE,
+      MERCHANT_CONTENT,
+      MERCHANT_MIN_NOTICE_INTERVAL_MS,
+    );
   }
 }
