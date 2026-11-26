@@ -10,15 +10,24 @@ import type {
   RoleChange,
   SuspensionReason,
 } from '../application/account-repository';
+import type { AccountsWithRole } from '../application/accounts-by-role';
 import type { DisplayNameWriter } from '../application/change-own-display-name';
 import type { DisplayNames } from '../application/own-display-name';
 import { accounts, roleChanges } from './schema';
 
 export class DrizzleAccountRepository
-  implements AccountRepository, AccountCreation, DisplayNames, DisplayNameWriter
+  implements AccountRepository, AccountCreation, DisplayNames, DisplayNameWriter, AccountsWithRole
 {
   // Con la conexión o con la transacción del suscriptor del evento (grill de la #33, pregunta 6).
   constructor(private readonly db: NodePgDatabase | Transaction) {}
+
+  async idsWithRole(role: Role): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: accounts.id })
+      .from(accounts)
+      .where(eq(accounts.role, role));
+    return rows.map((row) => row.id);
+  }
 
   async findByEmail(email: string): Promise<Account | null> {
     const [found] = await this.db
