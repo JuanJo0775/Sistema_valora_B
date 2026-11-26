@@ -1,4 +1,4 @@
-import { index, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, pgSchema, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Esquema propio del módulo (ADR-003, ADR-021). Ningún otro módulo lee estas tablas.
 export const notificationsSchema = pgSchema('notifications');
@@ -17,4 +17,17 @@ export const pushSubscriptions = notificationsSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [index('push_subscriptions_account_idx').on(table.accountId, table.createdAt)],
+);
+
+// ADR-044: cuándo se avisó por última vez a cada cuenta por cada cola. Sostiene el límite de un aviso
+// cada 5 minutos y evita duplicados si el outbox reintenta. Sin llaves foráneas (la cuenta es de
+// identity) y sin ningún otro dato.
+export const sentNotices = notificationsSchema.table(
+  'sent_notices',
+  {
+    accountId: uuid('account_id').notNull(),
+    queue: text('queue').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.accountId, table.queue] })],
 );
