@@ -1,10 +1,10 @@
 # ADR-044: Web Push y un módulo `notifications` alimentado por el outbox
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado
 - **Fecha:** 2026-11-25
-- **Responsables:** equipo de backend; pendiente de revisión del equipo.
-- **Escenarios relacionados:** EC-04 (el registro de un reporte no se ve afectado), EC-05 (el núcleo no conoce el módulo nuevo), EC-08 (privacidad); escenario propuesto «Aviso oportuno a moderación y comercio»
-- **Requisitos relacionados:** requisito propuesto «Avisos a moderación y comercio» (`docs/decisiones/avisos/escenario-y-requisito.md`), RF-012, RF-013, ADR-010 (PWA), ADR-012 (despliegue), ADR-015 (outbox), ADR-043 (campana), ADR-045 (suscripciones y privacidad)
+- **Responsables:** equipo de backend; aceptado el 25 de noviembre de 2026.
+- **Escenarios relacionados:** EC-09 (aviso oportuno a moderación y comercio), EC-04 (el registro de un reporte no se ve afectado), EC-05 (el núcleo no conoce el módulo nuevo), EC-08 (privacidad)
+- **Requisitos relacionados:** requisito «Avisos a moderación y comercio» (por numerar) (`docs/decisiones/avisos/escenario-y-requisito.md`), RF-012, RF-013, ADR-010 (PWA), ADR-012 (despliegue), ADR-015 (outbox), ADR-043 (campana), ADR-045 (suscripciones y privacidad)
 
 ## Contexto
 

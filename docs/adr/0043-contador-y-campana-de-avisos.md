@@ -1,10 +1,10 @@
 # ADR-043: Contador y campana de avisos con sondeo
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado
 - **Fecha:** 2026-11-25
-- **Responsables:** equipo de backend y frontend; pendiente de revisión del equipo.
-- **Escenarios relacionados:** EC-04 (consulta barata), EC-08 (privacidad)
-- **Requisitos relacionados:** RF-012 y RF-013 (moderación), RF-016 (precios oficiales, avisos del comercio), requisito propuesto «Avisos a moderación y comercio» (`docs/decisiones/avisos/escenario-y-requisito.md`), ADR-031 (ahorro de ancho de banda), ADR-038
+- **Responsables:** equipo de backend y frontend; aceptado el 25 de noviembre de 2026.
+- **Escenarios relacionados:** EC-04 (consulta barata), EC-08 (privacidad), EC-09 (aviso oportuno)
+- **Requisitos relacionados:** RF-012 y RF-013 (moderación), RF-016 (precios oficiales, avisos del comercio), requisito «Avisos a moderación y comercio» (por numerar) (`docs/decisiones/avisos/escenario-y-requisito.md`), ADR-031 (ahorro de ancho de banda), ADR-038
 
 ## Contexto
 

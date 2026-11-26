@@ -1,10 +1,10 @@
 # ADR-045: Suscripciones push y privacidad
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado
 - **Fecha:** 2026-11-25
-- **Responsables:** equipo de backend; pendiente de revisión del equipo.
-- **Escenarios relacionados:** EC-08 (privacidad)
-- **Requisitos relacionados:** requisito propuesto «Avisos a moderación y comercio» (`docs/decisiones/avisos/escenario-y-requisito.md`), Ley 1581 de 2012 (habeas data), ADR-013 (privacidad por diseño), ADR-032 (eliminación de la cuenta), ADR-044 (Web Push y módulo `notifications`)
+- **Responsables:** equipo de backend; aceptado el 25 de noviembre de 2026.
+- **Escenarios relacionados:** EC-08 (privacidad), EC-09 (el aviso no trae datos de nadie)
+- **Requisitos relacionados:** requisito «Avisos a moderación y comercio» (por numerar) (`docs/decisiones/avisos/escenario-y-requisito.md`), Ley 1581 de 2012 (habeas data), ADR-013 (privacidad por diseño), ADR-032 (eliminación de la cuenta), ADR-044 (Web Push y módulo `notifications`)
 
 ## Contexto
 

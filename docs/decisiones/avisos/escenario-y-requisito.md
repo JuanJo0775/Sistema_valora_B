@@ -1,6 +1,6 @@
-# Borrador: escenario de calidad y requisito de avisos
+# Escenario EC-09 y requisito de avisos
 
-> **Estado: borrador para acordar con el equipo.** No se numeran (EC-09, RF-020) hasta que el equipo los acepte y se registren en Notion. Redactados con el formato de las bases de requisitos y de escenarios de Notion.
+> **Estado: el escenario EC-09 fue aceptado el 25 de noviembre de 2026 y está registrado en Notion. El requisito sigue como borrador sin numerar** (RF-020 propuesto) hasta que el equipo lo acepte.
 
 ## Requisito propuesto: Avisos a moderación y comercio
 
@@ -11,7 +11,7 @@
 | Incremento | Módulo comercial |
 | Corte de construcción | Corte 3 |
 | Prioridad | Media |
-| Escenarios de calidad | Escenario propuesto «Aviso oportuno a moderación y comercio», EC-04, EC-05, EC-08 |
+| Escenarios de calidad | EC-09, EC-04, EC-05, EC-08 |
 | ADRs relacionados | ADR-043, ADR-044, ADR-045 |
 
 ### Reglas de negocio
@@ -50,7 +50,7 @@ Dado un moderador que desactivó los avisos en un dispositivo
 Cuando entra un caso nuevo
 Entonces ese dispositivo no recibe notificación y la campana sigue funcionando.
 
-## Escenario de calidad propuesto: Aviso oportuno a moderación y comercio
+## EC-09: Aviso oportuno a moderación y comercio
 
 | Elemento | Descripción |
 |---|---|
@@ -63,8 +63,18 @@ Entonces ese dispositivo no recibe notificación y la campana sigue funcionando.
 
 **Nota sobre la medida:** lo medible es la entrega al servicio de push, no la llegada al dispositivo, que depende de Google y de Apple. En el spike #256 el tiempo de llegada fue de 553 ms en Android y 700 ms en el PC, y el servicio aceptó el mensaje entre 186 y 4.035 ms.
 
+## Valores provisionales (por calibrar)
+
+Quedan parametrizables y se ajustan con datos reales; el equipo los aceptó el 25 de noviembre de 2026:
+
+- Un aviso por cola y por cuenta cada 5 minutos.
+- Mensaje válido durante una hora si el dispositivo está apagado o sin red.
+- Máximo 5 suscripciones por cuenta.
+- Sondeo de la campana cada 60 s.
+- Meta de 95 % de los avisos aceptados por el servicio de push en 60 s o menos.
+
 ## Cómo se registra en Notion
 
-1. Requisito: una página en la base Requisitos Funcionales con los campos de la primera tabla, el ID que asigne el equipo y la relación a ADR-043, 044 y 045.
-2. Escenario de calidad: una página en la base Escenarios de calidad con la segunda tabla y el ID que asigne el equipo.
-3. ADR: tres filas en la base ADRs, que ya existen como propuestas en el repositorio.
+1. **EC-09:** registrado en la base Escenarios de calidad (Corte 3, prioridad Media, origen Equipo), enlazado a ADR-043, 044 y 045.
+2. **ADR-043, 044 y 045:** en la base ADRs, en estado Aceptado.
+3. **Requisito:** pendiente. Cuando el equipo lo acepte, una página en la base Requisitos Funcionales con los campos de la primera tabla, el ID que asigne el equipo y la relación a los tres ADR.
