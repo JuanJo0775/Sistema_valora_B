@@ -125,6 +125,19 @@ describe('revocar un comercio y borrar su cuenta en la base (#208)', () => {
     createdAt: revokedAt,
   };
 
+  // #260: el evento para avisar a moderación se guarda con el caso y con quien disputa, juntos.
+  it('el caso, quien disputa y su evento se guardan juntos, y si algo falla no queda ninguno', async () => {
+    const event = createEvent('MerchantCaseOpened', 1, { caseId: dispute.id, kind: 'disputa' });
+
+    await cases.open(dispute, challenger, [event]);
+    await expect(cases.open(dispute, challenger, [createEvent('X', 1, {})])).rejects.toThrow();
+
+    const saved = await db.execute(sql`select type, payload from shared.outbox`);
+    expect(saved.rows).toEqual([
+      { type: 'MerchantCaseOpened', payload: { caseId: dispute.id, kind: 'disputa' } },
+    ]);
+  });
+
   it('la disputa pendiente trae a quien disputa, sin su cuenta; las demás, null', async () => {
     await cases.open(dispute, challenger, []);
 
