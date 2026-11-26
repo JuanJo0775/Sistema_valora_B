@@ -132,6 +132,36 @@ describe('suscripciones a los avisos por HTTP (#259)', () => {
       const rows = await db.execute(sql`select 1 from notifications.push_subscriptions`);
       expect(rows.rows).toHaveLength(0);
     });
+
+    // Pruebas de resguardo: ya pasan con la ruta hecha; fijan el contrato.
+    it('desactivar un dispositivo que no existe responde 204 igual', async () => {
+      await unsubscribe(moderator).expect(204);
+    });
+
+    // No revela qué direcciones existen y nadie borra los avisos de otra cuenta.
+    it('no borra la suscripción de otra cuenta y responde 204 igual', async () => {
+      await subscribe(merchant).expect(204);
+
+      await unsubscribe(moderator).expect(204);
+
+      const rows = await db.execute(sql`select account_id from notifications.push_subscriptions`);
+      expect(rows.rows).toEqual([{ account_id: merchant.accountId }]);
+    });
+
+    it('un reportante no puede: 403; sin sesión, 401', async () => {
+      await unsubscribe(reporter).expect(403);
+      await unsubscribe(null).expect(401);
+    });
+
+    it.each([
+      ['una dirección que no es https', { endpoint: 'http://push.example.net/x' }],
+      ['sin la dirección', {}],
+      ['un campo que no existe', { endpoint: subscription.endpoint, todo: true }],
+    ])('rechaza %s: 400', async (_name, body) => {
+      const response = await unsubscribe(moderator, body).expect(400);
+
+      expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+    });
   });
 
   describe('GET /v1/notifications/vapid-public-key', () => {
