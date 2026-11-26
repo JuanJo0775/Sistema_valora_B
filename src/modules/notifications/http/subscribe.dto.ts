@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsString, IsUrl, Length, Matches, MaxLength, ValidateNested } from 'class-validator';
+import {
+  IsDefined,
+  IsString,
+  IsUrl,
+  Length,
+  Matches,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
@@ -26,6 +34,8 @@ export class SubscribeDto {
   )
   endpoint!: string;
 
+  // Sin IsDefined, un cuerpo sin keys pasaba la validación y el controlador fallaba con 500.
+  @IsDefined({ message: 'son obligatorias: p256dh y auth' })
   @ValidateNested()
   @Type(() => PushKeysDto)
   keys!: PushKeysDto;
