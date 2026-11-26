@@ -239,3 +239,28 @@ describe('casos de comercios pendientes (GET /moderation/merchant-cases, D2 y D3
     expect(item).not.toHaveProperty('reportCount');
   });
 });
+
+// #257: el número de la pestaña «Comercios» del panel de moderación.
+describe('cuántos casos de comercios esperan decisión (#257)', () => {
+  const queueWith = (pending: MerchantCase[]) =>
+    new MerchantCasesQueue({
+      cases: { pending: () => Promise.resolve(pending) },
+      claims: { findByEstablishment: () => Promise.resolve(null) },
+      establishments: { find: () => Promise.resolve(null) },
+    });
+
+  it('sin casos son cero', async () => {
+    await expect(queueWith([]).count()).resolves.toBe(0);
+  });
+
+  // ADR-038: un reclamo de un supermercado pasa por la misma cola que las denuncias y las disputas.
+  it('cuenta juntas las denuncias, las disputas y los reclamos', async () => {
+    const queue = queueWith([
+      report,
+      { ...report, id: 'caso-2', kind: 'disputa' },
+      { ...report, id: 'caso-3', kind: 'reclamo' },
+    ]);
+
+    await expect(queue.count()).resolves.toBe(3);
+  });
+});
