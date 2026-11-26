@@ -137,7 +137,9 @@ describe('suscripciones a los avisos por HTTP (#259)', () => {
 
     // Pruebas de resguardo: ya pasan con la ruta hecha; fijan el contrato.
     it('desactivar un dispositivo que no existe responde 204 igual', async () => {
-      await unsubscribe(moderator).expect(204);
+      const response = await unsubscribe(moderator).expect(204);
+
+      expect(response.text).toBe('');
     });
 
     // No revela qué direcciones existen y nadie borra los avisos de otra cuenta.
@@ -151,8 +153,10 @@ describe('suscripciones a los avisos por HTTP (#259)', () => {
     });
 
     it('un reportante no puede: 403; sin sesión, 401', async () => {
-      await unsubscribe(reporter).expect(403);
-      await unsubscribe(null).expect(401);
+      const asReporter = await unsubscribe(reporter);
+      const withoutSession = await unsubscribe(null);
+
+      expect([asReporter.status, withoutSession.status]).toEqual([403, 401]);
     });
 
     it.each([
