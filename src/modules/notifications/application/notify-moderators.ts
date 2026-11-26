@@ -15,6 +15,10 @@ export interface NotifyModeratorsPorts {
   clock: { now(): Date };
 }
 
+// ADR-044: como máximo un aviso por cola y por cuenta cada 5 minutos (valor provisional,
+// parametrizable); el último queda en el registro de avisos.
+export const MIN_NOTICE_INTERVAL_MS = 5 * 60 * 1000;
+
 // ADR-044: avisar a los moderadores cuando entra un caso a una cola.
 export class NotifyModerators {
   constructor(private readonly ports: NotifyModeratorsPorts) {}
@@ -24,6 +28,8 @@ export class NotifyModerators {
     const now = clock.now();
     const content = contentOf(queue);
     for (const accountId of await moderators.ids()) {
+      const last = await log.lastSent(accountId, queue);
+      if (last !== null && now.getTime() - last.getTime() < MIN_NOTICE_INTERVAL_MS) continue;
       let sent = false;
       for (const device of await subscriptions.devicesOf(accountId)) {
         if ((await sender.send(device, content)) === 'sent') sent = true;
