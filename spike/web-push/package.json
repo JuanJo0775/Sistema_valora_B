@@ -1,0 +1,9 @@
+{
+  "name": "valora-spike-web-push",
+  "private": true,
+  "type": "module",
+  "description": "Spike #256: prueba de Web Push. No es parte del backend ni se despliega.",
+  "dependencies": {
+    "web-push": "3.6.7"
+  }
+}
