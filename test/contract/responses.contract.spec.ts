@@ -9,6 +9,7 @@ import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { OlimpicaObservations, ONLINE_OFFERS_ENABLED } from '../../src/modules/imports';
+import { VAPID_PUBLIC_KEY } from '../../src/modules/notifications';
 import { OutboxRelay } from '../../src/shared/events';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 import { contractErrors } from '../support/contract';
@@ -40,6 +41,8 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(ONLINE_OFFERS_ENABLED)
       .useValue(() => onlineOffersEnabled)
+      .overrideProvider(VAPID_PUBLIC_KEY)
+      .useValue('B' + 'A'.repeat(86))
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     configureApp(app);
@@ -165,6 +168,39 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
       expect(
         contractErrors('GET /moderation/summary', response.status, response.body as unknown),
       ).toEqual([]);
+    }
+  });
+
+  // #259: las rutas de los avisos push cumplen el contrato, también sus errores.
+  it('las rutas de suscripción a los avisos cumplen el contrato (#259)', async () => {
+    const moderator = await signIn(server, db, 'contrato-avisos@correo.com', 'moderador');
+    const body = {
+      endpoint: 'https://push.example.net/contrato',
+      keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
+    };
+    const subscribe = (as: SignedIn | null, payload: object = body) => {
+      const call = request(server).post('/v1/notifications/subscriptions').send(payload);
+      return as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call;
+    };
+
+    const key = await request(server).get('/v1/notifications/vapid-public-key');
+    const ok = await subscribe(moderator);
+    const invalid = await subscribe(moderator, { endpoint: 'http://push.example.net/x' });
+    const withoutSession = await subscribe(null);
+    const asReporter = await subscribe(reporter);
+
+    expect([key, ok, invalid, withoutSession, asReporter].map(({ status }) => status)).toEqual([
+      200, 204, 400, 401, 403,
+    ]);
+    const routes = [
+      ['GET /notifications/vapid-public-key', key],
+      ['POST /notifications/subscriptions', ok],
+      ['POST /notifications/subscriptions', invalid],
+      ['POST /notifications/subscriptions', withoutSession],
+      ['POST /notifications/subscriptions', asReporter],
+    ] as const;
+    for (const [route, response] of routes) {
+      expect(contractErrors(route, response.status, response.body as unknown)).toEqual([]);
     }
   });
 

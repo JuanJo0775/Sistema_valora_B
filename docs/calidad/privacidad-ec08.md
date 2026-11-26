@@ -30,6 +30,7 @@
 | Responsable de un comercio: nombre, teléfono y NIT (opcional) | `commerce.merchant_claims` | Registrar el comercio y que moderación lo verifique (ADR-038). Se borran al eliminar la cuenta o al revocar. |
 | Responsable de quien disputa una tienda: nombre, teléfono, NIT (opcional) y el id de su cuenta | `commerce.dispute_challengers` | Que moderación compare a las dos partes (H18). Solo mientras la disputa está pendiente: se borra al descartarla, al revocar y al eliminar la cuenta. El id solo sirve para ese último borrado y no sale en ninguna respuesta. |
 | Fecha de eliminación pendiente | `identity.accounts.deletion_scheduled_for` | Gracia de 10 días antes de borrar la cuenta (ADR-032). Solo sale como `scheduledFor` para quien la pidió o quien acierta su contraseña. |
+| Suscripción push de un dispositivo: dirección del servicio de push, dos claves del navegador, id de la cuenta y fecha | `notifications.push_subscriptions` (ADR-045) | Enviar avisos a moderadores y comercios. Solo con el permiso que la persona concede al tocar «Activar avisos». Sin agente de usuario, IP ni ubicación. Se borra con el 404 o 410 del servicio de push, al desactivar los avisos, al eliminar la cuenta y al perder el rol. Máximo 5 por cuenta. Ninguna ruta devuelve la dirección ni las claves. |
 
 **Ubicación:** la única columna geográfica es `establishments.establishments.location`, la ubicación pública de la tienda. La ubicación del usuario solo viaja como parámetro de la consulta (`/nearby`, la comparación y la canasta básica de hoy, B#128) y no se guarda.
 
@@ -49,6 +50,8 @@
 | `POST /v1/auth/restore-account` | Ninguno. Con un correo inexistente, una contraseña mala o una cuenta no pendiente responde el mismo 401 genérico del login (ADR-032). |
 | `POST /v1/auth/forgot-password` | Ninguno. Responde siempre 202 sin cuerpo, exista o no la cuenta (o esté pendiente de eliminación), y los límites cuentan igual en ambos casos; no devuelve el correo, el token ni el hash (ADR-033). |
 | `POST /v1/auth/reset-password` | Ninguno. Un token desconocido, vencido o usado responde igual (422 `INVALID_TOKEN`); no devuelve el correo ni la cuenta, y no abre sesión (ADR-033). |
+| `GET /v1/notifications/vapid-public-key` | Ninguno. Solo la clave pública VAPID del servidor, que no es secreta (ADR-044). |
+| `POST /v1/notifications/subscriptions` | Ninguno. Responde 204 sin cuerpo: nunca devuelve la dirección ni las claves guardadas (ADR-045). Solo moderador y comercio. |
 | `POST /v1/me/password` | Ninguno (204 sin cuerpo; 403 `INVALID_PASSWORD` o `REAUTH_REQUIRED` genéricos) (ADR-033). |
 | `POST /v1/auth/resend-verification` | Ninguno. Reenvía a la cuenta de la sesión, nunca a un correo recibido, y responde igual si ya estaba verificada (ADR-029). |
 
