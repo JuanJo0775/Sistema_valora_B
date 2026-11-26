@@ -52,3 +52,22 @@ describe('productos propuestos pendientes (RF-003 RN3, grill de la #26)', () => 
     expect(JSON.stringify(items)).not.toContain('clave-de-quien-propone');
   });
 });
+
+// #257: el número de la pestaña «Productos» del panel de moderación.
+describe('cuántos productos propuestos esperan decisión (#257)', () => {
+  const queueWith = (pending: NewProductRequest[]) =>
+    new ProductRequestsQueue({
+      requests: { pending: () => Promise.resolve(pending) },
+      products: { search: () => Promise.resolve([]) },
+    });
+
+  it('sin propuestas son cero', async () => {
+    await expect(queueWith([]).count()).resolves.toBe(0);
+  });
+
+  it('cuenta todas las propuestas pendientes', async () => {
+    const queue = queueWith([request, { ...request, id: 'propuesta-2' }]);
+
+    await expect(queue.count()).resolves.toBe(2);
+  });
+});

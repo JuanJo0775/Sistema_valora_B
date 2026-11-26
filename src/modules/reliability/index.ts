@@ -6,4 +6,5 @@ export {
   ReliabilityOfPrices,
   type ReportAtStore,
 } from './application/reliability-of-prices';
+export { ModerationQueue } from './application/moderation-queue';
 export { PRICE_ASSESSED } from './application/assess-reported-price';

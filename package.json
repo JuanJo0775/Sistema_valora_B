@@ -29,7 +29,6 @@
     "identity:set-role": "nest start --entryFile set-role --",
     "comparison:rebuild-history": "nest start --entryFile rebuild-history",
     "quality:accuracy": "nest start --entryFile accuracy",
-    "olympica:vtex": "nest start --entryFile olimpica-vtex --",
     "smoke": "node --experimental-strip-types --no-warnings test/smoke/smoke.ts",
     "reliability:evaluate": "jest test/integration/reliability-detection.spec.ts --runInBand"
   },
@@ -48,7 +47,8 @@
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -59,6 +59,7 @@
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "@types/web-push": "3.6.4",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "dependency-cruiser": "^18.7.2",

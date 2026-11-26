@@ -261,8 +261,17 @@ describe('registrar un comercio con una tienda del mapa (RF-015, D2 y D3 del gri
       expect(claims).toEqual([
         expect.objectContaining({ status: 'pre_aprobado', verifiedAt: null }),
       ]);
-      // El rol no cambia hasta que el moderador apruebe.
-      expect(events).toEqual([]);
+      // El rol no cambia hasta que el moderador apruebe: no hay MerchantVerified. Sí se publica
+      // MerchantCaseOpened (#260), solo con el id y el tipo del caso, para avisar a moderación.
+      expect(events).toEqual([
+        expect.objectContaining({
+          type: 'MerchantCaseOpened',
+          version: 1,
+          payload: { caseId: reviewCases[0]?.id, kind: 'reclamo' },
+        }),
+      ]);
+      expect(events.map(({ type }) => type)).not.toContain('MerchantVerified');
+      expect(JSON.stringify(events)).not.toContain('clave-de-cuenta-de-dona-rosa');
       expect(reviewCases).toEqual([
         {
           id: expect.any(String) as unknown,

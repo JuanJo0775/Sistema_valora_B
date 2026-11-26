@@ -17,7 +17,9 @@ function setup(
   alertsOf: Record<string, MerchantAlert[]>,
   now: Date,
   known: Record<string, string[]> = {},
+  emailDelivered = true,
 ) {
+  const raised: string[] = [];
   const sent: { accountId: string; subject: string; text: string }[] = [];
   const recorded: { accountId: string; keys: string[] }[] = [];
   const digests = new SendMerchantDigests({
@@ -34,12 +36,19 @@ function setup(
     notify: {
       send: (accountId, notice) => {
         sent.push({ accountId, ...notice });
-        return Promise.resolve(true);
+        return Promise.resolve(emailDelivered);
+      },
+    },
+    // #260: moderación de los avisos push; commerce solo publica un evento con el id de la cuenta.
+    raised: {
+      raise: (accountId) => {
+        raised.push(accountId);
+        return Promise.resolve();
       },
     },
     clock: { now: () => now },
   });
-  return { digests, sent, recorded };
+  return { digests, sent, recorded, raised };
 }
 
 // Precisiones de D4 (22-nov): máximo un correo al día, desde las 7:00 a. m., solo si hay algo nuevo.
@@ -73,5 +82,34 @@ describe('resumen diario de avisos por correo (B9, #209)', () => {
     await expect(repeated.digests.execute()).resolves.toEqual({ sent: 0 });
     await expect(early.digests.execute()).resolves.toEqual({ sent: 0 });
     expect([...repeated.sent, ...early.sent]).toEqual([]);
+  });
+
+  // #260: el aviso push no depende del correo; commerce solo publica MerchantAlertsRaised, con el id
+  // de la cuenta, y notifications decide cómo avisar (ADR-044).
+  it('publica MerchantAlertsRaised cuando hay avisos nuevos, aunque el correo no se pueda enviar', async () => {
+    const { digests, raised, recorded } = setup(
+      { 'cuenta-de-dona-rosa': [expiring] },
+      morning,
+      {},
+      false,
+    );
+
+    await digests.execute();
+
+    expect(raised).toEqual(['cuenta-de-dona-rosa']);
+    // Sin correo entregado no se anota: se reintenta en la siguiente pasada, como siempre.
+    expect(recorded).toEqual([]);
+  });
+
+  // Prueba de resguardo: ya pasa con la regla hecha.
+  it('sin avisos nuevos, o antes de las 7:00 a. m., no publica el evento', async () => {
+    const known = { 'cuenta-de-dona-rosa': ['vence_pronto:arroz:2026-11-09T15:00:00.000Z'] };
+    const repeated = setup({ 'cuenta-de-dona-rosa': [expiring] }, morning, known);
+    const early = setup({ 'cuenta-de-dona-rosa': [expiring] }, dawn);
+
+    await repeated.digests.execute();
+    await early.digests.execute();
+
+    expect([...repeated.raised, ...early.raised]).toEqual([]);
   });
 });

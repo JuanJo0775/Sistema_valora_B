@@ -1,5 +1,6 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type {
   StoreCorrection,
   StoreCorrectionDecisionRecord,
@@ -13,14 +14,20 @@ const STATUS_AFTER = { aprobar: 'aprobada', rechazar: 'rechazada' } as const;
 export class DrizzleStoreCorrectionRepository
   implements StoreCorrections, StoreCorrectionDecisions
 {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly outbox: OutboxPublisher,
+  ) {}
 
-  async propose(correction: StoreCorrection): Promise<void> {
+  async propose(correction: StoreCorrection, events: DomainEvent[]): Promise<void> {
     const { location, name, ...rest } = correction;
-    await this.db.insert(storeCorrections).values({
-      ...rest,
-      ...(name === undefined ? {} : { name }),
-      ...(location === undefined ? {} : { location }),
+    await this.db.transaction(async (tx) => {
+      await tx.insert(storeCorrections).values({
+        ...rest,
+        ...(name === undefined ? {} : { name }),
+        ...(location === undefined ? {} : { location }),
+      });
+      for (const event of events) await this.outbox.publish(tx, event);
     });
   }
 

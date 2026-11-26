@@ -39,7 +39,7 @@ describe('GET /v1/products/{productId}/comparison', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, catalog.presentations, catalog.products, catalog.wholesale_references, establishments.establishments`,
+      sql`truncate pricing.reports, shared.outbox, shared.processed_events, comparison.price_current, reliability.observations, reliability.reputations, reliability.reputation_events, reliability.flags, reliability.moderation_log, reliability.official_reviews, catalog.presentations, catalog.products, catalog.wholesale_references, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,

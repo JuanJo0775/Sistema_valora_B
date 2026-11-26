@@ -34,6 +34,11 @@ export interface StoreProposalItem {
 export class StoreProposalsQueue {
   constructor(private readonly ports: StoreProposalsQueuePorts) {}
 
+  // #257: cuántas esperan decisión; es parte del número de la pestaña «Tiendas».
+  async count(): Promise<number> {
+    return (await this.ports.proposals.pending()).length;
+  }
+
   async list(): Promise<StoreProposalItem[]> {
     const pending = await this.ports.proposals.pending();
     const claims = await this.ports.claims.of(pending.map((proposal) => proposal.id));

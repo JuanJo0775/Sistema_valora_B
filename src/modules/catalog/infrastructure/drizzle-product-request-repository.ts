@@ -1,6 +1,7 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Unit } from '../../../domain/unit-price';
+import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import type {
   NewProductRequest,
   ProductRequestDecisionRecord,
@@ -11,14 +12,20 @@ import { presentations, productAliases, productRequests, products } from './sche
 const STATUS_AFTER = { aprobar: 'aprobada', fusionar: 'fusionada', rechazar: 'rechazada' } as const;
 
 export class DrizzleProductRequestRepository implements ProductRequestRepository {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly outbox: OutboxPublisher,
+  ) {}
 
-  async save(request: NewProductRequest): Promise<void> {
-    await this.db.insert(productRequests).values({
-      ...request,
-      brand: request.brand ?? null,
-      barcode: request.barcode ?? null,
-      quantity: String(request.quantity),
+  async save(request: NewProductRequest, events: DomainEvent[]): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.insert(productRequests).values({
+        ...request,
+        brand: request.brand ?? null,
+        barcode: request.barcode ?? null,
+        quantity: String(request.quantity),
+      });
+      for (const event of events) await this.outbox.publish(tx, event);
     });
   }
 

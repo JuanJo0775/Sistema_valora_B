@@ -1,3 +1,4 @@
+import type { DomainEvent } from '../../../shared/events';
 import { ProposeStore } from './propose-store';
 import type { NewStoreProposal } from './store-proposals';
 
@@ -39,5 +40,35 @@ describe('proponer una tienda nueva (RF-005, grill de la #27)', () => {
         createdAt: now,
       },
     ]);
+  });
+
+  // #260: moderación se entera de que hay una propuesta nueva por el outbox. El evento solo lleva el
+  // id de la propuesta: nada de quien la propone (EC-08) y se guarda con ella, en la misma transacción.
+  it('publica StoreProposed con el id de la propuesta, para avisar a moderación', async () => {
+    const events: DomainEvent[][] = [];
+    const propose = new ProposeStore({
+      proposals: {
+        save: (_proposal, published) => {
+          events.push(published);
+          return Promise.resolve();
+        },
+      },
+      clock: { now: () => now },
+    });
+
+    const { id } = await propose.execute({
+      name: 'Tienda Esperanza',
+      type: 'barrio',
+      lat: 4.5339,
+      lng: -75.6811,
+      municipality: 'armenia',
+      proposerKey: 'clave-de-quien-propone',
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual([
+      expect.objectContaining({ type: 'StoreProposed', version: 1, payload: { proposalId: id } }),
+    ]);
+    expect(JSON.stringify(events)).not.toContain('clave-de-quien-propone');
   });
 });

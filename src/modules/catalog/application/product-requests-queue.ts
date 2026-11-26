@@ -28,6 +28,11 @@ export interface ProductRequestItem {
 export class ProductRequestsQueue {
   constructor(private readonly ports: ProductRequestsQueuePorts) {}
 
+  // #257: cuántas esperan decisión; es el número de la pestaña «Productos».
+  async count(): Promise<number> {
+    return (await this.ports.requests.pending()).length;
+  }
+
   async list(): Promise<ProductRequestItem[]> {
     const pending = await this.ports.requests.pending();
     return Promise.all(

@@ -16,6 +16,7 @@ El backend implementará un **monolito modular**. Los módulos se organizan por 
 | comparison | Consulta, normalización por unidad, estado de confianza y orden neutral | Comparación |
 | imports | Carga semilla manual y tratamiento de referencias SIPSA | RF-014 |
 | commerce | Perfiles, precios oficiales, promociones e integración con reportes | Corte 3; RF-015 a RF-018 |
+| notifications | Suscripciones push y avisos por Web Push a moderadores y comercios, alimentado por el outbox (ADR-044, ADR-045; las suscripciones están hechas (#259); los avisos a moderación de las cuatro colas del panel y los del comercio, también (#260)) | Avisos a moderación y comercio |
 
 La moderación no es un módulo aparte: vive en `reliability`, porque decide sobre sus observaciones y cambia la reputación (grill de la #32, pregunta 2).
 
@@ -30,6 +31,7 @@ Los nombres son límites lógicos propuestos para organizar el trabajo. Los deta
 5. `commerce` no puede alterar el orden neutral de resultados.
 6. Los datos personales del reportante se separan de los datos públicos del reporte.
 7. Los reportes se conservan como historial; la moderación cambia su estado, no los borra.
+8. Ningún módulo importa `notifications` (ADR-044): se alimenta de los eventos del outbox y solo `AppModule` lo registra. Lo comprueba dependency-cruiser con la regla `nadie-conoce-notifications`.
 
 ## Flujo de un precio reportado (issue #31)
 
@@ -53,6 +55,8 @@ moderador ──POST /moderation/{id}/decision──► reliability.moderation_l
 La decisión, la reputación del autor y el evento se confirman en una sola transacción. La cola y la bitácora solo guardan claves seudónimas (EC-08).
 
 Desde la #33, `observar_cuentas` y el tercer descarte seguido de un autor publican `ReporterSuspensionRequested` v1; `identity` busca la cuenta por su clave seudónima, la suspende 7 días, guarda la causa (`observada_por_moderacion` o `descartes_seguidos`, ADR-039) y revoca sus sesiones. Desde el ADR-039, `observar_cuentas` además retira el reporte (`PriceWithdrawn`), como un descarte que no baja la reputación. Desde la #71, el autor de un reporte descartado puede apelar (también con una sesión limitada si está suspendido); si otro moderador acepta la apelación, `reliability` publica `PriceAssessed` y `ReporterSuspensionLifted` v1, y `identity` levanta la suspensión que causó ese descarte. Desde la #29, cuando una cuenta llega a 20 reportes en una hora, `pricing` publica `ReportBurstDetected` v1 (clave seudónima y reportes) y `reliability` los pone en la cola con el motivo `rafaga`.
+
+Desde la #257, `GET /v1/moderation/summary` da un número por pestaña del panel (`precios`, `tiendas`, `productos`, `comercios`) para el contador de la campana. Cada cola cuenta lo suyo (`count()` de `ModerationQueue`, `StoreProposalsQueue`, `StoreCorrectionsQueue`, `ProductRequestsQueue` y `MerchantCasesQueue`, expuestas por el `index.ts` de su módulo) y `src/moderation/` las suma. Vive fuera de `src/modules` porque el núcleo (`reliability`) no puede conocer a `commerce` (EC-05); solo importa por los `index.ts`. Cada número es el total pendiente, sin el límite de 20 de la lista de precios, y no trae ids ni claves (EC-08).
 
 Desde el ADR-040, cuando un comercio deja su tienda, `commerce` publica `MerchantLeft` (con los mismos eventos de retiro de precios y promociones de la revocación) e `identity` devuelve la cuenta a reportante; si además elimina la tienda que creó, publica `MerchantEstablishmentDeleted` y `establishments` la marca `retirada`, con lo que sale de todas las lecturas públicas.
 

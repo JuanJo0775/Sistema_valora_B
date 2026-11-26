@@ -1,3 +1,4 @@
+import type { DomainEvent } from '../../../shared/events';
 import type { Unit } from '../../../domain/unit-price';
 
 // Grill de la #26, pregunta 3: un producto que propone un reportante, pendiente de moderación (RF-003 RN3).
@@ -28,7 +29,8 @@ export interface ProductRequestDecisionRecord {
 }
 
 export interface ProductRequestRepository {
-  save(request: NewProductRequest): Promise<void>;
+  // Los eventos se guardan con la solicitud, en la misma transacción (ADR-015).
+  save(request: NewProductRequest, events: DomainEvent[]): Promise<void>;
   // Las pendientes, la más antigua primero.
   pending(): Promise<NewProductRequest[]>;
   // En la misma transacción: aprobar crea el producto (con el id de la propuesta) y su presentación;

@@ -236,3 +236,68 @@ describe('validateEnv con el inicio de sesión con Google (ADR-029, fase 2)', ()
     ).toThrow(/GOOGLE_REDIRECT_URI/);
   });
 });
+
+describe('validateEnv con los avisos push (ADR-044, ADR-045)', () => {
+  it('por defecto los avisos van a la consola y no piden claves', () => {
+    const env = validateEnv(validEnv);
+
+    expect(env.PUSH_PROVIDER).toBe('console');
+    expect(env.VAPID_PRIVATE_KEY).toBeUndefined();
+  });
+
+  const conWebpush = {
+    ...validEnv,
+    PUSH_PROVIDER: 'webpush',
+    VAPID_PUBLIC_KEY: 'B' + 'A'.repeat(86),
+    VAPID_PRIVATE_KEY: 'x'.repeat(43),
+    VAPID_SUBJECT: 'https://valora-app.vercel.app',
+  };
+
+  it('con webpush acepta la configuración completa', () => {
+    const env = validateEnv(conWebpush);
+
+    expect(env.PUSH_PROVIDER).toBe('webpush');
+    expect(env.VAPID_SUBJECT).toBe('https://valora-app.vercel.app');
+  });
+
+  it.each(['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'])(
+    'con webpush exige %s',
+    (name) => {
+      expect(() => validateEnv({ ...conWebpush, [name]: undefined })).toThrow(new RegExp(name));
+      // Un panel de variables puede dejarla creada pero vacía: cuenta como ausente.
+      expect(() => validateEnv({ ...conWebpush, [name]: '  ' })).toThrow(new RegExp(name));
+    },
+  );
+
+  it('rechaza un proveedor de avisos desconocido', () => {
+    expect(() => validateEnv({ ...validEnv, PUSH_PROVIDER: 'otro' })).toThrow(/PUSH_PROVIDER/);
+  });
+
+  // El contacto viaja dentro de la firma a Google y a Apple (ADR-045).
+  it.each(['equipo@correo.org', 'ftp://valora.org', 'http://valora.org', 'valora'])(
+    'rechaza un contacto VAPID que no es mailto: ni https: (%s)',
+    (subject) => {
+      expect(() => validateEnv({ ...conWebpush, VAPID_SUBJECT: subject })).toThrow(/VAPID_SUBJECT/);
+    },
+  );
+
+  // Spike #256: Apple respondió 403 BadJwtToken con mailto:equipo@valora.example.
+  it.each([
+    'mailto:equipo@valora.example',
+    'https://valora.example',
+    'mailto:equipo@example.com',
+    'https://example.org',
+    'https://valora.invalid',
+  ])('rechaza un contacto con un dominio reservado para ejemplos (%s)', (subject) => {
+    expect(() => validateEnv({ ...conWebpush, VAPID_SUBJECT: subject })).toThrow(/VAPID_SUBJECT/);
+  });
+
+  it('acepta un correo institucional o la dirección del sitio', () => {
+    expect(
+      validateEnv({ ...conWebpush, VAPID_SUBJECT: 'mailto:avisos@humboldt.edu.co' }).VAPID_SUBJECT,
+    ).toBe('mailto:avisos@humboldt.edu.co');
+    expect(
+      validateEnv({ ...conWebpush, VAPID_SUBJECT: 'https://valora-app.vercel.app' }),
+    ).toBeTruthy();
+  });
+});

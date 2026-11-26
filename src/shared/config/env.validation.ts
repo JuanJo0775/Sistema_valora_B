@@ -10,6 +10,7 @@ import {
   IsString,
   Max,
   Min,
+  ValidateBy,
   ValidateIf,
   validateSync,
 } from 'class-validator';
@@ -112,6 +113,40 @@ export class Env {
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
   APP_URL?: string;
 
+  // ADR-044: avisos push. Con «console» (por defecto) el aviso solo se muestra en el registro de
+  // desarrollo y no se envía nada; con «webpush» se envía de verdad y las claves son obligatorias.
+  @IsIn(['console', 'webpush'])
+  PUSH_PROVIDER: string = 'console';
+
+  // ADR-045: claves VAPID. La privada solo vive en el entorno de la API (Render), nunca en Git.
+  @Transform(emptyAsAbsent)
+  @ValidateIf(usesWebPush)
+  @IsString()
+  @IsNotEmpty()
+  VAPID_PUBLIC_KEY?: string;
+
+  @Transform(emptyAsAbsent)
+  @ValidateIf(usesWebPush)
+  @IsString()
+  @IsNotEmpty()
+  VAPID_PRIVATE_KEY?: string;
+
+  // Contacto de la firma: un correo institucional del equipo o la dirección del sitio, nunca el
+  // correo de una persona. Apple rechaza los dominios reservados para ejemplos (spike #256).
+  @Transform(emptyAsAbsent)
+  @ValidateIf(usesWebPush)
+  @IsString()
+  @IsNotEmpty()
+  @ValidateBy({
+    name: 'isVapidContact',
+    validator: {
+      validate: (value: unknown) => typeof value === 'string' && isVapidContact(value),
+      defaultMessage: () =>
+        'debe ser un correo mailto: o una dirección https:// real, no un dominio de ejemplo',
+    },
+  })
+  VAPID_SUBJECT?: string;
+
   // ADR-029, fase 2 (#181): inicio de sesión con Google. Las tres o ninguna: sin ellas la API arranca y
   // las rutas de Google responden 404. El secreto solo va en el panel de Render, nunca en Git.
   @Transform(emptyAsAbsent)
@@ -135,6 +170,26 @@ export class Env {
 // #182: un panel de variables puede dejarlas creadas pero vacías; vacía cuenta como ausente.
 function emptyAsAbsent({ value }: { value: unknown }): unknown {
   return typeof value === 'string' && value.trim() === '' ? undefined : value;
+}
+
+const RESERVED_HOST = /(^|\.)(example|test|invalid|localhost)$|(^|\.)example\.(com|net|org)$/;
+
+function isVapidContact(subject: string): boolean {
+  const mail = /^mailto:[^\s@]+@([^\s@]+\.[^\s@]+)$/.exec(subject);
+  const host = mail?.[1] ?? (subject.startsWith('https://') ? safeHost(subject) : undefined);
+  return host !== undefined && !RESERVED_HOST.test(host.toLowerCase());
+}
+
+function safeHost(address: string): string | undefined {
+  try {
+    return new URL(address).hostname || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function usesWebPush(env: Env): boolean {
+  return env.PUSH_PROVIDER === 'webpush';
 }
 
 function hasGoogleConfig(env: Env): boolean {

@@ -1,5 +1,7 @@
 # Grill de integración de Olímpica con VTEX
 
+> **Cerrado el 25 de noviembre de 2026.** La verificación del punto 8 mostró que los términos de olimpica.com (2.4.1) prohíben consultar su contenido con programas. La integración se cerró y el código se retiró; este documento queda como registro. Ver [ADR-041](../../adr/0041-cierre-integracion-olimpica-vtex.md) y [ADR-042](../../adr/0042-precio-en-linea-separado-del-precio-por-sede.md).
+
 ## Alcance aprobado
 
 Piloto interno de backend en Armenia, con 5 a 10 presentaciones del catálogo de Valora. El dato se clasifica como precio en línea observado para una zona de entrega confirmada. El piloto queda fuera del precio vigente por tienda física, de la resolución de discrepancias del ADR-008 y de Dónde comprar.

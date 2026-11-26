@@ -111,6 +111,21 @@ describe('propuestas de tiendas pendientes (RF-005 RN1 y RN3, grill de la #27)',
   });
 });
 
+// #257: el número de la pestaña «Tiendas» del panel de moderación.
+describe('cuántas propuestas de tienda esperan decisión (#257)', () => {
+  it('sin propuestas son cero', async () => {
+    const { queue } = setup([], []);
+
+    await expect(queue.count()).resolves.toBe(0);
+  });
+
+  it('cuenta todas las propuestas pendientes, también las que nacen de un reclamo', async () => {
+    const { queue } = setup([proposal({ id: 'propuesta-1' }), proposal({ id: 'propuesta-2' })], []);
+
+    await expect(queue.count()).resolves.toBe(2);
+  });
+});
+
 describe('ProposalClaims (puerto que registra commerce)', () => {
   it('sin nadie registrado no hay reclamos: la cola de propuestas sigue igual', async () => {
     expect(await new ProposalClaims().of(['propuesta-1'])).toEqual(new Map());

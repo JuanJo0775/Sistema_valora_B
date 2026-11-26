@@ -1,3 +1,4 @@
+import type { DomainEvent } from '../../../shared/events';
 import type { MerchantCase } from './merchant-cases';
 import {
   MerchantNotFoundError,
@@ -13,6 +14,7 @@ const STORE = 'tienda-esperanza';
 // Dobles en memoria detrás de los puertos: el dueño de cada tienda y los casos del moderador.
 function setup(owners: Record<string, string> = { [STORE]: 'cuenta-del-dueno' }) {
   const cases: MerchantCase[] = [];
+  const events: DomainEvent[][] = [];
   const report = new ReportMerchant({
     claims: { ownerOf: (id) => Promise.resolve(owners[id] ?? null) },
     cases: {
@@ -20,14 +22,15 @@ function setup(owners: Record<string, string> = { [STORE]: 'cuenta-del-dueno' })
         Promise.resolve(
           cases.some((c) => c.establishmentId === establishmentId && c.reporterKey === reporterKey),
         ),
-      open: (opened) => {
+      open: (opened, _challenger, published) => {
         cases.push(opened);
+        events.push(published);
         return Promise.resolve();
       },
     },
     clock: { now: () => now },
   });
-  return { report, cases };
+  return { report, cases, events };
 }
 
 const request = (change: Partial<ReportMerchantRequest> = {}): ReportMerchantRequest => ({
@@ -123,5 +126,24 @@ describe('denunciar un comercio (D2 y D3 del grill comercial)', () => {
         alreadyReported: false,
       });
     });
+  });
+
+  // #260: moderación se entera de que hay un caso nuevo por el outbox. Solo lleva el id y el tipo
+  // del caso: nada de quien denuncia (EC-08).
+  it('publica MerchantCaseOpened con el id y el tipo del caso, para avisar a moderación', async () => {
+    const { report, cases, events } = setup();
+
+    await report.execute(request());
+
+    expect(events).toEqual([
+      [
+        expect.objectContaining({
+          type: 'MerchantCaseOpened',
+          version: 1,
+          payload: { caseId: cases[0]?.id, kind: 'denuncia' },
+        }),
+      ],
+    ]);
+    expect(JSON.stringify(events)).not.toContain('clave-de-ana');
   });
 });

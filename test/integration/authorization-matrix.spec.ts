@@ -15,7 +15,7 @@ type Expected = 'permitido' | 401 | 403;
 
 interface Route {
   name: string;
-  method: 'get' | 'post' | 'put';
+  method: 'get' | 'post' | 'put' | 'delete';
   path: string;
   body?: object;
 }
@@ -90,6 +90,29 @@ const routes: Record<string, Route> = {
     path: `/v1/moderation/products/${someReport}/image`,
   },
   queue: { name: 'GET /v1/moderation/queue', method: 'get', path: '/v1/moderation/queue' },
+  // #259: activar los avisos push; solo moderador y comercio (ADR-045).
+  subscribeToNotifications: {
+    name: 'POST /v1/notifications/subscriptions',
+    method: 'post',
+    path: '/v1/notifications/subscriptions',
+    body: {
+      endpoint: 'https://push.example.net/matriz',
+      keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
+    },
+  },
+  // #259: desactivar los avisos push; solo moderador y comercio.
+  unsubscribeFromNotifications: {
+    name: 'DELETE /v1/notifications/subscriptions',
+    method: 'delete',
+    path: '/v1/notifications/subscriptions',
+    body: { endpoint: 'https://push.example.net/matriz' },
+  },
+  // #257: el contador de la campana y de las pestañas de moderación.
+  moderationSummary: {
+    name: 'GET /v1/moderation/summary',
+    method: 'get',
+    path: '/v1/moderation/summary',
+  },
   decision: {
     name: 'POST /v1/moderation/{itemId}/decision',
     method: 'post',
@@ -178,6 +201,21 @@ const matrix: [keyof typeof routes, Actor, Expected][] = [
   ['queue', 'moderador', 'permitido'],
   ['queue', 'comercio', 403],
   ['queue', 'suspendida', 403],
+  ['moderationSummary', 'sin_sesion', 401],
+  ['moderationSummary', 'reportante', 403],
+  ['moderationSummary', 'moderador', 'permitido'],
+  ['moderationSummary', 'comercio', 403],
+  ['moderationSummary', 'suspendida', 403],
+  ['subscribeToNotifications', 'sin_sesion', 401],
+  ['subscribeToNotifications', 'reportante', 403],
+  ['subscribeToNotifications', 'moderador', 'permitido'],
+  ['subscribeToNotifications', 'comercio', 'permitido'],
+  ['subscribeToNotifications', 'suspendida', 403],
+  ['unsubscribeFromNotifications', 'sin_sesion', 401],
+  ['unsubscribeFromNotifications', 'reportante', 403],
+  ['unsubscribeFromNotifications', 'moderador', 'permitido'],
+  ['unsubscribeFromNotifications', 'comercio', 'permitido'],
+  ['unsubscribeFromNotifications', 'suspendida', 403],
   ['decision', 'sin_sesion', 401],
   ['decision', 'reportante', 403],
   ['decision', 'moderador', 'permitido'],

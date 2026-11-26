@@ -358,6 +358,20 @@
       "when": 1795570612306,
       "tag": "0050_store-retirement-and-creator",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795662103947,
+      "tag": "0051_notifications-push-subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1795666880469,
+      "tag": "0052_notifications-sent-notices",
+      "breakpoints": true
     }
   ]
 }

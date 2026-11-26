@@ -7,6 +7,7 @@ import { DrizzleEstablishmentImportRepository } from '../../src/modules/establis
 import { DrizzleEstablishmentRepository } from '../../src/modules/establishments/infrastructure/drizzle-establishment-repository';
 import { DrizzleStoreCorrectionRepository } from '../../src/modules/establishments/infrastructure/drizzle-store-correction-repository';
 import { resolveDatabaseUrl } from '../../src/shared/database/database-url';
+import { OutboxPublisher } from '../../src/shared/events';
 
 const storeId = 'c8111111-1111-4111-8111-111111111111';
 const day = { opens: '07:00', closes: '20:00' };
@@ -49,7 +50,7 @@ describe('datos y correcciones de una tienda (D5, #207)', () => {
     });
     db = drizzle(pool);
     stores = new DrizzleEstablishmentRepository(db);
-    corrections = new DrizzleStoreCorrectionRepository(db);
+    corrections = new DrizzleStoreCorrectionRepository(db, new OutboxPublisher());
   });
 
   afterAll(async () => {
@@ -84,7 +85,7 @@ describe('datos y correcciones de una tienda (D5, #207)', () => {
   });
 
   it('una corrección queda pendiente sin cambiar la tienda; aprobarla aplica el nombre y la ubicación', async () => {
-    await corrections.propose(correction);
+    await corrections.propose(correction, []);
 
     await expect(corrections.pending()).resolves.toEqual([correction]);
     await expect(stores.findById(storeId)).resolves.toMatchObject({ name: 'Tienda La Esperanza' });
@@ -106,7 +107,7 @@ describe('datos y correcciones de una tienda (D5, #207)', () => {
   });
 
   it('rechazarla no cambia la tienda', async () => {
-    await corrections.propose(correction);
+    await corrections.propose(correction, []);
 
     await corrections.decide({ correctionId: correction.id, decision: 'rechazar', ...decision });
 

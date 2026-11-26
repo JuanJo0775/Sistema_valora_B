@@ -1,5 +1,7 @@
 # Evidencia del piloto VTEX de Olímpica
 
+> **Cerrado el 25 de noviembre de 2026.** La verificación del punto 8 mostró que los términos de olimpica.com (2.4.1) prohíben consultar su contenido con programas. La integración se cerró y el código se retiró; este documento queda como registro. Ver [ADR-041](../../adr/0041-cierre-integracion-olimpica-vtex.md) y [ADR-042](../../adr/0042-precio-en-linea-separado-del-precio-por-sede.md).
+
 ## Consulta del 23 de noviembre de 2026, hora de Colombia
 
 El endpoint de regiones de VTEX respondió HTTP 200 para `country=COL&postalCode=630001`. Devolvió una región con los vendedores `olimpicaswl1091meli` y `olimpicaswl1092addi`. La simulación para el SKU 516338 (Arroz Roa 500 g) devolvió el código postal y el vendedor solicitados, estado `withoutStock` y ningún precio de venta para ambos vendedores.

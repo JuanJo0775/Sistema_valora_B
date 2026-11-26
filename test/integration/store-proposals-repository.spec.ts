@@ -62,15 +62,26 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
     );
   });
 
+  // #260: el evento para avisar a moderación se guarda con la propuesta, en la misma transacción.
+  it('la propuesta y su evento se guardan juntos, y sin la propuesta no queda evento', async () => {
+    const event = createEvent('StoreProposed', 1, { proposalId: proposal.id });
+
+    await proposals.save(proposal, [event]);
+    await expect(proposals.save(proposal, [createEvent('StoreProposed', 1, {})])).rejects.toThrow();
+
+    const saved = await db.execute(sql`select type, payload from shared.outbox`);
+    expect(saved.rows).toEqual([{ type: 'StoreProposed', payload: { proposalId: proposal.id } }]);
+  });
+
   it('una propuesta queda pendiente y no aparece entre las tiendas', async () => {
-    await proposals.save(proposal);
+    await proposals.save(proposal, []);
 
     await expect(proposals.pending()).resolves.toEqual([proposal]);
     await expect(stores.findById(proposal.id)).resolves.toBeNull();
   });
 
   it('aprobarla crea la tienda con el id de la propuesta y la saca de las pendientes', async () => {
-    await proposals.save(proposal);
+    await proposals.save(proposal, []);
 
     await expect(
       proposals.decide({ proposalId: proposal.id, decision: 'aprobar', ...decision }, decided()),
@@ -97,8 +108,8 @@ describe('propuestas de tiendas (RF-005, #27)', () => {
   });
 
   it('rechazarla o fusionarla no crea ninguna tienda', async () => {
-    await proposals.save(proposal);
-    await proposals.save({ ...proposal, id: 'ef111111-1111-4111-8111-222222222222' });
+    await proposals.save(proposal, []);
+    await proposals.save({ ...proposal, id: 'ef111111-1111-4111-8111-222222222222' }, []);
 
     await proposals.decide({ proposalId: proposal.id, decision: 'rechazar', ...decision }, []);
     await proposals.decide(

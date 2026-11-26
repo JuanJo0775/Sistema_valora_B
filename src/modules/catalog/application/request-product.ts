@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { DomainError } from '../../../domain/domain-error';
+import { createEvent } from '../../../shared/events';
 import type { Unit } from '../../../domain/unit-price';
 import type { ProductRepository } from './product-repository';
 import type { ProductRequestRepository } from './product-requests';
+
+// #260: moderación se entera por el outbox de que hay una solicitud nueva. Solo lleva el id (EC-08).
+export const PRODUCT_REQUESTED = 'ProductRequested';
 
 export interface RequestProductPorts {
   requests: Pick<ProductRequestRepository, 'save'>;
@@ -56,18 +60,21 @@ export class RequestProduct {
     }
     const id = randomUUID();
     const brand = proposal.brand?.trim();
-    await requests.save({
-      id,
-      name: proposal.name.trim(),
-      ...(brand ? { brand } : {}),
-      categoryCode: proposal.categoryCode,
-      quantity: proposal.quantity,
-      unit: proposal.unit,
-      packCount: proposal.packCount,
-      ...(proposal.barcode ? { barcode: proposal.barcode } : {}),
-      requesterKey: proposal.requesterKey,
-      createdAt: clock.now(),
-    });
+    await requests.save(
+      {
+        id,
+        name: proposal.name.trim(),
+        ...(brand ? { brand } : {}),
+        categoryCode: proposal.categoryCode,
+        quantity: proposal.quantity,
+        unit: proposal.unit,
+        packCount: proposal.packCount,
+        ...(proposal.barcode ? { barcode: proposal.barcode } : {}),
+        requesterKey: proposal.requesterKey,
+        createdAt: clock.now(),
+      },
+      [createEvent(PRODUCT_REQUESTED, 1, { requestId: id })],
+    );
     return { id, status: 'pendiente' };
   }
 }

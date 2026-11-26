@@ -11,6 +11,8 @@ const PUBLIC_ROUTES = new Set([
   'GET /products',
   'GET /products/:productId',
   'GET /products/:productId/online-offers',
+  // ADR-044: la clave pública VAPID no es un secreto; la PWA la pide antes de suscribirse.
+  'GET /notifications/vapid-public-key',
   'GET /products/:productId/comparison',
   // Grill de la #83, pregunta 7: el historial es público (RF-008 RN3).
   'GET /products/:productId/history',
