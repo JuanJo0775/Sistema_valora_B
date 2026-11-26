@@ -29,4 +29,13 @@ describe('contenido del aviso a moderación (ADR-044)', () => {
       tag: 'moderacion-productos',
     });
   });
+
+  it('el aviso de comercios lleva a la pestaña de comercios, con su propia etiqueta', () => {
+    expect(contentOf('comercios')).toEqual({
+      title: 'Valora',
+      body: 'Hay casos nuevos para revisar en Comercios',
+      url: '/moderacion?vista=comercios',
+      tag: 'moderacion-comercios',
+    });
+  });
 });
