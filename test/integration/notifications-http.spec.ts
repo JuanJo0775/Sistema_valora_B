@@ -124,3 +124,30 @@ describe('suscripciones a los avisos por HTTP (#259)', () => {
     });
   });
 });
+
+// Sin clave pública configurada los avisos no existen: la PWA no muestra «Activar avisos».
+describe('GET /v1/notifications/vapid-public-key sin clave configurada (#259)', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(VAPID_PUBLIC_KEY)
+      .useValue(undefined)
+      .compile();
+    app = moduleRef.createNestApplication({ logger: false });
+    configureApp(app);
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('responde 404', async () => {
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+
+    const response = await request(server).get('/v1/notifications/vapid-public-key').expect(404);
+
+    expect(response.body).toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
