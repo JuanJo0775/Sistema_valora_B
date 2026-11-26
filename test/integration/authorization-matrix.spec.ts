@@ -90,6 +90,16 @@ const routes: Record<string, Route> = {
     path: `/v1/moderation/products/${someReport}/image`,
   },
   queue: { name: 'GET /v1/moderation/queue', method: 'get', path: '/v1/moderation/queue' },
+  // #259: activar los avisos push; solo moderador y comercio (ADR-045).
+  subscribeToNotifications: {
+    name: 'POST /v1/notifications/subscriptions',
+    method: 'post',
+    path: '/v1/notifications/subscriptions',
+    body: {
+      endpoint: 'https://push.example.net/matriz',
+      keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
+    },
+  },
   // #257: el contador de la campana y de las pestañas de moderación.
   moderationSummary: {
     name: 'GET /v1/moderation/summary',
@@ -189,6 +199,11 @@ const matrix: [keyof typeof routes, Actor, Expected][] = [
   ['moderationSummary', 'moderador', 'permitido'],
   ['moderationSummary', 'comercio', 403],
   ['moderationSummary', 'suspendida', 403],
+  ['subscribeToNotifications', 'sin_sesion', 401],
+  ['subscribeToNotifications', 'reportante', 403],
+  ['subscribeToNotifications', 'moderador', 'permitido'],
+  ['subscribeToNotifications', 'comercio', 'permitido'],
+  ['subscribeToNotifications', 'suspendida', 403],
   ['decision', 'sin_sesion', 401],
   ['decision', 'reportante', 403],
   ['decision', 'moderador', 'permitido'],

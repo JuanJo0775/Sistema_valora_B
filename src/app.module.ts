@@ -7,6 +7,7 @@ import { CommerceModule } from './modules/commerce';
 import { ComparisonModule } from './modules/comparison';
 import { EstablishmentsModule } from './modules/establishments';
 import { IdentityModule } from './modules/identity';
+import { NotificationsModule } from './modules/notifications';
 import { ImportsModule } from './modules/imports';
 import { PricingModule } from './modules/pricing';
 import { ReliabilityModule } from './modules/reliability';
@@ -28,6 +29,8 @@ import { EventsModule } from './shared/events';
     // Corte 3 (EPIC-B08): nadie del núcleo lo importa (EC-05).
     CommerceModule,
     ImportsModule,
+    // ADR-044: avisos push; nadie lo importa.
+    NotificationsModule,
     // #257: el resumen de pendientes de moderación junta cuatro módulos.
     ModerationSummaryModule,
   ],
