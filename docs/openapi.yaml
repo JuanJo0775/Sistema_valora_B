@@ -1773,6 +1773,32 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [Avisos]
+      operationId: unsubscribeFromNotifications
+      summary: Desactivar los avisos en este dispositivo (ADR-045)
+      description: >-
+        Solo los roles moderador y comercio. Borra la suscripción push de este dispositivo; se
+        identifica con la misma dirección que se envió al activarlos. Es idempotente: si la dirección no
+        existe, o es de otra cuenta, responde 204 igual y no borra nada (no revela qué direcciones
+        existen). Solo borra las suscripciones de la propia cuenta (#259).
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint]
+              properties:
+                endpoint: { type: string, format: uri, maxLength: 2048, pattern: '^https://' }
+      responses:
+        '204': { description: Avisos desactivados en este dispositivo }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /moderation/summary:
     get:
       tags: [Moderación]

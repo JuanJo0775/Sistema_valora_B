@@ -24,6 +24,17 @@ export class PushKeysDto {
   auth!: string;
 }
 
+// Cuerpo de DELETE /v1/notifications/subscriptions: la dirección con la que se activó el dispositivo.
+export class UnsubscribeDto {
+  @IsString({ message: 'debe ser una dirección https' })
+  @MaxLength(2048, { message: 'debe tener como máximo 2048 caracteres' })
+  @IsUrl(
+    { protocols: ['https'], require_protocol: true },
+    { message: 'debe ser una dirección https' },
+  )
+  endpoint!: string;
+}
+
 // Cuerpo de POST /v1/notifications/subscriptions: lo que devuelve PushSubscription.toJSON().
 export class SubscribeDto {
   @IsString({ message: 'debe ser una dirección https' })

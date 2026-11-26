@@ -25,6 +25,7 @@
 - **RN4.** El aviso es un texto genérico con un conteo. Nunca trae nombres de tiendas ni de productos ni datos de quien reportó (EC-08).
 - **RN5.** Varios hechos seguidos en una misma cola producen una sola notificación: como máximo un aviso por cola y por cuenta cada 5 minutos (valor provisional).
 - **RN6.** Un fallo del aviso nunca afecta la operación que lo originó.
+- **RN7.** La app le explica a la persona cómo activar los avisos según su dispositivo y su estado: en iPhone hay que instalar la app primero; si el permiso fue denegado, dice cómo volver a permitirlo; si el navegador no los soporta, lo dice; y si el servidor no los tiene configurados, no muestra la opción (Sistema_valora_F#213).
 
 ### Criterios de aceptación
 
@@ -47,6 +48,11 @@ Entonces recibe una notificación genérica y, al tocarla, se abre el panel de m
 Dado cualquier aviso enviado
 Cuando se revisa su contenido
 Entonces no contiene nombres de tiendas ni de productos ni claves o datos de quien reportó.
+
+**Escenario: guía para activar los avisos en iPhone**
+Dado un moderador que abre la app en Safari sin haberla instalado
+Cuando entra a la pantalla de avisos
+Entonces ve los pasos para agregar la app a la pantalla de inicio y volver a activar los avisos, en lugar de un botón que no funciona.
 
 **Escenario: avisos desactivados**
 Dado un moderador que desactivó los avisos en un dispositivo

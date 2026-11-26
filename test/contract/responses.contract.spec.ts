@@ -183,21 +183,44 @@ describe('respuestas reales frente a docs/openapi.yaml (PR-09, #25)', () => {
       return as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call;
     };
 
+    const unsubscribe = (as: SignedIn | null, payload: object = { endpoint: body.endpoint }) => {
+      const call = request(server).delete('/v1/notifications/subscriptions').send(payload);
+      return as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call;
+    };
+
     const key = await request(server).get('/v1/notifications/vapid-public-key');
     const ok = await subscribe(moderator);
     const invalid = await subscribe(moderator, { endpoint: 'http://push.example.net/x' });
     const withoutSession = await subscribe(null);
     const asReporter = await subscribe(reporter);
+    const removed = await unsubscribe(moderator);
+    const removedInvalid = await unsubscribe(moderator, { endpoint: 'http://push.example.net/x' });
+    const removedWithoutSession = await unsubscribe(null);
+    const removedAsReporter = await unsubscribe(reporter);
 
-    expect([key, ok, invalid, withoutSession, asReporter].map(({ status }) => status)).toEqual([
-      200, 204, 400, 401, 403,
-    ]);
+    expect(
+      [
+        key,
+        ok,
+        invalid,
+        withoutSession,
+        asReporter,
+        removed,
+        removedInvalid,
+        removedWithoutSession,
+        removedAsReporter,
+      ].map(({ status }) => status),
+    ).toEqual([200, 204, 400, 401, 403, 204, 400, 401, 403]);
     const routes = [
       ['GET /notifications/vapid-public-key', key],
       ['POST /notifications/subscriptions', ok],
       ['POST /notifications/subscriptions', invalid],
       ['POST /notifications/subscriptions', withoutSession],
       ['POST /notifications/subscriptions', asReporter],
+      ['DELETE /notifications/subscriptions', removed],
+      ['DELETE /notifications/subscriptions', removedInvalid],
+      ['DELETE /notifications/subscriptions', removedWithoutSession],
+      ['DELETE /notifications/subscriptions', removedAsReporter],
     ] as const;
     for (const [route, response] of routes) {
       expect(contractErrors(route, response.status, response.body as unknown)).toEqual([]);

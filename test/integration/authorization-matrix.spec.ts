@@ -15,7 +15,7 @@ type Expected = 'permitido' | 401 | 403;
 
 interface Route {
   name: string;
-  method: 'get' | 'post' | 'put';
+  method: 'get' | 'post' | 'put' | 'delete';
   path: string;
   body?: object;
 }
@@ -99,6 +99,13 @@ const routes: Record<string, Route> = {
       endpoint: 'https://push.example.net/matriz',
       keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'a'.repeat(22) },
     },
+  },
+  // #259: desactivar los avisos push; solo moderador y comercio.
+  unsubscribeFromNotifications: {
+    name: 'DELETE /v1/notifications/subscriptions',
+    method: 'delete',
+    path: '/v1/notifications/subscriptions',
+    body: { endpoint: 'https://push.example.net/matriz' },
   },
   // #257: el contador de la campana y de las pestañas de moderación.
   moderationSummary: {
@@ -204,6 +211,11 @@ const matrix: [keyof typeof routes, Actor, Expected][] = [
   ['subscribeToNotifications', 'moderador', 'permitido'],
   ['subscribeToNotifications', 'comercio', 'permitido'],
   ['subscribeToNotifications', 'suspendida', 403],
+  ['unsubscribeFromNotifications', 'sin_sesion', 401],
+  ['unsubscribeFromNotifications', 'reportante', 403],
+  ['unsubscribeFromNotifications', 'moderador', 'permitido'],
+  ['unsubscribeFromNotifications', 'comercio', 'permitido'],
+  ['unsubscribeFromNotifications', 'suspendida', 403],
   ['decision', 'sin_sesion', 401],
   ['decision', 'reportante', 403],
   ['decision', 'moderador', 'permitido'],

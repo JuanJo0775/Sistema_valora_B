@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   HttpCode,
@@ -13,7 +14,8 @@ import {
 import { CACHE_CATALOG } from '../../../shared/http/cache-control';
 import { type AuthenticatedSession, CurrentSession, Roles, SessionGuard } from '../../identity';
 import { SubscribePush } from '../application/subscribe-push';
-import { SubscribeDto } from './subscribe.dto';
+import { UnsubscribePush } from '../application/unsubscribe-push';
+import { SubscribeDto, UnsubscribeDto } from './subscribe.dto';
 
 // La clave pública VAPID del servidor; undefined mientras no esté configurada.
 export const VAPID_PUBLIC_KEY = Symbol('VAPID_PUBLIC_KEY');
@@ -23,6 +25,7 @@ export const VAPID_PUBLIC_KEY = Symbol('VAPID_PUBLIC_KEY');
 export class NotificationsController {
   constructor(
     private readonly subscribePush: SubscribePush,
+    private readonly unsubscribePush: UnsubscribePush,
     @Inject(VAPID_PUBLIC_KEY) private readonly publicKey: string | undefined,
   ) {}
 
@@ -50,5 +53,17 @@ export class NotificationsController {
       p256dh: body.keys.p256dh,
       auth: body.keys.auth,
     });
+  }
+
+  // Idempotente: desactivar lo que no existe, o es de otra cuenta, responde 204 y no borra nada.
+  @Delete('subscriptions')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionGuard)
+  @Roles('moderador', 'comercio')
+  async unsubscribe(
+    @Body() body: UnsubscribeDto,
+    @CurrentSession() session: AuthenticatedSession,
+  ): Promise<void> {
+    await this.unsubscribePush.execute({ accountId: session.accountId, endpoint: body.endpoint });
   }
 }

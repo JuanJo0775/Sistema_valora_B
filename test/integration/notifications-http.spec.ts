@@ -3,9 +3,11 @@ import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { PurgeDeletedAccounts } from '../../src/modules/identity/application/purge-deleted-accounts';
 import { VAPID_PUBLIC_KEY } from '../../src/modules/notifications';
 import { configureApp } from '../../src/app.setup';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { OutboxRelay } from '../../src/shared/events';
 import { type SignedIn, signIn } from '../support/sign-in';
 
 const publicKey = 'B' + 'A'.repeat(86);
@@ -113,6 +115,80 @@ describe('suscripciones a los avisos por HTTP (#259)', () => {
     expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
     const rows = await db.execute(sql`select 1 from notifications.push_subscriptions`);
     expect(rows.rows).toHaveLength(0);
+  });
+
+  describe('DELETE /v1/notifications/subscriptions', () => {
+    const unsubscribe = (
+      as: SignedIn | null,
+      body: object = { endpoint: subscription.endpoint },
+    ) => {
+      const call = request(server).delete('/v1/notifications/subscriptions').send(body);
+      return as ? call.set('Cookie', as.cookie).set('X-CSRF-Token', as.csrfToken) : call;
+    };
+
+    it('un moderador desactiva los avisos de su dispositivo: 204 y se borra', async () => {
+      await subscribe(moderator).expect(204);
+
+      await unsubscribe(moderator).expect(204);
+
+      const rows = await db.execute(sql`select 1 from notifications.push_subscriptions`);
+      expect(rows.rows).toHaveLength(0);
+    });
+
+    // Pruebas de resguardo: ya pasan con la ruta hecha; fijan el contrato.
+    it('desactivar un dispositivo que no existe responde 204 igual', async () => {
+      const response = await unsubscribe(moderator).expect(204);
+
+      expect(response.text).toBe('');
+    });
+
+    // No revela qué direcciones existen y nadie borra los avisos de otra cuenta.
+    it('no borra la suscripción de otra cuenta y responde 204 igual', async () => {
+      await subscribe(merchant).expect(204);
+
+      await unsubscribe(moderator).expect(204);
+
+      const rows = await db.execute(sql`select account_id from notifications.push_subscriptions`);
+      expect(rows.rows).toEqual([{ account_id: merchant.accountId }]);
+    });
+
+    it('un reportante no puede: 403; sin sesión, 401', async () => {
+      const asReporter = await unsubscribe(reporter);
+      const withoutSession = await unsubscribe(null);
+
+      expect([asReporter.status, withoutSession.status]).toEqual([403, 401]);
+    });
+
+    it.each([
+      ['una dirección que no es https', { endpoint: 'http://push.example.net/x' }],
+      ['sin la dirección', {}],
+      ['un campo que no existe', { endpoint: subscription.endpoint, todo: true }],
+    ])('rechaza %s: 400', async (_name, body) => {
+      const response = await unsubscribe(moderator, body).expect(400);
+
+      expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+    });
+  });
+
+  // ADR-032 con el hallazgo de B7 (#208): al eliminarse la cuenta, AccountPurged borra sus dispositivos.
+  it('al eliminarse una cuenta se borran sus dispositivos y quedan los de las demás', async () => {
+    const leaving = await signIn(server, db, 'avisos-se-va@correo.com', 'comercio');
+    await subscribe(leaving, {
+      ...subscription,
+      endpoint: `${subscription.endpoint}-se-va`,
+    }).expect(204);
+    await subscribe(moderator).expect(204);
+    // Su eliminación ya venció (ADR-032: 10 días de gracia).
+    await db.execute(
+      sql`update identity.accounts set deletion_scheduled_for = now() - interval '1 day' where id = ${leaving.accountId}`,
+    );
+
+    await expect(app.get(PurgeDeletedAccounts).execute()).resolves.toMatchObject({ purged: 1 });
+    await app.get(OutboxRelay).runOnce();
+    await app.get(OutboxRelay).runOnce();
+
+    const rows = await db.execute(sql`select account_id from notifications.push_subscriptions`);
+    expect(rows.rows).toEqual([{ account_id: moderator.accountId }]);
   });
 
   describe('GET /v1/notifications/vapid-public-key', () => {
