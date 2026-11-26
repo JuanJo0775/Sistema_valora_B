@@ -82,6 +82,15 @@ const bySeverity = (a: PendingItem, b: PendingItem): number => {
 export class ModerationQueue {
   constructor(private readonly ports: ModerationQueuePorts) {}
 
+  // #257: el total pendiente, sin el límite de la lista; es el número de la campana y de la pestaña.
+  async count(): Promise<number> {
+    const [reports, official] = await Promise.all([
+      this.ports.moderation.pending(),
+      this.ports.officialReviews.pending(),
+    ]);
+    return reports.length + official.length;
+  }
+
   async list(request: QueueRequest): Promise<QueueItem[]> {
     const limit = request.limit ?? DEFAULT_QUEUE_LIMIT;
     const matches = (reason: QueueReason) =>
