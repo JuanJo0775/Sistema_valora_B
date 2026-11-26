@@ -37,6 +37,7 @@ Desde ADR-029, `POST /v1/reports` también exige el correo verificado: un report
 | `GET /v1/moderation/queue` | 401 | 403 | Permitido | 403 | 403 |
 | `GET /v1/moderation/summary` | 401 | 403 | Permitido | 403 | 403 |
 | `POST /v1/notifications/subscriptions` | 401 | 403 | Permitido | Permitido | 403 |
+| `DELETE /v1/notifications/subscriptions` | 401 | 403 | Permitido | Permitido | 403 |
 | `POST /v1/moderation/{itemId}/decision` | 401 | 403 | Permitido | 403 | 403 |
 | `POST /v1/moderation/roles` | 401 | 403 | Permitido | 403 | 403 |
 | `GET /v1/auth/session` | 401 | Permitido | Permitido | Permitido | Permitido |

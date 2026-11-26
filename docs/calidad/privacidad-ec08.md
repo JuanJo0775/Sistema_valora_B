@@ -51,6 +51,7 @@
 | `POST /v1/auth/forgot-password` | Ninguno. Responde siempre 202 sin cuerpo, exista o no la cuenta (o esté pendiente de eliminación), y los límites cuentan igual en ambos casos; no devuelve el correo, el token ni el hash (ADR-033). |
 | `POST /v1/auth/reset-password` | Ninguno. Un token desconocido, vencido o usado responde igual (422 `INVALID_TOKEN`); no devuelve el correo ni la cuenta, y no abre sesión (ADR-033). |
 | `GET /v1/notifications/vapid-public-key` | Ninguno. Solo la clave pública VAPID del servidor, que no es secreta (ADR-044). |
+| `DELETE /v1/notifications/subscriptions` | Ninguno. Responde 204 sin cuerpo igual si la dirección no existe o es de otra cuenta, y no borra nada ajeno: no revela qué direcciones hay (ADR-045). |
 | `POST /v1/notifications/subscriptions` | Ninguno. Responde 204 sin cuerpo: nunca devuelve la dirección ni las claves guardadas (ADR-045). Solo moderador y comercio. |
 | `POST /v1/me/password` | Ninguno (204 sin cuerpo; 403 `INVALID_PASSWORD` o `REAUTH_REQUIRED` genéricos) (ADR-033). |
 | `POST /v1/auth/resend-verification` | Ninguno. Reenvía a la cuenta de la sesión, nunca a un correo recibido, y responde igual si ya estaba verificada (ADR-029). |
