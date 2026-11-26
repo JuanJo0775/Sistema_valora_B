@@ -52,4 +52,16 @@ describe('envío por Web Push (ADR-044)', () => {
       await expect(failing(code).send(device, contentOf('precios'))).resolves.toBe('gone');
     },
   );
+
+  // Un fallo pasajero hace fallar el suscriptor para que el outbox reintente (ADR-044). El mensaje
+  // nunca lleva la dirección del dispositivo: no se escribe en los registros (ADR-045).
+  it.each([500, 503, 429, 403, undefined])(
+    'un fallo %s del servicio de push se reintenta y no revela la dirección',
+    async (code) => {
+      const result = failing(code).send(device, contentOf('precios'));
+
+      await expect(result).rejects.toBeInstanceOf(PushUnavailableError);
+      await expect(result).rejects.not.toThrow(device.endpoint);
+    },
+  );
 });
