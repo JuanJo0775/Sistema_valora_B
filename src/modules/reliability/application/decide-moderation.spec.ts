@@ -736,11 +736,17 @@ describe('decisión de moderación (RF-013)', () => {
       expect(officialReviews.states.size).toBe(0);
     });
 
-    it('exige el motivo, como cualquier decisión', async () => {
+    it('descartarlo exige el motivo, como cualquier descarte; aprobarlo no', async () => {
       const { decide, published } = setup([], [review]);
 
-      await expect(decide.execute(decision({ note: 'corto' }))).rejects.toThrow(InvalidNoteError);
+      await expect(
+        decide.execute(decision({ decision: 'descartar', note: 'corto' })),
+      ).rejects.toThrow(InvalidNoteError);
       expect(published).toEqual([]);
+      await expect(
+        decide.execute(decision({ decision: 'aprobar', note: '' })),
+      ).resolves.toBeUndefined();
+      expect(published.map((event) => event.type)).toEqual(['OfficialPriceReviewed']);
     });
 
     it('ya decidido, no está en la cola', async () => {
