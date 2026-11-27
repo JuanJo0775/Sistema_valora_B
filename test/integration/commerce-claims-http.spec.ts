@@ -433,6 +433,33 @@ describe('registro de un comercio por HTTP (RF-015, #201)', () => {
       expect((await queue()).map((item) => item.kind).sort()).toEqual(['disputa', 'reclamo']);
     });
 
+    // H17: quien disputa ve que su solicitud sigue abierta, y deja de verla al decidirla moderación.
+    it('quien disputó ve su disputa abierta con la tienda y la fecha; el dueño y los demás, nada', async () => {
+      await claim(rosa, claimOn(marketId)).expect(201);
+      await claim(pedro, claimOn(marketId)).expect(409);
+      const mine = (as: SignedIn) =>
+        request(server).get('/v1/commerce/me/dispute').set('Cookie', as.cookie);
+
+      const pedroSees = await mine(pedro).expect(200).expect('Cache-Control', 'private, no-store');
+      expect(pedroSees.body).toEqual({
+        dispute: {
+          establishment: { id: marketId, name: expect.any(String) as string },
+          requestedAt: expect.any(String) as string,
+        },
+      });
+      expect(contractErrors('GET /commerce/me/dispute', 200, pedroSees.body as unknown)).toEqual(
+        [],
+      );
+      expect((await mine(rosa).expect(200)).body).toEqual({ dispute: null });
+      expect((await mine(ana).expect(200)).body).toEqual({ dispute: null });
+      await request(server).get('/v1/commerce/me/dispute').expect(401);
+      await mine(moderator).expect(403);
+
+      const dispute = (await queue()).find((item) => item.kind === 'disputa');
+      await decide(dispute?.id ?? '', 'descartar').expect(204);
+      expect((await mine(pedro).expect(200)).body).toEqual({ dispute: null });
+    });
+
     it('aprobar el reclamo lo verifica y concede el rol de comercio', async () => {
       await claim(rosa, claimOn(marketId)).expect(201);
       const [item] = await queue();

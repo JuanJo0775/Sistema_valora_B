@@ -68,6 +68,21 @@ export class DrizzleMerchantCaseRepository implements MerchantCaseRepository {
     }));
   }
 
+  async openDisputeOf(
+    accountId: string,
+  ): Promise<{ establishmentId: string; openedAt: Date } | null> {
+    const [row] = await this.db
+      .select({ establishmentId: merchantCases.establishmentId, openedAt: merchantCases.createdAt })
+      .from(disputeChallengers)
+      .innerJoin(merchantCases, eq(merchantCases.id, disputeChallengers.caseId))
+      .where(
+        and(eq(disputeChallengers.accountId, accountId), eq(merchantCases.status, 'pendiente')),
+      )
+      .orderBy(asc(merchantCases.createdAt))
+      .limit(1);
+    return row ?? null;
+  }
+
   async findPending(caseId: string): Promise<MerchantCase | null> {
     const [row] = await this.db
       .select(caseColumns)

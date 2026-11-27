@@ -44,6 +44,8 @@ export interface MerchantCaseRepository {
     events: DomainEvent[],
   ): Promise<void>;
   findPending(caseId: string): Promise<MerchantCase | null>;
+  // H17: la disputa pendiente que abrió esta cuenta, si tiene una (solo las que guardan sus datos).
+  openDisputeOf(accountId: string): Promise<{ establishmentId: string; openedAt: Date } | null>;
   close(record: MerchantCaseDecisionRecord): Promise<void>;
 }
 
