@@ -1,6 +1,7 @@
 # ADR-016: Participación de comercios pequeños sin punto de venta
 
 - **Estado:** Aceptado
+- **Precisado por:** ADR-027 (26-nov-2026): la carga por archivo es un CSV con código de barras, se procesa al momento (`200`, máximo 1.000 filas) e informa cada fila.
 - **Fecha:** 2026-11-21
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-02, EC-05

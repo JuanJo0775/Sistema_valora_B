@@ -26,6 +26,6 @@ sequenceDiagram
   alt Desviación mayor a 40 %
     L->>B: ReporteEnRevision → cola del moderador
   else Normal
-    L->>B: ScoreActualizado
+    L->>B: PriceAssessed
     B--)C: Actualiza price_current (vigente, stale_after, expired_after)
   end

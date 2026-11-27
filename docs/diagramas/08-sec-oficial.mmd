@@ -8,13 +8,21 @@ sequenceDiagram
   participant L as reliability
   M->>W: Cambia precio de "Leche 1 L" a $4.250
   W->>K: PUT /v1/commerce/prices
-  K->>K: Verifica comercio y rol (RBAC)
-  K->>C: PrecioOficialPublicado (síncrono, misma transacción)
-  C->>C: Actualiza price_current como "Oficial"
+  K->>K: Verifica comercio verificado, tienda propia y plausibilidad del precio (ADR-037)
+  K->>K: Guarda el precio y el evento OfficialPricePublished en el outbox (misma transacción)
   K-->>W: 200 Publicado
-  Note over K,C: Visible en segundos, margen máximo 5 min (EC-02)
+  K--)C: El repartidor del outbox entrega el evento (diferido, segundos · ADR-023)
+  C->>C: Actualiza su copia official_prices (idempotente)
+  Note over K,C: Visible en segundos, margen máximo 5 min (EC-02). Un evento que agota sus 5 reintentos queda fallido
   M->>W: Crea promoción "Pague 2 lleve 3"
   W->>K: POST /v1/commerce/promotions
-  K-->>W: Guardada en colección aparte (no altera el orden, EC-06)
-  L--)K: Usuarios reportan $4.400 (diferencia > 5 %)
-  K-->>M: Aviso de discrepancia para confirmar o corregir
+  K->>K: Exige un oficial vigente y aplica las reglas de domain (422 si no)
+  K--)C: PromotionPublished (diferido)
+  C->>C: Guarda en promotions, aparte de results (no altera el orden, EC-06)
+  M->>W: Abre /comercios
+  W->>K: GET /v1/commerce/alerts
+  K->>C: OfficialDiscrepancies.of(tienda)
+  C->>L: reportsAt(presentación, tienda), sin claves
+  L-->>C: Reportes recientes con su nivel
+  C-->>K: Discrepancias corroboradas (2 o más reportes a más de 5 %, ADR-024)
+  K-->>W: Avisos de discrepancia y de vencimiento (ADR-044)

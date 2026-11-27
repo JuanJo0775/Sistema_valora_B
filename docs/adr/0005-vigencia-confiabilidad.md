@@ -1,6 +1,7 @@
 # ADR-005: Modelo de vigencia y confiabilidad: TTL por categoría y score ponderado
 
 - **Estado:** Aceptado
+- **Ajustado por:** ADR-024 y ADR-026 (26-nov-2026): el precio oficial sin reconfirmar vale lo mismo que un reporte (7 días frescos y 14 el resto, valores provisionales y configurables en un solo lugar); reconfirmarlo («Todos mis precios siguen igual», editar un precio o subir el archivo) lo renueva.
 - **Fecha:** 2026-11-11
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-02, EC-03

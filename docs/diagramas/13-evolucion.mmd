@@ -7,14 +7,19 @@ flowchart TB
     a3["imports"]:::soporte
   end
   q["<b>Cambio de alcance</b><br/>Módulo comercial · RF-015 a RF-019"]:::evol
-  subgraph C3["Corte 3 · se agrega sin rediseñar el núcleo"]
-    direction LR
-    b1["<b>NUEVO</b> commerce<br/><small>perfiles · oficiales · promociones</small>"]:::evol
-    b2["<b>AJUSTE</b> comparison<br/><small>escucha PrecioOficialPublicado</small>"]:::nucleo
-    b3["<b>AJUSTE</b> API<br/><small>superficie /v1/commerce</small>"]:::soporte
-    b4["<b>SIN CAMBIOS</b><br/><small>pricing · reliability · catalog · identity</small>"]:::datos
+  subgraph C3["Corte 3 · se agrega sin que el núcleo importe commerce"]
+    direction TB
+    b1["<b>NUEVO</b> commerce<br/><small>perfiles · oficiales · promociones · casos</small>"]:::evol
+    b1b["<b>NUEVO</b> notifications<br/><small>avisos por Web Push (ADR-044)</small>"]:::evol
+    b2["<b>AJUSTE</b> comparison<br/><small>copias official_prices, promotions y<br/>verified_merchants · escucha eventos de commerce</small>"]:::nucleo
+    b3["<b>AJUSTE</b> reliability<br/><small>cola de precios oficiales sin referencia (ADR-037)</small>"]:::nucleo
+    b4["<b>AJUSTE</b> identity<br/><small>receptor del rol comercio</small>"]:::soporte
+    b5["<b>AJUSTE</b> establishments<br/><small>reclamos de propuestas, datos de la tienda y correcciones</small>"]:::soporte
+    b6["<b>AJUSTE ADITIVO</b> catalog y pricing<br/><small>puertas públicas para commerce: código de barras y referencia de precio</small>"]:::soporte
+    b7["<b>AJUSTE</b> API<br/><small>superficie /v1/commerce y contrato</small>"]:::soporte
+    b8["<b>SIN CAMBIOS</b><br/><small>imports</small>"]:::datos
   end
-  M["<b>Cómo se mide · EC-05</b><br/>componentes tocados y esfuerzo real frente al estimado"]:::nota
+  M["<b>Cómo se mide · EC-05</b><br/>el núcleo no importa commerce (regla de la CI) · todos los ajustes por index.ts<br/>componentes tocados y esfuerzo real frente al estimado"]:::nota
   C2 --> q --> C3 -.-> M
 
 classDef persona fill:#FFD7A8,stroke:#C2570C,stroke-width:2px,color:#3A2414

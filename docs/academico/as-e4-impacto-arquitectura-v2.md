@@ -12,6 +12,8 @@
 - **Propuesto, pendiente de revisión del equipo (Notion, secciones 5 y 6):** existe una **propuesta de arquitectura v2** y **ADR-023 a ADR-028 en estado «Propuesto»**. El equipo debe revisarlos, aceptarlos o descartarlos; ninguno está aceptado.
 - **En blanco a propósito (Notion, sección 4):** la tabla de horas. El equipo la estima el **23-nov**, después de la presentación del docente y antes del primer commit del módulo, para que EC-05 mida la estimación frente al esfuerzo real. **La estimación sigue pendiente.**
 
+**Actualización del 26 de noviembre de 2026 (B#210).** Los ADR-023 a ADR-028 ya están en `docs/adr/` como «Propuesto», redactados según el código construido y las decisiones del grill (`docs/decisiones/epic-8-modulo-comercial/grill.md`). Dos se apartan del borrador de este análisis: **ADR-023** (el precio oficial llega por el outbox diferido, no «en la misma transacción») y **ADR-028** (el contrato no usa `oneOf` ni `discriminator`); además, ADR-024 calcula las discrepancias al leer y ADR-027 identifica los productos por código de barras. Cada ADR lo dice y deja anotado lo que falta verificar. El equipo debe aceptarlos o descartarlos. Se actualizaron las fuentes `.mmd` de los diagramas 02, 03, 06, 08, 12 y 13; **las imágenes `.png` hay que volver a generarlas** con `npx @mermaid-js/mermaid-cli` (README de `docs/diagramas/`), igual que la del 04.
+
 ## 2. Resumen de la propuesta v2 (el detalle está en Notion)
 
 - `commerce` entra como módulo del monolito (ADR-001) con esquema propio (ADR-021); depende del núcleo solo por `index.ts` y el núcleo no lo importa (regla `nucleo-no-conoce-commerce`, medida en la CI).
@@ -41,7 +43,7 @@ Cerrar las decisiones 1 y 2 antes de estimar evita que la estimación dependa de
 |---|---|---|
 | Rutas `/commerce/*` | 4 rutas declaradas con `x-corte: 3`, sin código en `src/modules/commerce` (la carpeta no existe) | `docs/openapi.yaml` |
 | Reserva en el núcleo | `promotions: []` aparte de `results` y `source` por resultado | `src/modules/comparison/application/compare-product.ts` |
-| Diagramas desactualizados con la v2 | `13-evolucion` (dice «SIN CAMBIOS» en `reliability` e `identity`), `08-sec-oficial` (llamada directa), `02-c4-contenedores` (proxy Caddy), `03-c4-componentes` (`ScoreActualizado`): **pendiente de regenerar** | `docs/diagramas/` |
+| Diagramas desactualizados con la v2 | `13-evolucion` (dice «SIN CAMBIOS» en `reliability` e `identity`), `08-sec-oficial` (llamada directa), `02-c4-contenedores` (proxy Caddy), `03-c4-componentes` (`ScoreActualizado`): **fuentes `.mmd` actualizadas el 26-nov-2026 (también 06 y 12); falta regenerar los `.png`** | `docs/diagramas/` |
 | ADR relacionados | ADR-008, ADR-009 y ADR-016 figuran «Propuesto» en Notion; ADR-004 también (ver encabezado de su archivo) | `docs/adr/` |
 
 ## 5. Honestidad de EC-05

@@ -1,6 +1,7 @@
 # ADR-022: Fotos subidas en Supabase Storage
 
 - **Estado:** Aceptado (17-nov-2026; propuesto el 16-nov-2026)
+- **Sin cambios por ADR-025 (26-nov-2026):** la verificación de comercios por presencia no guarda documentos, así que no hace falta un bucket privado para evidencias.
 - **Fecha:** 2026-11-17
 - **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo. Redactado con apoyo de IA (Claude Code).
 - **Escenarios relacionados:** EC-01 (reconocer el producto), EC-08 (privacidad)
