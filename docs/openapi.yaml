@@ -36,7 +36,9 @@ paths:
       summary: La API está en marcha
       description: >-
         Pública y sin cuenta. Sirve para comprobar que el proceso responde (despliegue y monitoreo,
-        RNF-011). No revisa la base de datos (#25).
+        RNF-011). No revisa la base de datos (#25). Cuando el servicio corre en Render dice también
+        qué versión sirve (commit), para que el despliegue (#23) compruebe que la nueva ya está activa
+        y no la anterior.
       responses:
         '200':
           description: La API responde
@@ -50,6 +52,12 @@ paths:
                 required: [status]
                 properties:
                   status: { type: string, enum: [ok] }
+                  commit:
+                    type: string
+                    pattern: "^[0-9a-f]{7}$"
+                    description: >-
+                      Los primeros 7 caracteres del commit que sirve (RENDER_GIT_COMMIT). No viene si
+                      el servicio no corre en Render, como en local y en las pruebas.
   /products:
     get:
       tags: [Catálogo]
