@@ -1,6 +1,7 @@
 # ADR-008: Resolución entre precio oficial y precio reportado
 
 - **Estado:** Aceptado
+- **Completado por:** ADR-024 (26-nov-2026): dónde vive la regla (dominio puro), quién la aplica (`comparison`, al leer), qué valor entra al orden con discrepancia (la mediana de los reportes que corroboran) y qué pasa al reconfirmar.
 - **Fecha:** 2026-11-21
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-02, EC-03, EC-05

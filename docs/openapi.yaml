@@ -569,8 +569,14 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [establishment, prices]
+                required: [establishment, verifiedMerchant, prices, promotions]
                 properties:
+                  verifiedMerchant:
+                    type: boolean
+                    description: >-
+                      H6. La tienda tiene un comercio verificado (de moderación o por reclamo
+                      aprobado). false si es una tienda de la comunidad, sin dueño. Es un dato de la
+                      tienda, nunca de la cuenta (EC-08).
                   establishment:
                     type: object
                     required: [id, name, type, lat, lng, municipality]
@@ -627,6 +633,13 @@ paths:
                         confirmations: { type: integer, minimum: 0, description: Se omite para un oficial. }
                         observedAt: { type: string, format: date-time }
                         discrepancy: { $ref: '#/components/schemas/PriceDiscrepancy' }
+                  promotions:
+                    type: array
+                    description: >-
+                      H6, ADR-009. Las promociones activas de la tienda, siempre aparte de los
+                      precios y sin alterar su orden. Solo las que tienen sus fechas vigentes y un
+                      precio oficial vigente.
+                    items: { $ref: '#/components/schemas/StorePromotion' }
         '304': { description: Los precios no cambiaron desde el ETag enviado }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404':
@@ -2410,6 +2423,46 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /commerce/me/dispute:
+    get:
+      tags: [Comercios]
+      operationId: getMyDispute
+      summary: Mi disputa de propiedad abierta (RF-015, H17)
+      description: >-
+        H17. Quien intentó registrar una tienda que ya tiene dueño abre una disputa para moderación
+        (409 ESTABLISHMENT_HAS_OWNER en POST /commerce/claims). Este recurso le dice que sigue abierta:
+        la tienda y desde cuándo, para que no vea un formulario vacío. dispute es null si la cuenta no
+        tiene ninguna abierta (también cuando moderación ya la decidió: al decidirla se borran los
+        datos de quien disputó, H18). Nunca trae la cuenta ni datos del dueño actual (EC-08). Solo las
+        disputas abiertas desde que se guardan los datos de quien disputa. Dato de la propia cuenta,
+        sin caché.
+      x-corte: 3
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: La disputa abierta de la cuenta, o null.
+          headers:
+            Cache-Control:
+              description: Dato de la propia cuenta.
+              schema: { type: string, example: 'private, no-store' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [dispute]
+                properties:
+                  dispute:
+                    oneOf:
+                      - type: 'null'
+                      - $ref: '#/components/schemas/MyDispute'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: code FORBIDDEN, un moderador no tiene disputas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /commerce/me/leave:
     post:
       tags: [Comercios]
@@ -3332,6 +3385,13 @@ components:
         lng: { type: number }
         municipality: { $ref: '#/components/schemas/Municipality' }
         outOfZone: { type: boolean }
+        suggestedMunicipality:
+          allOf: [{ $ref: '#/components/schemas/Municipality' }]
+          description: >-
+            H16. Solo si la ubicación queda claramente más cerca del centro de otro municipio que el
+            declarado en municipality (margen de 3 km por las fronteras). Es un aviso para el
+            moderador, no un rechazo: no hay límites oficiales de municipios. No está si cuadra o si
+            la tienda está fuera de la zona de servicio.
         possibleDuplicates: { $ref: '#/components/schemas/PossibleDuplicates' }
         createdAt: { type: string, format: date-time }
         claim: { $ref: '#/components/schemas/StoreProposalClaim' }
@@ -3470,6 +3530,19 @@ components:
       items:
         type: string
         enum: [precios_oficiales, carga_por_archivo, promociones, avisos_de_precio, datos_de_la_tienda]
+    MyDispute:
+      type: object
+      additionalProperties: false
+      required: [establishment, requestedAt]
+      properties:
+        establishment:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        requestedAt: { type: string, format: date-time, description: Cuándo se abrió la disputa. }
     LeaveEstablishmentResult:
       type: object
       additionalProperties: false
@@ -3802,6 +3875,25 @@ components:
         promotedPriceCop:
           type: [integer, 'null']
           description: Precio de una unidad con la promoción; en pague X lleve Y, el promedio por unidad.
+    StorePromotion:
+      type: object
+      description: Una promoción activa de la tienda, en su ficha pública (H6).
+      additionalProperties: false
+      required: [id, presentationId, productName, type, conditions, validFrom, validUntil, officialPriceCop, promotedPriceCop]
+      properties:
+        id: { type: string, format: uuid }
+        presentationId: { type: string, format: uuid }
+        productName: { type: string, description: 'Producto y presentación, por ejemplo «Arroz Diana · 1 kg».' }
+        type: { type: string, enum: [descuento_porcentual, precio_especial, pague_x_lleve_y] }
+        percent: { type: integer }
+        specialPriceCop: { type: integer }
+        payX: { type: integer }
+        takeY: { type: integer }
+        conditions: { $ref: '#/components/schemas/PromotionConditions' }
+        validFrom: { type: string, format: date }
+        validUntil: { type: string, format: date }
+        officialPriceCop: { type: integer, description: El «antes», el oficial vigente. }
+        promotedPriceCop: { type: integer, description: El precio de una unidad con la promoción. }
     ComparisonPromotion:
       type: object
       description: Una promoción activa de una tienda del área, aparte de los resultados (ADR-009).

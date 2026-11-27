@@ -1,0 +1,27 @@
+﻿producto;marca;cantidad;unidad;unidades_empaque;codigo_propuesto;nombre_en_open_food_facts;tamano_en_open_food_facts;confianza;fuente_actual_de_la_fila;codigo_confirmado_en_tienda;fecha;responsable
+Arroz blanco;Diana;1;kg;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Arroz blanco;Roa;1;kg;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Aceite de girasol;Premier;3000;ml;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Aceite de girasol;Premier;900;ml;1;;;;sin propuesta;Verificado por el equipo con carulla.com (17-nov-2026);;;
+Azúcar blanca;Manuelita;1;kg;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Sal refinada;Refisal;500;g;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Pasta spaghetti;Doria;250;g;1;;;;descartada: Open Food Facts lo llama «Spaghetti Sin Gluten», que es otro producto;Revisado por el equipo: producto de tienda y supermercado;;;
+Café molido;Sello Rojo;250;g;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Chocolate de mesa;Corona;250;g;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Chocolate de mesa;Corona;200;g;1;;;;sin propuesta;Verificado por el equipo con carulla.com (17-nov-2026);;;
+Leche entera;Colanta;1100;ml;1;7702129003612;Leche Entera Maxilitro;1100 ml;media: marca, tamaño y nombre coinciden; confirmar en el empaque (Maxilitro es la bolsa de 1100 ml);Revisado por el equipo: producto de tienda y supermercado;;;
+Leche entera;Alquería;1100;ml;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Gaseosa cola;Coca-Cola;1500;ml;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Gaseosa cola;Coca-Cola;400;ml;6;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Agua sin gas;Cristal;600;ml;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Detergente en polvo;Fab;1;kg;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Lavaloza en crema;Axion;450;g;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Papel higiénico doble hoja;Familia;12;und;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Crema dental;Colgate;75;ml;1;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Jabón de baño;Protex;110;g;3;;;;sin propuesta;Revisado por el equipo: producto de tienda y supermercado;;;
+Muslo de pollo;Friko;6;und;1;;;;sin propuesta;Página de Olímpica, ficha del producto (21-nov-2026);;;
+Contramuslo de pollo;Friko;6;und;1;;;;sin propuesta;Página de Olímpica, ficha del producto (21-nov-2026);;;
+Queso costeño;Suva;1;kg;1;;;;sin propuesta;Página de Olímpica, ficha del producto (21-nov-2026);;;
+Pan blandito;Olímpica;550;g;1;;;;sin propuesta;Página de Olímpica, ficha del producto (21-nov-2026);;;
+Pan costeño;Olímpica;150;g;1;;;;sin propuesta;Página de Olímpica, ficha del producto (21-nov-2026);;;
+Pan trenza aliñado;Olímpica;360;g;1;;;;sin propuesta;Página de Olímpica, ficha del producto (21-nov-2026);;;

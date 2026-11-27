@@ -1,3 +1,5 @@
+import { distanceMeters } from './distance';
+
 // Grill de la #106, pregunta 1 (RF-009 RN5): los 12 municipios del Quindío. El código no lleva tildes
 // ni mayúsculas para usarlo en la URL; el nombre es el que se muestra.
 export const MUNICIPALITIES = [
@@ -21,3 +23,40 @@ export const MUNICIPALITY_CODES: readonly string[] = MUNICIPALITIES.map(({ code 
 
 export const isMunicipality = (value: string): value is Municipality =>
   MUNICIPALITY_CODES.includes(value);
+
+// H16: centro aproximado de la cabecera de cada municipio. No son límites oficiales: sirven para
+// avisar a moderación de una ubicación que parece de otro municipio, nunca para rechazar.
+const CENTERS: Record<Municipality, { lat: number; lng: number }> = {
+  armenia: { lat: 4.5339, lng: -75.6811 },
+  buenavista: { lat: 4.3597, lng: -75.7378 },
+  calarca: { lat: 4.5292, lng: -75.6439 },
+  circasia: { lat: 4.6184, lng: -75.6358 },
+  cordoba: { lat: 4.3925, lng: -75.6853 },
+  filandia: { lat: 4.6742, lng: -75.6583 },
+  genova: { lat: 4.2064, lng: -75.7881 },
+  'la-tebaida': { lat: 4.45, lng: -75.7889 },
+  montenegro: { lat: 4.5667, lng: -75.75 },
+  pijao: { lat: 4.334, lng: -75.7 },
+  quimbaya: { lat: 4.6256, lng: -75.7639 },
+  salento: { lat: 4.6375, lng: -75.57 },
+};
+
+// Cerca de una frontera el centro más próximo no dice de qué lado cae el punto: hasta esta diferencia
+// de distancia no se cuestiona lo que escribió quien propone.
+const BORDER_MARGIN_KM = 3;
+
+// El municipio al que parece pertenecer la ubicación, si no es el que se declaró y la diferencia no se
+// explica por estar en una frontera. undefined: la ubicación cuadra con lo declarado.
+export function suggestedMunicipality(
+  declared: Municipality,
+  point: { lat: number; lng: number },
+): Municipality | undefined {
+  const distances = MUNICIPALITIES.map(({ code }) => ({
+    code,
+    km: distanceMeters(point, CENTERS[code]) / 1000,
+  })).sort((a, b) => a.km - b.km);
+  const nearest = distances[0];
+  const declaredKm = distances.find(({ code }) => code === declared)?.km;
+  if (!nearest || declaredKm === undefined || nearest.code === declared) return undefined;
+  return declaredKm - nearest.km > BORDER_MARGIN_KM ? nearest.code : undefined;
+}

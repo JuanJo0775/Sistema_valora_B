@@ -1,6 +1,6 @@
 # Evidencia de los avisos push (B#261)
 
-> **Estado: protocolo listo; los resultados se llenan al probar en dispositivos reales y con el servicio desplegado.** Nada de lo que está en las tablas de resultados está medido todavía. Para EC-09 (ADR-044) y RF-020.
+> **Estado (26 de noviembre de 2026): probado en iPhone con la PWA instalada y en Android; la latencia p95 de EC-09 no está medida.** Quedan sin probar PC, iPhone sin instalar, desactivar, el límite de un aviso cada 5 minutos, el permiso denegado y el envío con Render dormido. #261 se cerró con este alcance por decisión del equipo; lo no medido sigue siendo una brecha de la evidencia de EC-09. Para EC-09 (ADR-044) y RF-020.
 
 ## 1. Antes de probar: configuración del despliegue
 
@@ -39,8 +39,8 @@ Repetir en cada dispositivo, con una cuenta **moderador** y, aparte, con una cue
 
 | Dispositivo | Sistema y navegador | PWA instalada | Pasos 1–8 | Lo que no funcionó | Evidencia |
 |---|---|---|---|---|---|
-| (por llenar) Android | Chrome | | | | |
-| (por llenar) iPhone | Safari, PWA instalada | Sí | | | |
+| Android (26-nov-2026, producción) | Chrome | Sin detallar | El equipo reporta que funciona bien. No se registraron por paso ni la versión del dispositivo | Nada reportado | Sin capturas en el repositorio |
+| iPhone (26-nov-2026, cuenta moderador de prueba, producción) | Safari, PWA instalada | Sí | 1 a 5 correctos: se activó (el botón pasó a «Desactivar avisos»), llegó con la app cerrada el aviso «Hay casos nuevos para revisar en Productos» y al tocarlo abrió Moderación en la pestaña Productos. Pasos 6 a 8 sin probar | Ninguno en los pasos probados. Antes de este día, la campana quedaba tapada por el buscador (corregido en F#220) | Dos capturas del equipo: la notificación y el panel abierto |
 | (por llenar) iPhone | Safari sin instalar | No | Solo 1 y la guía | | |
 | (por llenar) PC | Chrome o Edge | | | | |
 
@@ -88,7 +88,7 @@ Los avisos del comercio no escriben esta línea (llegan con hasta una hora de re
 
 | Fecha | Avisos medidos | p50 | p95 | Máximo | ¿Cumple 95 % en 60 s? |
 |---|---|---|---|---|---|
-| (por llenar) | | | | | |
+| 26-nov-2026 | 1 | (sin registro) | (sin registro) | (sin registro) | **No medido.** Con un solo aviso no hay p95 |
 
 Con muy pocos avisos el p95 no es significativo; provocar al menos 20 y decirlo en la tabla.
 

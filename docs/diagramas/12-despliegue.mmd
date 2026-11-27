@@ -6,14 +6,14 @@ flowchart LR
     IDB[("IndexedDB<br/>cola offline")]:::datos
     BR --- IDB
   end
-  subgraph CLOUD["Servidor en la nube · proveedor por definir (ADR-012)"]
+  subgraph CLOUD["Nube · Vercel, Render y Neon (ADR-012)"]
     direction TB
-    CAD["Caddy<br/>HTTPS automático"]:::soporte
-    NODE["Proceso Node.js<br/>API + trabajos diferidos"]:::nucleo
-    PG[("PostgreSQL + PostGIS<br/>respaldos diarios")]:::datos
-    UK["Uptime Kuma<br/>sondeo cada minuto"]:::soporte
+    CAD["Vercel<br/>sirve la PWA con HTTPS y reenvía /v1/* a Render"]:::soporte
+    NODE["Render · imagen Docker<br/>API + trabajos diferidos"]:::nucleo
+    PG[("Neon · PostgreSQL + PostGIS")]:::datos
+    SUPA[("Supabase Storage<br/>fotos (ADR-022)")]:::datos
     CAD --> NODE --> PG
-    UK -.-> CAD
+    NODE -.-> SUPA
   end
   subgraph GH["GitHub"]
     direction TB

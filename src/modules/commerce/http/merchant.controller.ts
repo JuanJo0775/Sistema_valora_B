@@ -32,6 +32,7 @@ import {
 } from '../application/claim-proposed-establishment';
 import { LeaveEstablishment, type LeaveResult } from '../application/leave-establishment';
 import { MerchantProfile, type MerchantProfileView } from '../application/merchant-profile';
+import { MyDispute, type MyDisputeView } from '../application/my-dispute';
 import { ClaimEstablishmentDto } from './merchant.dto';
 
 // RF-015 con las D2 y D3 del grill comercial (#201, #202).
@@ -42,6 +43,7 @@ export class MerchantController {
     private readonly claimProposedEstablishment: ClaimProposedEstablishment,
     private readonly merchantProfile: MerchantProfile,
     private readonly leaveEstablishment: LeaveEstablishment,
+    private readonly myDisputes: MyDispute,
   ) {}
 
   @Post('claims')
@@ -104,6 +106,22 @@ export class MerchantController {
     const profile = await this.merchantProfile.find(session.accountId);
     if (!profile) throw new NotFoundException();
     return profile;
+  }
+
+  // H17: la disputa abierta de la cuenta, si la hay. Dato de la propia cuenta: nunca en caché compartida.
+  @Get('me/dispute')
+  @Header('Cache-Control', 'private, no-store')
+  @UseGuards(SessionGuard)
+  @Roles('reportante', 'comercio')
+  async myDispute(@CurrentSession() session: AuthenticatedSession): Promise<{
+    dispute: { establishment: MyDisputeView['establishment']; requestedAt: string } | null;
+  }> {
+    const dispute = await this.myDisputes.find(session.accountId);
+    return {
+      dispute: dispute
+        ? { establishment: dispute.establishment, requestedAt: dispute.requestedAt.toISOString() }
+        : null,
+    };
   }
 
   // H36 (ADR-040): la propia cuenta deja de administrar su tienda. También el reportante: la cuenta

@@ -75,6 +75,8 @@ Si un producto se vende en varios tamaños, se repite el producto en varias fila
 
 No se inventan: un código falso podría coincidir con otro producto real. Se copian del empaque al verificar en la tienda o de la ficha del producto en la página de la cadena. Si no se tiene a la vista, la columna queda vacía. Al sembrar, cada código se revisa con su dígito de control (EAN-13), y uno mal escrito se rechaza con un mensaje que dice en qué fila está.
 
+Las 26 presentaciones con marca que aún no tienen código están en [`docs/semilla/codigos-propuestos.csv`](../docs/semilla/codigos-propuestos.csv), con una columna para anotar el código confirmado en tienda. Se buscaron en Open Food Facts (26-nov-2026): solo 1 tuvo una coincidencia razonable y quedó como propuesta a confirmar en el empaque; el resto no está en esa base. Un código propuesto **no** es un código verificado: no se copia a `productos.csv` hasta verlo en el empaque.
+
 ### Fotos de Open Food Facts (`pnpm seed:imagenes`, #119)
 
 Open Food Facts tiene bases hermanas con la misma licencia: **Open Beauty Facts** (cuidado personal) y **Open Products Facts** (aseo del hogar). Sus fotos se guardan con `imagen_fuente = open_food_facts` y la atribución de la base real, por ejemplo `Open Products Facts, CC BY-SA` (ADR-020, punto 2). El comando solo consulta Open Food Facts; las de las bases hermanas se agregan a mano.
@@ -91,7 +93,7 @@ pnpm seed:imagenes
 - Consulta con un nombre genérico del proyecto, sin correo ni datos de nadie, y con una pausa entre consultas (Open Food Facts pide no pasar de 100 por minuto). No usa la base ni corre en el servidor. Nunca toma fotos de sitios de cadenas.
 - Después se revisa el CSV y se corre `pnpm db:seed` para cargarlas.
 
-Hoy la semilla tiene 150 productos (175 presentaciones), todos verificados. El 21-nov-2026 (#193) se agregaron 79 presentaciones: 31 de la página de D1 (empacados) y 48 frescos de la página de Olímpica, revisadas y firmadas por el equipo. Las de marca comercial traen el código de barras de la ficha; las genéricas (sin marca) no, porque el código de una marca propia de cadena no identifica el producto en otras tiendas.
+Hoy la semilla tiene 150 productos (175 presentaciones), todos verificados. Desde el 26-nov-2026 (#118) 140 de los 150 productos traen alias, propuestos con nombres de búsqueda comunes en Colombia: el equipo los ajusta a como se dice en Armenia. El 21-nov-2026 (#193) se agregaron 79 presentaciones: 31 de la página de D1 (empacados) y 48 frescos de la página de Olímpica, revisadas y firmadas por el equipo. Las de marca comercial traen el código de barras de la ficha; las genéricas (sin marca) no, porque el código de una marca propia de cadena no identifica el producto en otras tiendas.
 
 ### Qué revisar en la tienda
 

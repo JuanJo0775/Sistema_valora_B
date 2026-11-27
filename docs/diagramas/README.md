@@ -67,7 +67,7 @@ Abre la caja de Valora y muestra las piezas que se despliegan o ejecutan por sep
 ![C4 nivel 2 · Contenedores](02-c4-contenedores.png)
 
 - En el dispositivo viven la aplicación web y su cola local; si no hay señal, el reporte espera ahí.
-- En el servidor hay un solo despliegue: el proxy HTTPS, la API modular y los trabajos diferidos en el mismo proceso.
+- En el servidor hay un solo despliegue: la API modular y los trabajos diferidos en el mismo proceso, en Render. Vercel sirve la PWA y reenvía `/v1/*` a esa API.
 - Una sola base de datos PostgreSQL + PostGIS, con un esquema por módulo.
 - Frameworks aceptados el 8 de noviembre de 2026: React + Vite con vite-plugin-pwa en el frontend (ADR-017) y NestJS sobre Express en el backend (ADR-018).
 
@@ -87,7 +87,7 @@ Muestra los módulos internos de la API agrupados en tres capas y el recorrido d
 
 - Amarillo: módulos de soporte. Naranja claro: núcleo de precios. Coral punteado: módulo comercial que llega en el corte 3.
 - Los números 1 a 4 siguen el camino de un reporte: pricing lo guarda, reliability lo evalúa, comparison lo proyecta.
-- El precio oficial viaja por el bus de forma síncrona, en la misma transacción.
+- El precio oficial viaja por el bus como cualquier evento: se guarda en el outbox en la misma transacción que el precio y el repartidor lo entrega a `comparison` en segundos (ADR-023).
 - Todas las reglas de negocio viven en domain, que no depende de nada y se prueba con TDD.
 
 **Relación:** ADR-001 · ADR-004 · ADR-015 · RNF-005 · RNF-006
@@ -252,7 +252,7 @@ Muestra dónde corre cada pieza y cómo llega el código a producción.
 ![Despliegue](12-despliegue.png)
 
 - El usuario solo necesita un navegador; la PWA se instala desde ahí.
-- En el servidor corren Caddy, el proceso Node.js y PostgreSQL.
+- Vercel sirve la PWA; Render corre el proceso Node.js (imagen Docker); Neon guarda PostgreSQL con PostGIS; las fotos van a Supabase Storage.
 - GitHub Actions prueba, analiza, verifica los límites de módulo y despliega solo si todo pasa.
 - ADR-012 (aceptado el 16 de noviembre de 2026): el backend se despliega como una imagen Docker en Render; PostgreSQL + PostGIS en Neon y la PWA en Vercel.
 

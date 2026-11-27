@@ -22,4 +22,6 @@ export interface PromotionCopy {
 // Puerto hacia la tabla propia del módulo.
 export interface PromotionCopies {
   findByPresentations(presentationIds: string[]): Promise<PromotionCopy[]>;
+  // H6: las de una tienda, para su ficha pública.
+  findByEstablishment(establishmentId: string): Promise<PromotionCopy[]>;
 }

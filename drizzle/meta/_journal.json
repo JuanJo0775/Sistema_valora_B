@@ -372,6 +372,13 @@
       "when": 1795666880469,
       "tag": "0052_notifications-sent-notices",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795739792882,
+      "tag": "0053_comparison-verified-merchants",
+      "breakpoints": true
     }
   ]
 }

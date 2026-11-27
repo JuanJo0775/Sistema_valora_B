@@ -1,6 +1,7 @@
 # ADR-015: Comunicación entre módulos con eventos de dominio internos
 
 - **Estado:** Aceptado
+- **Precisado por:** ADR-023 y ADR-026 (26-nov-2026): el punto 6 («misma transacción») se cumple guardando el evento en la misma transacción; la entrega a `comparison` es por el repartidor. Se retira el evento `PromocionVencida`: el vencimiento de una promoción se calcula al leer.
 - **Fecha:** 2026-11-11
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-05

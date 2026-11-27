@@ -40,6 +40,7 @@ import { PurgeMerchantAccount } from './application/purge-merchant-account';
 import { ReportMerchant } from './application/report-merchant';
 import { MerchantOfficialPrices } from './application/merchant-official-prices';
 import { MerchantProfile } from './application/merchant-profile';
+import { MyDispute } from './application/my-dispute';
 import { MerchantPromotions } from './application/merchant-promotions';
 import { PublishOfficialPrice } from './application/publish-official-price';
 import { ReconfirmOfficialPrices } from './application/reconfirm-official-prices';
@@ -409,6 +410,20 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
           },
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           clock: { now: () => new Date() },
+        }),
+    },
+    {
+      // H17: la disputa abierta de la cuenta.
+      provide: MyDispute,
+      inject: [DATABASE, OutboxPublisher, EstablishmentDetails],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        establishments: EstablishmentDetails,
+      ): MyDispute =>
+        new MyDispute({
+          cases: new DrizzleMerchantCaseRepository(db, outbox),
+          establishments,
         }),
     },
     {

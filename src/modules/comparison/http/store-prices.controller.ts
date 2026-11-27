@@ -16,6 +16,8 @@ import { StorePricesQueryDto } from './comparison.query';
 // DTO de salida explícito: la forma de GET /v1/establishments/{establishmentId}/prices.
 interface StorePricesResponse {
   establishment: EstablishmentDetail;
+  // H6: la tienda tiene un comercio verificado.
+  verifiedMerchant: boolean;
   prices: {
     productId: string;
     presentationId: string;
@@ -35,6 +37,22 @@ interface StorePricesResponse {
       reports: number;
       since: string;
     };
+  }[];
+  // H6 y ADR-009: las promociones activas, aparte de los precios, con la oferta aplanada.
+  promotions: {
+    id: string;
+    presentationId: string;
+    productName: string;
+    type: string;
+    percent?: number;
+    specialPriceCop?: number;
+    payX?: number;
+    takeY?: number;
+    conditions: { maxPerCustomer?: number; whileStocksLast: boolean; paymentMethod: string };
+    validFrom: string;
+    validUntil: string;
+    officialPriceCop: number;
+    promotedPriceCop: number;
   }[];
 }
 
@@ -61,6 +79,7 @@ export class StorePricesController {
     if (!result) throw new NotFoundException();
     return {
       establishment: result.establishment,
+      verifiedMerchant: result.verifiedMerchant,
       prices: result.prices.map(({ unitPrice, observedAt, discrepancy, ...item }) => ({
         ...item,
         // Se muestra redondeado; el valor exacto no sale de la aplicación.
@@ -69,6 +88,11 @@ export class StorePricesController {
         ...(discrepancy === undefined
           ? {}
           : { discrepancy: { ...discrepancy, since: discrepancy.since.toISOString() } }),
+      })),
+      promotions: result.promotions.map(({ offer, conditions, ...promotion }) => ({
+        ...promotion,
+        ...offer,
+        conditions: { ...conditions },
       })),
     };
   }
