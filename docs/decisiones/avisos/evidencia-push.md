@@ -40,7 +40,7 @@ Repetir en cada dispositivo, con una cuenta **moderador** y, aparte, con una cue
 | Dispositivo | Sistema y navegador | PWA instalada | Pasos 1–8 | Lo que no funcionó | Evidencia |
 |---|---|---|---|---|---|
 | (por llenar) Android | Chrome | | | | |
-| (por llenar) iPhone | Safari, PWA instalada | Sí | | | |
+| iPhone (26-nov-2026, cuenta moderador de prueba, producción) | Safari, PWA instalada | Sí | 1 a 5 correctos: se activó (el botón pasó a «Desactivar avisos»), llegó con la app cerrada el aviso «Hay casos nuevos para revisar en Productos» y al tocarlo abrió Moderación en la pestaña Productos. Pasos 6 a 8 sin probar | Ninguno en los pasos probados. Antes de este día, la campana quedaba tapada por el buscador (corregido en F#220) | Dos capturas del equipo: la notificación y el panel abierto |
 | (por llenar) iPhone | Safari sin instalar | No | Solo 1 y la guía | | |
 | (por llenar) PC | Chrome o Edge | | | | |
 
