@@ -8,6 +8,7 @@ import { ImportCatalog } from '../../src/modules/catalog';
 import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
+import { contractErrors } from '../support/contract';
 import { countAllRows } from '../support/count-rows';
 import { OutboxRelay } from '../../src/shared/events';
 import { signIn } from '../support/sign-in';
@@ -204,6 +205,57 @@ describe('GET /v1/products/{productId}/comparison', () => {
     expect(body.results[0]?.establishment).toMatchObject({ id: storeId, municipality: 'armenia' });
     expect(body.results[0]?.establishment).not.toHaveProperty('distanceM');
     expect((inCalarca.body as { results: unknown[] }).results).toEqual([]);
+  });
+
+  it('con presentationId compara solo esa presentación; con una ajena responde 404 y con un texto, 400', async () => {
+    const kiloId = 'a7777777-7777-4777-8777-bbbbbbbbbbbb';
+    await app.get(ImportCatalog).save({
+      id: productId,
+      name: 'Arroz de prueba',
+      categoryCode: 'grains-groceries',
+      presentations: [
+        { id: presentationId, quantity: 500, unit: 'g', packCount: 1 },
+        { id: kiloId, quantity: 1, unit: 'kg', packCount: 1 },
+      ],
+    });
+    const observedAt = new Date(Date.now() - 60 * 60 * 1000);
+    await db.insert(priceCurrent).values([
+      {
+        presentationId,
+        establishmentId: storeId,
+        reportId: 'a9999999-9999-4999-8999-999999999991',
+        priceCop: 2400,
+        priceType: 'normal',
+        observedAt,
+        receivedAt: observedAt,
+      },
+      {
+        presentationId: kiloId,
+        establishmentId: storeId,
+        reportId: 'a9999999-9999-4999-8999-999999999992',
+        priceCop: 4000,
+        priceType: 'normal',
+        observedAt,
+        receivedAt: observedAt,
+      },
+    ]);
+
+    const all = await compare().expect(200);
+    const grams = await compare({ ...userLocation, presentationId }).expect(200);
+    const kilo = await compare({ ...userLocation, presentationId: kiloId }).expect(200);
+
+    expect((all.body as { results: unknown[] }).results).toHaveLength(2);
+    expect(grams.body).toMatchObject({ results: [{ presentationId, priceCop: 2400 }] });
+    expect((grams.body as { results: unknown[] }).results).toHaveLength(1);
+    expect(kilo.body).toMatchObject({ results: [{ presentationId: kiloId, priceCop: 4000 }] });
+    expect(
+      contractErrors('GET /products/{productId}/comparison', 200, grams.body as unknown),
+    ).toEqual([]);
+    await compare({
+      ...userLocation,
+      presentationId: 'a7777777-7777-4777-8777-cccccccccccc',
+    }).expect(404);
+    await compare({ ...userLocation, presentationId: 'no-es-un-uuid' }).expect(400);
   });
 
   it('un producto que no existe responde 404', async () => {

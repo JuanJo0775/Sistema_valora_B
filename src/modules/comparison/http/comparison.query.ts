@@ -7,6 +7,7 @@ import {
   IsLongitude,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
   MinLength,
@@ -61,6 +62,11 @@ export class ComparisonQueryDto {
   @Transform(toBoolean)
   @IsBoolean({ message: 'debe ser true o false' })
   onlyCurrent = false;
+
+  // Solo esa presentación (500 g o 1 kg): el más barato y el ahorro salen de entre sus precios.
+  @IsOptional()
+  @IsUUID(undefined, { message: 'debe ser un UUID' })
+  presentationId?: string;
 }
 
 // Parámetros de GET /v1/establishments/{establishmentId}/prices (grill de la #28, pregunta 2).

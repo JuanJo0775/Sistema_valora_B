@@ -242,6 +242,14 @@ paths:
             Si es verdadero, solo incluye precios vigentes (excluye los por confirmar y los
             desactualizados).
           schema: { type: boolean, default: false }
+        - name: presentationId
+          in: query
+          description: >-
+            Solo esa presentación del producto (por ejemplo 500 g o 1 kg). Los resultados, isCheapest,
+            savingsPercent y las promociones salen de entre sus precios; el servidor sigue siendo
+            quien decide cuál es el más barato (EC-06). Sin este parámetro se comparan todas. Una
+            presentación que no es del producto responde 404.
+          schema: { type: string, format: uuid }
       responses:
         '200':
           description: Resultados y promociones separadas

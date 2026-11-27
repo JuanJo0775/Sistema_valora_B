@@ -100,6 +100,9 @@ export interface CompareProductInput {
   radiusKm: number;
   sort: SortCriterion;
   onlyCurrent: boolean;
+  // Solo esa presentación (500 g o 1 kg): el más barato, el ahorro y las promociones salen de entre
+  // sus precios. Sin ella se comparan todas. Una que no es del producto no tiene comparación.
+  presentationId?: string;
 }
 
 export interface ComparisonItem {
@@ -218,6 +221,16 @@ function toResults(ranked: Candidate[], reliability: PriceReliability[]): Compar
   });
 }
 
+// El producto con solo la presentación pedida; null si no es una de las suyas. Sin pedirla, igual.
+function scopedTo(
+  product: ProductForComparisonView,
+  presentationId: string | undefined,
+): ProductForComparisonView | null {
+  if (presentationId === undefined) return product;
+  const presentations = product.presentations.filter(({ id }) => id === presentationId);
+  return presentations.length === 0 ? null : { ...product, presentations };
+}
+
 export class CompareProduct {
   constructor(private readonly ports: CompareProductPorts) {}
 
@@ -225,7 +238,9 @@ export class CompareProduct {
     const located = input.lat !== undefined && input.lng !== undefined;
     if (!located && input.municipality === undefined) throw new MissingAreaError();
     if (!located && input.sort === 'distance') throw new DistanceNeedsLocationError();
-    const product = await this.ports.products.find(input.productId);
+    const found = await this.ports.products.find(input.productId);
+    if (!found) return null;
+    const product = scopedTo(found, input.presentationId);
     if (!product) return null;
 
     const { candidates, storesById, officials } = await this.candidatesFor(product, input);
