@@ -1,6 +1,7 @@
 # ADR-004: Separar escritura y lectura con un modelo de precio vigente precalculado
 
 - **Estado:** Aceptado
+- **Precisado por:** ADR-023 (26-nov-2026): el precio oficial llega a `comparison.official_prices` por el outbox, de forma diferida y atómica con la publicación. La actualización síncrona que este ADR describe para el oficial no se construyó así; ver ADR-023.
 - **Fecha:** 2026-11-12
 - **Responsables:** PENDIENTE (equipo): la fuente no indica quién elaboró o revisó este ADR
 - **Escenarios relacionados:** EC-02, EC-04
