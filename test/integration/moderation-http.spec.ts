@@ -204,19 +204,29 @@ describe('moderación por HTTP (RF-013)', () => {
       expect(queue.body).toEqual({ items: [] });
     });
 
-    it('sin motivo, con uno corto o solo con espacios responde 400 y no se registra', async () => {
+    it('descartar sin motivo, con uno corto o solo con espacios responde 400 y no se registra', async () => {
       await flagged();
 
       const responses = await Promise.all([
-        decide(moderator, reportId, { decision: 'aprobar' }),
-        decide(moderator, reportId, { decision: 'aprobar', note: 'corto' }),
+        decide(moderator, reportId, { decision: 'descartar' }),
+        decide(moderator, reportId, { decision: 'descartar', note: 'corto' }),
         decide(moderator, reportId, { decision: 'borrar', note }),
-        decide(moderator, reportId, { decision: 'aprobar', note: ' '.repeat(12) }),
+        decide(moderator, reportId, { decision: 'descartar', note: ' '.repeat(12) }),
+        decide(moderator, reportId, { decision: 'observar_cuentas' }),
       ]);
 
-      expect(responses.map((response) => response.status)).toEqual([400, 400, 400, 400]);
+      expect(responses.map((response) => response.status)).toEqual([400, 400, 400, 400, 400]);
       const log = await db.execute(sql`select 1 from reliability.moderation_log`);
       expect(log.rows).toEqual([]);
+    });
+
+    it('aprobar no necesita motivo: responde 204 y la bitácora guarda quién y cuándo, sin texto', async () => {
+      await flagged();
+
+      await decide(moderator, reportId, { decision: 'aprobar' }).expect(204);
+
+      const log = await db.execute(sql`select decision, note from reliability.moderation_log`);
+      expect(log.rows).toEqual([{ decision: 'aprobar', note: '' }]);
     });
 
     // Grill de la #73, pregunta 5.

@@ -28,12 +28,14 @@ export interface DecideModerationPorts {
 export interface DecisionRequest {
   reportId: string;
   decision: Decision;
-  note: string;
+  // Obligatorio (10 a 500) al descartar y al observar cuentas; al aprobar es opcional.
+  note?: string;
   // Clave seudónima de quien decide: la bitácora dice quién, sin guardar su cuenta.
   moderatorKey: string;
 }
 
-// RN3 de RF-013 y grill de la #32, pregunta 5: el motivo es obligatorio, de 10 a 500 caracteres.
+// RN3 de RF-013 y grill de la #32, pregunta 5: el motivo es de 10 a 500 caracteres. Aprobar no lo
+// exige (prueba manual de moderación): la bitácora igual dice quién aprobó y cuándo, sin texto.
 export const NOTE_LENGTH = { min: 10, max: 500 } as const;
 
 // Dato de entrada inválido: la capa HTTP la traduce a 400 VALIDATION_ERROR.
@@ -116,8 +118,9 @@ export class DecideModeration {
   constructor(private readonly ports: DecideModerationPorts) {}
 
   async execute(request: DecisionRequest): Promise<void> {
-    const note = request.note.trim();
-    if (note.length < NOTE_LENGTH.min || note.length > NOTE_LENGTH.max) {
+    const note = (request.note ?? '').trim();
+    const needsNote = request.decision !== 'aprobar';
+    if ((needsNote && note.length < NOTE_LENGTH.min) || note.length > NOTE_LENGTH.max) {
       throw new InvalidNoteError();
     }
     const { moderation, events, clock, officialReviews } = this.ports;

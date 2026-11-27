@@ -1927,10 +1927,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [decision, note]
+              required: [decision]
               properties:
                 decision: { type: string, enum: [aprobar, descartar, observar_cuentas] }
-                note: { type: string, minLength: 10, maxLength: 500 }
+                note:
+                  type: string
+                  maxLength: 500
+                  description: >-
+                    Motivo. Obligatorio (10 a 500 caracteres) al descartar y al observar cuentas; al
+                    aprobar es opcional. La bitácora guarda quién decidió y cuándo aunque no haya texto.
       responses:
         '204': { description: Decisión registrada }
         '400': { $ref: '#/components/responses/BadRequest' }
