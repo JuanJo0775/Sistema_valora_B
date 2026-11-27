@@ -149,7 +149,17 @@ Para comprobar el DNS: `Resolve-DnsName valoora.app -Type TXT` (Windows) o `dig 
 
 ### 6. Primer despliegue
 
-Un merge a `main` del backend (o «Run workflow» en la pestaña Actions) lanza `Despliegue`: pide aprobación, migra Neon, dispara Render y espera a que `GET /v1/health` responda. Después verifica `https://www.valoora.app/v1/health` (debe devolver `{"status":"ok"}`, visto a través de Vercel).
+Un merge a `main` del backend (o «Run workflow» en la pestaña Actions) lanza `Despliegue` (#23). La **única intervención humana es la aprobación** del entorno `produccion`; después el flujo, sin más pasos manuales:
+
+1. aplica las migraciones en Neon;
+2. dispara el Deploy Hook de Render;
+3. espera a que `GET /v1/health` responda;
+4. **espera a que Render sirva esta versión:** `/v1/health` informa el `commit` (7 caracteres, de `RENDER_GIT_COMMIT`) y el flujo lo compara con el de la ejecución. Hace falta porque mientras Render construye la imagen nueva sigue respondiendo la anterior, y el paso 3 se cumple igual con las dos. Espera hasta unos 14 minutos;
+5. corre una **prueba de humo de solo lectura**: solo `GET`, sin cuenta y sin escribir nada, por la dirección de Render (`API_URL`) y por la pública, `https://www.valoora.app` (a través de Vercel, variable `PUBLIC_URL` opcional): `/v1/health` (200 y `"status":"ok"`), `/v1/categories` (200), `/v1/establishments/nearby` (200) y `/v1/auth/session` sin cookie (401, para ver que el control de acceso está activo).
+
+Si el paso 4 o el 5 fallan, **el despliegue ya ocurrió**: la ejecución queda en rojo y alguien decide si hace la reversa (ver «Reversa»). Si el paso 4 se agota con «una versión que no informa su commit», revisa que `RENDER_GIT_COMMIT` exista en el servicio. El flujo tiene un límite de 30 minutos (la meta de RNF-009).
+
+Con la semilla: «Run workflow» con `cargar_semilla` encendido. Se aprueba igual y es idempotente (ver el paso 3).
 
 ### 7. Antes de cada demostración
 
@@ -166,6 +176,22 @@ Es el riesgo más serio del reenvío (ADR-012): con `TRUST_PROXY` mal puesto, to
 1. Desde un equipo, haz 21 intentos de inicio de sesión fallidos con correos distintos a `/v1/auth/login`: el 21 debe responder 429.
 2. Mientras tanto, desde otra red (por ejemplo, un celular con datos), inicia sesión con una cuenta de prueba: debe entrar (no 429).
 3. Si el celular también recibe 429, la API ve la IP del proxy: cambia `TRUST_PROXY` (prueba 1 o 3) y repite. `SUPUESTO:` 2 es el valor correcto (Vercel y Render); la prueba `src/app.setup.spec.ts` demuestra el comportamiento con esa cadena, pero solo este paso lo confirma contra la infraestructura real.
+
+## Evidencia de los despliegues (#23)
+
+Criterio de #23: 3 despliegues consecutivos correctos, sin pasos manuales aparte de la aprobación. Los tres últimos con un merge de `dev` a `main`, todos con éxito (la columna «Trabajo» es de la aprobación al fin del trabajo; la espera de la aprobación depende de la persona):
+
+| # | Versión | Merge a `main` | Ejecución | Creada (UTC) | Trabajo | Del merge al fin | Resultado |
+|---|---|---|---|---|---|---|---|
+| 1 | v0.9.0 | PR #253, `01d2b20` | [45540456765](https://github.com/JuanJo0775/Sistema_valora_B/actions/runs/45540456765) | 2026-11-25 03:30:33 | 40 s | 46 s | éxito |
+| 2 | v0.10.0 | PR #273, `f3b2adf` | [45866679636](https://github.com/JuanJo0775/Sistema_valora_B/actions/runs/45866679636) | 2026-11-26 17:18:57 | 13 s | 19 s | éxito; migraciones 0051 y 0052 |
+| 3 | v0.11.0 | PR #284, `fc1c31a` | [46013711669](https://github.com/JuanJo0775/Sistema_valora_B/actions/runs/46013711669) | 2026-11-27 14:11:47 | 31 s | 36 s | éxito; migración 0053 |
+
+Entre medias hubo ejecuciones manuales («Run workflow»): la 45868031170 (26-nov, éxito) y la 46015106809 (27-nov, éxito, unos 8 minutos, la de la carga de la semilla). La 46015029837 (27-nov 14:20) terminó en `failure` sin dejar registro; no se conoce la causa (suele ocurrir cuando se rechaza o se cancela la aprobación) y no fue el despliegue de un release.
+
+**Lo que esta evidencia no mide, y por qué.** Hasta v0.11.0 el flujo daba el despliegue por terminado en cuanto `/v1/health` respondía, y en ese momento Render atendía todavía la versión **anterior**: la imagen nueva se construye después, unos minutos más. Por eso los 13 a 40 segundos de la tabla son la duración de migrar, disparar y ver un health, **no** del tiempo hasta tener el código nuevo activo. Los pasos «Esperar a que Render sirva esta versión» y «Prueba de humo de solo lectura» entran con v0.12.0; el primer despliegue con ellos mide por fin el tiempo completo, que debe ser de 30 minutos o menos.
+
+**Prueba de humo manual del 27-nov-2026** (después del despliegue de v0.11.0, mismas comprobaciones que el flujo): 8 de 8 correctas, por `valora-api-faau.onrender.com` y por `www.valoora.app`. Además, `GET /v1/commerce/me/dispute` (una ruta que solo existe desde v0.11.0) respondió 401 y una ruta inventada 404, lo que confirmó que la versión nueva estaba en producción.
 
 ## Versionado al pasar de dev a main
 

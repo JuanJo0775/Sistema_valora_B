@@ -36,7 +36,9 @@ paths:
       summary: La API está en marcha
       description: >-
         Pública y sin cuenta. Sirve para comprobar que el proceso responde (despliegue y monitoreo,
-        RNF-011). No revisa la base de datos (#25).
+        RNF-011). No revisa la base de datos (#25). Cuando el servicio corre en Render dice también
+        qué versión sirve (commit), para que el despliegue (#23) compruebe que la nueva ya está activa
+        y no la anterior.
       responses:
         '200':
           description: La API responde
@@ -50,6 +52,12 @@ paths:
                 required: [status]
                 properties:
                   status: { type: string, enum: [ok] }
+                  commit:
+                    type: string
+                    pattern: "^[0-9a-f]{7}$"
+                    description: >-
+                      Los primeros 7 caracteres del commit que sirve (RENDER_GIT_COMMIT). No viene si
+                      el servicio no corre en Render, como en local y en las pruebas.
   /products:
     get:
       tags: [Catálogo]
@@ -234,6 +242,14 @@ paths:
             Si es verdadero, solo incluye precios vigentes (excluye los por confirmar y los
             desactualizados).
           schema: { type: boolean, default: false }
+        - name: presentationId
+          in: query
+          description: >-
+            Solo esa presentación del producto (por ejemplo 500 g o 1 kg). Los resultados, isCheapest,
+            savingsPercent y las promociones salen de entre sus precios; el servidor sigue siendo
+            quien decide cuál es el más barato (EC-06). Sin este parámetro se comparan todas. Una
+            presentación que no es del producto responde 404.
+          schema: { type: string, format: uuid }
       responses:
         '200':
           description: Resultados y promociones separadas
@@ -1911,10 +1927,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [decision, note]
+              required: [decision]
               properties:
                 decision: { type: string, enum: [aprobar, descartar, observar_cuentas] }
-                note: { type: string, minLength: 10, maxLength: 500 }
+                note:
+                  type: string
+                  maxLength: 500
+                  description: >-
+                    Motivo. Obligatorio (10 a 500 caracteres) al descartar y al observar cuentas; al
+                    aprobar es opcional. La bitácora guarda quién decidió y cuándo aunque no haya texto.
       responses:
         '204': { description: Decisión registrada }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -2581,6 +2602,73 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '422':
           description: code OWN_ESTABLISHMENT, no se denuncia la tienda propia.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /moderation/merchants:
+    get:
+      tags: [Moderación]
+      operationId: listVerifiedMerchants
+      summary: Comercios verificados (RF-015, H14)
+      description: >-
+        Solo el rol moderador. Los comercios verificados, el más reciente primero, hasta 100; total dice
+        cuántos hay. Hasta ahora moderación solo veía casos (denuncias, disputas y reclamos): con esta
+        lista puede revisar un comercio por iniciativa propia. Datos del comercio que la persona
+        escribió; nunca su cuenta ni su correo (EC-08). Sin caché.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Comercios verificados
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/VerifiedMerchant' }
+                  total: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /moderation/merchants/{establishmentId}/revoke:
+    post:
+      tags: [Moderación]
+      operationId: revokeVerifiedMerchant
+      summary: Revocar un comercio verificado por iniciativa de moderación (RF-015, H14)
+      description: >-
+        Solo el rol moderador. Hace lo mismo que revocar un caso (D3): se retiran los precios oficiales
+        y las promociones del comercio, se cierran los casos de la tienda y la cuenta vuelve a
+        reportante, pero sin esperar una denuncia o una disputa. La nota queda en la bitácora interna y
+        nunca se le muestra al comercio (H15). Solo un comercio verificado: una solicitud preaprobada se
+        decide en la cola de tiendas.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: establishmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [note]
+              properties:
+                note: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '204': { description: Comercio revocado }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: code NOT_FOUND, la tienda no tiene un comercio verificado (también al repetir la revocación).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3530,6 +3618,22 @@ components:
       items:
         type: string
         enum: [precios_oficiales, carga_por_archivo, promociones, avisos_de_precio, datos_de_la_tienda]
+    VerifiedMerchant:
+      type: object
+      additionalProperties: false
+      required: [establishment, responsibleName, nit, phone, verifiedAt]
+      properties:
+        establishment:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        responsibleName: { type: string }
+        nit: { type: [string, 'null'], description: null si el comercio es informal (sin NIT). }
+        phone: { type: string }
+        verifiedAt: { type: [string, 'null'], format: date-time }
     MyDispute:
       type: object
       additionalProperties: false

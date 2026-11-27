@@ -54,6 +54,9 @@ import { DrizzleMerchantAlertEvents } from './infrastructure/drizzle-merchant-al
 import { DrizzleMerchantNotices } from './infrastructure/drizzle-merchant-notices';
 import { MerchantDigestScheduler } from './infrastructure/merchant-digest-scheduler';
 import { MerchantCasesController } from './http/merchant-cases.controller';
+import { MerchantRosterController } from './http/merchant-roster.controller';
+import { RevokeMerchant } from './application/revoke-merchant';
+import { VerifiedMerchants } from './application/verified-merchants';
 import { DrizzleMerchantClaimReviews } from './infrastructure/drizzle-merchant-claim-reviews';
 import { DrizzleMerchantDepartures } from './infrastructure/drizzle-merchant-departures';
 import { DrizzleMerchantRevocations } from './infrastructure/drizzle-merchant-revocations';
@@ -95,6 +98,7 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
     PromotionsController,
     EstablishmentController,
     MerchantCasesController,
+    MerchantRosterController,
     AlertsController,
   ],
   providers: [
@@ -235,6 +239,32 @@ const departurePortsOf = (db: Database, outbox: OutboxPublisher): MerchantDepart
           cases: new DrizzleMerchantCaseRepository(db, outbox),
           claims: new DrizzleMerchantClaimRepository(db, outbox),
           establishments,
+        }),
+    },
+    // H14: los comercios verificados y su revocación por iniciativa de moderación.
+    {
+      provide: VerifiedMerchants,
+      inject: [DATABASE, OutboxPublisher, EstablishmentDetails],
+      useFactory: (
+        db: Database,
+        outbox: OutboxPublisher,
+        establishments: EstablishmentDetails,
+      ): VerifiedMerchants =>
+        new VerifiedMerchants({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          establishments,
+        }),
+    },
+    {
+      provide: RevokeMerchant,
+      inject: [DATABASE, OutboxPublisher],
+      useFactory: (db: Database, outbox: OutboxPublisher): RevokeMerchant =>
+        new RevokeMerchant({
+          claims: new DrizzleMerchantClaimRepository(db, outbox),
+          prices: new DrizzleOfficialPriceRepository(db, outbox),
+          promotions: new DrizzlePromotionRepository(db, outbox),
+          revocations: new DrizzleMerchantRevocations(db, outbox),
+          clock: { now: () => new Date() },
         }),
     },
     {

@@ -274,6 +274,10 @@ Se configuran en **Settings → Secrets and variables → Actions** (solo quien 
 
 La base de pruebas de la CI usa una contraseña distinta en cada corrida, generada en el workflow (#24).
 
+## Despliegue a producción
+
+Un merge de `dev` a `main` lanza el flujo `Despliegue` (ADR-012, #23). Lo único manual es **aprobar el entorno `produccion`** en GitHub: el flujo aplica las migraciones en Neon, dispara Render, espera a que Render sirva el commit de esa ejecución (`GET /v1/health` informa su `commit`) y corre una prueba de humo de solo lectura sobre la dirección de Render y la pública. Con «Run workflow» y `cargar_semilla` también carga la semilla. El procedimiento, las variables, la reversa y la evidencia de los despliegues están en [`docs/despliegue.md`](docs/despliegue.md).
+
 ## Comandos
 
 | Comando                             | Qué hace                                                                                      |

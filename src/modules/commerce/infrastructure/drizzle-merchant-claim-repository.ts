@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { DomainEvent, OutboxPublisher } from '../../../shared/events';
 import {
@@ -100,6 +100,19 @@ export class DrizzleMerchantClaimRepository
       .from(merchantClaims)
       .where(eq(merchantClaims.establishmentId, establishmentId));
     return row ? toClaim(row) : null;
+  }
+
+  // H14: los comercios verificados, el más reciente primero, y cuántos hay en total.
+  async listVerified(limit: number): Promise<{ items: MerchantClaim[]; total: number }> {
+    const verified = eq(merchantClaims.status, 'verificado');
+    const rows = await this.db
+      .select()
+      .from(merchantClaims)
+      .where(verified)
+      .orderBy(desc(merchantClaims.verifiedAt))
+      .limit(limit);
+    const [totals] = await this.db.select({ total: count() }).from(merchantClaims).where(verified);
+    return { items: rows.map(toClaim), total: totals?.total ?? 0 };
   }
 
   async pendingFor(establishmentId: string): Promise<MerchantClaim | null> {

@@ -91,7 +91,7 @@ export class ModerationController {
       await this.decider.execute({
         reportId: itemId,
         decision: body.decision,
-        note: body.note,
+        ...(body.note === undefined ? {} : { note: body.note }),
         moderatorKey: reporterKey,
       });
     } catch (error) {
