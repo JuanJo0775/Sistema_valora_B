@@ -91,7 +91,7 @@ pnpm seed:imagenes
 - Consulta con un nombre genérico del proyecto, sin correo ni datos de nadie, y con una pausa entre consultas (Open Food Facts pide no pasar de 100 por minuto). No usa la base ni corre en el servidor. Nunca toma fotos de sitios de cadenas.
 - Después se revisa el CSV y se corre `pnpm db:seed` para cargarlas.
 
-Hoy la semilla tiene 150 productos (175 presentaciones), todos verificados. El 21-nov-2026 (#193) se agregaron 79 presentaciones: 31 de la página de D1 (empacados) y 48 frescos de la página de Olímpica, revisadas y firmadas por el equipo. Las de marca comercial traen el código de barras de la ficha; las genéricas (sin marca) no, porque el código de una marca propia de cadena no identifica el producto en otras tiendas.
+Hoy la semilla tiene 150 productos (175 presentaciones), todos verificados. Desde el 26-nov-2026 (#118) 140 de los 150 productos traen alias, propuestos con nombres de búsqueda comunes en Colombia: el equipo los ajusta a como se dice en Armenia. El 21-nov-2026 (#193) se agregaron 79 presentaciones: 31 de la página de D1 (empacados) y 48 frescos de la página de Olímpica, revisadas y firmadas por el equipo. Las de marca comercial traen el código de barras de la ficha; las genéricas (sin marca) no, porque el código de una marca propia de cadena no identifica el producto en otras tiendas.
 
 ### Qué revisar en la tienda
 
