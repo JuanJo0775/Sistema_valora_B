@@ -113,9 +113,7 @@ export class MerchantController {
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(SessionGuard)
   @Roles('reportante', 'comercio')
-  async myDispute(
-    @CurrentSession() session: AuthenticatedSession,
-  ): Promise<{
+  async myDispute(@CurrentSession() session: AuthenticatedSession): Promise<{
     dispute: { establishment: MyDisputeView['establishment']; requestedAt: string } | null;
   }> {
     const dispute = await this.myDisputes.find(session.accountId);
