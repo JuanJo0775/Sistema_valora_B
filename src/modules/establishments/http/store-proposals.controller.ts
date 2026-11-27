@@ -48,6 +48,7 @@ interface StoreProposalResponse {
   lng: number;
   municipality: string;
   outOfZone: boolean;
+  suggestedMunicipality?: string;
   possibleDuplicates: { id: string; name: string; distanceM: number }[];
   createdAt: string;
   claim?: ProposalClaim;
