@@ -2,51 +2,48 @@
 
 API y lógica de negocio de **Valora**, plataforma colaborativa para comparar precios entre tiendas de barrio, minimercados y supermercados de Armenia y el Quindío.
 
+**En producción: <https://www.valoora.app>** · estado de la API: <https://www.valoora.app/v1/health>
+
 > Este repositorio contiene el backend. El frontend vive en [Sistema_valora_F](https://github.com/JuanJo0775/Sistema_valora_F).
 
 ## Estado
 
-Hito **H2-01** (esqueleto del núcleo), paso 7 en curso.
+Actualizado el 27 de noviembre de 2026. La API está **desplegada y en uso**; en `main` está la versión con etiqueta `v0.11.0`.
 
-| Listo en `dev`                      | Qué hay                                                                                                                                                                |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Configuración y calidad (#10)       | NestJS, TypeScript estricto, ESLint, Prettier, Jest, reglas de dependencia y CI                                                                                        |
-| Reglas del dominio (#11, #18)       | Precio por unidad base (RF-004) y vigencia por TTL (RF-010)                                                                                                            |
-| Infraestructura compartida (#12)    | Formato de error `{ code, message }`, PostgreSQL + PostGIS con Drizzle y migraciones, bus de eventos con outbox                                                        |
-| Catálogo (#49, #52)                 | Módulo `catalog` con categorías, `GET /v1/products/{productId}` y búsqueda por texto o código de barras en `GET /v1/products`                                          |
-| Establecimientos (#50)              | Módulo `establishments` con ubicación PostGIS y `GET /v1/establishments/nearby`                                                                                        |
-| Semilla (#51)                       | `pnpm db:seed`: tiendas de OpenStreetMap y productos verificados por el equipo, desde `seed/`                                                                          |
-| Registro de precios (#14)           | Módulos `pricing` y `comparison`: `POST /v1/reports` con `Idempotency-Key` y precio vigente en `price_current` por el outbox                                           |
-| Orden neutral (#21)                 | Regla `rankOffers` del dominio: orden por precio por unidad, distancia o fecha, con desempate determinista (EC-06)                                                     |
-| Comparación (#15)                   | `GET /v1/products/{productId}/comparison`: precios vigentes en las tiendas del radio, en orden neutral y sin caché (EC-08)                                             |
-| Sesión (#16, #62, #133)             | Módulo `identity`: registro con nombre visible, sesión con cookie, CSRF, roles y límites; `POST /v1/reports` exige sesión de reportante                                |
-| Score de confiabilidad (#19)        | Regla del dominio: corroboración, reputación del reportante y decaimiento por edad, con niveles alta, media y baja (RF-011)                                            |
-| Precios anómalos (#20)              | Regla del dominio: precio fuera del 40 % de la mediana y grupos coordinados de cuentas nuevas (RF-012)                                                                 |
-| Confiabilidad (#31, parte 1)        | Módulo `reliability`: evalúa cada reporte, guarda reputación y la comparación muestra `reliability` y `confirmations`                                                  |
-| Detección medida (#67)              | Conjunto etiquetado de 100 reportes: 93 % de anómalos detectados, 1 falso positivo; `pnpm reliability:evaluate`                                                        |
-| Moderación (#32)                    | Marcar un precio dudoso, cola por gravedad para moderadores y decisiones con motivo en una bitácora que no se puede modificar                                          |
-| Roles y suspensión (#33)            | Suspensión de 7 días por `observar_cuentas` o 3 descartes seguidos; matriz de autorización de 85 casos y guardián de rutas                                             |
-| Cambio de rol (#73)                 | `POST /v1/moderation/roles` y `pnpm identity:set-role`, con bitácora inmutable; un moderador no decide sus propios reportes                                            |
-| Apelación (#71)                     | El autor apela un descarte una vez, en 7 días, y ve el estado de su reporte; una cuenta suspendida entra con sesión limitada                                           |
-| Mis aportes (#76)                   | `GET /v1/me/reports`: los aportes de la cuenta con su estado, el más reciente primero, paginados con `before`                                                          |
-| Validaciones y ráfagas (#29)        | Observaciones de hasta 24 h, un reporte por presentación y tienda por hora, y 20 por hora por cuenta (lo demás, a la cola)                                             |
-| Bases de unidad (#59)               | Un producto no mezcla bases (100 g, 100 ml o unidad): el catálogo lo rechaza y `pnpm db:seed` nombra la fila                                                           |
-| Precios por tienda (#28)            | `GET /v1/establishments/{establishmentId}/prices`: precios de una tienda con vigencia y confiabilidad, caché de 60 s y ETag                                            |
-| Canasta básica (B#120)              | `GET /v1/featured-products`: los productos con más tiendas con precio vigente en un municipio o cerca de ti, su precio más bajo y el ahorro frente al más caro (B#128) |
-| Precios por tienda en listas (#131) | `GET /v1/establishments` y `/nearby`: cada tienda con `priceCount`, cuántos precios vigentes tiene (para las tarjetas del mapa)                                        |
-| Privacidad (#36)                    | Pruebas guardianas del esquema y de las respuestas públicas, e informe en `docs/calidad/privacidad-ec08.md` (EC-08)                                                    |
-| Sincronización (#30)                | 50 reportes de la cola sin pérdida ni duplicados (p95 ~1 s); los límites cuentan por la hora de observación                                                            |
-| Propuestas de tiendas (#27)         | Un reportante propone una tienda; el moderador la aprueba, la fusiona o la rechaza, con duplicados sugeridos a 50 m                                                    |
-| Filtro por municipio (#106)         | La comparación filtra por municipio del Quindío, también sin la ubicación del usuario; cada tienda dice su municipio                                                   |
-| Prueba de contrato (#25)            | `test/contract/`: las rutas y las respuestas reales se validan contra `docs/openapi.yaml` en modo estricto (PR-09)                                                     |
-| Exactitud (#93)                     | `pnpm quality:accuracy`: compara precios observados por el equipo con los publicados y escribe el informe PR-22                                                        |
-| Referencia SIPSA (#34)              | `seed/sipsa.csv`: precio mayorista por kilo, aparte en la comparación y nunca como precio de una tienda (RF-014)                                                       |
-| Fotos de Open Food Facts (#119)     | `pnpm seed:imagenes`: el enlace de la foto frontal por código de barras, con su atribución, en `seed/productos.csv` (ADR-020)                                          |
-| Fotos de productos (#88)            | El moderador sube la foto (hasta 2 MB); se guarda en WebP de 800 px sin metadatos y se sirve en `/media` (ADR-020)                                                     |
-| Historial de precios (#83)          | `GET /v1/products/{productId}/history`: 30 días por presentación y por día; `pnpm comparison:rebuild-history`                                                          |
-| Propuestas de productos (#26)       | Un reportante propone un producto; el moderador lo aprueba, lo fusiona (queda como alias) o lo rechaza; alias e imagen                                                 |
+| Pieza             | Dónde                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| Dirección pública | <https://www.valoora.app> (`valoora.app` redirige a `www`). Vercel sirve la PWA y reenvía `/v1/*` a la API  |
+| API               | Render, con la imagen del `Dockerfile` (`render.yaml`): <https://valora-api-faau.onrender.com/v1/health>    |
+| Base de datos     | Neon, PostgreSQL + PostGIS (`infra/neon/`, Terraform)                                                       |
+| Fotos             | Supabase Storage (ADR-022)                                                                                  |
+| Correo            | Resend, con el dominio `valoora.app` verificado (ADR-029)                                                   |
+| Inicio de sesión  | Correo y contraseña, o Google (activo en producción)                                                        |
+| Despliegue        | Merge de `dev` a `main`, con aprobación del entorno `produccion` ([docs/despliegue.md](docs/despliegue.md)) |
 
-Siguiente: prueba de extremo a extremo (paso 9, #17). Docker **no** hace falta para desarrollar: la CI levanta un contenedor de PostgreSQL + PostGIS para las pruebas y el despliegue usará una imagen Docker en Render, con la base en Neon y la PWA en Vercel (ADR-012).
+En `dev` y todavía sin publicar: `/v1/health` informa el `commit` que sirve, y el flujo de despliegue espera esa versión y corre una prueba de humo de solo lectura.
+
+### Qué hace hoy
+
+| Área (módulo)                                    | Qué hay                                                                                                                                                                                               |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cuentas (`identity`)                             | Registro, sesión de servidor con CSRF, roles y límites; verificación de correo y bienvenida; inicio con Google; contraseña olvidada; cambio de nombre; eliminación de la cuenta con 10 días de gracia |
+| Catálogo y tiendas (`catalog`, `establishments`) | Categorías, búsqueda por texto, alias o código de barras, fotos, tiendas con PostGIS por cercanía y municipio, y propuestas de productos y tiendas                                                    |
+| Precios y comparación (`pricing`, `comparison`)  | Registro idempotente (apto para la cola sin conexión), comparación con orden neutral, vigencia, historial de 30 días, productos destacados y referencia mayorista SIPSA                               |
+| Confiabilidad (`reliability`)                    | Puntaje, precios anómalos y plausibilidad, reputación, moderación con bitácora inmutable, apelación y suspensión                                                                                      |
+| Comercios (`commerce`)                           | Verificación de la tienda, precios oficiales (uno a uno o por archivo), promociones aparte del orden, disputas, revocación y salida del comercio                                                      |
+| Avisos (`notifications`)                         | Contadores de pendientes para moderación y comercio, y Web Push (probado en iPhone con la PWA instalada y en Android)                                                                                 |
+
+El contrato está en [`docs/openapi.yaml`](docs/openapi.yaml) y las decisiones, en [`docs/DECISIONS.md`](docs/DECISIONS.md).
+
+### Pendiente y límites conocidos
+
+- **Carga (EC-04, #35):** no se cumple en el plan gratuito. Con 500 usuarios, p95 de 12,6 s y 71 % de errores ([evidencia del 17-nov](docs/evidencia/EC-04.md)). No repetir la prueba larga contra producción.
+- **Datos (#118):** la semilla tiene 150 productos (175 presentaciones); falta verificar en tienda buena parte de ellos y de sus códigos de barras.
+- **Avisos (EC-09):** la latencia p95 no está medida ([evidencia](docs/decisiones/avisos/evidencia-push.md)).
+- **Despliegue (#23):** hay tres despliegues correctos registrados; falta medir el tiempo completo hasta que el código nuevo queda activo, que llega con la próxima versión.
+- **ADR «Propuestos»:** 023 a 028 y 036 a 042 esperan aceptación del equipo, aunque la mayoría ya está construida.
+- **Precios en línea:** apagados. La integración con Olímpica se cerró por sus términos de uso (ADR-041).
+- **Plan gratuito de Render:** el servicio se duerme. `keepalive-api.yml` lo mantiene despierto entre las 07:00 y las 23:00 de Colombia; fuera de ese horario, la primera petición tarda cerca de un minuto.
 
 ## Primeros pasos (desde cero)
 
@@ -178,7 +175,7 @@ El cambio queda en la bitácora `identity.role_changes` como hecho por el sistem
 
 ### Fotos de productos
 
-Las fotos que sube un moderador (`PUT /v1/moderation/products/{productId}/image`, ADR-020) se guardan en la carpeta `MEDIA_DIR` (por defecto `media/`, fuera de Git) y la API las sirve en `MEDIA_PUBLIC_URL`. Agrega las dos variables a tu `.env` (están en `.env.example`). En Render el disco se borra en cada despliegue (ADR-012): la carpeta se cambiará por un almacenamiento persistente, todavía sin decidir.
+Las fotos que sube un moderador (`PUT /v1/moderation/products/{productId}/image`, ADR-020) se guardan en la carpeta `MEDIA_DIR` (por defecto `media/`, fuera de Git) y la API las sirve en `MEDIA_PUBLIC_URL`. Agrega las dos variables a tu `.env` (están en `.env.example`). En producción van a Supabase Storage (ADR-022, `SUPABASE_URL` y `SUPABASE_SECRET_KEY`), porque Render borra el disco en cada despliegue; sin esas variables se usa la carpeta local.
 
 ### Llenar el historial de precios
 
@@ -334,6 +331,9 @@ src/
   modules/pricing/     Reportes de precio (solo inserción) e idempotencia
   modules/reliability/ Observaciones, reputación, veredicto de anómalos (PriceReported → PriceAssessed) y moderación
   modules/comparison/  Precio vigente (price_current), actualizado por PriceAssessed y PriceWithdrawn, y la consulta de comparación
+  modules/commerce/    Comercios: verificación de la tienda, precios oficiales y promociones
+  modules/notifications/ Avisos Web Push a moderación y comercio, alimentados por el outbox
+  moderation/          Resumen de pendientes del panel (une las colas de varios módulos)
   seed.ts              Entrada de pnpm db:seed
 test/                  Pruebas de integración (Supertest) y preparación de la base de pruebas
 ```
@@ -349,7 +349,8 @@ Cada módulo de `src/modules/` expone solo su `index.ts`. Los demás módulos se
 - Reglas de confiabilidad, detección de anomalías y moderación.
 - Consulta y comparación de precios.
 - Carga semilla manual y referencias SIPSA.
-- Módulo comercial del Corte 3, según el alcance aprobado.
+- Módulo comercial: comercios verificados, precios oficiales y promociones.
+- Avisos a moderación y comercio.
 
 ## Decisiones y alcance
 
