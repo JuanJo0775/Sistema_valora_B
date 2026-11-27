@@ -9,7 +9,7 @@ import { MERCHANT_VERIFIED } from './claim-establishment';
 import type { MerchantClaim } from './merchant-claims';
 import type { OfficialPriceRepository } from './official-prices';
 import type { PromotionRepository } from './promotions';
-import { withdrawalEvents } from './withdrawals';
+import { revokeClaim } from './revoke-merchant';
 
 export interface DecideMerchantCasePorts {
   cases: Pick<MerchantCaseRepository, 'findPending' | 'close'>;
@@ -48,8 +48,6 @@ export class DecisionNotApplicableError extends DomainError {
   }
 }
 
-export const MERCHANT_REVOKED = 'MerchantRevoked';
-
 // D3 del grill comercial: el moderador revoca el comercio (se retira todo al instante y la cuenta
 // vuelve a reportante) o descarta el caso. H11: en un reclamo pre-aprobado aprueba (verifica y concede
 // el rol) o rechaza.
@@ -57,7 +55,7 @@ export class DecideMerchantCase {
   constructor(private readonly ports: DecideMerchantCasePorts) {}
 
   async execute(request: MerchantCaseDecisionRequest): Promise<void> {
-    const { cases, claims, prices, promotions, revocations, clock } = this.ports;
+    const { cases, claims, clock } = this.ports;
     const merchantCase = await cases.findPending(request.caseId);
     if (!merchantCase) throw new MerchantCaseNotFoundError();
     const isClaim = merchantCase.kind === 'reclamo';
@@ -81,21 +79,7 @@ export class DecideMerchantCase {
       });
       return;
     }
-    const { establishmentId } = merchantCase;
-    const { accountId } = claim;
-    await revocations.revoke(
-      {
-        accountId,
-        establishmentId,
-        reason: request.note,
-        moderatorKey: request.moderatorKey,
-        revokedAt: clock.now(),
-      },
-      [
-        createEvent(MERCHANT_REVOKED, 1, { accountId, establishmentId }),
-        ...(await withdrawalEvents(establishmentId, prices, promotions)),
-      ],
-    );
+    await revokeClaim(this.ports, claim, request.note, request.moderatorKey);
   }
 
   // H11: el moderador aprueba el reclamo (verificado y rol de comercio por MerchantVerified) o lo rechaza.
