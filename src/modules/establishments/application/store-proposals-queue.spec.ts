@@ -82,6 +82,26 @@ describe('propuestas de tiendas pendientes (RF-005 RN1 y RN3, grill de la #27)',
     expect(item).toMatchObject({ outOfZone: true, possibleDuplicates: [] });
   });
 
+  // H16: sin límites oficiales no se rechaza; se avisa al moderador de una ubicación de otro municipio.
+  it('una propuesta con un municipio que no cuadra con su ubicación trae el municipio sugerido', async () => {
+    const { queue } = setup(
+      [proposal({ lat: 4.4500501, lng: -75.7922013, municipality: 'armenia' })],
+      [],
+    );
+
+    const [item] = await queue.list();
+
+    expect(item).toMatchObject({ municipality: 'armenia', suggestedMunicipality: 'la-tebaida' });
+  });
+
+  it('una propuesta fuera del Quindío no sugiere municipio: ya va marcada como fuera de zona', async () => {
+    const { queue } = setup([proposal({ lat: 4.711, lng: -74.0721 })], []);
+
+    const [item] = await queue.list();
+
+    expect(item).not.toHaveProperty('suggestedMunicipality');
+  });
+
   // H5: aprobar una propuesta que nace de un reclamo verifica al solicitante como comerciante.
   it('una propuesta que nace de un reclamo trae al responsable y avisa que aprobarla concede el rol de comercio', async () => {
     const { queue } = setup(

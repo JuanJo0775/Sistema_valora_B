@@ -1,5 +1,5 @@
 import { equivalentStoreNames, isInServiceArea } from '../../../domain/store-proposal';
-import type { Municipality } from '../../../domain/municipality';
+import { type Municipality, suggestedMunicipality } from '../../../domain/municipality';
 import type { EstablishmentRepository, EstablishmentType } from './establishment-repository';
 import type { ProposalClaim, ProposalClaimSource } from './proposal-claims';
 import type { StoreProposalRepository } from './store-proposals';
@@ -24,6 +24,8 @@ export interface StoreProposalItem {
   lng: number;
   municipality: Municipality;
   outOfZone: boolean;
+  // H16: solo si la ubicación parece de otro municipio que el declarado; es un aviso, no un rechazo.
+  suggestedMunicipality?: Municipality;
   possibleDuplicates: { id: string; name: string; distanceM: number }[];
   createdAt: Date;
   // H5: solo si la propuesta nace de un reclamo; aprobarla verifica al solicitante.
@@ -45,12 +47,18 @@ export class StoreProposalsQueue {
     return Promise.all(
       pending.map(async ({ proposerKey: _proposerKey, ...proposal }) => {
         const claim = claims.get(proposal.id);
+        const outOfZone = !isInServiceArea(proposal);
+        // Fuera de la zona el centro más cercano no dice nada: ya va marcada.
+        const suggested = outOfZone
+          ? undefined
+          : suggestedMunicipality(proposal.municipality, proposal);
         const nearby = await this.ports.stores.findWithinMeters(proposal, DUPLICATE_RADIUS_METERS);
         return {
           ...proposal,
           ...(claim ? { claim } : {}),
           // RN1: fuera de la zona no se rechaza sola; el moderador decide.
-          outOfZone: !isInServiceArea(proposal),
+          outOfZone,
+          ...(suggested ? { suggestedMunicipality: suggested } : {}),
           // RN3: se sugiere, nunca se fusiona sola.
           possibleDuplicates: nearby.filter((store) =>
             equivalentStoreNames(store.name, proposal.name),
