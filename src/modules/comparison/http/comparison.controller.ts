@@ -41,7 +41,7 @@ export class ComparisonController {
     @Query() query: ComparisonQueryDto,
     @Res({ passthrough: true }) response: HeaderTarget,
   ): Promise<ComparisonResponse> {
-    const { lat, lng, municipality, radiusKm, sort, onlyCurrent } = query;
+    const { lat, lng, municipality, radiusKm, sort, onlyCurrent, presentationId } = query;
     // Cualquiera de las dos coordenadas basta para tratarla como ubicada: ante la duda, no-store.
     const located = lat !== undefined || lng !== undefined;
     response.setHeader('Cache-Control', located ? NO_STORE : CACHE_PRICES);
@@ -54,6 +54,7 @@ export class ComparisonController {
         radiusKm,
         sort,
         onlyCurrent,
+        ...(presentationId === undefined ? {} : { presentationId }),
       });
       if (!comparison) throw new NotFoundException();
       return toComparisonResponse(comparison);

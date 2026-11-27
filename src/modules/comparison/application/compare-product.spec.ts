@@ -47,12 +47,7 @@ function setup({
 }: Fixture = {}) {
   return new CompareProduct({
     products: {
-      find: (id) =>
-        Promise.resolve(
-          id === productId
-            ? { id, isFresh, presentations }
-            : null,
-        ),
+      find: (id) => Promise.resolve(id === productId ? { id, isFresh, presentations } : null),
     },
     stores: {
       find: ({ ids, municipality }) =>
@@ -379,9 +374,7 @@ describe('comparar los precios de un producto', () => {
     });
 
     it('una presentación que no es del producto no tiene comparación', async () => {
-      await expect(
-        setup(fixture).execute(input({ presentationId: 'p-otra' })),
-      ).resolves.toBeNull();
+      await expect(setup(fixture).execute(input({ presentationId: 'p-otra' }))).resolves.toBeNull();
     });
 
     it('las promociones también son solo de la presentación pedida', async () => {
