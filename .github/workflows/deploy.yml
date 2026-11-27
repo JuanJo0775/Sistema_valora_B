@@ -28,7 +28,8 @@ jobs:
   desplegar:
     name: Migrar y desplegar
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 30 minutos es la meta de RNF-009: migrar, construir en Render, verificar la versión y la prueba de humo.
+    timeout-minutes: 30
     # Entorno con aprobación manual: se configura en Settings > Environments (docs/despliegue.md).
     environment: produccion
     steps:
@@ -114,3 +115,59 @@ jobs:
           exit 1
         env:
           API_URL: ${{ vars.API_URL }}
+
+      # El paso anterior se cumple apenas responde la versión ANTERIOR: Render sigue construyendo la
+      # imagen nueva unos minutos. /v1/health informa el commit que sirve (#23); se espera a ver el de
+      # esta ejecución para saber que el código nuevo ya está activo.
+      - name: Esperar a que Render sirva esta versión
+        run: |
+          esperado="${GITHUB_SHA::7}"
+          for intento in $(seq 1 40); do
+            actual=$(curl --silent --max-time 20 "$API_URL/v1/health" | sed -n 's/.*"commit":"\([0-9a-f]*\)".*/\1/p')
+            if [ "$actual" = "$esperado" ]; then
+              echo "Render sirve la versión $actual (intento $intento)."
+              exit 0
+            fi
+            echo "Intento $intento: Render sirve ${actual:-una versión que no informa su commit}, se espera $esperado."
+            sleep 20
+          done
+          echo "Render no sirvió la versión $esperado en unos 14 minutos. Revisa el despliegue en Render y que RENDER_GIT_COMMIT exista." >&2
+          exit 1
+        env:
+          API_URL: ${{ vars.API_URL }}
+
+      # Prueba de humo de solo lectura (#23): solo GET, sin cuenta y sin escribir nada, por la dirección de
+      # Render y por la pública (Vercel). Si falla, el despliegue ya ocurrió: la ejecución queda en rojo
+      # para que alguien decida si hace la reversa (docs/despliegue.md).
+      - name: Prueba de humo de solo lectura
+        run: |
+          fallos=0
+          comprobar() {
+            # $1 = dirección base, $2 = ruta, $3 = estado esperado, $4 = texto que debe traer (opcional)
+            cuerpo=$(mktemp)
+            estado=$(curl --silent --max-time 30 --output "$cuerpo" --write-out '%{http_code}' "$1$2" || true)
+            if [ "$estado" != "$3" ]; then
+              echo "FALLA $1$2: estado $estado, se esperaba $3" >&2
+              fallos=$((fallos + 1))
+            elif [ -n "${4:-}" ] && ! grep -q "$4" "$cuerpo"; then
+              echo "FALLA $1$2: la respuesta no trae $4" >&2
+              fallos=$((fallos + 1))
+            else
+              echo "OK $1$2 ($estado)"
+            fi
+            rm -f "$cuerpo"
+          }
+          for base in "$API_URL" "$PUBLIC_URL"; do
+            comprobar "$base" /v1/health 200 '"status":"ok"'
+            comprobar "$base" /v1/categories 200 '"items"'
+            comprobar "$base" '/v1/establishments/nearby?lat=4.5339&lng=-75.6811' 200 '"items"'
+            comprobar "$base" /v1/auth/session 401 '"code"'
+          done
+          if [ "$fallos" -ne 0 ]; then
+            echo "La prueba de humo encontró $fallos fallas." >&2
+            exit 1
+          fi
+          echo "Prueba de humo correcta."
+        env:
+          API_URL: ${{ vars.API_URL }}
+          PUBLIC_URL: ${{ vars.PUBLIC_URL || 'https://www.valoora.app' }}
