@@ -37,10 +37,17 @@ describe('correo de bienvenida (ADR-036)', () => {
     expect(html).toContain('#f26a1b');
   });
 
+  it('lleva el logo de Valora y ninguna otra imagen', () => {
+    const { html } = build('Ana');
+    expect(html).toContain(`<img src="${base}/logo-horizontal-claro.png"`);
+    expect(html.match(/<img[\s>]/g)).toHaveLength(1);
+  });
+
   it('no lleva enlaces de baja ni de seguimiento ni imágenes externas', () => {
     const { html, text } = build('Ana');
     expect(`${html}${text}`).not.toMatch(/unsubscribe|darse de baja|utm_/i);
-    expect(html).not.toContain('<img');
+    const srcs = [...html.matchAll(/src="([^"]+)"/g)].map((match) => match[1]);
+    expect(srcs.every((src) => src?.startsWith(base))).toBe(true);
     const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
     expect(hrefs.every((href) => href?.startsWith(base))).toBe(true);
   });

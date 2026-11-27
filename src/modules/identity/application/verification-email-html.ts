@@ -27,7 +27,7 @@ export function verificationEmailHtml(content: VerificationEmailContent): string
 <body style="margin:0;padding:0;background:#f6f5f3;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f3;padding:32px 16px;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border:1px solid #ece9e5;border-radius:14px;font-family:Arial,Helvetica,sans-serif;color:#17140f;">
-<tr><td style="padding:28px 32px 0 32px;"><img src="${base}/icon-192.png" width="40" height="40" alt="Valora" style="display:block;border:0;border-radius:10px;"></td></tr>
+<tr><td style="padding:28px 32px 0 32px;"><img src="${base}/logo-horizontal-claro.png" width="120" height="40" alt="Valora" style="display:block;border:0;width:120px;height:40px;"></td></tr>
 <tr><td style="padding:20px 32px 0 32px;">
 <h1 style="margin:0;font-size:22px;line-height:1.3;font-weight:700;color:#17140f;">Confirma tu correo</h1>
 <p style="margin:12px 0 0 0;font-size:16px;line-height:1.5;color:#5e5850;">Hola. Para registrar precios en Valora necesitamos comprobar que este correo es tuyo.</p>

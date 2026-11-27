@@ -118,7 +118,7 @@ describe('enviar el correo de verificación (ADR-029)', () => {
     expect(html).toContain(`<a href="${link}"`);
     expect(html).toContain('Verificar mi correo');
     expect(html).toContain('Confirma tu correo');
-    expect(html).toContain('<img src="https://valora.example/icon-192.png"');
+    expect(html).toContain('<img src="https://valora.example/logo-horizontal-claro.png"');
     expect(html).toContain('24 horas');
     expect(html).not.toContain('ana@correo.com');
   });
