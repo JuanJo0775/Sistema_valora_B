@@ -6,7 +6,16 @@ import { CACHE_PRICES } from '../../src/shared/http/cache-control';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { ImportCatalog } from '../../src/modules/catalog';
-import { priceCurrent } from '../../src/modules/comparison/infrastructure/schema';
+import {
+  officialPrices,
+  priceCurrent,
+  promotions,
+} from '../../src/modules/comparison/infrastructure/schema';
+import {
+  onMerchantGone,
+  onMerchantVerified,
+} from '../../src/modules/comparison/infrastructure/verified-merchant-handlers';
+import { createEvent } from '../../src/shared/events';
 import { ImportEstablishments } from '../../src/modules/establishments';
 import { DATABASE, type Database } from '../../src/shared/database/database.module';
 
@@ -30,7 +39,7 @@ describe('GET /v1/establishments/{establishmentId}/prices (RF-008, #28)', () => 
     server = app.getHttpServer() as Parameters<typeof request>[0];
     db = app.get<Database>(DATABASE);
     await db.execute(
-      sql`truncate comparison.price_current, reliability.observations, catalog.presentations, catalog.products, establishments.establishments`,
+      sql`truncate comparison.price_current, comparison.official_prices, comparison.promotions, comparison.verified_merchants, reliability.observations, catalog.presentations, catalog.products, establishments.establishments`,
     );
     await app.get(ImportCatalog).save({
       id: productId,
@@ -78,6 +87,8 @@ describe('GET /v1/establishments/{establishmentId}/prices (RF-008, #28)', () => 
         lng: -75.6811,
         municipality: 'armenia',
       },
+      verifiedMerchant: false,
+      promotions: [],
       prices: [
         {
           productId,
@@ -95,6 +106,59 @@ describe('GET /v1/establishments/{establishmentId}/prices (RF-008, #28)', () => 
         },
       ],
     });
+  });
+
+  it('dice que la tienda tiene un comercio verificado mientras no se revoque ni se deje (H6)', async () => {
+    const accountId = 'ec444444-4444-4444-8444-444444444444';
+    const event = (type: string) => createEvent(type, 1, { accountId, establishmentId: storeId });
+    await db.transaction((tx) => onMerchantVerified(event('MerchantVerified'), tx));
+    expect((await prices().expect(200)).body).toMatchObject({ verifiedMerchant: true });
+    // La respuesta pública nunca lleva la cuenta (EC-08).
+    expect(JSON.stringify((await prices().expect(200)).body)).not.toContain(accountId);
+
+    await db.transaction((tx) => onMerchantGone(event('MerchantRevoked'), tx));
+    expect((await prices().expect(200)).body).toMatchObject({ verifiedMerchant: false });
+  });
+
+  it('muestra la promoción activa aparte de los precios, con el «antes» y el precio con ella (H6)', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const date = (offsetDays: number) =>
+      new Date(Date.now() + offsetDays * day).toISOString().slice(0, 10);
+    await db.insert(officialPrices).values({
+      presentationId,
+      establishmentId: storeId,
+      priceCop: 2600,
+      confirmedAt: new Date(),
+      priceChangedAt: new Date(),
+    });
+    await db.insert(promotions).values({
+      id: 'ec555555-5555-4555-8555-555555555555',
+      establishmentId: storeId,
+      presentationId,
+      offer: { type: 'descuento_porcentual', percent: 10 },
+      conditions: { whileStocksLast: false, paymentMethod: 'cualquiera' },
+      validFrom: date(-3),
+      validUntil: date(3),
+    });
+    try {
+      const body = (await prices().expect(200)).body as { promotions: unknown[] };
+      expect(body.promotions).toEqual([
+        {
+          id: 'ec555555-5555-4555-8555-555555555555',
+          presentationId,
+          productName: 'Arroz Diana · 500 g',
+          type: 'descuento_porcentual',
+          percent: 10,
+          conditions: { whileStocksLast: false, paymentMethod: 'cualquiera' },
+          validFrom: date(-3),
+          validUntil: date(3),
+          officialPriceCop: 2600,
+          promotedPriceCop: 2340,
+        },
+      ]);
+    } finally {
+      await db.execute(sql`truncate comparison.official_prices, comparison.promotions`);
+    }
   });
 
   it('con If-None-Match igual al ETag responde 304', async () => {

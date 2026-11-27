@@ -167,7 +167,9 @@ describe('precios vigentes de una tienda (RF-008, grill de la #28)', () => {
     await expect(storePrices.of('no-existe', { onlyCurrent: false })).resolves.toBeNull();
     await expect(storePrices.of(store.id, { onlyCurrent: false })).resolves.toEqual({
       establishment: store,
+      verifiedMerchant: false,
       prices: [],
+      promotions: [],
     });
   });
 

@@ -97,3 +97,9 @@ export const promotions = comparisonSchema.table(
   },
   (table) => [index('promotions_presentation_idx').on(table.presentationId)],
 );
+
+// H6: copia de qué tiendas tienen un comercio verificado, llenada con MerchantVerified y vaciada con
+// MerchantRevoked y MerchantLeft. El núcleo no consulta a commerce (EC-05).
+export const verifiedMerchants = comparisonSchema.table('verified_merchants', {
+  establishmentId: uuid('establishment_id').primaryKey(),
+});
