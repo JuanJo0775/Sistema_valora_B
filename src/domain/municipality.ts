@@ -1,3 +1,5 @@
+import { distanceMeters } from './distance';
+
 // Grill de la #106, pregunta 1 (RF-009 RN5): los 12 municipios del Quindío. El código no lleva tildes
 // ni mayúsculas para usarlo en la URL; el nombre es el que se muestra.
 export const MUNICIPALITIES = [
@@ -43,16 +45,6 @@ const CENTERS: Record<Municipality, { lat: number; lng: number }> = {
 // de distancia no se cuestiona lo que escribió quien propone.
 const BORDER_MARGIN_KM = 3;
 
-const EARTH_RADIUS_KM = 6371;
-
-function kmBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const rad = (degrees: number) => (degrees * Math.PI) / 180;
-  const h =
-    Math.sin(rad(b.lat - a.lat) / 2) ** 2 +
-    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
-}
-
 // El municipio al que parece pertenecer la ubicación, si no es el que se declaró y la diferencia no se
 // explica por estar en una frontera. undefined: la ubicación cuadra con lo declarado.
 export function suggestedMunicipality(
@@ -61,7 +53,7 @@ export function suggestedMunicipality(
 ): Municipality | undefined {
   const distances = MUNICIPALITIES.map(({ code }) => ({
     code,
-    km: kmBetween(point, CENTERS[code]),
+    km: distanceMeters(point, CENTERS[code]) / 1000,
   })).sort((a, b) => a.km - b.km);
   const nearest = distances[0];
   const declaredKm = distances.find(({ code }) => code === declared)?.km;
