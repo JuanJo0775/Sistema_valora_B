@@ -73,7 +73,7 @@ export interface CompareProductPorts {
   // #204: la copia del precio oficial de commerce.
   officials: Pick<OfficialPriceCopies, 'findByPresentations'>;
   // #206: la copia de las promociones de commerce.
-  promotionCopies: PromotionCopies;
+  promotionCopies: Pick<PromotionCopies, 'findByPresentations'>;
   reliability: PricesReliability;
   // Grill de la #34: la referencia SIPSA más reciente del producto, por la consulta pública de catalog.
   references: { latestFor(productId: string): Promise<WholesaleReferenceView | null> };

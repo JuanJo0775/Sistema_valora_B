@@ -3,6 +3,7 @@ import type { PresentationForPricing } from '../../catalog';
 import type { PriceRef, PriceReliability } from '../../reliability';
 import type { CurrentPrice } from './current-prices';
 import type { OfficialPriceCopy } from './official-price-copies';
+import type { PromotionCopy } from './promotion-copies';
 import { StorePrices } from './store-prices';
 
 const now = new Date('2026-11-15T14:00:00Z');
@@ -52,6 +53,7 @@ function setup(
   contact: StoreContact = {},
   officials: OfficialPriceCopy[] = [],
   reports: { reportId: string; priceCop: number; hoursAgo: number }[] = [],
+  extras: { verified?: boolean; promotions?: PromotionCopy[] } = {},
 ) {
   const asked: { refs: PriceRef[]; ttlDays: number }[] = [];
   const storePrices = new StorePrices({
@@ -62,6 +64,9 @@ function setup(
     prices: { findByEstablishment: () => Promise.resolve(prices) },
     // #218: la copia del precio oficial de la tienda.
     officials: { findByEstablishment: () => Promise.resolve(officials) },
+    // H6: si el comercio de la tienda está verificado, y sus promociones.
+    merchants: { isVerified: () => Promise.resolve(extras.verified ?? false) },
+    promotionCopies: { findByEstablishment: () => Promise.resolve(extras.promotions ?? []) },
     reliability: {
       reportsAt: () =>
         Promise.resolve(
@@ -162,7 +167,9 @@ describe('precios vigentes de una tienda (RF-008, grill de la #28)', () => {
     await expect(storePrices.of('no-existe', { onlyCurrent: false })).resolves.toBeNull();
     await expect(storePrices.of(store.id, { onlyCurrent: false })).resolves.toEqual({
       establishment: store,
+      verifiedMerchant: false,
       prices: [],
+      promotions: [],
     });
   });
 
@@ -246,5 +253,75 @@ describe('precios vigentes de una tienda (RF-008, grill de la #28)', () => {
         }),
       ]);
     });
+  });
+});
+
+describe('ficha pública: comercio verificado y promociones (H6)', () => {
+  const presentations = new Map([['arroz-1kg', presentation('arroz', 'Arroz Diana · 1 kg')]]);
+  const official: OfficialPriceCopy = {
+    presentationId: 'arroz-1kg',
+    establishmentId: store.id,
+    priceCop: 5200,
+    confirmedAt: hoursAgo(2),
+    priceChangedAt: hoursAgo(2),
+  };
+  const promotion = (change: Partial<PromotionCopy> = {}): PromotionCopy => ({
+    id: 'promo-1',
+    establishmentId: store.id,
+    presentationId: 'arroz-1kg',
+    offer: { type: 'descuento_porcentual', percent: 10 },
+    conditions: { whileStocksLast: false, paymentMethod: 'cualquiera' },
+    validFrom: '2026-11-10',
+    validUntil: '2026-11-20',
+    ...change,
+  });
+
+  it('dice si el comercio de la tienda está verificado', async () => {
+    const verified = setup([], presentations, {}, [], [], { verified: true });
+    const community = setup([], presentations, {}, [], [], { verified: false });
+    expect(
+      (await verified.storePrices.of(store.id, { onlyCurrent: false }))?.verifiedMerchant,
+    ).toBe(true);
+    expect(
+      (await community.storePrices.of(store.id, { onlyCurrent: false }))?.verifiedMerchant,
+    ).toBe(false);
+  });
+
+  it('una promoción activa sale con el «antes» oficial y el precio con la promoción', async () => {
+    const { storePrices } = setup([], presentations, {}, [official], [], {
+      promotions: [promotion()],
+    });
+    const result = await storePrices.of(store.id, { onlyCurrent: false });
+    expect(result?.promotions).toEqual([
+      {
+        id: 'promo-1',
+        presentationId: 'arroz-1kg',
+        productName: 'Arroz Diana · 1 kg',
+        offer: { type: 'descuento_porcentual', percent: 10 },
+        conditions: { whileStocksLast: false, paymentMethod: 'cualquiera' },
+        validFrom: '2026-11-10',
+        validUntil: '2026-11-20',
+        officialPriceCop: 5200,
+        promotedPriceCop: 4680,
+      },
+    ]);
+  });
+
+  it('una promoción vencida o aún no iniciada no se muestra', async () => {
+    const { storePrices } = setup([], presentations, {}, [official], [], {
+      promotions: [
+        promotion({ id: 'vencida', validUntil: '2026-11-14' }),
+        promotion({ id: 'futura', validFrom: '2026-11-16', validUntil: '2026-11-20' }),
+      ],
+    });
+    expect((await storePrices.of(store.id, { onlyCurrent: false }))?.promotions).toEqual([]);
+  });
+
+  it('una promoción sin precio oficial vigente no se muestra (queda pausada)', async () => {
+    const stale: OfficialPriceCopy = { ...official, confirmedAt: hoursAgo(24 * 30) };
+    const { storePrices } = setup([], presentations, {}, [stale], [], {
+      promotions: [promotion()],
+    });
+    expect((await storePrices.of(store.id, { onlyCurrent: false }))?.promotions).toEqual([]);
   });
 });

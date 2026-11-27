@@ -45,6 +45,8 @@ import {
   onOfficialPriceWithdrawn,
 } from './infrastructure/official-price-handlers';
 import { onPromotionPublished, onPromotionWithdrawn } from './infrastructure/promotion-handlers';
+import { DrizzleVerifiedMerchants } from './infrastructure/drizzle-verified-merchants';
+import { onMerchantGone, onMerchantVerified } from './infrastructure/verified-merchant-handlers';
 import {
   onPriceAssessedForHistory,
   onPriceWithdrawnForHistory,
@@ -60,6 +62,8 @@ export const PRICE_HISTORY_EVENTS = ['PriceAssessed', 'PriceWithdrawn', 'PriceFl
 const OFFICIAL_PRICES_CONSUMER = 'comparison.official_prices';
 // Receptor de los eventos de las promociones (#206).
 const PROMOTIONS_CONSUMER = 'comparison.promotions';
+// Receptor de los eventos del comercio verificado de una tienda (H6).
+const VERIFIED_MERCHANTS_CONSUMER = 'comparison.verified_merchants';
 
 @Module({
   imports: [CatalogModule, EstablishmentsModule, ReliabilityModule],
@@ -121,6 +125,8 @@ const PROMOTIONS_CONSUMER = 'comparison.promotions';
           presentations,
           prices: new DrizzleCurrentPrices(db),
           officials: new DrizzleOfficialPriceCopies(db),
+          merchants: new DrizzleVerifiedMerchants(db),
+          promotionCopies: new DrizzlePromotionCopies(db),
           reliability,
           clock: { now: () => new Date() },
         }),
@@ -261,5 +267,9 @@ export class ComparisonModule implements OnModuleInit {
     // D6 (#206): la copia de las promociones, siempre aparte de los resultados (ADR-009).
     this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionPublished', onPromotionPublished);
     this.bus.subscribe(PROMOTIONS_CONSUMER, 'PromotionWithdrawn', onPromotionWithdrawn);
+    // H6: qué tiendas tienen un comercio verificado, solo con el nombre de los eventos de commerce.
+    this.bus.subscribe(VERIFIED_MERCHANTS_CONSUMER, 'MerchantVerified', onMerchantVerified);
+    this.bus.subscribe(VERIFIED_MERCHANTS_CONSUMER, 'MerchantRevoked', onMerchantGone);
+    this.bus.subscribe(VERIFIED_MERCHANTS_CONSUMER, 'MerchantLeft', onMerchantGone);
   }
 }

@@ -569,8 +569,14 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [establishment, prices]
+                required: [establishment, verifiedMerchant, prices, promotions]
                 properties:
+                  verifiedMerchant:
+                    type: boolean
+                    description: >-
+                      H6. La tienda tiene un comercio verificado (de moderación o por reclamo
+                      aprobado). false si es una tienda de la comunidad, sin dueño. Es un dato de la
+                      tienda, nunca de la cuenta (EC-08).
                   establishment:
                     type: object
                     required: [id, name, type, lat, lng, municipality]
@@ -627,6 +633,13 @@ paths:
                         confirmations: { type: integer, minimum: 0, description: Se omite para un oficial. }
                         observedAt: { type: string, format: date-time }
                         discrepancy: { $ref: '#/components/schemas/PriceDiscrepancy' }
+                  promotions:
+                    type: array
+                    description: >-
+                      H6, ADR-009. Las promociones activas de la tienda, siempre aparte de los
+                      precios y sin alterar su orden. Solo las que tienen sus fechas vigentes y un
+                      precio oficial vigente.
+                    items: { $ref: '#/components/schemas/StorePromotion' }
         '304': { description: Los precios no cambiaron desde el ETag enviado }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404':
@@ -3802,6 +3815,25 @@ components:
         promotedPriceCop:
           type: [integer, 'null']
           description: Precio de una unidad con la promoción; en pague X lleve Y, el promedio por unidad.
+    StorePromotion:
+      type: object
+      description: Una promoción activa de la tienda, en su ficha pública (H6).
+      additionalProperties: false
+      required: [id, presentationId, productName, type, conditions, validFrom, validUntil, officialPriceCop, promotedPriceCop]
+      properties:
+        id: { type: string, format: uuid }
+        presentationId: { type: string, format: uuid }
+        productName: { type: string, description: 'Producto y presentación, por ejemplo «Arroz Diana · 1 kg».' }
+        type: { type: string, enum: [descuento_porcentual, precio_especial, pague_x_lleve_y] }
+        percent: { type: integer }
+        specialPriceCop: { type: integer }
+        payX: { type: integer }
+        takeY: { type: integer }
+        conditions: { $ref: '#/components/schemas/PromotionConditions' }
+        validFrom: { type: string, format: date }
+        validUntil: { type: string, format: date }
+        officialPriceCop: { type: integer, description: El «antes», el oficial vigente. }
+        promotedPriceCop: { type: integer, description: El precio de una unidad con la promoción. }
     ComparisonPromotion:
       type: object
       description: Una promoción activa de una tienda del área, aparte de los resultados (ADR-009).

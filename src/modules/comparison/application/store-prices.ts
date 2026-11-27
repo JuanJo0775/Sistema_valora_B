@@ -1,6 +1,7 @@
 import type { PriceSource } from '../../../domain/initial-price';
 import { type Freshness, ttlDaysFor } from '../../../domain/freshness';
 import type { Discrepancy } from '../../../domain/official-vs-reported';
+import { promotedPriceCop, promotionStatus, type PromotionOffer } from '../../../domain/promotion';
 import { calculateUnitPrice, type UnitPrice } from '../../../domain/unit-price';
 import type { PresentationForPricing } from '../../catalog';
 import type { EstablishmentDetail, StoreContact } from '../../establishments';
@@ -8,8 +9,9 @@ import type { PriceRef, PriceReliability } from '../../reliability';
 import { freshnessAt } from './compare-product';
 import type { CurrentPrices } from './current-prices';
 import { type EffectivePrice, effectivePrices } from './effective-prices';
-import type { OfficialPriceCopies } from './official-price-copies';
+import type { OfficialPriceCopies, OfficialPriceCopy } from './official-price-copies';
 import type { StoreReports } from './official-resolution';
+import type { PromotionConditionsCopy, PromotionCopies, PromotionCopy } from './promotion-copies';
 
 // Puertos hacia las consultas públicas de establishments, catalog y reliability (por su index.ts).
 export interface StorePricesPorts {
@@ -20,6 +22,10 @@ export interface StorePricesPorts {
   prices: Pick<CurrentPrices, 'findByEstablishment'>;
   // #218: la copia del precio oficial de la tienda.
   officials: Pick<OfficialPriceCopies, 'findByEstablishment'>;
+  // H6: si la tienda tiene un comercio verificado (copia que comparison guarda con los eventos).
+  merchants: { isVerified(establishmentId: string): Promise<boolean> };
+  // H6 y ADR-009: las promociones de la tienda; la ficha las muestra aparte de los precios.
+  promotionCopies: Pick<PromotionCopies, 'findByEstablishment'>;
   reliability: StoreReports & {
     of(prices: PriceRef[], ttlDays: number): Promise<PriceReliability[]>;
   };
@@ -45,9 +51,25 @@ export interface StorePriceItem {
   discrepancy?: Discrepancy;
 }
 
+// H6: una promoción activa de la tienda, con el «antes» (el oficial vigente) y el precio con ella.
+export interface StorePromotion {
+  id: string;
+  presentationId: string;
+  productName: string;
+  offer: PromotionOffer;
+  conditions: PromotionConditionsCopy;
+  validFrom: string;
+  validUntil: string;
+  officialPriceCop: number;
+  promotedPriceCop: number;
+}
+
 export interface StorePricesResult {
   establishment: EstablishmentDetail & StoreContact;
+  // H6: la tienda tiene un comercio verificado.
+  verifiedMerchant: boolean;
   prices: StorePriceItem[];
+  promotions: StorePromotion[];
 }
 
 interface Row {
@@ -65,13 +87,15 @@ export class StorePrices {
     options: { onlyCurrent: boolean },
   ): Promise<StorePricesResult | null> {
     const { stores, contacts, presentations, prices, officials, reliability, clock } = this.ports;
+    const { merchants, promotionCopies } = this.ports;
     const store = await stores.find(establishmentId);
     if (!store) return null;
     const establishment = { ...store, ...(await contacts.of(establishmentId)) };
     const community = await prices.findByEstablishment(establishmentId);
     const official = await officials.findByEstablishment(establishmentId);
+    const copies = await promotionCopies.findByEstablishment(establishmentId);
     const known = await presentations.of(
-      [...community, ...official].map((price) => price.presentationId),
+      [...community, ...official, ...copies].map((price) => price.presentationId),
     );
     const now = clock.now();
     const current = await effectivePrices({
@@ -123,7 +147,12 @@ export class StorePrices {
         )
       : items;
     shown.sort((a, b) => a.productName.localeCompare(b.productName, 'es'));
-    return { establishment, prices: shown };
+    return {
+      establishment,
+      verifiedMerchant: await merchants.isVerified(establishmentId),
+      prices: shown,
+      promotions: activePromotions(copies, official, known, now),
+    };
   }
 
   // La confiabilidad se calcula con el TTL de la categoría de cada presentación (fresca o no).
@@ -147,4 +176,38 @@ export class StorePrices {
     );
     return new Map(results.flat().map((assessed) => [assessed.reportId, assessed]));
   }
+}
+
+// H6: solo las activas (fechas vigentes y precio oficial vigente), calculadas con el oficial de hoy.
+function activePromotions(
+  copies: PromotionCopy[],
+  officials: OfficialPriceCopy[],
+  known: Map<string, PresentationForPricing>,
+  now: Date,
+): StorePromotion[] {
+  const officialOf = new Map(officials.map((official) => [official.presentationId, official]));
+  return copies.flatMap((copy): StorePromotion[] => {
+    const official = officialOf.get(copy.presentationId);
+    const presentation = known.get(copy.presentationId);
+    if (!official || !presentation) return [];
+    const officialFreshness = freshnessAt(
+      official.confirmedAt,
+      now,
+      ttlDaysFor(presentation.isFresh),
+    );
+    if (promotionStatus({ ...copy, now, officialFreshness }) !== 'activa') return [];
+    return [
+      {
+        id: copy.id,
+        presentationId: copy.presentationId,
+        productName: presentation.label,
+        offer: copy.offer,
+        conditions: copy.conditions,
+        validFrom: copy.validFrom,
+        validUntil: copy.validUntil,
+        officialPriceCop: official.priceCop,
+        promotedPriceCop: promotedPriceCop(copy.offer, official.priceCop),
+      },
+    ];
+  });
 }
