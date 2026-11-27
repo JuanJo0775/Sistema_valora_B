@@ -249,23 +249,50 @@ function setup(saved: Observation[], reviews: OfficialReview[] = []) {
 }
 
 describe('decisión de moderación (RF-013)', () => {
-  // RN3: toda decisión exige un motivo.
-  it.each(['', '   ', 'Muy corto'])(
-    'sin un motivo de al menos 10 caracteres ("%s") no se registra',
-    async (shortNote) => {
+  // RN3: descartar y observar cuentas exigen un motivo; aprobar no (prueba manual de moderación).
+  it.each([
+    ['descartar', ''],
+    ['descartar', '   '],
+    ['descartar', 'Muy corto'],
+    ['observar_cuentas', ''],
+    ['observar_cuentas', 'Muy corto'],
+  ] as const)(
+    '%s sin un motivo de al menos 10 caracteres ("%s") no se registra',
+    async (decision, shortNote) => {
       const reported = observation({ verdict: suspicious });
       const { moderation, decide } = setup([reported]);
 
       await expect(
         decide.execute({
           reportId: reported.reportId,
-          decision: 'descartar',
+          decision,
           note: shortNote,
           moderatorKey: 'moderadora',
         }),
       ).rejects.toThrow(InvalidNoteError);
       expect(moderation.log).toEqual([]);
       expect(reported.moderation).toBeUndefined();
+    },
+  );
+
+  it.each([undefined, '', '   '])(
+    'aprobar no necesita motivo (%j): se registra en la bitácora, sin texto, y se publica como normal',
+    async (noMotive) => {
+      const reported = observation({ verdict: suspicious, priceCop: 2000 });
+      const { moderation, published, decide } = setup([reported]);
+
+      await decide.execute({
+        reportId: reported.reportId,
+        decision: 'aprobar',
+        ...(noMotive === undefined ? {} : { note: noMotive }),
+        moderatorKey: 'moderadora',
+      });
+
+      expect(reported.moderation).toBe('aprobado');
+      expect(moderation.log).toEqual([
+        expect.objectContaining({ decision: 'aprobar', note: '', moderatorKey: 'moderadora' }),
+      ]);
+      expect(published).toEqual([expect.objectContaining({ type: 'PriceAssessed' })]);
     },
   );
 
