@@ -17,9 +17,10 @@ flowchart TB
   end
   subgraph EVO["Evolución · corte 3"]
     direction TB
-    COMM["<b>commerce</b><br/><small>perfiles, precios oficiales,<br/>promociones, discrepancias</small>"]:::evol
+    COMM["<b>commerce</b><br/><small>perfiles, precios oficiales,<br/>promociones, casos y avisos</small>"]:::evol
+    NOTI["<b>notifications</b><br/><small>suscripciones y avisos por Web Push (ADR-044)</small>"]:::evol
   end
-  BUS["<b>Bus de eventos + outbox</b><br/><small>suscriptores síncronos y diferidos</small>"]:::datos
+  BUS["<b>Bus de eventos + outbox</b><br/><small>entrega diferida, al menos una vez</small>"]:::datos
   DOM["<b>domain · núcleo puro probado con TDD</b><br/><small>unidad base · vigencia · score · orden · oficial vs reportado</small>"]:::dominio
   CLI -->|"HTTPS /v1"| HTTP
   HTTP --> SOP
@@ -27,9 +28,12 @@ flowchart TB
   HTTP --> EVO
   PRI -->|"1 · PrecioReportado"| BUS
   BUS -->|"2 · diferido"| REL
-  REL -->|"3 · ScoreActualizado"| BUS
+  REL -->|"3 · PriceAssessed"| BUS
   BUS -->|"4 · proyecta"| CMP
-  COMM -->|"PrecioOficialPublicado · síncrono"| BUS
+  COMM -->|"OfficialPricePublished · outbox, diferido"| BUS
+  BUS -->|"proyecta el oficial y las promociones"| CMP
+  BUS -->|"MerchantVerified"| ID
+  BUS -->|"hechos de moderación y MerchantAlertsRaised"| NOTI
   SOP -.->|"usa"| DOM
   NUC -.->|"usa"| DOM
   EVO -.->|"usa"| DOM

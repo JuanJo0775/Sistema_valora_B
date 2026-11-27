@@ -10,12 +10,16 @@ flowchart TB
   end
   subgraph SRV["Servidor de Valora · un solo despliegue (ADR-001)"]
     direction LR
-    PX["<b>Proxy HTTPS</b><br/><small>Caddy · certificados</small>"]:::soporte
-    APP["<b>API · monolito modular</b><br/><small>Node.js + TypeScript<br/>NestJS sobre Express (ADR-018)<br/>REST /v1 + OpenAPI 3</small>"]:::nucleo
-    JOB["<b>Trabajos diferidos</b><br/><small>Mismo proceso · lee el outbox<br/>score, anómalos, importaciones</small>"]:::nucleo
+    PX["<b>Vercel · reenvío</b><br/><small>sirve la PWA y reenvía /v1/* a Render<br/>mismo origen, sin CORS (ADR-012)</small>"]:::soporte
+    APP["<b>API · monolito modular</b><br/><small>Node.js + TypeScript · imagen Docker en Render<br/>NestJS sobre Express (ADR-018)<br/>REST /v1 + OpenAPI 3</small>"]:::nucleo
+    JOB["<b>Trabajos diferidos</b><br/><small>Mismo proceso · lee el outbox<br/>score, anómalos, precios oficiales, avisos</small>"]:::nucleo
   end
-  DB[("<b>Base de datos</b><br/><small>PostgreSQL + PostGIS (ADR-003)<br/>un esquema por módulo</small>")]:::datos
+  DB[("<b>Base de datos</b><br/><small>PostgreSQL + PostGIS en Neon (ADR-003)<br/>un esquema por módulo</small>")]:::datos
   SIP[("SIPSA · DANE<br/><small>archivos públicos</small>")]:::externo
+  PUSH(["Servicios de push<br/><small>Google, Apple y Mozilla (ADR-044)</small>"]):::externo
+  GOO(["Google<br/><small>inicio de sesión OIDC (ADR-029)</small>"]):::externo
+  RES(["Resend<br/><small>correo (ADR-029)</small>"]):::externo
+  SUP(["Supabase Storage<br/><small>fotos de productos y tiendas (ADR-022)</small>"]):::externo
   CON --> WEB
   COM --> WEB
   MOD --> WEB
@@ -26,6 +30,10 @@ flowchart TB
   JOB -->|"lee eventos · escribe resultados"| DB
   APP -.->|"publica eventos internos"| JOB
   SIP -.->|"CSV cargado por el equipo"| APP
+  JOB -.->|"avisos Web Push"| PUSH
+  APP -.->|"OpenID Connect"| GOO
+  APP -.->|"correos"| RES
+  APP -.->|"fotos"| SUP
 
 classDef persona fill:#FFD7A8,stroke:#C2570C,stroke-width:2px,color:#3A2414
 classDef sistema fill:#FD8A2E,stroke:#C2570C,stroke-width:2px,color:#2A1405
