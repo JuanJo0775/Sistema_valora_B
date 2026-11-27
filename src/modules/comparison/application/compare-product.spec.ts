@@ -15,6 +15,8 @@ const now = new Date('2026-11-12T14:00:00Z');
 
 interface Fixture {
   isFresh?: boolean;
+  // Por defecto, una sola presentación de 500 g.
+  presentations?: { id: string; quantity: number; unit: 'g' | 'kg'; packCount: number }[];
   prices?: CurrentPrice[];
   stores?: NearbyEstablishment[];
   // Lo que reliability calcula para cada tienda (#31); por defecto, media sin confirmaciones.
@@ -34,6 +36,7 @@ interface Fixture {
 // Dobles de los puertos: el catálogo, las tiendas, price_current, reliability y el reloj.
 function setup({
   isFresh = false,
+  presentations = [{ id: 'p-500g', quantity: 500, unit: 'g', packCount: 1 }],
   prices = [],
   stores = [],
   reliability = {},
@@ -47,11 +50,7 @@ function setup({
       find: (id) =>
         Promise.resolve(
           id === productId
-            ? {
-                id,
-                isFresh,
-                presentations: [{ id: 'p-500g', quantity: 500, unit: 'g' as const, packCount: 1 }],
-              }
+            ? { id, isFresh, presentations }
             : null,
         ),
     },
@@ -335,6 +334,91 @@ describe('comparar los precios de un producto', () => {
   });
 
   // Grill de la #34 (RF-014 RN3): la referencia SIPSA va aparte y nunca es precio de una tienda.
+  // H-QA (prueba manual): elegir 500 g o 1 kg cambia la comparación. El más barato y el ahorro los
+  // calcula el servidor entre los precios de esa presentación (EC-06).
+  describe('por presentación', () => {
+    const kilo = { id: 'p-1kg', quantity: 1, unit: 'kg' as const, packCount: 1 };
+    const grams = { id: 'p-500g', quantity: 500, unit: 'g' as const, packCount: 1 };
+    const inKilo = (establishmentId: string, priceCop: number): CurrentPrice => ({
+      ...price(establishmentId, priceCop),
+      presentationId: 'p-1kg',
+    });
+    const fixture = {
+      presentations: [grams, kilo],
+      // 500 g: $400 y $500 por 100 g. 1 kg: $300 por 100 g, más barato por unidad que los dos.
+      prices: [price('t1', 2000), price('t2', 2500), inKilo('t3', 3000)],
+      stores: [store('t1'), store('t2'), store('t3')],
+    };
+
+    it('sin presentationId compara todas las presentaciones, como siempre', async () => {
+      const comparison = await setup(fixture).execute(input());
+
+      expect(comparison?.results.filter(({ isCheapest }) => isCheapest)).toMatchObject([
+        { presentationId: 'p-1kg' },
+      ]);
+    });
+
+    it('con presentationId solo salen los precios de esa presentación y el más barato sale de entre ellos', async () => {
+      const comparison = await setup(fixture).execute(input({ presentationId: 'p-500g' }));
+
+      expect(comparison?.results.map(({ establishment }) => establishment.id)).toEqual([
+        't1',
+        't2',
+      ]);
+      expect(comparison?.results.map(({ isCheapest }) => isCheapest)).toEqual([true, false]);
+    });
+
+    it('el ahorro se calcula solo entre los precios de la presentación pedida', async () => {
+      const grams500 = await setup(fixture).execute(input({ presentationId: 'p-500g' }));
+      const oneKilo = await setup(fixture).execute(input({ presentationId: 'p-1kg' }));
+
+      // $2.000 frente a $2.500 por los mismos 500 g: 20 % menos.
+      expect(grams500?.savingsPercent).toBe(20);
+      // Una sola tienda con 1 kg: no hay con qué compararla.
+      expect(oneKilo?.savingsPercent).toBeUndefined();
+    });
+
+    it('una presentación que no es del producto no tiene comparación', async () => {
+      await expect(
+        setup(fixture).execute(input({ presentationId: 'p-otra' })),
+      ).resolves.toBeNull();
+    });
+
+    it('las promociones también son solo de la presentación pedida', async () => {
+      const withPromotion = setup({
+        presentations: [grams, kilo],
+        stores: [store('a')],
+        prices: [price('a', 2500)],
+        officials: [
+          {
+            presentationId: 'p-1kg',
+            establishmentId: 'a',
+            priceCop: 4000,
+            confirmedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+            priceChangedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+          },
+        ],
+        promotions: [
+          {
+            id: 'promo-kilo',
+            establishmentId: 'a',
+            presentationId: 'p-1kg',
+            offer: { type: 'descuento_porcentual', percent: 10 },
+            conditions: { maxPerCustomer: 2, whileStocksLast: true, paymentMethod: 'efectivo' },
+            validFrom: '2026-11-10',
+            validUntil: '2026-11-20',
+          },
+        ],
+      });
+
+      const ofGrams = await withPromotion.execute(input({ presentationId: 'p-500g' }));
+      const ofKilo = await withPromotion.execute(input({ presentationId: 'p-1kg' }));
+
+      expect(ofGrams?.promotions).toEqual([]);
+      expect(ofKilo?.promotions.map(({ id }) => id)).toEqual(['promo-kilo']);
+    });
+  });
+
   describe('referencia mayorista SIPSA', () => {
     const reference: WholesaleReferenceView = {
       productId,
