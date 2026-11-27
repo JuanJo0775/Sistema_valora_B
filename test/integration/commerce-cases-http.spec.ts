@@ -268,4 +268,66 @@ describe('denuncias, disputas y revocación por HTTP (#208)', () => {
     expect(left.rows[0]?.total).toBe('0');
     expect((await compare().expect(200)).body).toMatchObject({ results: [] });
   });
+
+  // H14: moderación ve los comercios verificados y revoca uno por iniciativa propia, sin un caso.
+  it('moderación lista los comercios verificados y revoca uno sin esperar una denuncia', async () => {
+    await db.execute(
+      sql`truncate commerce.merchant_claim_rejections, commerce.merchant_claims, commerce.merchant_cases, commerce.dispute_challengers`,
+    );
+    const owner = await signIn(server, db, 'revocar-de-oficio@correo.com');
+    await post(owner, '/commerce/claims', claimBody).expect(201);
+    await relay();
+    await request(server)
+      .put('/v1/commerce/prices')
+      .set('Cookie', owner.cookie)
+      .set('X-CSRF-Token', owner.csrfToken)
+      .send({ presentationId: riceId, priceCop: 2600 })
+      .expect(200);
+    await relay();
+    const roster = () =>
+      request(server).get('/v1/moderation/merchants').set('Cookie', moderator.cookie);
+
+    const listed = await roster().expect(200).expect('Cache-Control', 'no-store');
+    expect(listed.body).toMatchObject({
+      total: 1,
+      items: [
+        {
+          establishment: { id: storeId, name: 'Tienda La Esperanza' },
+          responsibleName: 'Rosa Gómez',
+          nit: null,
+          phone: '3001234567',
+        },
+      ],
+    });
+    expect(contractErrors('GET /moderation/merchants', 200, listed.body as unknown)).toEqual([]);
+    // Nunca la cuenta del comercio (EC-08).
+    expect(JSON.stringify(listed.body)).not.toContain('revocar-de-oficio');
+    await request(server).get('/v1/moderation/merchants').set('Cookie', ana.cookie).expect(403);
+    await request(server).get('/v1/moderation/merchants').expect(401);
+
+    const revoke = (note: string) =>
+      post(moderator, `/moderation/merchants/${storeId}/revoke`, { note });
+    await revoke('corto').expect(400);
+    expect(await roleOf(owner)).toBe('comercio');
+
+    await revoke('La tienda cerró: confirmado por teléfono.').expect(204);
+    await relay();
+
+    expect(await roleOf(owner)).toBe('reportante');
+    expect((await compare().expect(200)).body).not.toMatchObject({
+      results: [{ source: 'oficial' }],
+    });
+    expect((await roster().expect(200)).body).toMatchObject({ total: 0, items: [] });
+    const again = await revoke('La tienda cerró: confirmado por teléfono.').expect(404);
+    expect(
+      contractErrors(
+        'POST /moderation/merchants/{establishmentId}/revoke',
+        404,
+        again.body as unknown,
+      ),
+    ).toEqual([]);
+    await post(ana, `/moderation/merchants/${storeId}/revoke`, {
+      note: 'La tienda cerró: confirmado por teléfono.',
+    }).expect(403);
+  });
 });
