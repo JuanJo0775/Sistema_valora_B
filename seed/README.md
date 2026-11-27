@@ -75,6 +75,8 @@ Si un producto se vende en varios tamaños, se repite el producto en varias fila
 
 No se inventan: un código falso podría coincidir con otro producto real. Se copian del empaque al verificar en la tienda o de la ficha del producto en la página de la cadena. Si no se tiene a la vista, la columna queda vacía. Al sembrar, cada código se revisa con su dígito de control (EAN-13), y uno mal escrito se rechaza con un mensaje que dice en qué fila está.
 
+Las 26 presentaciones con marca que aún no tienen código están en [`docs/semilla/codigos-propuestos.csv`](../docs/semilla/codigos-propuestos.csv), con una columna para anotar el código confirmado en tienda. Se buscaron en Open Food Facts (26-nov-2026): solo 1 tuvo una coincidencia razonable y quedó como propuesta a confirmar en el empaque; el resto no está en esa base. Un código propuesto **no** es un código verificado: no se copia a `productos.csv` hasta verlo en el empaque.
+
 ### Fotos de Open Food Facts (`pnpm seed:imagenes`, #119)
 
 Open Food Facts tiene bases hermanas con la misma licencia: **Open Beauty Facts** (cuidado personal) y **Open Products Facts** (aseo del hogar). Sus fotos se guardan con `imagen_fuente = open_food_facts` y la atribución de la base real, por ejemplo `Open Products Facts, CC BY-SA` (ADR-020, punto 2). El comando solo consulta Open Food Facts; las de las bases hermanas se agregan a mano.
