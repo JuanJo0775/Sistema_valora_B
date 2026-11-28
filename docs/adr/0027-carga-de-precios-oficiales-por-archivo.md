@@ -1,6 +1,6 @@
 # ADR-027: Carga de precios oficiales por archivo: al momento, por código de barras, con informe por fila
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-26 (grill del 21-nov-2026, D7; ajustado al código construido en B5)
 - **Responsables:** equipo de backend; la aceptación la decide el equipo. No hay constancia en el repositorio de la validación con el docente del 23-nov.
 - **Escenarios relacionados:** EC-02, EC-05
