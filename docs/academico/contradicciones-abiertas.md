@@ -45,3 +45,10 @@ Nada se ha escrito en Notion. Propuesta, de menor a mayor riesgo:
 1. **Sin riesgo (marcas, no borrados):** A1 (estado de ADR-012), A5, A10, A11, A12, A14, A15.
 2. **Edición de texto de páginas de Sara:** A2 (AS-E3 §4) y A8: la edita ella o se hace con su visto bueno.
 3. **Destructivo o de numeración:** A3 (renumerar ADR-019) y A7 (fusionar o borrar filas): hubo dos incidentes de borrado el 9-nov, así que solo con confirmación explícita y copia previa.
+
+
+## Cierre final del proyecto — 27-nov-2026
+
+Las contradicciones históricas de estados ADR que se listan en esta página se consideran **resueltas para el cierre**: todos los ADR del registro oficial están Aceptados en Notion. Los puntos A1, A3–A6, A8 y A15 que mencionaban estados Propuestos o En discusión deben leerse como antecedentes del proceso y no como pendientes actuales de aceptación. Las demás cuestiones documentales o de evidencia no se consideran resueltas por este cambio de estado.
+
+La numeración ADR-036 permanece distinta entre Notion y el repositorio backend: Notion lo usa para el plan de compra, y backend para el correo de bienvenida; el plan de compra en backend está en ADR-034 y ADR-035. No renumerar en bloque ni asociar los registros solo por número; usar título y enlace.
