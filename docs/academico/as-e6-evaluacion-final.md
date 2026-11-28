@@ -105,3 +105,10 @@ Cálculo: desviación = (real − estimado) / estimado, referencia propuesta ≤
 - Notion: base de escenarios EC-01 a EC-08, base RNF, AS-E1 `41339c4a-833b-815b-80c1-cec59763ca1d`, AS-E4 `41339c4a-833b-8110-b2ca-e6b0dbe5ab2c`, AS-E6 `41339c4a-833b-81f4-a681-c8360adaddb8`, «Arquitectura y stack» `40d39c4a-833b-80ff-a47c-fb7c2d06254e`.
 - Repo: `docs/DECISIONS.md`, `docs/ARCHITECTURE.md`, `docs/adr/`, `docs/diagramas/`; mediciones de referencia en `docs/calidad/deteccion-anomalos.md`, `sincronizacion-ec07.md`, `matriz-autorizacion.md` y `privacidad-ec08.md`.
 - Entregables hermanos: `as-e1-arquitectura-v1.md` y `as-e5-sistema-integrado.md` en esta carpeta.
+
+
+## Cierre final de decisiones arquitectónicas — 27-nov-2026
+
+El proyecto se declara cerrado y todos los ADR del registro oficial están **Aceptados**. Las menciones a ADR propuestos, en discusión o pendientes de aceptación que aparecen en las tablas de riesgos y sensibilidad corresponden a fotografías históricas de las fechas de elaboración de este entregable; no son el estado vigente. La aceptación final no convierte automáticamente en cumplidas las métricas, pruebas, despliegues ni verificaciones de calidad. Las brechas de evidencia se conservan y deben leerse en sus fuentes actuales (EC, RNF, issues y ADR individuales).
+
+La conciliación de numeración ADR-036 se documenta en `docs/academico/as-e2-registro-adr.md` y `docs/DECISIONS.md`: Notion usa ADR-036 para el plan de compra, mientras el backend conserva ADR-036 para el correo de bienvenida y el plan de compra se divide en ADR-034/035.
