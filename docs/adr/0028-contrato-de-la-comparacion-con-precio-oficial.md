@@ -1,8 +1,8 @@
 # ADR-028: Contrato de la comparación con precio oficial, discrepancia y promociones
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (confirmación del equipo: 2026-11-28; reunión con el docente realizada, fecha no informada)
 - **Fecha:** 2026-11-26 (borrador de AS-E4 del 16-nov-2026; ajustado al contrato construido en B4 y B6)
-- **Responsables:** equipo de backend y de frontend; la aceptación la decide el equipo. No estaba en la lista de la issue B#210 (que nombra ADR-023 a 027), pero AS-E4 lo propuso y sin él quedaría un hueco en la numeración.
+- **Responsables:** equipo de backend y de frontend; revisión con el docente confirmada por el equipo, sin cambios a la decisión (fecha de reunión no informada).
 - **Escenarios relacionados:** EC-06, EC-08, EC-05
 - **Requisitos relacionados:** RF-016, RF-017, RF-018, RNF-012 (transparencia del origen). Ajusta ADR-002 y ADR-009.
 
@@ -45,3 +45,12 @@ Se construyó la A. El borrador de AS-E4 proponía la D (`oneOf` y `discriminato
 - Notion: AS-E4 (sección 6.2, borrador de ADR-028).
 - Documentos: `docs/openapi.yaml` (`ComparisonItem`, `PriceDiscrepancy`, `Promotion`, `PromotionConditions`). ADR-002, ADR-009, ADR-024, ADR-026.
 - Issues / PRs: B#204 (comparación con oficial), B#206 (promociones), B#210 (este registro).
+
+
+## Aceptación y evidencia — 28-nov-2026
+
+La decisión de mantener un solo orden y usar campos aditivos para `source`, `reportId`, `discrepancy` y `promotions` se mantiene sin cambios tras la reunión con el docente confirmada por el equipo. Se conserva la fecha original del ADR (26-nov-2026).
+
+La evidencia está en `docs/openapi.yaml`, los tipos generados del frontend (`pnpm api:types`) y las pruebas de contrato estrictas para precios oficiales y carga por archivo. `compare-product.spec.ts` cubre la comparación con precios oficiales, discrepancias y promociones.
+
+**Brecha conservada:** la prueba de contrato aún no ejercita `discrepancy` ni `promotions` en la respuesta de comparación. El ADR se acepta como decisión del contrato; esa cobertura no se declara completada.
