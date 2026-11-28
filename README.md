@@ -41,7 +41,7 @@ El contrato está en [`docs/openapi.yaml`](docs/openapi.yaml) y las decisiones, 
 - **Datos (#118):** la semilla tiene 150 productos (175 presentaciones); falta verificar en tienda buena parte de ellos y de sus códigos de barras.
 - **Avisos (EC-09):** la latencia p95 no está medida ([evidencia](docs/decisiones/avisos/evidencia-push.md)).
 - **Despliegue (#23):** hay tres despliegues correctos registrados; falta medir el tiempo completo hasta que el código nuevo queda activo, que llega con la próxima versión.
-- **ADR «Propuestos»:** 023 a 028 y 036 a 042 esperan aceptación del equipo, aunque la mayoría ya está construida.
+- **ADR pendientes de aceptación:** ADR-023 y ADR-024. Los demás ADR del rango 023–045 están aceptados en el registro de Notion al cierre del 28-nov-2026. La aceptación no elimina brechas de verificación; consultar `docs/DECISIONS.md` y las fichas individuales.
 - **Precios en línea:** apagados. La integración con Olímpica se cerró por sus términos de uso (ADR-041).
 - **Plan gratuito de Render:** el servicio se duerme. `keepalive-api.yml` lo mantiene despierto entre las 07:00 y las 23:00 de Colombia; fuera de ese horario, la primera petición tarda cerca de un minuto.
 

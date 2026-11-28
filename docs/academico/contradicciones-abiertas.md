@@ -45,3 +45,10 @@ Nada se ha escrito en Notion. Propuesta, de menor a mayor riesgo:
 1. **Sin riesgo (marcas, no borrados):** A1 (estado de ADR-012), A5, A10, A11, A12, A14, A15.
 2. **Edición de texto de páginas de Sara:** A2 (AS-E3 §4) y A8: la edita ella o se hace con su visto bueno.
 3. **Destructivo o de numeración:** A3 (renumerar ADR-019) y A7 (fusionar o borrar filas): hubo dos incidentes de borrado el 9-nov, así que solo con confirmación explícita y copia previa.
+
+
+## Cierre de contradicciones ADR verificadas en main — 28-nov-2026
+
+La revisión documental confirma en Notion 39 ADR Aceptados y 2 Propuestos. ADR-025 a ADR-028 fueron aceptados tras la reunión con el docente confirmada por el equipo, con fecha exacta no informada; ADR-036 (correo de bienvenida en backend) se acepta con pruebas de implementación; ADR-041/042 se aceptan con evidencia del retiro del piloto, la revisión firmada de la semilla y la arquitectura apagada hasta autorización escrita. ADR-023 y ADR-024 siguen Propuestos por las brechas específicas descritas en `docs/adr/0023` y `docs/adr/0024`.
+
+Las entradas históricas de esta página no se borran: reflejan la fecha en que se redactaron. Para el estado vigente consultar `docs/DECISIONS.md` y las fichas ADR. La reunión no cambió las decisiones planeadas; no se asigna una fecha no proporcionada.

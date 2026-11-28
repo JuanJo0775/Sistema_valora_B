@@ -1,8 +1,8 @@
 # ADR-025: Verificación de comercios por presencia, un rol por cuenta y revocación que retira lo publicado
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (confirmación del equipo: 2026-11-28; reunión con el docente realizada, fecha no informada)
 - **Fecha:** 2026-11-26 (grill del 21-nov-2026 y precisiones al construir B8 y B7 el 22-nov; ajustado al código)
-- **Responsables:** equipo de backend; la aceptación la decide el equipo. El grill dejó **por validar con el docente el 23-nov** si la verificación por presencia cumple lo que RF-015 espera de «verificación de comercios»; no hay constancia en el repositorio del resultado.
+- **Responsables:** equipo de backend; revisión con el docente confirmada por el equipo, sin cambios a la decisión (fecha de reunión no informada).
 - **Escenarios relacionados:** EC-08, EC-05, EC-03
 - **Requisitos relacionados:** RF-015 (RN1 a RN5), RF-005 (RN7), RF-002, RNF-007, RNF-010. Relacionado con ADR-032, ADR-038 y ADR-040.
 
@@ -48,3 +48,10 @@ Se adopta la B, con moderación solo por excepción y dentro de `commerce`.
 - Notion: AS-E4 (sección 6.2, borrador de ADR-025).
 - Documentos: `docs/decisiones/epic-8-modulo-comercial/grill.md` (D2, D3, D5).
 - Issues / PRs: B#201, B#202, B#207, B#208 y B#210 (este registro). ADR-014, ADR-022, ADR-032, ADR-038, ADR-040.
+
+
+## Aceptación y evidencia — 28-nov-2026
+
+La reunión con el docente fue confirmada por el equipo; no se modificó la decisión prevista. La fecha exacta de la reunión no fue informada y no se sustituye la fecha original del ADR (26-nov-2026).
+
+La implementación está respaldada por los casos HTTP de reclamo, disputas, salida y revocación (`commerce-cases-http.spec.ts`, `commerce-claims-http.spec.ts`, `commerce-leave-http.spec.ts`), además de la matriz de autorización (`docs/calidad/matriz-autorizacion.md`). La aceptación cubre el modelo de verificación por presencia, un rol por cuenta y retiro de precios/promociones al revocar o eliminar. Se mantiene explícita la limitación de que la ubicación puede falsearse; denuncias y disputas son controles complementarios.

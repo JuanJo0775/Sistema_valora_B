@@ -1,8 +1,8 @@
 # ADR-026: Promociones: reglas en el dominio, lectura propia en `comparison`, estado calculado al leer
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (confirmación del equipo: 2026-11-28; reunión con el docente realizada, fecha no informada)
 - **Fecha:** 2026-11-26 (grill del 21-nov-2026 y precisiones al construir B6 el 22-nov; ajustado al código)
-- **Responsables:** equipo de backend; la aceptación la decide el equipo. No hay constancia en el repositorio de la validación con el docente del 23-nov.
+- **Responsables:** equipo de backend; revisión con el docente confirmada por el equipo, sin cambios a la decisión (fecha de reunión no informada).
 - **Escenarios relacionados:** EC-06, EC-05
 - **Requisitos relacionados:** RF-017 (RN1 a RN5), RNF-006. Mantiene ADR-009; ajusta ADR-015 (se retira `PromocionVencida`).
 
@@ -49,3 +49,10 @@ Se adopta la D.
 - Notion: AS-E4 (sección 6.2, borrador de ADR-026).
 - Documentos: `docs/decisiones/epic-8-modulo-comercial/grill.md` (D6). ADR-005, ADR-009, ADR-023.
 - Issues / PRs: B#206 (promociones), B#210 (este registro).
+
+
+## Aceptación y evidencia — 28-nov-2026
+
+La decisión se mantiene sin cambios tras la reunión con el docente confirmada por el equipo. Se conserva la fecha original del ADR (26-nov-2026).
+
+La implementación tiene pruebas de reglas de dominio (`src/domain/promotion.spec.ts`), publicación, consulta y retiro (`create-promotion.spec.ts`, `merchant-promotions.spec.ts`, `withdraw-promotion.spec.ts`) y de neutralidad del orden (`compare-product.spec.ts`). La cobertura de contrato para promociones en la respuesta de comparación sigue pendiente: `test/contract/commerce.contract.spec.ts` no las ejercita. El ADR se acepta como decisión de diseño e implementación; esa brecha de contrato no se declara cerrada.
