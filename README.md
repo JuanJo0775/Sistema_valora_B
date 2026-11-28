@@ -41,7 +41,7 @@ El contrato está en [`docs/openapi.yaml`](docs/openapi.yaml) y las decisiones, 
 - **Datos (#118):** la semilla tiene 150 productos (175 presentaciones); falta verificar en tienda buena parte de ellos y de sus códigos de barras.
 - **Avisos (EC-09):** la latencia p95 no está medida ([evidencia](docs/decisiones/avisos/evidencia-push.md)).
 - **Despliegue (#23):** hay tres despliegues correctos registrados; falta medir el tiempo completo hasta que el código nuevo queda activo, que llega con la próxima versión.
-- **ADR «Propuestos»:** 023 a 028 y 036 a 042 esperan aceptación del equipo, aunque la mayoría ya está construida.
+- **Decisiones arquitectónicas:** todos los ADR del registro están aceptados al cierre final del proyecto (27-nov-2026). El estado de aceptación no sustituye las evidencias de verificación pendientes, que se mantienen documentadas.
 - **Precios en línea:** apagados. La integración con Olímpica se cerró por sus términos de uso (ADR-041).
 - **Plan gratuito de Render:** el servicio se duerme. `keepalive-api.yml` lo mantiene despierto entre las 07:00 y las 23:00 de Colombia; fuera de ese horario, la primera petición tarda cerca de un minuto.
 
@@ -376,3 +376,10 @@ Cada módulo de `src/modules/` expone solo su `index.ts`. Los demás módulos se
 ## Licencia
 
 Uso académico y no comercial; no se permite reproducirlo ni redistribuirlo sin autorización de los titulares (el equipo del proyecto y JuanJo0775). El texto completo está en [LICENSE](LICENSE). No es una licencia de código abierto.
+
+
+## Cierre documental
+
+Al 27 de noviembre de 2026, el proyecto declara aceptadas todas las decisiones arquitectónicas registradas. El detalle se conserva en `docs/adr/` y `docs/DECISIONS.md`. Notion es la fuente de verdad del estado del registro; este repositorio conserva los documentos técnicos y la evidencia de implementación.
+
+> **Nota de numeración:** Notion identifica como ADR-036 el plan de compra, mientras este repositorio usa ADR-036 para el correo de bienvenida y documenta el plan de compra en ADR-034 y ADR-035. Son decisiones distintas; no intercambiar sus identificadores.
