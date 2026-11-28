@@ -1,6 +1,6 @@
 # ADR-036: Correo de bienvenida
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-23
 - **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo.
 - **Escenarios relacionados:** EC-08 (privacidad)
