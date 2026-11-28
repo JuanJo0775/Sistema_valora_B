@@ -1,8 +1,8 @@
 # ADR-036: Correo de bienvenida
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (confirmación del equipo: 2026-11-28; revisión sin cambios, fecha de reunión no informada)
 - **Fecha:** 2026-11-23
-- **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo.
+- **Responsables:** integrante que dirige el backend; revisión del equipo confirmada, sin cambios a la decisión (fecha de reunión no informada).
 - **Escenarios relacionados:** EC-08 (privacidad)
 - **Requisitos relacionados:** Ley 1581 de 2012, ADR-013 (privacidad por diseño), ADR-029 (verificación de correo y `EmailSender`), ADR-033 (restablecer contraseña)
 
@@ -26,3 +26,12 @@ La persona que crea su cuenta no recibe ningún mensaje que le explique qué es 
 - Las cuentas que existen hoy no reciben la bienvenida, tampoco las que sigan sin verificar al migrar.
 - Con el proveedor caído la persona no la recibe y no hay segundo intento.
 - Una bienvenida puede salir a una cuenta con la eliminación pendiente si verificó justo antes de pedirla; es inocuo.
+
+
+## Aceptación y evidencia — 28-nov-2026
+
+La decisión se conserva tras la revisión del equipo confirmada por el usuario; la fecha exacta de la reunión no fue informada. Se mantiene la fecha original del ADR (23-nov-2026).
+
+La implementación está en `src/modules/identity/application/welcome-email.ts` y `SendWelcomeEmail`; las pruebas unitarias están en `welcome-email.spec.ts` y las pruebas HTTP de integración en `test/integration/welcome-email-http.spec.ts`. Estas cubren el envío una sola vez al verificar el correo, el contenido y que los datos de bienvenida no se filtran en la sesión. La actualización de `main` incluye el ajuste del contenido HTML/texto y sus pruebas.
+
+**Conciliación de identificadores:** este ADR-036 del backend es «Correo de bienvenida». ADR-036 en la base oficial de Notion identifica el plan de compra; ese plan se conserva como ADR-034/ADR-035 en el backend. No son la misma decisión.
