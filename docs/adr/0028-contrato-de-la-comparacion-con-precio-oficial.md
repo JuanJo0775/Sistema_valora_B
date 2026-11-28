@@ -1,6 +1,6 @@
 # ADR-028: Contrato de la comparación con precio oficial, discrepancia y promociones
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-26 (borrador de AS-E4 del 16-nov-2026; ajustado al contrato construido en B4 y B6)
 - **Responsables:** equipo de backend y de frontend; la aceptación la decide el equipo. No estaba en la lista de la issue B#210 (que nombra ADR-023 a 027), pero AS-E4 lo propuso y sin él quedaría un hueco en la numeración.
 - **Escenarios relacionados:** EC-06, EC-08, EC-05
