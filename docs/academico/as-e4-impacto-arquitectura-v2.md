@@ -44,7 +44,7 @@ Cerrar las decisiones 1 y 2 antes de estimar evita que la estimación dependa de
 | Rutas `/commerce/*` | 4 rutas declaradas con `x-corte: 3`, sin código en `src/modules/commerce` (la carpeta no existe) | `docs/openapi.yaml` |
 | Reserva en el núcleo | `promotions: []` aparte de `results` y `source` por resultado | `src/modules/comparison/application/compare-product.ts` |
 | Diagramas desactualizados con la v2 | `13-evolucion` (dice «SIN CAMBIOS» en `reliability` e `identity`), `08-sec-oficial` (llamada directa), `02-c4-contenedores` (proxy Caddy), `03-c4-componentes` (`ScoreActualizado`): **fuentes `.mmd` actualizadas el 26-nov-2026 (también 06 y 12); falta regenerar los `.png`** | `docs/diagramas/` |
-| ADR relacionados | ADR-008, ADR-009 y ADR-016 figuran «Propuesto» en Notion; ADR-004 también (ver encabezado de su archivo) | `docs/adr/` |
+| ADR relacionados | ADR-004, ADR-006, ADR-007, ADR-008, ADR-009, ADR-013, ADR-016 y ADR-019 constan Aceptados en Notion y en sus fichas del repositorio; ADR-023 y ADR-024 siguen Propuestos | Base ADRs de Notion y `docs/adr/` |
 
 ## 5. Honestidad de EC-05
 
@@ -53,7 +53,7 @@ Las rutas comerciales **ya están en el contrato** (corte 3), pero no hay códig
 ## 6. Pendientes y riesgos
 
 - Estimación de esfuerzo: `PENDIENTE (equipo)`, método y cifras del 23-nov. Este archivo no propone ninguna.
-- Revisar y aceptar o descartar ADR-023 a 028; aceptar antes ADR-004, ADR-008 y ADR-009, si el equipo confirma su estado.
+- Revisar ADR-023 y ADR-024, que siguen Propuestos en Notion. ADR-004, ADR-006, ADR-007, ADR-008, ADR-009, ADR-013, ADR-016 y ADR-019 ya están Aceptados; no requieren una nueva aceptación.
 - Regenerar los diagramas 02, 03, 08 y 13 y actualizar `docs/ARCHITECTURE.md` (reglas 8 a 11) en la misma rama que los ADR.
 - Los RF comerciales RF-015 a RF-018 están «Por definir» en Notion; el requerimiento del docente (23-nov) puede cambiar esta propuesta.
 - Riesgos de la evolución (R1 a R12) y lo no determinable con la información disponible: secciones 6.4 y 6.5 de la página de Notion.
