@@ -1,6 +1,6 @@
 # ADR-040: El comercio puede dejar su tienda y eliminar la que creó
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-24
 - **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo.
 - **Escenarios relacionados:** EC-08 (privacidad), EC-05 (el núcleo no depende de commerce)
