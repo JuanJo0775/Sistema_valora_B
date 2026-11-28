@@ -1,6 +1,6 @@
 # ADR-026: Promociones: reglas en el dominio, lectura propia en `comparison`, estado calculado al leer
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-26 (grill del 21-nov-2026 y precisiones al construir B6 el 22-nov; ajustado al código)
 - **Responsables:** equipo de backend; la aceptación la decide el equipo. No hay constancia en el repositorio de la validación con el docente del 23-nov.
 - **Escenarios relacionados:** EC-06, EC-05
