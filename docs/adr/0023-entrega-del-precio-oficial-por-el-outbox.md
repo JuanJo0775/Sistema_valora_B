@@ -1,6 +1,6 @@
 # ADR-023: Entrega del precio oficial a la lectura por el outbox, atómica con la publicación y diferida
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-26 (borrador de AS-E4 del 16-nov-2026; ajustado al código construido en B#203)
 - **Responsables:** equipo de backend; la aceptación la decide el equipo. No hay constancia en el repositorio de la validación con el docente del 23-nov.
 - **Escenarios relacionados:** EC-02 (actualización de un precio oficial), EC-05 (el núcleo no conoce `commerce`), EC-04
