@@ -1,8 +1,8 @@
 # ADR-041: Se cierra la integración de Olímpica con VTEX y se exige autorización para fuentes de terceros
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (confirmación del equipo: 2026-11-28; revisión con el docente sin cambios, fecha no informada)
 - **Fecha:** 2026-11-25
-- **Responsables:** equipo de backend; pendiente de revisión del equipo.
+- **Responsables:** equipo de backend; revisión con el docente confirmada por el equipo, sin cambios a la decisión (fecha de reunión no informada).
 - **Escenarios relacionados:** EC-05 (evolución sin rediseñar el núcleo), EC-06 (fuente visible), EC-08 (privacidad)
 - **Requisitos relacionados:** RF-014 (siembra y referencias), ADR-011 (datos iniciales), ADR-009 (neutralidad), ADR-042 (precio en línea separado), grill y contrato en `docs/decisiones/olimpica-vtex/`
 
@@ -39,9 +39,16 @@ El `robots.txt` de Olímpica no bloquea esos endpoints para el agente general, p
 - (+) Una fuente futura entra por un puerto de lectura ya probado.
 - (−) No hay precios en línea de supermercado en el MVP; la cobertura depende de reportes y de la siembra manual.
 - (−) La tabla y el endpoint no tienen escritor hasta que haya una fuente autorizada. Mientras tanto, `online_observations.source` y el enumerado `olimpica` del contrato siguen siendo específicos de Olímpica; se generalizan con la primera fuente nueva.
-- **Riesgo abierto:** el 21 de noviembre de 2026 se consultaron 160 fichas de olimpica.com con un script para armar los borradores de `seed/` (`docs/decisiones/issue-193-semilla/notas-olimpica.md`). La cláusula 2.4.1 también cubre esa consulta. El equipo debe decidir si esos precios se conservan como datos iniciales, se verifican a mano en tienda o se retiran antes de la entrega.
+- **Riesgo residual:** el 21 de noviembre de 2026 se consultaron 160 fichas de olimpica.com con un script para armar borradores de `seed/`. La revisión y firma de `docs/decisiones/issue-193-semilla/revision.md` (21-nov-2026) documenta la aprobación del equipo y la carga posterior de 79 presentaciones, 167 precios iniciales y 20 referencias SIPSA; con ello queda documentada la decisión de conservar la semilla revisada. Esto no equivale a autorización de Olímpica ni a concepto legal sobre la consulta automatizada. El piloto permanece retirado y no se vuelve a consultar el sitio sin autorización escrita.
 
 ## Verificación
 
 - `pnpm typecheck`, `pnpm lint`, `pnpm depcheck` y `pnpm test:cov` en verde tras el retiro del código.
 - Ninguna ruta, DTO ni documento de `docs/openapi.yaml` cambia.
+
+
+## Aceptación y evidencia — 28-nov-2026
+
+La integración VTEX fue retirada; el cliente, el comando, la vista previa, la aplicación manual y las pruebas del piloto se eliminaron. El repositorio documenta `typecheck`, `lint`, `depcheck` y `test:cov` en verde tras el retiro. La decisión de conservar la semilla revisada se respalda en la firma del equipo del 21-nov-2026 (`docs/decisiones/issue-193-semilla/revision.md`). La reunión con el docente fue confirmada por el equipo, sin cambios al plan; su fecha exacta no fue informada.
+
+La aceptación cierra la decisión de retirar la integración y exigir autorización escrita para fuentes futuras. No elimina el riesgo residual sobre el método usado para consultar las fichas históricas ni constituye autorización de terceros.
