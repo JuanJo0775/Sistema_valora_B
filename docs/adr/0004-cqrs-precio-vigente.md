@@ -31,7 +31,7 @@ C) CQRS completo con Event Sourcing y broker de mensajes: máximo desacople, per
 
 ## Decisión
 
-PROPUESTA: B) CQRS ligero. Inmediato: registrar un reporte y consultar la comparación. Diferido (segundos a minutos): cálculo de score, detección de anómalos, notificaciones e importaciones. Un cambio de precio oficial actualiza el modelo de lectura de forma síncrona, en la misma operación; el límite de aceptación es el de RNF-002 (máximo 5 minutos) y sirve de margen ante fallos. Un proceso programado reconstruye el modelo de lectura y marca como vencidos los precios que superen su TTL.
+ACEPTADA (12-nov-2026): B) CQRS ligero. Inmediato: registrar un reporte y consultar la comparación. Diferido (segundos a minutos): cálculo de score, detección de anómalos, notificaciones e importaciones. Un cambio de precio oficial actualiza el modelo de lectura de forma síncrona, en la misma operación; el límite de aceptación es el de RNF-002 (máximo 5 minutos) y sirve de margen ante fallos. Un proceso programado reconstruye el modelo de lectura y marca como vencidos los precios que superen su TTL.
 
 ## Consecuencias
 
