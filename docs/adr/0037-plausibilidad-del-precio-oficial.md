@@ -1,6 +1,6 @@
 # ADR-037: Plausibilidad del precio oficial: rechazo automático y revisión sin referencia
 
-- **Estado:** Propuesto (decisión del equipo registrada el 24-nov-2026; pendiente de aceptación formal)
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-24
 - **Responsables:** integrante que dirige el backend; revisado por el equipo.
 - **Escenarios relacionados:** EC-02 (precio oficial), EC-03 (reportes maliciosos y datos erróneos), EC-05 (el núcleo no depende de commerce), EC-08 (privacidad)
