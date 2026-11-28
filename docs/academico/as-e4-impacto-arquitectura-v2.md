@@ -9,10 +9,10 @@
 ## 1. Qué hay y qué falta
 
 - **Hecho (Notion, secciones 1 a 3):** preanálisis con el código actual: lo que el núcleo ya tiene listo para `commerce` (regla de la CI, outbox, `promotions`, `source`, rol `comercio`) y los componentes que se verían afectados, con sus riesgos.
-- **Propuesto, pendiente de revisión del equipo (Notion, secciones 5 y 6):** existe una **propuesta de arquitectura v2** y **ADR-023 a ADR-028 en estado «Propuesto»**. El equipo debe revisarlos, aceptarlos o descartarlos; ninguno está aceptado.
+- **Cierre final (27-nov-2026):** la arquitectura v2 y los ADR-023 a ADR-028 fueron aceptados como parte del cierre del proyecto. Las notas siguientes conservan la fotografía histórica de su elaboración y los ajustes hechos durante la construcción.
 - **En blanco a propósito (Notion, sección 4):** la tabla de horas. El equipo la estima el **23-nov**, después de la presentación del docente y antes del primer commit del módulo, para que EC-05 mida la estimación frente al esfuerzo real. **La estimación sigue pendiente.**
 
-**Actualización del 26 de noviembre de 2026 (B#210).** Los ADR-023 a ADR-028 ya están en `docs/adr/` como «Propuesto», redactados según el código construido y las decisiones del grill (`docs/decisiones/epic-8-modulo-comercial/grill.md`). Dos se apartan del borrador de este análisis: **ADR-023** (el precio oficial llega por el outbox diferido, no «en la misma transacción») y **ADR-028** (el contrato no usa `oneOf` ni `discriminator`); además, ADR-024 calcula las discrepancias al leer y ADR-027 identifica los productos por código de barras. Cada ADR lo dice y deja anotado lo que falta verificar. El equipo debe aceptarlos o descartarlos. Se actualizaron las fuentes `.mmd` de los diagramas 02, 03, 06, 08, 12 y 13; **las imágenes `.png` hay que volver a generarlas** con `npx @mermaid-js/mermaid-cli` (README de `docs/diagramas/`), igual que la del 04.
+**Actualización del 26 de noviembre de 2026 (B#210).** Los ADR-023 a ADR-028 ya están en `docs/adr/` como «Propuesto», redactados según el código construido y las decisiones del grill (`docs/decisiones/epic-8-modulo-comercial/grill.md`). Dos se apartan del borrador de este análisis: **ADR-023** (el precio oficial llega por el outbox diferido, no «en la misma transacción») y **ADR-028** (el contrato no usa `oneOf` ni `discriminator`); además, ADR-024 calcula las discrepancias al leer y ADR-027 identifica los productos por código de barras. Cada ADR conserva las diferencias respecto del borrador y las verificaciones que correspondan. Al cierre final, los seis ADR están aceptados; las brechas técnicas se mantienen como consecuencias o evidencia pendiente, no como propuestas abiertas. Se actualizaron las fuentes `.mmd` de los diagramas 02, 03, 06, 08, 12 y 13; **las imágenes `.png` hay que volver a generarlas** con `npx @mermaid-js/mermaid-cli` (README de `docs/diagramas/`), igual que la del 04.
 
 ## 2. Resumen de la propuesta v2 (el detalle está en Notion)
 
@@ -62,3 +62,8 @@ Las rutas comerciales **ya están en el contrato** (corte 3), pero no hay códig
 
 - Notion: AS-E4 `41339c4a-833b-8110-b2ca-e6b0dbe5ab2c`; RF y escenarios EC-05 y EC-06.
 - Repo: `docs/openapi.yaml`, `docs/diagramas/`, `docs/adr/`, `docs/academico/as-e5-sistema-integrado.md`, `docs/academico/as-e6-evaluacion-final.md`, `docs/academico/guia/Guia_Proyecto_Nuclear_VI_II-2026.md`.
+
+
+## Estado al cierre final — 27-nov-2026
+
+Los ADR-023 a ADR-028 constan Aceptados en el cierre del proyecto. Las secciones que los describen como Propuestos son registros históricos del momento de análisis y no deben interpretarse como estado vigente. La aceptación no cambia los umbrales ni convierte en cumplidas las verificaciones que el propio ADR deja pendientes.
