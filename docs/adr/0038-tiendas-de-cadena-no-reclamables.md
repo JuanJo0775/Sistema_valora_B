@@ -1,6 +1,6 @@
 # ADR-038: Las tiendas de cadena no se reclaman y el supermercado pasa por moderación
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-24
 - **Responsables:** integrante que dirige el backend; pendiente de revisión del equipo.
 - **Escenarios relacionados:** EC-08 (privacidad), RN5 de detección de reportes anómalos
