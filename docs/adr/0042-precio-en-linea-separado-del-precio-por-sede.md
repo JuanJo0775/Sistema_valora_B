@@ -1,8 +1,8 @@
 # ADR-042: El precio en línea es una fuente aparte del precio por sede
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (confirmación del equipo: 2026-11-28; revisión con el docente sin cambios, fecha no informada)
 - **Fecha:** 2026-11-25
-- **Responsables:** equipo de backend; pendiente de revisión del equipo.
+- **Responsables:** equipo de backend; revisión con el docente confirmada por el equipo, sin cambios a la decisión (fecha de reunión no informada).
 - **Escenarios relacionados:** EC-02 (vigencia), EC-03 (confiabilidad), EC-05 (evolución), EC-06 (fuente visible), EC-08 (privacidad)
 - **Requisitos relacionados:** RF-008, RF-009, RF-010, ADR-008 (oficial frente a reportado), ADR-009 (neutralidad), ADR-013 (privacidad), ADR-041 (cierre de la integración con Olímpica)
 
@@ -30,3 +30,12 @@ El grill de Olímpica pidió un ADR que separara el precio en línea del precio 
 - (+) Fuentes en línea nuevas se agregan sin tocar el núcleo (EC-05).
 - (−) El usuario ve dos precios distintos para un mismo producto; la pantalla debe explicar la fuente y la zona.
 - Incorporar el precio en línea al orden o a «Dónde comprar» requiere un ADR posterior.
+
+
+## Aceptación y evidencia — 28-nov-2026
+
+La decisión de separar los precios en línea de los precios por sede se mantiene sin cambios tras la reunión con el docente confirmada por el equipo. Se conserva la fecha original del ADR (25-nov-2026).
+
+La implementación documentada incluye `imports.online_observations`, `GET /v1/products/{productId}/online-offers` y el control `ONLINE_OFFERS_ENABLED`. La bandera permanece falsa y el endpoint devuelve `[]` mientras no exista autorización escrita de una fuente.
+
+La aceptación cubre la arquitectura y la condición de habilitación; no afirma que exista una fuente autorizada ni que los precios en línea estén activos.
