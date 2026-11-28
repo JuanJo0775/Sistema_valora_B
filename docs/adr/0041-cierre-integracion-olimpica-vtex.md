@@ -1,6 +1,6 @@
 # ADR-041: Se cierra la integración de Olímpica con VTEX y se exige autorización para fuentes de terceros
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-25
 - **Responsables:** equipo de backend; pendiente de revisión del equipo.
 - **Escenarios relacionados:** EC-05 (evolución sin rediseñar el núcleo), EC-06 (fuente visible), EC-08 (privacidad)
