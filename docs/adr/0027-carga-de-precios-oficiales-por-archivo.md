@@ -1,8 +1,8 @@
 # ADR-027: Carga de precios oficiales por archivo: al momento, por código de barras, con informe por fila
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (confirmación del equipo: 2026-11-28; reunión con el docente realizada, fecha no informada)
 - **Fecha:** 2026-11-26 (grill del 21-nov-2026, D7; ajustado al código construido en B5)
-- **Responsables:** equipo de backend; la aceptación la decide el equipo. No hay constancia en el repositorio de la validación con el docente del 23-nov.
+- **Responsables:** equipo de backend; revisión con el docente confirmada por el equipo, sin cambios a la decisión (fecha de reunión no informada).
 - **Escenarios relacionados:** EC-02, EC-05
 - **Requisitos relacionados:** RF-016 (RN4 y los escenarios «Carga por archivo con errores» y «Comercio sin POS»), RNF-014. Ajusta ADR-016 y el contrato (`202` pasa a `200`). Relacionado con ADR-037.
 
@@ -49,3 +49,12 @@ Se adoptan la B y la D, y se descartan la A, la C, la E y la F. El borrador de A
 - Notion: AS-E4 (sección 6.2, borrador de ADR-027).
 - Documentos: `docs/decisiones/epic-8-modulo-comercial/grill.md` (D7). ADR-005, ADR-016, ADR-023, ADR-037.
 - Issues / PRs: B#205 (carga por archivo), B#118 (códigos de barras), B#210 (este registro).
+
+
+## Aceptación y evidencia — 28-nov-2026
+
+La decisión se mantiene sin cambios tras la reunión con el docente confirmada por el equipo. Se conserva la fecha original del ADR (26-nov-2026).
+
+La evidencia incluye `official-price-file.spec.ts`, `upload-official-prices.spec.ts`, `commerce-official-prices-http.spec.ts` y la prueba de contrato `test/contract/commerce.contract.spec.ts`, que ejercita `POST /v1/commerce/prices/bulk` en modo estricto. Se verifica el tratamiento de filas buenas y malas, idempotencia, códigos desconocidos, precios en revisión y respuestas del contrato.
+
+La semilla contiene código de barras en 77 de 150 productos. Es una limitación conocida del alcance de carga masiva, no una promesa de cobertura para productos sin código; esos se publican individualmente.
