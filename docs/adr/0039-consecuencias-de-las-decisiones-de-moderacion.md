@@ -1,6 +1,6 @@
 # ADR-039: Estado final de cada decisión de moderación y causa visible de la suspensión
 
-- **Estado:** Propuesto (decisión del equipo registrada el 24-nov-2026; pendiente de aceptación formal)
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-24
 - **Responsables:** integrante que dirige el backend; revisado por el equipo.
 - **Escenarios relacionados:** EC-03 (reportes maliciosos), EC-08 (privacidad)
