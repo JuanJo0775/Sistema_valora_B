@@ -1,6 +1,6 @@
 # Decisiones vigentes — Backend
 
-Fecha de consolidación: 3 de noviembre de 2026.
+Fecha de última consolidación: 27 de noviembre de 2026.
 
 Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para organizar los dos repositorios. No sustituye los ADR del proyecto.
 
