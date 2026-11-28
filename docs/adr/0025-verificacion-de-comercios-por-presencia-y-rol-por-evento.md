@@ -1,6 +1,6 @@
 # ADR-025: Verificación de comercios por presencia, un rol por cuenta y revocación que retira lo publicado
 
-- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
+- **Estado:** Propuesto
 - **Fecha:** 2026-11-26 (grill del 21-nov-2026 y precisiones al construir B8 y B7 el 22-nov; ajustado al código)
 - **Responsables:** equipo de backend; la aceptación la decide el equipo. El grill dejó **por validar con el docente el 23-nov** si la verificación por presencia cumple lo que RF-015 espera de «verificación de comercios»; no hay constancia en el repositorio del resultado.
 - **Escenarios relacionados:** EC-08, EC-05, EC-03
