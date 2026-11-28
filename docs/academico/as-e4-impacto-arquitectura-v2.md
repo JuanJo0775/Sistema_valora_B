@@ -67,3 +67,10 @@ Las rutas comerciales **ya están en el contrato** (corte 3), pero no hay códig
 ## Nota de cierre posterior — 28-nov-2026
 
 Este entregable conserva la fotografía histórica del análisis y de las propuestas del 16–26 de noviembre; sus frases «pendiente de revisión» no representan el estado vigente. Tras la reunión con el docente confirmada por el equipo (sin fecha exacta informada y sin cambios a lo planeado) y la revisión de `main`, ADR-025, ADR-026, ADR-027 y ADR-028 quedaron aceptados en Notion el 28-nov-2026. ADR-023 y ADR-024 permanecen propuestos: falta la prueba de 50 cambios de RNF-002 para ADR-023; ADR-024 aún no produce el motivo `discrepancia_oficial` y carece de prueba de contrato para `discrepancy`. Las fechas originales de las fichas se conservan. Esta nota no completa la estimación de esfuerzo ni afirma que las brechas de calidad estén resueltas.
+
+
+## Seguimiento de H2-05 y EC-05 — 28-nov-2026
+
+H2-05 tenía fecha límite 23-nov-2026. La evidencia del repositorio no permite confirmar que el docente haya realizado la presentación del módulo comercial: el grill de EPIC-B08 del 21-nov-2026 mantiene las decisiones como propuestas del equipo «por validar el 23-nov-2026», y no se encontró acta, minuta o registro de la presentación. Por tanto, no se infiere que H2-05 se haya realizado por el hecho de que el módulo comercial se implementó después.
+
+El primer commit de `commerce` es anterior al 23-nov-2026; por ello no existe una estimación previa registrada conforme a EC-05. La tabla de esfuerzo no se rellena retroactivamente ni se inventan horas. El equipo debe confirmar si la presentación ocurrió y, si ocurrió, aportar fecha y evidencia. Hasta entonces H2-05 permanece «Sin iniciar» en el calendario y la estimación previa de EC-05 queda como brecha documental. La reunión con el docente que el equipo confirmó el 28-nov no modificó lo planeado, pero no se toma como evidencia sustitutiva de H2-05.
