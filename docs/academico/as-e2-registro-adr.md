@@ -23,26 +23,26 @@ Columnas: estado en Notion, estado en `docs/DECISIONS.md` (o la fuente indicada)
 | ADR-001 | Estilo arquitectónico: monolito modular | Aceptado (2026-10-23) | Aprobada | [0001](../adr/0001-monolito-modular.md) | EC-05, EC-04 | Sí | No |
 | ADR-002 | Estilo de API: REST con OpenAPI y dos superficies | Aceptado (2026-10-23) | Aprobada | [0002](../adr/0002-api-rest-openapi.md) | EC-01, EC-04, EC-07 | Sí | No |
 | ADR-003 | Persistencia: base de datos relacional con soporte geoespacial | Aceptado (2026-11-03) | Aceptado el 3-nov-2026 | [0003](../adr/0003-persistencia-postgresql-postgis.md) | EC-03, EC-04 | Sí | No |
-| ADR-004 | Separar escritura y lectura con un modelo de precio vigente precalculado | Propuesto | Aceptado el 12-nov-2026 | [0004](../adr/0004-cqrs-precio-vigente.md) | EC-02, EC-04 | Sí | No |
+| ADR-004 | Separar escritura y lectura con un modelo de precio vigente precalculado | Aceptado (2026-11-12) | Aceptado el 12-nov-2026 | [0004](../adr/0004-cqrs-precio-vigente.md) | EC-02, EC-04 | Sí | No |
 | ADR-005 | Modelo de vigencia y confiabilidad: TTL por categoría y score ponderado | Aceptado (2026-11-11) | Aceptado el 11-nov-2026; valores provisionales | [0005](../adr/0005-vigencia-confiabilidad.md) | EC-02, EC-03 | Sí | No |
-| ADR-006 | Detección de reportes anómalos: reglas estadísticas y revisión humana | Propuesto | Sin entrada | [0006](../adr/0006-reportes-anomalos.md) | EC-03 | Sí | No |
-| ADR-007 | Catálogo canónico con presentaciones y unidad base | Aceptado (2026-11-11) | Contradictorio: «aceptado el 11-nov» y «sigue propuesto» | [0007](../adr/0007-catalogo-canonico.md) | EC-01, EC-06 | Sí | No |
-| ADR-008 | Resolución entre precio oficial y precio reportado | Propuesto | Sin entrada | [0008](../adr/0008-precio-oficial-vs-reportado.md) | EC-02, EC-03, EC-05 | Sí | No |
-| ADR-009 | Neutralidad: promociones separadas del orden de la comparación | Propuesto | Sin estado en la tabla; aplicado en la issue #21 | [0009](../adr/0009-neutralidad-promociones.md) | EC-06 | Sí | No |
+| ADR-006 | Detección de reportes anómalos: reglas estadísticas y revisión humana | Aceptado (2026-11-14) | Aceptado el 14-nov-2026 | [0006](../adr/0006-reportes-anomalos.md) | EC-03 | Sí | No |
+| ADR-007 | Catálogo canónico con presentaciones y unidad base | Aceptado (2026-11-11) | Aceptado el 11-nov-2026 | [0007](../adr/0007-catalogo-canonico.md) | EC-01, EC-06 | Sí | No |
+| ADR-008 | Resolución entre precio oficial y precio reportado | Aceptado (2026-11-21) | Aceptado el 21-nov-2026 | [0008](../adr/0008-precio-oficial-vs-reportado.md) | EC-02, EC-03, EC-05 | Sí | No |
+| ADR-009 | Neutralidad: promociones separadas del orden de la comparación | Aceptado (2026-11-12) | Aceptado el 12-nov-2026 | [0009](../adr/0009-neutralidad-promociones.md) | EC-06 | Sí | No |
 | ADR-010 | Cliente: aplicación web progresiva con cola de envío sin conexión | Aceptado (2026-10-30) | Aprobada | [0010](../adr/0010-pwa-cola-offline.md) | EC-01, EC-07 | Sí | Sí |
 | ADR-011 | Datos iniciales: referencia pública y siembra manual | Aceptado (2026-10-30) | Aprobada | [0011](../adr/0011-datos-iniciales.md) | EC-02 | Sí | No |
-| ADR-012 | Despliegue reproducible y mecanismo de operación | En discusión (fecha 2026-11-11) | Aceptado el 16-nov-2026 en `DECISIONS.md` (Render, Neon, Vercel; PR #123); el estado de Notion lo decide el equipo | [0012](../adr/0012-despliegue-reproducible.md) | EC-04 | Sí | No |
-| ADR-013 | Privacidad por diseño: identidad del reportante separada y no pública | Propuesto | Sin entrada | [0013](../adr/0013-privacidad-por-diseno.md) | EC-03, EC-08 | Sí | No |
+| ADR-012 | Despliegue reproducible y mecanismo de operación | Aceptado (2026-11-16) | Aceptado el 16-nov-2026 en `DECISIONS.md` (Render, Neon, Vercel; PR #123) | [0012](../adr/0012-despliegue-reproducible.md) | EC-04 | Sí | No |
+| ADR-013 | Privacidad por diseño: identidad del reportante separada y no pública | Aceptado (2026-11-15) | Aceptado el 15-nov-2026 | [0013](../adr/0013-privacidad-por-diseno.md) | EC-03, EC-08 | Sí | No |
 | ADR-014 | Autenticación y autorización con control de acceso por rol | Aceptado (2026-11-03) | Aprobada | [0014](../adr/0014-autenticacion-rbac.md) | EC-03, EC-08 | Sí | No |
 | ADR-015 | Comunicación entre módulos con eventos de dominio internos | Aceptado (2026-11-11) | Aceptado el 11-nov-2026 | [0015](../adr/0015-eventos-dominio-outbox.md) | EC-05 | Sí | No |
-| ADR-016 | Participación de comercios pequeños sin punto de venta | Propuesto | Sin entrada | [0016](../adr/0016-comercios-pequenos.md) | EC-02, EC-05 | Sí | No |
+| ADR-016 | Participación de comercios pequeños sin punto de venta | Aceptado (2026-11-21) | Aceptado el 21-nov-2026 | [0016](../adr/0016-comercios-pequenos.md) | EC-02, EC-05 | Sí | No |
 | ADR-017 | Frontend PWA: React + Vite con vite-plugin-pwa | Aceptado (sin fecha en la propiedad) | No figura en `DECISIONS.md`; `PLAN_MAESTRO.md`: aceptado el 8-nov-2026 | [0017](../adr/0017-frontend-react-vite-pwa.md) | EC-01, EC-07 | Sí | Sí |
 | ADR-018 | Backend: NestJS sobre Express | Aceptado (2026-11-08) | Aceptado el 8-nov-2026 | [0018](../adr/0018-backend-nestjs-express.md) | EC-04, EC-05, EC-08 | Sí | Sí |
-| ADR-019 | Mapa de establecimientos: OpenStreetMap con Leaflet | Propuesto (el texto dice «ACEPTADA el 16-nov-2026») | Sin entrada; el repo usa «ADR-019» para los tipos de establecimiento | [0019](../adr/0019-mapa-osm-leaflet.md) | EC-04, EC-08 | Sí | Sí |
+| ADR-019 | Mapa de establecimientos: OpenStreetMap con Leaflet | Aceptado (2026-11-16) | Aceptado el 16-nov-2026; un solo tema: mapa OSM/Leaflet, tipos de establecimiento, radio y atribución | [0019](../adr/0019-mapa-osm-leaflet.md) | EC-04, EC-08 | Sí | Sí |
 | ADR-020 | Imágenes de productos y de tiendas | Aceptado (sin fecha en la propiedad; el texto dice 15-nov-2026) | Aceptado el 15-nov-2026 | [0020](../adr/0020-imagenes-productos.md) (ya existía) | EC-01, EC-08 | Sí | Sí |
 | ADR-021 | Acceso a datos: Drizzle ORM con migraciones SQL versionadas | Aceptado (2026-11-11) | Aceptado el 11-nov-2026 | [0021](../adr/0021-acceso-datos-drizzle.md) (ya existía) | EC-03, EC-05 | Sí | Sí |
 
-Recuento por estado en Notion (21 ADR): Aceptado 13 (ADR-001, 002, 003, 005, 007, 010, 011, 014, 015, 017, 018, 020, 021); Propuesto 7 (ADR-004, 006, 008, 009, 013, 016, 019); En discusión 1 (ADR-012).
+Recuento vigente en Notion para los 21 ADR iniciales: 21 Aceptados, 0 Propuestos y 0 En discusión. ADR-001 a ADR-021 tienen estado Aceptado; las fechas individuales se muestran en la tabla.
 
 Notas de lectura de la tabla:
 
@@ -51,7 +51,7 @@ Notas de lectura de la tabla:
 
 ## 3. Discrepancias abiertas
 
-Ninguna se corrigió; cada una necesita una decisión del equipo.
+Las discrepancias siguientes corresponden a la lectura de migración inicial y se conservan como historial. Su resolución vigente se documenta en §6; no deben interpretarse como estados actuales.
 
 **Entre la propiedad de Notion y el texto del mismo ADR**
 
@@ -86,7 +86,7 @@ La guía pide, para cada decisión estructural, **contexto, alternativas conside
 - **Los 21 ADR traen los cuatro textos** en las propiedades de su fila de Notion, y así se migraron a `docs/adr/`.
 - **Quince ADR tienen la página de Notion en blanco** (ADR-001 a 009, 011 a 016); el texto está solo en las propiedades. SUPUESTO: la guía no exige que el texto esté en el cuerpo de la página sino que exista; si el equipo quiere que Notion muestre el texto completo en la página, es un trabajo editorial pendiente en Notion.
 - **Pendientes que impiden darlos por cumplidos todavía** (todos `PENDIENTE (equipo)`):
-  - **Estado sin confirmar.** ADR-004, 006, 008, 009, 013, 016 y 019 están Propuesto en Notion; ADR-012 está En discusión (ver sección 3).
+  - **Estado vigente.** Los 21 ADR iniciales (ADR-001 a ADR-021) están Aceptados en la base ADRs de Notion. Las discrepancias de estado de la migración quedaron resueltas; ver §6.
   - **Responsables.** Ningún ADR indica quién lo elaboró o revisó; la plantilla lo pide.
   - **Requisitos.** Los RF/RNF relacionados no están resueltos como identificadores.
   - **Fechas.** Fecha de decisión vacía en ADR-004, 006, 008, 009, 013, 016, 017, 019 y 020 (en la propiedad de Notion).
@@ -118,3 +118,21 @@ La guía pide, para cada decisión estructural, **contexto, alternativas conside
 - Notion, lectura del 16/17-nov-2026: AS-E1, AS-E2, AS-E3, Auditoría (para las discrepancias 1 y 14).
 
 Redactado con apoyo de IA (Claude Code); el equipo debe revisarlo y poder defenderlo.
+
+
+## 6. Conciliación de estados — 28-nov-2026
+
+La base ADRs de Notion es la fuente de verdad del estado. Se contrastó con los archivos individuales de `docs/adr/` y con `docs/DECISIONS.md` en la rama `dev`. Los ocho casos señalados quedan alineados:
+
+| ADR | Estado vigente | Fecha de decisión | Evidencia en el repositorio |
+|---|---|---|---|
+| ADR-004 | Aceptado | 12-nov-2026 | `docs/adr/0004-cqrs-precio-vigente.md`, `docs/DECISIONS.md` |
+| ADR-006 | Aceptado | 14-nov-2026 | `docs/adr/0006-reportes-anomalos.md`, `docs/DECISIONS.md` |
+| ADR-007 | Aceptado | 11-nov-2026 | `docs/adr/0007-catalogo-canonico.md`, sección Catálogo de `docs/DECISIONS.md` |
+| ADR-008 | Aceptado | 21-nov-2026 | `docs/adr/0008-precio-oficial-vs-reportado.md`, `docs/DECISIONS.md` |
+| ADR-009 | Aceptado | 12-nov-2026 | `docs/adr/0009-neutralidad-promociones.md`, `docs/DECISIONS.md` |
+| ADR-013 | Aceptado | 15-nov-2026 | `docs/adr/0013-privacidad-por-diseno.md`, `docs/DECISIONS.md` |
+| ADR-016 | Aceptado | 21-nov-2026 | `docs/adr/0016-comercios-pequenos.md`, `docs/DECISIONS.md` |
+| ADR-019 | Aceptado | 16-nov-2026 | `docs/adr/0019-mapa-osm-leaflet.md`, `docs/DECISIONS.md` |
+
+También se corrigió ADR-012 a Aceptado (16-nov-2026), que ya constaba como aceptado en el repositorio. El índice de este entregable cubre los 21 ADR iniciales; el estado global de la base Notion contiene 39 Aceptados y 2 Propuestos (ADR-023 y ADR-024), de 41 registros. Estos dos ADR propuestos quedan fuera del registro inicial y no se deben presentar como aceptados.

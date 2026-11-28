@@ -1,6 +1,6 @@
 # Decisiones vigentes — Backend
 
-Fecha de consolidación: 3 de noviembre de 2026.
+Fecha de consolidación: 28 de noviembre de 2026.
 
 Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para organizar los dos repositorios. No sustituye los ADR del proyecto.
 
@@ -16,6 +16,7 @@ Este archivo refleja decisiones verificadas en Notion y acuerdos expresos para o
 | ADR-004 | CQRS ligero con precio vigente precalculado (aceptado el 12 de noviembre de 2026) | Reportes de solo inserción en `pricing`; modelo de lectura `comparison.price_current`, actualizado por el evento `PriceReported` a través del outbox (segundos de retraso). Gana el reporte con el mayor `observedAt`. Score y anómalos son diferidos. |
 | ADR-005 | Vigencia y confiabilidad: TTL por categoría y score ponderado (aceptado el 11 de noviembre de 2026) | Estados vigente, por confirmar (1 a 2 TTL) y desactualizado (más de 2 TTL); score con una función pura. Se acepta el modelo: los valores (7 y 14 días, pesos del score) siguen provisionales y parametrizables hasta calibrarlos. |
 | ADR-006 | Detección de reportes anómalos: reglas estadísticas y revisión humana (aceptado el 14 de noviembre de 2026) | Reglas puras y parametrizables en `src/domain/anomaly.ts`; el reporte sospechoso queda en revisión humana y no cuenta como vigente. |
+| ADR-007 | Catálogo canónico con presentaciones y unidad base (aceptado el 11 de noviembre de 2026) | El catálogo conserva productos y presentaciones normalizadas; la unidad base se calcula en `src/domain/unit-price.ts` y los duplicados se resuelven por moderación. |
 | ADR-008 | Resolución entre precio oficial y precio reportado (aceptado el 21 de noviembre de 2026) | El precio oficial se muestra con su fuente y el reportado lo contrasta; la regla vive en `src/domain`. |
 | ADR-009 | Neutralidad: promociones separadas del orden de la comparación (aceptado el 12 de noviembre de 2026) | El orden solo usa precio, precio por unidad base, distancia y frescura; las promociones se muestran aparte. |
 | ADR-013 | Privacidad por diseño: identidad del reportante separada y no pública (aceptado el 15 de noviembre de 2026) | La API pública nunca devuelve la identidad del reportante; la identidad vive en `identity` y el resto de módulos solo ve una clave opaca. |

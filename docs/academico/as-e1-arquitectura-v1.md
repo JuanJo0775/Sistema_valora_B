@@ -1,5 +1,7 @@
 # AS-E1 · Nota de actualización (fe de erratas) a 2026-11-16
 
+> **Nota de vigencia:** este documento conserva la auditoría histórica de su elaboración. Las discrepancias de estados de ADR descritas en sus tablas corresponden a la lectura de noviembre y fueron conciliadas el 28-nov-2026; consultar `docs/academico/as-e2-registro-adr.md` §6 para el estado vigente.
+
 > **Entregable 1 de Arquitectura de Software II · Corte 1.** Esta nota **no copia ni reescribe** AS-E1. La versión consolidada vive en Notion (página `41339c4a-833b-815b-80c1-cec59763ca1d`, entregada el 9 de noviembre de 2026, sin ediciones posteriores según el delta del 16-nov). Aquí solo se listan las diferencias entre ese documento (y la página «Arquitectura y stack tecnológico», `40d39c4a-833b-80ff-a47c-fb7c2d06254e`, editada el 11-nov) y lo que el repositorio `Sistema_valora_B` dice o contiene hoy.
 >
 > Redactado con apoyo de IA (Claude Code); el equipo debe revisarlo y poder defenderlo.

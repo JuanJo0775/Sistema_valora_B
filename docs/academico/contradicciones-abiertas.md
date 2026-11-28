@@ -45,3 +45,18 @@ Nada se ha escrito en Notion. Propuesta, de menor a mayor riesgo:
 1. **Sin riesgo (marcas, no borrados):** A1 (estado de ADR-012), A5, A10, A11, A12, A14, A15.
 2. **Edición de texto de páginas de Sara:** A2 (AS-E3 §4) y A8: la edita ella o se hace con su visto bueno.
 3. **Destructivo o de numeración:** A3 (renumerar ADR-019) y A7 (fusionar o borrar filas): hubo dos incidentes de borrado el 9-nov, así que solo con confirmación explícita y copia previa.
+
+
+## 4. Actualización de estados ADR — 28-nov-2026
+
+La tabla de §2 conserva la fotografía histórica de la lectura del 16-nov-2026. Tras consultar la base ADRs de Notion y los archivos de la rama `dev`, las siguientes contradicciones de estado se consideran resueltas:
+
+| Referencia histórica | Estado verificado al 28-nov-2026 | Resolución |
+|---|---|---|
+| A1 — ADR-012 | Aceptado en Notion y en `docs/DECISIONS.md`, con fecha 16-nov-2026 | Resuelta; no queda pendiente de confirmación |
+| A3 — ADR-019 | Una ficha en Notion, Aceptado el 16-nov-2026; `docs/adr/0019-mapa-osm-leaflet.md` y `DECISIONS.md` describen el mismo tema | Resuelta; no se renumera ni se crea un segundo ADR-019 |
+| A4 — ADR-007 | Aceptado en Notion y en `docs/adr/0007-catalogo-canonico.md`, fecha 11-nov-2026 | Resuelta; `DECISIONS.md` lo registra en la sección Catálogo |
+| A5 — ADR-004 | Aceptado en Notion y en `docs/adr/0004-cqrs-precio-vigente.md`, fecha 12-nov-2026 | Resuelta |
+| A6 — ADR-004, 006, 008, 009, 013 y 016 | Aceptados en Notion y en sus archivos individuales; también figuran en la tabla de `DECISIONS.md` | Resuelta; las brechas de medición o validación no revierten por sí solas el estado de decisión |
+
+El estado global consultado en Notion es 39 Aceptados y 2 Propuestos (ADR-023 y ADR-024), sobre 41 registros. Esta conciliación actualiza los estados, no reescribe las fechas ni convierte las brechas de calidad en verificaciones cumplidas. Las demás entradas de la tabla histórica se mantienen fuera del alcance de esta corrección.
