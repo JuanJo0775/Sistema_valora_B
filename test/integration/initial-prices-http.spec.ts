@@ -70,20 +70,33 @@ describe('precios iniciales de la semilla en la comparación (B#135)', () => {
       .query({ municipality: 'armenia' })
       .expect(200);
 
-  it('se ve como «siembra», con confiabilidad baja y sin confirmaciones', async () => {
+  it('se ve como «siembra», con confiabilidad baja, sin confirmaciones y sin reportId', async () => {
     await app.get(ImportInitialPrices).execute([initial(d1)]);
 
     const response = await compare();
 
-    expect((response.body as { results: unknown[] }).results).toEqual([
+    const [shown] = (response.body as { results: Record<string, unknown>[] }).results;
+    expect(shown).toEqual(
       expect.objectContaining({
-        reportId: initial(d1).id,
         priceCop: 1990,
         source: 'siembra',
         reliability: 'baja',
         confirmations: 0,
       }),
-    ]);
+    );
+    // ADR-028: solo un precio de la comunidad trae su reportId y puede marcarse. El id de un dato
+    // inicial no es un reporte: si se expone, marcarlo responde 404.
+    expect(shown).not.toHaveProperty('reportId');
+  });
+
+  it('la ficha de la tienda tampoco expone un reportId para un dato inicial', async () => {
+    await app.get(ImportInitialPrices).execute([initial(d1)]);
+
+    const response = await request(server).get(`/v1/establishments/${d1}/prices`).expect(200);
+
+    const [shown] = (response.body as { prices: Record<string, unknown>[] }).prices;
+    expect(shown).toEqual(expect.objectContaining({ source: 'siembra' }));
+    expect(shown).not.toHaveProperty('reportId');
   });
 
   it('nunca reemplaza un precio que vio la comunidad', async () => {

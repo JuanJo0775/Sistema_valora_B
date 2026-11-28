@@ -80,8 +80,10 @@ export class StorePricesController {
     return {
       establishment: result.establishment,
       verifiedMerchant: result.verifiedMerchant,
-      prices: result.prices.map(({ unitPrice, observedAt, discrepancy, ...item }) => ({
+      prices: result.prices.map(({ unitPrice, observedAt, discrepancy, reportId, ...item }) => ({
         ...item,
+        // ADR-028: solo un precio de la comunidad trae su reportId y puede marcarse.
+        ...(reportId === undefined || item.source !== 'comunidad' ? {} : { reportId }),
         // Se muestra redondeado; el valor exacto no sale de la aplicación.
         unitPrice: { valueCop: unitPrice.displayCop, per: unitPrice.per },
         observedAt: observedAt.toISOString(),

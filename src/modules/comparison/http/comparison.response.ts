@@ -92,7 +92,11 @@ export function toComparisonResponse(comparison: Comparison): ComparisonResponse
     criteria: comparison.criteria,
     results: comparison.results.map(({ establishment, unitPrice, ...item }) => ({
       establishment: toEstablishment(establishment),
-      ...(item.reportId === undefined ? {} : { reportId: item.reportId }),
+      // ADR-028: solo un precio de la comunidad trae su reportId y puede marcarse. Un dato inicial
+      // (siembra) tampoco: su id no es un reporte y marcarlo responde 404.
+      ...(item.reportId === undefined || item.source !== 'comunidad'
+        ? {}
+        : { reportId: item.reportId }),
       presentationId: item.presentationId,
       priceCop: item.priceCop,
       // Se muestra redondeado; el orden ya usó el valor exacto.
