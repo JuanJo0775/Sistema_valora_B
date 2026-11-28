@@ -118,3 +118,14 @@ La guía pide, para cada decisión estructural, **contexto, alternativas conside
 - Notion, lectura del 16/17-nov-2026: AS-E1, AS-E2, AS-E3, Auditoría (para las discrepancias 1 y 14).
 
 Redactado con apoyo de IA (Claude Code); el equipo debe revisarlo y poder defenderlo.
+
+
+## Cierre final del proyecto — 27-nov-2026
+
+El estado vigente se consulta en la base oficial de ADRs de Notion. Al cierre del proyecto, **todos los ADR del registro están Aceptados**. Este documento conserva el inventario y las discrepancias históricas como evidencia del proceso; las tablas de estados y los recuentos anteriores son fotografías de las fechas en que se elaboraron y no representan el estado actual.
+
+Las decisiones incorporadas después del registro inicial se encuentran en `docs/adr/0023` a `docs/adr/0045` y en `docs/DECISIONS.md`. Se actualizaron los estados documentales de ADR-023 a ADR-028 y ADR-036 a ADR-042 al cierre final. Los ADR-029 a ADR-035 y ADR-043 a ADR-045 ya estaban aceptados en sus documentos.
+
+**Conciliación ADR-036:** Notion usa ADR-036 para el plan de compra (renumerado para no colisionar con su ADR-032, eliminación de cuenta). El repositorio backend conserva ADR-036 para el correo de bienvenida y ADR-034/ADR-035 para el plan de compra. No se cambia esta numeración histórica; los títulos y enlaces son los identificadores inequívocos.
+
+La aceptación final no borra las consecuencias, riesgos ni pruebas pendientes consignados en cada ADR. El estado Aceptado significa que la decisión quedó adoptada como línea base del proyecto.
