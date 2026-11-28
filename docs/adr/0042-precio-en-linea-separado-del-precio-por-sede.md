@@ -1,6 +1,6 @@
 # ADR-042: El precio en línea es una fuente aparte del precio por sede
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (cierre final del proyecto, 2026-11-27)
 - **Fecha:** 2026-11-25
 - **Responsables:** equipo de backend; pendiente de revisión del equipo.
 - **Escenarios relacionados:** EC-02 (vigencia), EC-03 (confiabilidad), EC-05 (evolución), EC-06 (fuente visible), EC-08 (privacidad)
